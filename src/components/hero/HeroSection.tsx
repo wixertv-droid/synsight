@@ -57,15 +57,15 @@ export default function HeroSection() {
         <span>48.1372° N / 11.5756° E</span>
         <span className="flex items-center gap-2">
           <i className="h-1.5 w-1.5 rounded-full bg-cyan-300/70 shadow-[0_0_10px_rgba(112,231,255,.5)]" />
-          SECURE SESSION / TLS 1.3
+          GESCHÜTZTE VERBINDUNG / TLS 1.3
         </span>
       </div>
 
       {/* Holographic readouts around the globe */}
       <div className="float-module glass hardware-panel absolute right-[7%] top-[23%] hidden w-48 rounded-xl p-4 lg:block">
         <div className="flex items-center justify-between font-mono text-[9px] tracking-widest text-white/35">
-          <span>IDENTITY SURFACE</span>
-          <span className="text-cyber-cyan/70">LIVE</span>
+          <span>IDENTITÄTSFLÄCHE</span>
+          <span className="text-cyber-cyan/70">AKTIV</span>
         </div>
         <div className="mt-4 flex items-end justify-between">
           <span className="text-2xl font-light tabular-nums text-white">360°</span>
@@ -88,7 +88,7 @@ export default function HeroSection() {
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300/80" />
           </span>
           <span className="font-mono text-[9px] tracking-widest text-white/45">
-            AI CORE ACTIVE
+            KI-ANALYSE AKTIV
           </span>
         </div>
         <div className="mt-3 grid grid-cols-5 gap-1">
@@ -105,30 +105,30 @@ export default function HeroSection() {
 
       <div
         ref={ref}
-        className={`relative z-10 w-full max-w-7xl mx-auto px-6 pb-32 pt-40 md:px-12 lg:px-20 transition-all duration-1000 ${
+        className={`relative z-10 w-full max-w-7xl mx-auto px-6 pb-24 pt-28 sm:pb-32 sm:pt-36 md:px-12 lg:px-20 transition-all duration-1000 ${
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
         }`}
       >
         <div className="hud-label mb-8">
-          SynSight Intelligence Platform / 01
+          Digitale Identität / KI-Analyse
         </div>
 
         <h1 className="max-w-4xl text-balance text-5xl font-semibold leading-[.98] tracking-[-.055em] text-white sm:text-6xl md:text-7xl lg:text-[5.5rem]">
-          Ihre digitale Identität.
+          Sehen Sie, was das Internet
           <span className="mt-2 block cyber-gradient glow-text">
-            Unter Ihrer Kontrolle.
+            über Sie weiß.
           </span>
         </h1>
 
         <p className="mt-8 max-w-xl text-base leading-relaxed text-slate-300/70 md:text-lg">
-          SynSight verbindet KI-gestützte Analyse mit kontinuierlichem Schutz.
-          Digitale Spuren werden sichtbar, Risiken verständlich und nächste
-          Schritte eindeutig.
+          SynSight findet öffentliche Profile, Datenlecks und digitale Spuren.
+          Sie erfahren, was kritisch ist — und welche Schritte Ihre Identität
+          wirksam schützen.
         </p>
 
         <div className="mt-10 flex flex-wrap gap-4">
           <Button size="lg" onClick={() => scrollTo("demo-scanner")}>
-            Identität analysieren
+            Kostenlosen Risiko-Check starten
             <svg viewBox="0 0 20 20" fill="none" className="ml-3 h-4 w-4" aria-hidden="true">
               <path d="M4 10h12m-4-4 4 4-4 4" stroke="currentColor" strokeWidth="1.5" />
             </svg>
@@ -138,16 +138,27 @@ export default function HeroSection() {
             size="lg"
             onClick={() => scrollTo("technology")}
           >
-            System entdecken
+            So funktioniert SynSight
           </Button>
         </div>
 
+        <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-white/35">
+          {["Keine Registrierung", "Unverbindliche Demo", "Privacy by Design"].map(
+            (item) => (
+              <span key={item} className="flex items-center gap-2">
+                <i className="h-1 w-1 rounded-full bg-cyber-cyan/70" />
+                {item}
+              </span>
+            )
+          )}
+        </div>
+
         {/* Mission telemetry */}
-        <div className="mt-16 grid max-w-3xl grid-cols-2 overflow-hidden rounded-xl border border-white/[0.07] bg-black/20 backdrop-blur-md md:grid-cols-4">
+        <div className="mt-12 grid max-w-3xl grid-cols-2 overflow-hidden rounded-xl border border-white/[0.07] bg-black/20 backdrop-blur-md sm:mt-16 md:grid-cols-4">
           {[
-            { label: "Analyse", value: "360°" },
-            { label: "Erkennung", value: "KI" },
-            { label: "Monitoring", value: "24/7" },
+            { label: "Erst-Check", value: "Sekunden" },
+            { label: "Quellen", value: "Profile + Leaks" },
+            { label: "Auswertung", value: "Priorisiert" },
             { label: "Datenprinzip", value: "EU" },
           ].map((stat) => (
             <div key={stat.label} className="border-white/[0.06] p-4 first:border-0 odd:border-r md:border-l md:odd:border-r-0">

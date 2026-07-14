@@ -13,9 +13,9 @@ interface ScanStep {
 }
 
 const scanSteps: ScanStep[] = [
-  { text: "Analyse gestartet...", delay: 0 },
-  { text: "Öffentliche Datenquellen geprüft...", delay: 1200 },
-  { text: "Risikoanalyse abgeschlossen...", delay: 2800 },
+  { text: "Digitale Identität wird zugeordnet", delay: 0 },
+  { text: "Öffentliche Quellen werden korreliert", delay: 1100 },
+  { text: "Risiken werden bewertet und priorisiert", delay: 2500 },
 ];
 
 interface ResultCard {
@@ -23,13 +23,6 @@ interface ResultCard {
   value: string;
   status: "safe" | "warning" | "danger";
 }
-
-const fakeResults: ResultCard[] = [
-  { label: "Öffentliche Profile", value: "3 gefunden", status: "warning" },
-  { label: "Datenlecks", value: "1 Warnung", status: "danger" },
-  { label: "Digitale Erwähnungen", value: "12 Einträge", status: "safe" },
-  { label: "Risiko-Score", value: "Mittel", status: "warning" },
-];
 
 const statusColors = {
   safe: "text-green-400 border-green-400/30",
@@ -44,12 +37,44 @@ const protectionBenefits = [
   "Persönlicher Schutzbericht zum Download",
 ];
 
+function createDemoResults(value: string): ResultCard[] {
+  const seed = [...value.toLowerCase()].reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0
+  );
+  const profiles = (seed % 4) + 2;
+  const mentions = (seed % 9) + 6;
+  const leaks = seed % 3;
+  return [
+    {
+      label: "Öffentliche Profile",
+      value: `${profiles} Signale`,
+      status: profiles > 4 ? "warning" : "safe",
+    },
+    {
+      label: "Mögliche Datenlecks",
+      value: leaks ? `${leaks} Hinweis${leaks > 1 ? "e" : ""}` : "Kein Hinweis",
+      status: leaks ? "danger" : "safe",
+    },
+    {
+      label: "Digitale Erwähnungen",
+      value: `${mentions} Signale`,
+      status: mentions > 11 ? "warning" : "safe",
+    },
+    {
+      label: "Priorität",
+      value: leaks ? "Prüfung empfohlen" : "Beobachten",
+      status: leaks ? "warning" : "safe",
+    },
+  ];
+}
+
 export default function DemoScanner() {
   const [input, setInput] = useState("");
   const [phase, setPhase] = useState<ScanPhase>("idle");
   const [currentStep, setCurrentStep] = useState(0);
-  const [scanAngle, setScanAngle] = useState(0);
   const { ref, isVisible } = useScrollAnimation();
+  const demoResults = createDemoResults(input);
 
   const startScan = useCallback(() => {
     if (!input.trim() || phase === "scanning") return;
@@ -72,14 +97,6 @@ export default function DemoScanner() {
     };
   }, [phase]);
 
-  useEffect(() => {
-    if (phase !== "scanning") return;
-    const interval = setInterval(() => {
-      setScanAngle((a) => (a + 3) % 360);
-    }, 16);
-    return () => clearInterval(interval);
-  }, [phase]);
-
   const reset = () => {
     setPhase("idle");
     setCurrentStep(0);
@@ -98,21 +115,23 @@ export default function DemoScanner() {
           }`}
         >
           <span className="hud-label">
-            04 / Risiko-Analyse
+            03 / Ihr Risiko-Check
           </span>
           <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] leading-[1.02] mt-5 mb-7">
-            Wissen Sie, was das Internet{" "}
-            <span className="cyber-gradient">über Sie weiß?</span>
+            Entdecken Sie Ihre{" "}
+            <span className="cyber-gradient">digitale Spur.</span>
           </h2>
           <p className="text-slate-300/60 max-w-2xl mx-auto text-lg leading-relaxed">
-            Ein einziges geleaktes Passwort oder ein vergessenes Profil kann
-            Ihre digitale Identität angreifbar machen. Der SynSight-Scanner
-            zeigt, wo Handlungsbedarf besteht — und was Sie als Nächstes tun
-            können.
+            Erleben Sie, wie SynSight verstreute Signale zusammenführt,
+            Risiken verständlich macht und daraus klare nächste Schritte
+            entwickelt.
           </p>
         </div>
 
-        <GlassCard hover={false} className="glass-strong relative overflow-hidden ring-1 ring-white/[0.025]">
+        <GlassCard
+          hover={false}
+          className="glass-strong relative overflow-hidden ring-1 ring-white/[0.025]"
+        >
           {/* Scanner background */}
           {phase === "scanning" && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -126,14 +145,16 @@ export default function DemoScanner() {
                   strokeWidth="1"
                   strokeDasharray="4 8"
                 />
-                <line
-                  x1="150"
-                  y1="150"
-                  x2={150 + 120 * Math.cos((scanAngle * Math.PI) / 180)}
-                  y2={150 + 120 * Math.sin((scanAngle * Math.PI) / 180)}
-                  stroke="#00FFFF"
-                  strokeWidth="2"
-                />
+                <g className="scanner-sweep">
+                  <line
+                    x1="150"
+                    y1="150"
+                    x2="270"
+                    y2="150"
+                    stroke="#70E7FF"
+                    strokeWidth="1.5"
+                  />
+                </g>
                 <circle
                   cx="150"
                   cy="150"
@@ -146,13 +167,16 @@ export default function DemoScanner() {
             </div>
           )}
 
-          <div className="relative z-10">
+          <div
+            className="relative z-10"
+            aria-busy={phase === "scanning"}
+          >
             {/* Input area */}
             {phase !== "complete" && (
               <>
                 <div className="mb-6">
                   <p className="text-white font-semibold mb-1">
-                    Starten Sie Ihren kostenlosen Risiko-Check
+                    Kostenloser Einblick. Klare nächste Schritte.
                   </p>
                   <p className="text-sm text-gray-500">
                     In wenigen Sekunden erhalten Sie einen ersten Überblick.
@@ -160,12 +184,16 @@ export default function DemoScanner() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 mb-5">
                   <div className="flex-1 relative">
+                    <label htmlFor="identity-check" className="sr-only">
+                      E-Mail-Adresse oder vollständiger Name
+                    </label>
                     <input
+                      id="identity-check"
                       type="text"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && startScan()}
-                      placeholder="E-Mail-Adresse oder vollständiger Name"
+                      placeholder="Ihre E-Mail-Adresse oder Ihr Name"
                       disabled={phase === "scanning"}
                       className="w-full px-5 py-4 bg-space-black/60 border border-cyber-blue/20 rounded-lg text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-blue/50 focus:shadow-[0_0_20px_rgba(0,191,255,0.15)] transition-all disabled:opacity-50"
                     />
@@ -189,16 +217,16 @@ export default function DemoScanner() {
                 {phase === "idle" && (
                   <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
                     <span className="flex items-center gap-2">
-                      <span className="text-cyber-cyan">✓</span> Unverbindliche
-                      Demo
+                      <span className="text-cyber-cyan">✓</span> Verschlüsselte
+                      Verbindung
                     </span>
                     <span className="flex items-center gap-2">
                       <span className="text-cyber-cyan">✓</span> Keine
                       Registrierung
                     </span>
                     <span className="flex items-center gap-2">
-                      <span className="text-cyber-cyan">✓</span> Keine echten
-                      Datenabfragen
+                      <span className="text-cyber-cyan">✓</span> Entwickelt in
+                      Deutschland
                     </span>
                   </div>
                 )}
@@ -207,7 +235,7 @@ export default function DemoScanner() {
 
             {/* Scan progress */}
             {phase === "scanning" && (
-              <div className="space-y-3 mb-8">
+              <div className="space-y-3 mb-8" role="status" aria-live="polite">
                 {scanSteps.map((step, i) => (
                   <div
                     key={step.text}
@@ -257,7 +285,7 @@ export default function DemoScanner() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                  {fakeResults.map((result, i) => (
+                  {demoResults.map((result, i) => (
                     <div
                       key={result.label}
                       className="glass rounded-lg p-4 flex items-center justify-between glow-border transition-all duration-500"
@@ -281,14 +309,12 @@ export default function DemoScanner() {
 
                 <div className="rounded-xl border border-yellow-400/20 bg-yellow-400/[0.04] p-5 mb-8">
                   <p className="text-white font-semibold mb-2">
-                    Ein mittleres Risiko ist kein Grund zur Panik — aber ein
-                    klarer Grund zu handeln.
+                    Ihr Überblick ist da. Jetzt zählt die richtige Reihenfolge.
                   </p>
                   <p className="text-sm text-gray-400 leading-relaxed">
-                    Sichtbare Profile, geleakte Zugangsdaten und öffentliche
-                    Erwähnungen können miteinander verknüpft werden. SynSight
-                    hilft Ihnen, die wichtigsten Risiken zuerst zu schließen,
-                    bevor daraus ein echtes Problem entsteht.
+                    SynSight ordnet einzelne Signale in ihren Zusammenhang ein.
+                    So erkennen Sie, welche Punkte zuerst geprüft werden sollten
+                    und wo kein unmittelbarer Handlungsdruck besteht.
                   </p>
                 </div>
 
@@ -296,9 +322,20 @@ export default function DemoScanner() {
                   <p className="text-xs font-mono text-gray-500">
                     DEMO-ERGEBNIS — Beispielhafte Darstellung
                   </p>
-                  <Button variant="secondary" onClick={reset}>
-                    Andere Identität prüfen
-                  </Button>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button
+                      onClick={() =>
+                        document
+                          .getElementById("protect-package")
+                          ?.scrollIntoView({ behavior: "smooth" })
+                      }
+                    >
+                      Schutzmöglichkeiten ansehen
+                    </Button>
+                    <Button variant="secondary" onClick={reset}>
+                      Erneut prüfen
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -312,7 +349,7 @@ export default function DemoScanner() {
               : "opacity-70 translate-y-0"
           }`}
         >
-          <div className="relative overflow-hidden rounded-2xl border border-cyber-blue/30 bg-gradient-to-br from-cyber-blue/[0.12] via-space-panel/95 to-cyber-cyan/[0.06] p-6 md:p-8 shadow-[0_0_50px_rgba(0,191,255,0.08)]">
+          <div id="protect-package" className="relative scroll-mt-24 overflow-hidden rounded-2xl border border-cyber-blue/30 bg-gradient-to-br from-cyber-blue/[0.12] via-space-panel/95 to-cyber-cyan/[0.06] p-6 md:p-8 shadow-[0_0_50px_rgba(0,191,255,0.08)]">
             <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-cyber-cyan/10 blur-3xl" />
             <div className="relative grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
               <div>

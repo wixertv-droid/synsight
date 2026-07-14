@@ -10,10 +10,10 @@ const trustItems = [
         <path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
       </svg>
     ),
-    title: "KI Technologie",
+    title: "Nachvollziehbare KI",
     description:
-      "Modernste neuronale Netzwerke analysieren Ihre digitale Identität mit höchster Präzision und Geschwindigkeit.",
-    stats: "12 KI-Modelle",
+      "Moderne KI-Modelle strukturieren Signale, ohne die Entscheidung vor Ihnen zu verbergen.",
+    stats: "Erklärbare Ergebnisse",
   },
   {
     icon: (
@@ -23,8 +23,8 @@ const trustItems = [
     ),
     title: "Datenschutz",
     description:
-      "DSGVO-konform. Ihre Daten werden verschlüsselt verarbeitet und niemals an Dritte weitergegeben.",
-    stats: "DSGVO-konform",
+      "Datensparsame Produktentwicklung und verschlüsselte Übertragung sind Teil der Architektur.",
+    stats: "Privacy by Design",
   },
   {
     icon: (
@@ -34,8 +34,8 @@ const trustItems = [
     ),
     title: "Sicherheit",
     description:
-      "Ende-zu-Ende-Verschlüsselung, Zero-Trust-Architektur und kontinuierliches Security-Monitoring.",
-    stats: "AES-256",
+      "Zugriffe und Datenflüsse werden nach dem Zero-Trust-Prinzip konzipiert und klar getrennt.",
+    stats: "Zero Trust",
   },
   {
     icon: (
@@ -46,8 +46,8 @@ const trustItems = [
     ),
     title: "Transparenz",
     description:
-      "Vollständige Einblicke in unsere Analysemethoden. Sie wissen immer, was wir finden und warum.",
-    stats: "Open Process",
+      "Sie sehen, was gefunden wurde, warum es relevant ist und welche Maßnahme empfohlen wird.",
+    stats: "Klare Empfehlungen",
   },
 ];
 
@@ -66,14 +66,16 @@ export default function TrustSection() {
           }`}
         >
           <span className="hud-label">
-            05 / Trust Architecture
+            06 / Vertrauen & Sicherheit
           </span>
           <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] leading-[1.02] mt-5 mb-7">
-            Gebaut auf <span className="cyber-gradient">Vertrauen</span>
+            Sicherheit beginnt mit{" "}
+            <span className="cyber-gradient">Transparenz.</span>
           </h2>
           <p className="text-slate-300/60 max-w-2xl mx-auto text-lg leading-relaxed">
-            Enterprise-Grade Sicherheit und Transparenz — von Grund auf in
-            SynSight verankert.
+            Eine Plattform für digitale Identität muss nachvollziehbar,
+            datensparsam und verantwortungsvoll sein. Daran messen wir jede
+            Produktentscheidung.
           </p>
         </div>
 

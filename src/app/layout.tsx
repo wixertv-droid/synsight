@@ -15,9 +15,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SynSight — KI-Plattform für digitalen Identitätsschutz",
+  title: "SynSight — Digitale Identität erkennen und schützen",
   description:
-    "SynSight analysiert digitale Spuren, erkennt Risiken und hilft Ihnen, die Kontrolle über Ihre Online-Präsenz zurückzugewinnen.",
+    "KI-Analyse für öffentliche Profile, Datenlecks und digitale Spuren. SynSight macht Risiken verständlich und zeigt klare nächste Schritte.",
   keywords: [
     "digitale Identität",
     "KI",
@@ -26,9 +26,9 @@ export const metadata: Metadata = {
     "Online-Reputation",
   ],
   openGraph: {
-    title: "SynSight — Digital Identity Protection",
+    title: "SynSight — Digitale Identität erkennen und schützen",
     description:
-      "Die intelligente KI-Plattform zum Schutz Ihrer digitalen Identität.",
+      "Entdecken Sie Ihre digitale Spur. Verstehen Sie Risiken. Schützen Sie, was online über Sie sichtbar ist.",
     url: "https://synsight.de",
     siteName: "SynSight",
     locale: "de_DE",

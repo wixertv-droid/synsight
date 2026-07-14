@@ -10,6 +10,7 @@ import TrustSection from "@/components/sections/TrustSection";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
 import SystemRail from "@/components/layout/SystemRail";
+import IntelligenceConsole from "@/components/sections/IntelligenceConsole";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -29,9 +30,10 @@ export default function Home() {
         <Navbar />
         <SystemRail />
         <HeroSection />
+        <IntelligenceConsole />
+        <DemoScanner />
         <DigitalTraces />
         <WhatSynSightRecognizes />
-        <DemoScanner />
         <TrustSection />
         <Footer />
       </main>

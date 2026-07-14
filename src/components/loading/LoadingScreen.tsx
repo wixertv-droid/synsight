@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface LoadingScreenProps {
   onComplete: () => void;
@@ -14,8 +14,13 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const [displayText, setDisplayText] = useState("");
   const [showCursor, setShowCursor] = useState(true);
 
-  const fullTextInitializing = "INITIALIZING SYNIGHT AI CORE";
-  const fullTextOnline = "DIGITAL IDENTITY PROTECTION SYSTEM ONLINE";
+  const fullTextInitializing = "SYNSIGHT KI-KERN WIRD INITIALISIERT";
+  const fullTextOnline = "SCHUTZSYSTEM BEREIT";
+
+  const complete = useCallback(() => {
+    sessionStorage.setItem("synsight-intro-seen", "true");
+    onComplete();
+  }, [onComplete]);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -23,18 +28,21 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
-    if (reducedMotion) {
-      onComplete();
+    if (
+      reducedMotion ||
+      sessionStorage.getItem("synsight-intro-seen") === "true"
+    ) {
+      complete();
       return;
     }
 
-    timers.push(setTimeout(() => setPhase("initializing"), 300));
-    timers.push(setTimeout(() => setPhase("online"), 1250));
-    timers.push(setTimeout(() => setPhase("exit"), 2200));
-    timers.push(setTimeout(() => onComplete(), 2700));
+    timers.push(setTimeout(() => setPhase("initializing"), 120));
+    timers.push(setTimeout(() => setPhase("online"), 650));
+    timers.push(setTimeout(() => setPhase("exit"), 1050));
+    timers.push(setTimeout(complete, 1450));
 
     return () => timers.forEach(clearTimeout);
-  }, [onComplete]);
+  }, [complete]);
 
   useEffect(() => {
     if (phase === "initializing") {
@@ -46,7 +54,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
         } else {
           clearInterval(interval);
         }
-      }, 40);
+      }, 18);
       return () => clearInterval(interval);
     }
     if (phase === "online") {
@@ -59,15 +67,15 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
         } else {
           clearInterval(interval);
         }
-      }, 35);
+      }, 20);
       return () => clearInterval(interval);
     }
   }, [phase]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setProgress((p) => Math.min(p + 4, 100));
-    }, 90);
+      setProgress((p) => Math.min(p + 8, 100));
+    }, 85);
     return () => clearInterval(interval);
   }, []);
 
@@ -81,6 +89,9 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       className={`fixed inset-0 z-[100] flex items-center justify-center loading-grid bg-space-black transition-opacity duration-700 ${
         phase === "exit" ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
+      role="status"
+      aria-live="polite"
+      aria-label="SynSight wird geladen"
     >
       {/* HUD corners */}
       <div className="absolute top-8 left-8 w-16 h-16 border-l-2 border-t-2 border-cyber-blue/30" />
@@ -89,17 +100,17 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       <div className="absolute bottom-8 right-8 w-16 h-16 border-r-2 border-b-2 border-cyber-blue/30" />
 
       {/* Side HUD data */}
-      <div className="absolute left-8 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-3 font-mono text-[10px] text-cyber-blue/40">
-        <span>SYS.STATUS: BOOT</span>
-        <span>CORE: v4.2.1</span>
-        <span>NEURAL: ACTIVE</span>
-        <span>SCAN: READY</span>
+      <div aria-hidden="true" className="absolute left-8 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-3 font-mono text-[10px] text-cyber-blue/40">
+        <span>STATUS: START</span>
+        <span>REGION: EU</span>
+        <span>KI-ANALYSE: BEREIT</span>
+        <span>DATENSCHUTZ: AKTIV</span>
       </div>
-      <div className="absolute right-8 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-3 font-mono text-[10px] text-cyber-blue/40 text-right">
-        <span>LAT: 12ms</span>
-        <span>MEM: 98.7%</span>
-        <span>NET: SECURE</span>
-        <span>ID: PROTECT</span>
+      <div aria-hidden="true" className="absolute right-8 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-3 font-mono text-[10px] text-cyber-blue/40 text-right">
+        <span>VERBINDUNG: GESCHÜTZT</span>
+        <span>MODUS: PRIVAT</span>
+        <span>NETZWERK: BEREIT</span>
+        <span>IDENTITÄT: GESCHÜTZT</span>
       </div>
 
       <div className="flex flex-col items-center gap-8">
@@ -221,9 +232,9 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
                 />
               </svg>
             </div>
-            <h1 className="mt-4 text-2xl md:text-3xl font-bold tracking-[0.3em] text-white glow-text">
+            <p className="mt-4 text-2xl md:text-3xl font-bold tracking-[0.3em] text-white glow-text">
               SYN<span className="text-cyber-blue">SIGHT</span>
-            </h1>
+            </p>
           </div>
         </div>
 
@@ -250,8 +261,15 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
         </div>
 
         <p className="font-mono text-[10px] text-cyber-blue/30 tracking-wider">
-          {Math.round(progress)}% SYSTEM INITIALIZATION
+          {Math.round(progress)}% SYSTEMSTART
         </p>
+        <button
+          type="button"
+          onClick={complete}
+          className="font-mono text-[9px] tracking-[.16em] text-white/25 transition-colors hover:text-white/60 focus:outline-none focus:text-white/70"
+        >
+          INTRO ÜBERSPRINGEN
+        </button>
       </div>
     </div>
   );

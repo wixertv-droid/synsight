@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 
 const sections = [
-  { id: "hero", label: "CORE" },
-  { id: "traces", label: "SURFACE" },
-  { id: "technology", label: "INTEL" },
-  { id: "demo-scanner", label: "SCAN" },
-  { id: "trust", label: "TRUST" },
+  { id: "hero", label: "START" },
+  { id: "platform", label: "PLATTFORM" },
+  { id: "demo-scanner", label: "CHECK" },
+  { id: "traces", label: "SPUREN" },
+  { id: "technology", label: "ERKENNUNG" },
+  { id: "trust", label: "VERTRAUEN" },
 ];
 
 export default function SystemRail() {
