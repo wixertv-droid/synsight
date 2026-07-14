@@ -6,19 +6,17 @@ interface LoadingScreenProps {
   onComplete: () => void;
 }
 
-type Phase = "logo" | "initializing" | "online" | "exit";
+type Phase = "initializing" | "online" | "exit";
 
 export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
-  const [phase, setPhase] = useState<Phase>("logo");
-  const [progress, setProgress] = useState(0);
-  const [displayText, setDisplayText] = useState("");
+  const [phase, setPhase] = useState<Phase>("initializing");
+  const [progress, setProgress] = useState(1);
   const [showCursor, setShowCursor] = useState(true);
 
-  const fullTextInitializing = "SYNSIGHT KI-KERN WIRD INITIALISIERT";
-  const fullTextOnline = "SCHUTZSYSTEM BEREIT";
+  const fullTextInitializing = "INITIALIZING SYNSIGHT AI CORE";
+  const fullTextOnline = "DIGITAL IDENTITY PROTECTION SYSTEM ONLINE";
 
   const complete = useCallback(() => {
-    sessionStorage.setItem("synsight-intro-seen", "true");
     onComplete();
   }, [onComplete]);
 
@@ -28,54 +26,22 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
-    if (
-      reducedMotion ||
-      sessionStorage.getItem("synsight-intro-seen") === "true"
-    ) {
+    if (reducedMotion) {
       complete();
       return;
     }
 
-    timers.push(setTimeout(() => setPhase("initializing"), 120));
-    timers.push(setTimeout(() => setPhase("online"), 650));
-    timers.push(setTimeout(() => setPhase("exit"), 1050));
-    timers.push(setTimeout(complete, 1450));
+    timers.push(setTimeout(() => setPhase("online"), 2600));
+    timers.push(setTimeout(() => setPhase("exit"), 3500));
+    timers.push(setTimeout(complete, 4100));
 
     return () => timers.forEach(clearTimeout);
   }, [complete]);
 
   useEffect(() => {
-    if (phase === "initializing") {
-      let i = 0;
-      const interval = setInterval(() => {
-        if (i <= fullTextInitializing.length) {
-          setDisplayText(fullTextInitializing.slice(0, i));
-          i++;
-        } else {
-          clearInterval(interval);
-        }
-      }, 18);
-      return () => clearInterval(interval);
-    }
-    if (phase === "online") {
-      setDisplayText("");
-      let i = 0;
-      const interval = setInterval(() => {
-        if (i <= fullTextOnline.length) {
-          setDisplayText(fullTextOnline.slice(0, i));
-          i++;
-        } else {
-          clearInterval(interval);
-        }
-      }, 20);
-      return () => clearInterval(interval);
-    }
-  }, [phase]);
-
-  useEffect(() => {
     const interval = setInterval(() => {
-      setProgress((p) => Math.min(p + 8, 100));
-    }, 85);
+      setProgress((p) => Math.min(p + 1.25, 100));
+    }, 40);
     return () => clearInterval(interval);
   }, []);
 
@@ -93,6 +59,12 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       aria-live="polite"
       aria-label="SynSight wird geladen"
     >
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyber-cyan/35 to-transparent" />
+      <div aria-hidden="true" className="absolute left-0 right-0 top-[18%] hidden items-center justify-between px-8 font-mono text-[8px] tracking-[.2em] text-white/15 md:flex">
+        <span>LAUNCH CONTROL / SYNSIGHT</span>
+        <span>T−00:04 / SYSTEM START</span>
+      </div>
+
       {/* HUD corners */}
       <div className="absolute top-8 left-8 w-16 h-16 border-l-2 border-t-2 border-cyber-blue/30" />
       <div className="absolute top-8 right-8 w-16 h-16 border-r-2 border-t-2 border-cyber-blue/30" />
@@ -113,7 +85,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
         <span>IDENTITÄT: GESCHÜTZT</span>
       </div>
 
-      <div className="flex flex-col items-center gap-8">
+      <div className="flex w-full max-w-3xl flex-col items-center gap-8 px-6">
         {/* Logo + Scanner */}
         <div className="relative">
           {/* Outer scanner rings */}
@@ -173,13 +145,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
 
           {/* Logo */}
           <div
-            className={`relative z-10 flex flex-col items-center transition-all duration-1000 ${
-              phase === "logo" ? "opacity-0 scale-90" : "opacity-100 scale-100"
-            }`}
-            style={{
-              animation:
-                phase === "logo" ? "none" : "fade-in 1.2s ease-out forwards",
-            }}
+            className="relative z-10 flex flex-col items-center animate-fade-in"
           >
             <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border border-cyber-blue/40 flex items-center justify-center glow-border bg-space-panel/80">
               <svg viewBox="0 0 48 48" className="w-12 h-12 md:w-14 md:h-14">
@@ -242,7 +208,9 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
         <div className="h-8 flex items-center">
           {(phase === "initializing" || phase === "online" || phase === "exit") && (
             <p className="font-mono text-xs md:text-sm text-cyber-cyan tracking-widest">
-              {displayText}
+              {phase === "initializing"
+                ? fullTextInitializing
+                : fullTextOnline}
               <span
                 className={`inline-block w-2 ${showCursor ? "opacity-100" : "opacity-0"}`}
               >
@@ -252,24 +220,63 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
           )}
         </div>
 
-        {/* Progress bar */}
-        <div className="w-48 md:w-64 h-[2px] bg-space-light rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-cyber-blue to-cyber-cyan transition-all duration-100"
-            style={{ width: `${progress}%` }}
-          />
+        {/* Launch progress */}
+        <div className="w-full max-w-2xl">
+          <div className="mb-3 flex items-end justify-between font-mono">
+            <span className="text-[9px] tracking-[.18em] text-white/25">
+              LAUNCH SEQUENCE
+            </span>
+            <span className="text-xl font-light tabular-nums text-cyan-100/90">
+              {Math.round(progress).toString().padStart(3, "0")}
+              <small className="ml-1 text-[9px] text-white/30">%</small>
+            </span>
+          </div>
+          <div className="launch-progress-track relative h-[5px] overflow-visible bg-white/[0.07]">
+            <div className="launch-progress-fill absolute inset-y-0 left-0">
+              <span className="absolute -right-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-cyan-100/80 bg-space-black shadow-[0_0_18px_rgba(112,231,255,.8)]" />
+            </div>
+            {[25, 50, 75].map((position) => (
+              <span
+                key={position}
+                className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-white/15"
+                style={{ left: `${position}%` }}
+              />
+            ))}
+          </div>
+          <div className="mt-4 grid grid-cols-4 gap-2">
+            {[
+              ["CORE", 0],
+              ["NETWORK", 25],
+              ["IDENTITY", 50],
+              ["PROTECTION", 75],
+            ].map(([label, threshold]) => (
+              <div key={label} className="flex items-center gap-2">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full transition-all duration-500 ${
+                    progress >= Number(threshold)
+                      ? "bg-cyber-cyan shadow-[0_0_8px_rgba(112,231,255,.55)]"
+                      : "bg-white/10"
+                  }`}
+                />
+                <span
+                  className={`font-mono text-[8px] tracking-[.12em] transition-colors duration-500 ${
+                    progress >= Number(threshold)
+                      ? "text-white/45"
+                      : "text-white/15"
+                  }`}
+                >
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <p className="font-mono text-[10px] text-cyber-blue/30 tracking-wider">
-          {Math.round(progress)}% SYSTEMSTART
+          {phase === "online"
+            ? "ALL SYSTEMS NOMINAL"
+            : "SECURE BOOT IN PROGRESS"}
         </p>
-        <button
-          type="button"
-          onClick={complete}
-          className="font-mono text-[9px] tracking-[.16em] text-white/25 transition-colors hover:text-white/60 focus:outline-none focus:text-white/70"
-        >
-          INTRO ÜBERSPRINGEN
-        </button>
       </div>
     </div>
   );
