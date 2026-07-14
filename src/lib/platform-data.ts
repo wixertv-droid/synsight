@@ -3,7 +3,6 @@ import type {
   DashboardMetric,
   Recommendation,
   RiskSignal,
-  UserProfile,
 } from "@/types/platform";
 
 export const dashboardMetrics: DashboardMetric[] = [
@@ -93,9 +92,3 @@ export const recommendations: Recommendation[] = [
   },
 ];
 
-export const demoUser: UserProfile = {
-  firstName: "Alex",
-  lastName: "Morgan",
-  email: "alex@beispiel.de",
-  plan: "SynSight Protect",
-};

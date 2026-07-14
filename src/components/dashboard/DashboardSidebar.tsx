@@ -4,10 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BrandLogo from "@/components/ui/BrandLogo";
 import StatusDot from "@/components/ui/StatusDot";
+import LogoutButton from "@/components/dashboard/LogoutButton";
+import { getInitials } from "@/lib/utils/strings";
+import type { AuthenticatedUser } from "@/lib/auth/types";
 
 interface DashboardSidebarProps {
   open: boolean;
   onClose: () => void;
+  user: AuthenticatedUser;
 }
 
 const navigation = [
@@ -22,6 +26,7 @@ const navigation = [
 export default function DashboardSidebar({
   open,
   onClose,
+  user,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
 
@@ -102,17 +107,17 @@ export default function DashboardSidebar({
 
         <div className="mt-4 flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyber-blue/25 to-cyber-cyan/10 text-xs font-medium text-cyan-100">
-            AM
+            {getInitials(user.displayName)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs text-white/70">Alex Morgan</p>
+            <p className="truncate text-xs text-white/70">
+              {user.displayName}
+            </p>
             <p className="mt-1 truncate font-mono text-[7px] tracking-wider text-white/20">
-              PROTECT ACCOUNT
+              {user.role === "admin" ? "PROTECT ACCOUNT" : "DEMO ACCOUNT"}
             </p>
           </div>
-          <Link href="/login" className="text-white/20 transition-colors hover:text-white/60" aria-label="Abmelden">
-            ↗
-          </Link>
+          <LogoutButton />
         </div>
       </aside>
     </>

@@ -31,9 +31,3 @@ export interface Recommendation {
   completed: boolean;
 }
 
-export interface UserProfile {
-  firstName: string;
-  lastName: string;
-  email: string;
-  plan: string;
-}

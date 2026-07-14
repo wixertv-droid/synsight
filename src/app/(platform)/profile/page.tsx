@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import ProfileForm from "@/components/profile/ProfileForm";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Benutzerprofil — SynSight",
 };
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const user = await getCurrentUser();
+
   return (
     <main className="mx-auto max-w-6xl">
       <div className="mb-8">
@@ -18,7 +21,7 @@ export default function ProfilePage() {
           Analyseprofil zugeordnet sind.
         </p>
       </div>
-      <ProfileForm />
+      <ProfileForm user={user} />
     </main>
   );
 }

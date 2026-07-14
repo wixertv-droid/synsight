@@ -5,29 +5,46 @@ import RiskCard from "@/components/dashboard/RiskCard";
 import SecurityPanel from "@/components/dashboard/SecurityPanel";
 import StatusCard from "@/components/dashboard/StatusCard";
 import { dashboardMetrics, riskSignals } from "@/lib/platform-data";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Dashboard — SynSight Command Center",
   description: "Ihre persönliche SynSight Sicherheitszentrale.",
 };
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const user = await getCurrentUser();
+  const firstName = user?.displayName.split(" ")[0] ?? "Gast";
+
+  const now = new Date();
+  const formattedDate = new Intl.DateTimeFormat("de-DE", {
+    weekday: "long",
+    day: "2-digit",
+    month: "short",
+    timeZone: "Europe/Berlin",
+  }).format(now);
+  const formattedTime = new Intl.DateTimeFormat("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(now);
+
   return (
     <main id="synsight-dashboard" className="mx-auto max-w-[1500px]">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <span className="hud-label">Command Center / Übersicht</span>
           <h1 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-white md:text-4xl">
-            Guten Tag, Alex.
+            Guten Tag, {firstName}.
           </h1>
           <p className="mt-2 text-sm text-white/32">
             Ihre digitale Sicherheitslage auf einen Blick.
           </p>
         </div>
-        <div className="flex items-center gap-3 font-mono text-[8px] tracking-[.13em] text-white/22">
-          <span>DIENSTAG / 14 JUL 2026</span>
+        <div className="flex items-center gap-3 font-mono text-[8px] uppercase tracking-[.13em] text-white/22">
+          <span>{formattedDate}</span>
           <span className="h-3 w-px bg-white/[0.07]" />
-          <span>12:16 UTC</span>
+          <span>{formattedTime} UTC</span>
         </div>
       </div>
 

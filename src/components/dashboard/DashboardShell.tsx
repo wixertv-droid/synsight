@@ -5,8 +5,14 @@ import { useState } from "react";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import PlatformBackground from "@/components/platform/PlatformBackground";
 import StatusDot from "@/components/ui/StatusDot";
+import type { AuthenticatedUser } from "@/lib/auth/types";
 
-export default function DashboardShell({ children }: { children: ReactNode }) {
+interface DashboardShellProps {
+  children: ReactNode;
+  user: AuthenticatedUser;
+}
+
+export default function DashboardShell({ children, user }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -15,6 +21,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       <DashboardSidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        user={user}
       />
       <div className="relative z-10 lg:pl-[278px]">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/[0.06] bg-[#03070e]/75 px-5 backdrop-blur-xl md:px-8 lg:px-10">

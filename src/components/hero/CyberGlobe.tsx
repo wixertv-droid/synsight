@@ -5,145 +5,22 @@ import * as THREE from "three";
 import ThreeGlobe from "three-globe";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { feature } from "topojson-client";
-import type {
-  GeometryCollection,
-  Topology,
-} from "topojson-specification";
+import type { GeometryCollection, Topology } from "topojson-specification";
 import worldData from "world-atlas/countries-110m.json";
-
-interface GlobeCoordinate {
-  lat: number;
-  lng: number;
-}
-
-interface ArcDatum {
-  startLat: number;
-  startLng: number;
-  endLat: number;
-  endLng: number;
-  color: string[];
-}
-
-interface PointDatum extends GlobeCoordinate {
-  color: string;
-  radius: number;
-  altitude: number;
-}
-
-interface LabelDatum extends GlobeCoordinate {
-  text: string;
-  color: string;
-}
-
-const networkLocations = [
-  { lat: 52.52, lng: 13.405 },
-  { lat: 51.5072, lng: -0.1276 },
-  { lat: 48.8566, lng: 2.3522 },
-  { lat: 40.4168, lng: -3.7038 },
-  { lat: 41.9028, lng: 12.4964 },
-  { lat: 50.1109, lng: 8.6821 },
-  { lat: 30.0444, lng: 31.2357 },
-  { lat: 6.5244, lng: 3.3792 },
-  { lat: -1.2921, lng: 36.8219 },
-  { lat: -26.2041, lng: 28.0473 },
-  { lat: 25.2048, lng: 55.2708 },
-  { lat: 40.7128, lng: -74.006 },
-  { lat: -23.5505, lng: -46.6333 },
-  { lat: 1.3521, lng: 103.8198 },
-];
-
-const liveDataNodes: GlobeCoordinate[] = [
-  ...networkLocations,
-  ...Array.from({ length: 58 }, (_, index) => ({
-    lat: -58 + ((index * 47 + 11) % 116),
-    lng: -176 + ((index * 83 + 29) % 352),
-  })),
-];
-
-const scanLocations = [
-  { name: "Paris", lat: 48.8566, lng: 2.3522 },
-  { name: "Berlin", lat: 52.52, lng: 13.405 },
-  { name: "London", lat: 51.5072, lng: -0.1276 },
-  { name: "Gera", lat: 50.8779, lng: 12.0812 },
-  { name: "Cairo", lat: 30.0444, lng: 31.2357 },
-  { name: "Nairobi", lat: -1.2921, lng: 36.8219 },
-] as const;
-
-const arcs: ArcDatum[] = liveDataNodes.flatMap((location, index) => {
-  const next = liveDataNodes[(index + 7) % liveDataNodes.length];
-  const cross = liveDataNodes[(index + 19) % liveDataNodes.length];
-  return [
-    {
-      startLat: location.lat,
-      startLng: location.lng,
-      endLat: next.lat,
-      endLng: next.lng,
-      color: ["rgba(36,111,210,.2)", "rgba(112,231,255,.8)"],
-    },
-    {
-      startLat: location.lat,
-      startLng: location.lng,
-      endLat: cross.lat,
-      endLng: cross.lng,
-      color: ["rgba(21,74,167,.16)", "rgba(41,182,246,.48)"],
-    },
-    {
-      startLat: cross.lat,
-      startLng: cross.lng,
-      endLat: location.lat,
-      endLng: location.lng,
-      color: ["rgba(32,91,196,.12)", "rgba(126,233,255,.58)"],
-    },
-  ];
-});
-
-const points: PointDatum[] = [
-  ...liveDataNodes.map((location, index) => ({
-    ...location,
-    color: index % 4 === 0 ? "#b8f5ff" : "#52d4ff",
-    radius: index % 7 === 0 ? 0.4 : 0.2,
-    altitude: index % 5 === 0 ? 0.017 : 0.011,
-  })),
-  {
-    lat: -18.5,
-    lng: -8.2,
-    color: "#ffb04d",
-    radius: 0.62,
-    altitude: 0.018,
-  },
-];
-
-const labels: LabelDatum[] = [
-  {
-    lat: 52.52,
-    lng: 13.405,
-    text: "IDENTITY CLONE FOUND",
-    color: "rgba(126,233,255,.9)",
-  },
-  {
-    lat: 51.5072,
-    lng: -0.1276,
-    text: "BREACH VORTEX DETECTED",
-    color: "rgba(255,137,108,.9)",
-  },
-];
+import {
+  arcs,
+  hotspotRings,
+  labels,
+  liveDataNodes,
+  points,
+  scanLocations,
+} from "@/components/hero/globe/globe-data";
+import { createHaloParticles } from "@/components/hero/globe/globe-utils";
+import GlobeHud from "@/components/hero/globe/GlobeHud";
 
 type WorldTopology = Topology<{
   countries: GeometryCollection;
 }>;
-
-function createHaloParticles(count: number) {
-  const positions = new Float32Array(count * 3);
-  for (let index = 0; index < count; index++) {
-    const phi = Math.acos(2 * ((index + 0.5) / count) - 1);
-    const theta = Math.PI * (1 + Math.sqrt(5)) * index;
-    const radius = 108 + ((index * 17) % 18);
-    positions[index * 3] = radius * Math.sin(phi) * Math.cos(theta);
-    positions[index * 3 + 1] = radius * Math.cos(phi);
-    positions[index * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
-  }
-  return positions;
-}
 
 export default function CyberGlobe() {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -159,10 +36,7 @@ export default function CyberGlobe() {
     if (!root || !canvasHost) return;
 
     const topology = worldData as unknown as WorldTopology;
-    const countries = feature(
-      topology,
-      topology.objects.countries
-    ).features;
+    const countries = feature(topology, topology.objects.countries).features;
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
@@ -217,10 +91,7 @@ export default function CyberGlobe() {
       .arcDashGap(0.48)
       .arcDashInitialGap(() => Math.random())
       .arcDashAnimateTime(reducedMotion ? 0 : 2350)
-      .ringsData([
-        { lat: -18.5, lng: -8.2 },
-        { lat: 48.8566, lng: 2.3522 },
-      ])
+      .ringsData(hotspotRings)
       .ringLat("lat")
       .ringLng("lng")
       .ringAltitude(0.013)
@@ -301,10 +172,7 @@ export default function CyberGlobe() {
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
-    const haloParticles = new THREE.Points(
-      particleGeometry,
-      particleMaterial
-    );
+    const haloParticles = new THREE.Points(particleGeometry, particleMaterial);
     globeGroup.add(haloParticles);
 
     scene.add(new THREE.AmbientLight(0x86dfff, 1.2));
@@ -364,19 +232,13 @@ export default function CyberGlobe() {
               ? (0.94 - localPhase) / 0.16
               : 1;
 
-        const availableNodes =
-          index === 1 ? scanLocations : liveDataNodes;
-        let nodeIndex =
-          (cycle * 23 + index * 17 + 5) % availableNodes.length;
-        let worldPoint = new THREE.Vector3();
+        const availableNodes = index === 1 ? scanLocations : liveDataNodes;
+        let nodeIndex = (cycle * 23 + index * 17 + 5) % availableNodes.length;
+        const worldPoint = new THREE.Vector3();
         let facingCamera = false;
         for (let attempt = 0; attempt < availableNodes.length; attempt++) {
           const candidate = availableNodes[nodeIndex];
-          const coords = globe.getCoords(
-            candidate.lat,
-            candidate.lng,
-            0.025
-          );
+          const coords = globe.getCoords(candidate.lat, candidate.lng, 0.025);
           worldPoint.set(coords.x, coords.y, coords.z);
           worldPoint.applyMatrix4(globe.matrixWorld);
           const surfaceNormal = worldPoint
@@ -417,10 +279,7 @@ export default function CyberGlobe() {
         );
         const panelTop = Math.max(
           92,
-          Math.min(
-            height - panelRect.height - 86,
-            targetY + offsetY
-          )
+          Math.min(height - panelRect.height - 86, targetY + offsetY)
         );
         panel.style.left = `${panelLeft}px`;
         panel.style.top = `${panelTop}px`;
@@ -432,13 +291,9 @@ export default function CyberGlobe() {
 
         const updatedPanelRect = panel.getBoundingClientRect();
         const panelCenterX =
-          updatedPanelRect.left -
-          rootRect.left +
-          updatedPanelRect.width / 2;
+          updatedPanelRect.left - rootRect.left + updatedPanelRect.width / 2;
         const panelCenterY =
-          updatedPanelRect.top -
-          rootRect.top +
-          updatedPanelRect.height / 2;
+          updatedPanelRect.top - rootRect.top + updatedPanelRect.height / 2;
         const startX =
           targetX > panelCenterX
             ? updatedPanelRect.right - rootRect.left
@@ -528,104 +383,16 @@ export default function CyberGlobe() {
 
   return (
     <div ref={rootRef} className="absolute inset-0 overflow-hidden">
-      <div ref={canvasRef} className="absolute inset-0 cursor-grab active:cursor-grabbing" />
-      <svg className="pointer-events-none absolute inset-0 z-[3] hidden h-full w-full xl:block" aria-hidden="true">
-        <defs>
-          <filter id="connectorGlow">
-            <feGaussianBlur stdDeviation="1.8" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        {[0, 1, 2, 3].map((index) => (
-          <line
-            key={index}
-            ref={setConnectorRef(index)}
-            stroke={index === 3 ? "#ff8a5b" : "#70e7ff"}
-            strokeWidth=".65"
-            strokeDasharray="3 4"
-            filter="url(#connectorGlow)"
-          />
-        ))}
-      </svg>
-
       <div
-        ref={setPanelRef(0)}
-        className="globe-hud-panel globe-panel-top-left"
-      >
-        <div className="flex items-start gap-3">
-          <svg viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 flex-none text-cyber-cyan" fill="none" stroke="currentColor">
-            <ellipse cx="12" cy="12" rx="9" ry="3.5" />
-            <ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(60 12 12)" />
-            <ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(120 12 12)" />
-            <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-          </svg>
-          <div>
-            <p>DATENSTROM-ANALYSE AKTIV</p>
-            <span>Status: Stabil</span>
-          </div>
-        </div>
-      </div>
-
-      <div
-        ref={setPanelRef(1)}
-        className="globe-hud-panel globe-panel-mid-left w-[248px]"
-      >
-        <div className="flex items-start gap-3">
-          <svg viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 flex-none text-cyber-cyan" fill="none" stroke="currentColor">
-            <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1116 0z" />
-            <circle cx="12" cy="10" r="2.5" />
-          </svg>
-          <div className="min-w-0 flex-1">
-            <p ref={locationTitleRef}>STANDORT-LEAK-BEREICH (Paris)</p>
-            <span ref={locationDetailRef}>
-              Koordinaten: Lat 48.8 N, Lon 2.3 E
-            </span>
-            <span className="mt-3 block">Risk assessment:</span>
-            <div className="mt-2 flex h-1.5 overflow-hidden rounded-full">
-              <i className="flex-1 bg-blue-700" />
-              <i className="flex-1 bg-cyan-400" />
-              <i className="flex-1 bg-orange-400" />
-              <i className="relative flex-1 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,.75)]">
-                <b className="absolute right-0 top-1/2 h-3 w-px -translate-y-1/2 bg-white" />
-              </i>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        ref={setPanelRef(2)}
-        className="globe-hud-panel globe-panel-mid-right"
-      >
-        <p>BEDROHUNGS-VEKTOR-VORSCHAU</p>
-        <span>Sicherheitsstufe: Hoch</span>
-        <span className="mt-2 block font-mono text-[7px] tracking-[.13em] text-cyber-cyan/65">
-          [AKTIVE VERFOLGUNG]
-        </span>
-      </div>
-
-      <div
-        ref={setPanelRef(3)}
-        className="globe-hud-panel globe-panel-bottom-right border-orange-300/20"
-      >
-        <p>SCAN-BESTÄTIGUNG: HOTSPOT IDENTIFIZIERT</p>
-        <span>Sektor 7 G</span>
-        <span className="mt-2 block text-orange-200/70">
-          Sicherheits-Score: Kritisch
-        </span>
-      </div>
-
-      <div className="absolute bottom-[5%] right-[5%] z-[4] hidden border-l border-cyber-cyan/25 pl-4 font-mono xl:block">
-        <p className="text-[9px] tracking-[.2em] text-cyan-100/55">
-          SYN-SIGHT GLOBAL MONITORING SYSTEM
-        </p>
-        <p className="mt-2 text-[7px] tracking-[.13em] text-white/25">
-          Benutzer: RENE F | Pro Plan | Active Node: Gera, Thüringen
-        </p>
-      </div>
+        ref={canvasRef}
+        className="absolute inset-0 cursor-grab active:cursor-grabbing"
+      />
+      <GlobeHud
+        setPanelRef={setPanelRef}
+        setConnectorRef={setConnectorRef}
+        locationTitleRef={locationTitleRef}
+        locationDetailRef={locationDetailRef}
+      />
     </div>
   );
 }

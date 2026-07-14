@@ -6,24 +6,98 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
 import StatusDot from "@/components/ui/StatusDot";
+import { loginSchema, registerSchema } from "@/lib/validation/auth";
+import type { ApiResponseBody } from "@/lib/api/response";
 
 interface LoginCardProps {
   mode?: "login" | "register";
+}
+
+interface AuthRedirectData {
+  redirectTo: string;
 }
 
 export default function LoginCard({ mode = "login" }: LoginCardProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [monitoring, setMonitoring] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isRegister = mode === "register";
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setErrorMessage(null);
+
+    const formData = new FormData(event.currentTarget);
+    const endpoint = isRegister ? "/api/auth/register" : "/api/auth/login";
+
+    if (isRegister) {
+      const parsed = registerSchema.safeParse({
+        firstName: String(formData.get("firstName") ?? ""),
+        lastName: String(formData.get("lastName") ?? ""),
+        email: String(formData.get("email") ?? ""),
+        password: String(formData.get("password") ?? ""),
+        monitoringOptIn: monitoring,
+      });
+
+      if (!parsed.success) {
+        setErrorMessage(
+          parsed.error.issues[0]?.message ?? "Bitte überprüfen Sie Ihre Eingaben."
+        );
+        return;
+      }
+
+      await submit(endpoint, parsed.data, "/onboarding");
+      return;
+    }
+
+    const parsed = loginSchema.safeParse({
+      identifier: String(formData.get("identifier") ?? ""),
+      password: String(formData.get("password") ?? ""),
+    });
+
+    if (!parsed.success) {
+      setErrorMessage(
+        parsed.error.issues[0]?.message ?? "Bitte überprüfen Sie Ihre Eingaben."
+      );
+      return;
+    }
+
+    await submit(endpoint, parsed.data, "/dashboard");
+  };
+
+  const submit = async (
+    endpoint: string,
+    payload: Record<string, unknown>,
+    fallbackRedirect: string
+  ) => {
     setSubmitting(true);
-    window.setTimeout(
-      () => router.push(isRegister ? "/onboarding" : "/dashboard"),
-      850
-    );
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = (await response.json()) as ApiResponseBody<AuthRedirectData>;
+
+      if (!response.ok || !result.success) {
+        setErrorMessage(
+          !result.success
+            ? result.error.message
+            : "Die Anfrage konnte nicht verarbeitet werden."
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      router.push(result.data.redirectTo ?? fallbackRedirect);
+      router.refresh();
+    } catch {
+      setErrorMessage(
+        "Verbindung zum Server nicht möglich. Bitte versuchen Sie es erneut."
+      );
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -66,22 +140,34 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
             />
           </div>
         )}
-        <FormField
-          label="E-Mail"
-          name="email"
-          type="email"
-          autoComplete="email"
-          placeholder="name@unternehmen.de"
-          required
-        />
+
+        {isRegister ? (
+          <FormField
+            label="E-Mail"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="name@unternehmen.de"
+            required
+          />
+        ) : (
+          <FormField
+            label="Benutzername"
+            name="identifier"
+            autoComplete="username"
+            placeholder="admin"
+            required
+          />
+        )}
+
         <FormField
           label="Passwort"
-          hint={isRegister ? "MIN. 8 ZEICHEN" : "GESCHÜTZT"}
+          hint={isRegister ? "MIN. 8 ZEICHEN" : "DEV: admin"}
           name="password"
           type="password"
           autoComplete={isRegister ? "new-password" : "current-password"}
           placeholder="••••••••••••"
-          minLength={8}
+          minLength={isRegister ? 8 : undefined}
           required
         />
 
@@ -103,6 +189,15 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
               </span>
             </span>
           </label>
+        )}
+
+        {errorMessage && (
+          <p
+            role="alert"
+            className="rounded-lg border border-rose-400/25 bg-rose-500/[0.06] px-4 py-3 text-xs leading-relaxed text-rose-200/80"
+          >
+            {errorMessage}
+          </p>
         )}
 
         <Button
@@ -130,7 +225,8 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
       </div>
 
       <p className="mt-5 text-center font-mono text-[7px] tracking-[.12em] text-white/15">
-        DEMO ACCESS · ECHTE AUTHENTIFIZIERUNG WIRD SPÄTER ANGEBUNDEN
+        DEVELOPMENT ONLY · Zugang admin / admin · Echte Authentifizierung
+        wird später angebunden
       </p>
     </section>
   );
