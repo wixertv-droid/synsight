@@ -35,13 +35,6 @@ interface LabelDatum extends GlobeCoordinate {
   color: string;
 }
 
-const panelCoordinates: GlobeCoordinate[] = [
-  { lat: 52.52, lng: 13.405 },
-  { lat: 48.8566, lng: 2.3522 },
-  { lat: 31.2, lng: 24.5 },
-  { lat: -18.5, lng: -8.2 },
-];
-
 const networkLocations = [
   { lat: 52.52, lng: 13.405 },
   { lat: 51.5072, lng: -0.1276 },
@@ -59,9 +52,26 @@ const networkLocations = [
   { lat: 1.3521, lng: 103.8198 },
 ];
 
-const arcs: ArcDatum[] = networkLocations.flatMap((location, index) => {
-  const next = networkLocations[(index + 1) % networkLocations.length];
-  const cross = networkLocations[(index + 5) % networkLocations.length];
+const liveDataNodes: GlobeCoordinate[] = [
+  ...networkLocations,
+  ...Array.from({ length: 58 }, (_, index) => ({
+    lat: -58 + ((index * 47 + 11) % 116),
+    lng: -176 + ((index * 83 + 29) % 352),
+  })),
+];
+
+const scanLocations = [
+  { name: "Paris", lat: 48.8566, lng: 2.3522 },
+  { name: "Berlin", lat: 52.52, lng: 13.405 },
+  { name: "London", lat: 51.5072, lng: -0.1276 },
+  { name: "Gera", lat: 50.8779, lng: 12.0812 },
+  { name: "Cairo", lat: 30.0444, lng: 31.2357 },
+  { name: "Nairobi", lat: -1.2921, lng: 36.8219 },
+] as const;
+
+const arcs: ArcDatum[] = liveDataNodes.flatMap((location, index) => {
+  const next = liveDataNodes[(index + 7) % liveDataNodes.length];
+  const cross = liveDataNodes[(index + 19) % liveDataNodes.length];
   return [
     {
       startLat: location.lat,
@@ -77,15 +87,22 @@ const arcs: ArcDatum[] = networkLocations.flatMap((location, index) => {
       endLng: cross.lng,
       color: ["rgba(21,74,167,.16)", "rgba(41,182,246,.48)"],
     },
+    {
+      startLat: cross.lat,
+      startLng: cross.lng,
+      endLat: location.lat,
+      endLng: location.lng,
+      color: ["rgba(32,91,196,.12)", "rgba(126,233,255,.58)"],
+    },
   ];
 });
 
 const points: PointDatum[] = [
-  ...networkLocations.map((location, index) => ({
+  ...liveDataNodes.map((location, index) => ({
     ...location,
     color: index % 4 === 0 ? "#b8f5ff" : "#52d4ff",
-    radius: index % 3 === 0 ? 0.42 : 0.28,
-    altitude: 0.012,
+    radius: index % 7 === 0 ? 0.4 : 0.2,
+    altitude: index % 5 === 0 ? 0.017 : 0.011,
   })),
   {
     lat: -18.5,
@@ -133,6 +150,8 @@ export default function CyberGlobe() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef<(HTMLDivElement | null)[]>([]);
   const connectorRefs = useRef<(SVGLineElement | null)[]>([]);
+  const locationTitleRef = useRef<HTMLParagraphElement>(null);
+  const locationDetailRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -194,10 +213,10 @@ export default function CyberGlobe() {
       .arcColor("color")
       .arcAltitudeAutoScale(0.24)
       .arcStroke(0.18)
-      .arcDashLength(0.36)
-      .arcDashGap(0.72)
+      .arcDashLength(0.2)
+      .arcDashGap(0.48)
       .arcDashInitialGap(() => Math.random())
-      .arcDashAnimateTime(reducedMotion ? 0 : 3200)
+      .arcDashAnimateTime(reducedMotion ? 0 : 2350)
       .ringsData([
         { lat: -18.5, lng: -8.2 },
         { lat: 48.8566, lng: 2.3522 },
@@ -302,7 +321,7 @@ export default function CyberGlobe() {
     controls.enablePan = false;
     controls.enableZoom = false;
     controls.autoRotate = !reducedMotion;
-    controls.autoRotateSpeed = 0.34;
+    controls.autoRotateSpeed = 0.52;
     controls.rotateSpeed = 0.42;
 
     let width = 0;
@@ -317,40 +336,120 @@ export default function CyberGlobe() {
       renderer.setSize(width, height, false);
       camera.aspect = width / Math.max(1, height);
       camera.updateProjectionMatrix();
-      globeGroup.position.x = width >= 900 ? 72 : width >= 640 ? 25 : 0;
+      globeGroup.position.x = width >= 900 ? 68 : width >= 640 ? 22 : 0;
+      const globeScale = width >= 900 ? 0.62 : width >= 640 ? 0.68 : 0.74;
+      globeGroup.scale.setScalar(globeScale);
       camera.position.z = width < 640 ? 390 : 330;
     };
 
-    const updateConnectors = () => {
+    const updateConnectors = (time: number) => {
       const rootRect = root.getBoundingClientRect();
-      panelCoordinates.forEach((coordinate, index) => {
+      [0, 1, 2, 3].forEach((index) => {
         const panel = panelRefs.current[index];
         const connector = connectorRefs.current[index];
         if (!panel || !connector) return;
-        const coords = globe.getCoords(
-          coordinate.lat,
-          coordinate.lng,
-          0.025
-        );
-        const point = new THREE.Vector3(coords.x, coords.y, coords.z);
-        point.applyMatrix4(globe.matrixWorld).project(camera);
+        if (window.getComputedStyle(panel).display === "none") {
+          connector.style.opacity = "0";
+          return;
+        }
+
+        const cycleDuration = 5400;
+        const shiftedTime = time + index * 940;
+        const cycle = Math.floor(shiftedTime / cycleDuration);
+        const localPhase = (shiftedTime % cycleDuration) / cycleDuration;
+        const fade =
+          localPhase < 0.1
+            ? localPhase / 0.1
+            : localPhase > 0.78
+              ? (0.94 - localPhase) / 0.16
+              : 1;
+
+        const availableNodes =
+          index === 1 ? scanLocations : liveDataNodes;
+        let nodeIndex =
+          (cycle * 23 + index * 17 + 5) % availableNodes.length;
+        let worldPoint = new THREE.Vector3();
+        let facingCamera = false;
+        for (let attempt = 0; attempt < availableNodes.length; attempt++) {
+          const candidate = availableNodes[nodeIndex];
+          const coords = globe.getCoords(
+            candidate.lat,
+            candidate.lng,
+            0.025
+          );
+          worldPoint.set(coords.x, coords.y, coords.z);
+          worldPoint.applyMatrix4(globe.matrixWorld);
+          const surfaceNormal = worldPoint
+            .clone()
+            .sub(globeGroup.position)
+            .normalize();
+          const cameraDirection = camera.position
+            .clone()
+            .sub(worldPoint)
+            .normalize();
+          facingCamera = surfaceNormal.dot(cameraDirection) > 0.08;
+          if (facingCamera) break;
+          nodeIndex = (nodeIndex + 1) % availableNodes.length;
+        }
+
+        if (index === 1) {
+          const location = scanLocations[nodeIndex % scanLocations.length];
+          if (locationTitleRef.current) {
+            locationTitleRef.current.textContent = `STANDORT-LEAK-BEREICH (${location.name})`;
+          }
+          if (locationDetailRef.current) {
+            locationDetailRef.current.textContent = `Koordinaten: Lat ${Math.abs(location.lat).toFixed(1)} ${location.lat >= 0 ? "N" : "S"}, Lon ${Math.abs(location.lng).toFixed(1)} ${location.lng >= 0 ? "E" : "W"}`;
+          }
+        }
+
+        const point = worldPoint.clone().project(camera);
         const targetX = (point.x * 0.5 + 0.5) * width;
         const targetY = (-point.y * 0.5 + 0.5) * height;
         const panelRect = panel.getBoundingClientRect();
+        const placeOnRight = index % 2 === 0;
+        const offsetY = index < 2 ? -66 : 34;
+        const desiredLeft = placeOnRight
+          ? targetX + 46
+          : targetX - panelRect.width - 46;
+        const panelLeft = Math.max(
+          width * 0.43,
+          Math.min(width - panelRect.width - 18, desiredLeft)
+        );
+        const panelTop = Math.max(
+          92,
+          Math.min(
+            height - panelRect.height - 86,
+            targetY + offsetY
+          )
+        );
+        panel.style.left = `${panelLeft}px`;
+        panel.style.top = `${panelTop}px`;
+        panel.style.right = "auto";
+        panel.style.bottom = "auto";
+        panel.style.opacity = `${
+          facingCamera ? Math.max(0, Math.min(1, fade)) : 0
+        }`;
+
+        const updatedPanelRect = panel.getBoundingClientRect();
         const panelCenterX =
-          panelRect.left - rootRect.left + panelRect.width / 2;
+          updatedPanelRect.left -
+          rootRect.left +
+          updatedPanelRect.width / 2;
         const panelCenterY =
-          panelRect.top - rootRect.top + panelRect.height / 2;
+          updatedPanelRect.top -
+          rootRect.top +
+          updatedPanelRect.height / 2;
         const startX =
           targetX > panelCenterX
-            ? panelRect.right - rootRect.left
-            : panelRect.left - rootRect.left;
+            ? updatedPanelRect.right - rootRect.left
+            : updatedPanelRect.left - rootRect.left;
         connector.setAttribute("x1", `${startX}`);
         connector.setAttribute("y1", `${panelCenterY}`);
         connector.setAttribute("x2", `${targetX}`);
         connector.setAttribute("y2", `${targetY}`);
-        const facingCamera = point.z < 1;
-        connector.style.opacity = facingCamera ? "0.42" : "0.08";
+        connector.style.opacity = facingCamera
+          ? `${Math.max(0, Math.min(0.42, fade * 0.42))}`
+          : "0";
       });
     };
 
@@ -366,7 +465,7 @@ export default function CyberGlobe() {
             ring.rotation.z += reducedMotion ? 0 : 0.0003 + index * 0.00008;
           });
         scene.updateMatrixWorld();
-        updateConnectors();
+        updateConnectors(time);
         renderer.render(scene, camera);
         lastFrame = time;
       }
@@ -440,7 +539,7 @@ export default function CyberGlobe() {
             </feMerge>
           </filter>
         </defs>
-        {panelCoordinates.map((_, index) => (
+        {[0, 1, 2, 3].map((index) => (
           <line
             key={index}
             ref={setConnectorRef(index)}
@@ -480,8 +579,10 @@ export default function CyberGlobe() {
             <circle cx="12" cy="10" r="2.5" />
           </svg>
           <div className="min-w-0 flex-1">
-            <p>STANDORT-LEAK-BEREICH (Paris)</p>
-            <span>Koordinaten: Lat 48.8 N, Lon 2.3 E</span>
+            <p ref={locationTitleRef}>STANDORT-LEAK-BEREICH (Paris)</p>
+            <span ref={locationDetailRef}>
+              Koordinaten: Lat 48.8 N, Lon 2.3 E
+            </span>
             <span className="mt-3 block">Risk assessment:</span>
             <div className="mt-2 flex h-1.5 overflow-hidden rounded-full">
               <i className="flex-1 bg-blue-700" />

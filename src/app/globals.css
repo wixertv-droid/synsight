@@ -461,6 +461,7 @@ body::before {
     inset 0 1px 0 rgba(255, 255, 255, 0.055),
     0 18px 45px rgba(0, 0, 0, 0.28),
     0 0 28px rgba(41, 182, 246, 0.035);
+  transition: opacity 420ms ease;
   animation: globe-panel-float 7s var(--ease-premium) infinite;
 }
 

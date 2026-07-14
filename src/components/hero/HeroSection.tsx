@@ -77,7 +77,7 @@ export default function HeroSection() {
           <div>
             <span className="text-2xl font-light tabular-nums text-white">360°</span>
             <span className="mt-1 block font-mono text-[7px] tracking-[.12em] text-cyber-cyan/35">
-              216 NETWORK NODES
+              GLOBAL DATA MESH
             </span>
           </div>
           <svg viewBox="0 0 76 28" className="h-7 w-20 text-cyber-cyan/70">
