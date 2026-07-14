@@ -68,14 +68,24 @@ export default function HeroSection() {
           <span className="text-cyber-cyan/70">AKTIV</span>
         </div>
         <div className="mt-4 flex items-end justify-between">
-          <span className="text-2xl font-light tabular-nums text-white">360°</span>
+          <div>
+            <span className="text-2xl font-light tabular-nums text-white">360°</span>
+            <span className="mt-1 block font-mono text-[7px] tracking-[.12em] text-cyber-cyan/35">
+              216 NETWORK NODES
+            </span>
+          </div>
           <svg viewBox="0 0 76 28" className="h-7 w-20 text-cyber-cyan/70">
             <path d="M1 24L12 18L22 20L31 7L42 14L53 9L64 12L75 2" fill="none" stroke="currentColor" strokeWidth="1" />
             <path d="M1 24L12 18L22 20L31 7L42 14L53 9L64 12L75 2V28H1Z" fill="url(#heroChart)" opacity=".12" />
             <defs><linearGradient id="heroChart" x1="0" y1="0" x2="0" y2="1"><stop stopColor="currentColor" /><stop offset="1" stopColor="currentColor" stopOpacity="0" /></linearGradient></defs>
           </svg>
         </div>
-        <div className="mt-3 h-px bg-gradient-to-r from-cyber-cyan/30 to-transparent" />
+        <div className="mt-3 flex items-center gap-2">
+          <span className="h-px flex-1 bg-gradient-to-r from-cyber-cyan/35 to-transparent" />
+          <span className="font-mono text-[6px] tracking-widest text-white/20">
+            DATA FLOW / LIVE
+          </span>
+        </div>
       </div>
 
       <div
