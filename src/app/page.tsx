@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import LoadingScreen from "@/components/loading/LoadingScreen";
+import LaunchScreen from "@/components/loading/LaunchScreen";
 import HeroSection from "@/components/hero/HeroSection";
 import DigitalTraces from "@/components/sections/DigitalTraces";
 import WhatSynSightRecognizes from "@/components/sections/WhatSynSightRecognizes";
@@ -21,7 +21,7 @@ export default function Home() {
 
   return (
     <>
-      {loading && <LoadingScreen onComplete={handleLoadingComplete} />}
+      {loading && <LaunchScreen onComplete={handleLoadingComplete} />}
       <main
         className={`transition-opacity duration-700 ${
           loading ? "opacity-0" : "opacity-100"
