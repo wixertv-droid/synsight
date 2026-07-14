@@ -355,8 +355,8 @@ body::before {
 
 .hero-atmosphere {
   background:
-    radial-gradient(ellipse at 73% 43%, rgba(31, 174, 231, .14) 0%, rgba(3, 5, 10, 0) 42%),
-    linear-gradient(90deg, rgba(3,5,10,.98) 0%, rgba(3,5,10,.82) 38%, rgba(3,5,10,.2) 68%, rgba(3,5,10,.62) 100%),
+    radial-gradient(ellipse at 73% 43%, rgba(31, 174, 231, .2) 0%, rgba(3, 5, 10, 0) 45%),
+    linear-gradient(90deg, rgba(3,5,10,.98) 0%, rgba(3,5,10,.82) 38%, rgba(3,5,10,.13) 68%, rgba(3,5,10,.22) 100%),
     linear-gradient(180deg, rgba(3,5,10,.25), transparent 55%, #03050a 100%);
 }
 

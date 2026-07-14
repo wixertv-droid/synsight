@@ -177,7 +177,7 @@ export default function CyberGlobe() {
       .hexPolygonUseDots(true)
       .hexPolygonDotResolution(3)
       .hexPolygonAltitude(0.006)
-      .hexPolygonColor(() => "rgba(76, 207, 246, .72)")
+      .hexPolygonColor(() => "rgba(92, 220, 252, .9)")
       .pointsData(points)
       .pointLat("lat")
       .pointLng("lng")
@@ -226,7 +226,7 @@ export default function CyberGlobe() {
       new THREE.MeshPhongMaterial({
         color: 0x031321,
         emissive: 0x062b48,
-        emissiveIntensity: 0.78,
+        emissiveIntensity: 1.05,
         transparent: true,
         opacity: 0.82,
         shininess: 18,
