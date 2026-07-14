@@ -9,6 +9,7 @@ import DemoScanner from "@/components/sections/DemoScanner";
 import TrustSection from "@/components/sections/TrustSection";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
+import SystemRail from "@/components/layout/SystemRail";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,7 @@ export default function Home() {
         }`}
       >
         <Navbar />
+        <SystemRail />
         <HeroSection />
         <DigitalTraces />
         <WhatSynSightRecognizes />

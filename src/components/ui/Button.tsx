@@ -14,15 +14,15 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center font-medium tracking-wide transition-all duration-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyber-blue/50 disabled:opacity-50 disabled:cursor-not-allowed";
+    "relative isolate overflow-hidden inline-flex items-center justify-center font-medium tracking-wide transition-[background-color,border-color,box-shadow,transform] duration-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyber-blue/40 focus:ring-offset-2 focus:ring-offset-space-black disabled:opacity-50 disabled:cursor-not-allowed";
 
   const variants = {
     primary:
-      "bg-gradient-to-r from-cyber-blue to-cyber-cyan text-space-black hover:shadow-[0_0_30px_rgba(0,191,255,0.4)] hover:scale-[1.02] active:scale-[0.98]",
+      "border border-cyber-cyan/40 bg-[linear-gradient(110deg,#72e7ff,#29b6f6)] text-[#021019] shadow-[inset_0_1px_0_rgba(255,255,255,.55),0_12px_35px_rgba(21,147,204,.18)] hover:brightness-110 hover:shadow-[inset_0_1px_0_rgba(255,255,255,.65),0_16px_45px_rgba(21,147,204,.28)] active:translate-y-px",
     secondary:
-      "glass text-cyber-blue border border-cyber-blue/30 hover:border-cyber-blue/60 hover:shadow-[0_0_20px_rgba(0,191,255,0.2)] glow-border-hover",
+      "bg-white/[0.025] text-cyber-cyan border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,.04)] hover:bg-white/[0.05] hover:border-cyber-blue/35 hover:shadow-[0_12px_35px_rgba(0,0,0,.2)]",
     ghost:
-      "text-cyber-blue/80 hover:text-cyber-cyan hover:bg-cyber-blue/5",
+      "text-cyber-blue/80 hover:text-cyber-cyan hover:bg-white/[0.035]",
   };
 
   const sizes = {

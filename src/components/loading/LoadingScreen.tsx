@@ -19,11 +19,19 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
 
-    timers.push(setTimeout(() => setPhase("initializing"), 1200));
-    timers.push(setTimeout(() => setPhase("online"), 3800));
-    timers.push(setTimeout(() => setPhase("exit"), 5800));
-    timers.push(setTimeout(() => onComplete(), 6500));
+    if (reducedMotion) {
+      onComplete();
+      return;
+    }
+
+    timers.push(setTimeout(() => setPhase("initializing"), 300));
+    timers.push(setTimeout(() => setPhase("online"), 1250));
+    timers.push(setTimeout(() => setPhase("exit"), 2200));
+    timers.push(setTimeout(() => onComplete(), 2700));
 
     return () => timers.forEach(clearTimeout);
   }, [onComplete]);
@@ -58,8 +66,8 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setProgress((p) => Math.min(p + 1.5, 100));
-    }, 80);
+      setProgress((p) => Math.min(p + 4, 100));
+    }, 90);
     return () => clearInterval(interval);
   }, []);
 
