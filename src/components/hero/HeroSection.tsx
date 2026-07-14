@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Button from "@/components/ui/Button";
-import DataWorld from "@/components/hero/DataWorld";
+import CyberGlobe from "@/components/hero/CyberGlobe";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 export default function HeroSection() {
@@ -39,9 +39,8 @@ export default function HeroSection() {
       <div
         ref={visualRef}
         className="absolute inset-0 will-change-transform"
-        aria-hidden="true"
       >
-        <DataWorld />
+        <CyberGlobe />
       </div>
 
       <div className="hero-atmosphere absolute inset-0 pointer-events-none" />
