@@ -87,8 +87,8 @@ export default function DemoScanner() {
   };
 
   return (
-    <section id="demo-scanner" className="relative section-padding overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-space-black via-space-panel/50 to-space-black pointer-events-none" />
+    <section id="demo-scanner" className="section-shell relative section-padding overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,rgba(20,122,174,.09),transparent_42rem)] pointer-events-none" />
 
       <div className="relative max-w-4xl mx-auto">
         <div
@@ -97,14 +97,14 @@ export default function DemoScanner() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <span className="font-mono text-xs text-cyber-blue/50 tracking-[0.3em] uppercase">
-            Ihr digitaler Risiko-Check
+          <span className="hud-label">
+            04 / Risiko-Analyse
           </span>
-          <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
+          <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] leading-[1.02] mt-5 mb-7">
             Wissen Sie, was das Internet{" "}
             <span className="cyber-gradient">über Sie weiß?</span>
           </h2>
-          <p className="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
+          <p className="text-slate-300/60 max-w-2xl mx-auto text-lg leading-relaxed">
             Ein einziges geleaktes Passwort oder ein vergessenes Profil kann
             Ihre digitale Identität angreifbar machen. Der SynSight-Scanner
             zeigt, wo Handlungsbedarf besteht — und was Sie als Nächstes tun
@@ -112,7 +112,7 @@ export default function DemoScanner() {
           </p>
         </div>
 
-        <GlassCard hover={false} className="glass-strong relative overflow-hidden">
+        <GlassCard hover={false} className="glass-strong relative overflow-hidden ring-1 ring-white/[0.025]">
           {/* Scanner background */}
           {phase === "scanning" && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -361,7 +361,7 @@ export default function DemoScanner() {
                   href="mailto:hello@synsight.de?subject=Interesse%20am%20SynSight%20Protect%20Paket"
                   className="mt-6 block"
                 >
-                  <span className="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-cyber-blue to-cyber-cyan px-6 py-4 font-semibold text-space-black transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,191,255,0.35)]">
+                  <span className="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-cyber-blue to-cyber-cyan px-6 py-4 font-semibold text-space-black transition-all duration-500 hover:brightness-110 hover:shadow-[0_14px_40px_rgba(0,191,255,0.22)]">
                     Schutzpaket auswählen
                   </span>
                 </a>

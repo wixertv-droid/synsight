@@ -52,8 +52,15 @@ export default function WhatSynSightRecognizes() {
   const { ref, isVisible } = useScrollAnimation();
 
   return (
-    <section id="technology" className="relative section-padding overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-cyber-blue/5 rounded-full blur-[120px] pointer-events-none" />
+    <section id="technology" className="section-shell relative section-padding overflow-hidden">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-cyber-blue/[0.045] rounded-full blur-[140px] pointer-events-none" />
+      <div className="telemetry-marquee absolute top-14 left-0 flex w-[200%] gap-12 overflow-hidden whitespace-nowrap font-mono text-[9px] tracking-[.22em] text-white/[0.08]">
+        {[0, 1].map((group) => (
+          <span key={group}>
+            SIGNAL CORRELATION&nbsp;&nbsp;•&nbsp;&nbsp;ENTITY RESOLUTION&nbsp;&nbsp;•&nbsp;&nbsp;EXPOSURE MAPPING&nbsp;&nbsp;•&nbsp;&nbsp;RISK PRIORITIZATION&nbsp;&nbsp;•&nbsp;&nbsp;
+          </span>
+        ))}
+      </div>
 
       <div className="relative max-w-7xl mx-auto">
         <div
@@ -62,13 +69,13 @@ export default function WhatSynSightRecognizes() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <span className="font-mono text-xs text-cyber-blue/50 tracking-[0.3em] uppercase">
-            KI-Erkennung
+          <span className="hud-label">
+            03 / Intelligence Layer
           </span>
-          <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
+          <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] leading-[1.02] mt-5 mb-7">
             Was <span className="cyber-gradient">SynSight</span> erkennt
           </h2>
-          <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+          <p className="text-slate-300/60 max-w-2xl mx-auto text-lg leading-relaxed">
             Unsere KI-Engine analysiert Millionen von Datenpunkten, um ein
             vollständiges Bild Ihrer digitalen Identität zu erstellen.
           </p>
@@ -101,17 +108,17 @@ function FeatureCard({
       }`}
       style={{ transitionDelay: `${index * 150}ms` }}
     >
-      <GlassCard className="group relative overflow-hidden">
+      <GlassCard className="group relative overflow-hidden min-h-[180px]">
         {/* Background glow on hover */}
         <div className="absolute inset-0 bg-gradient-to-br from-cyber-blue/0 to-cyber-cyan/0 group-hover:from-cyber-blue/5 group-hover:to-cyber-cyan/5 transition-all duration-500" />
 
         <div className="relative flex gap-5">
-          <div className="flex-shrink-0 p-4 rounded-xl bg-gradient-to-br from-cyber-blue/10 to-cyber-cyan/5 text-cyber-blue group-hover:shadow-[0_0_20px_rgba(0,191,255,0.2)] transition-shadow">
+          <div className="flex-shrink-0 p-4 rounded-xl border border-white/[0.06] bg-gradient-to-br from-cyber-blue/[0.08] to-white/[0.015] text-cyber-blue group-hover:border-cyber-blue/20 transition-colors">
             {feature.icon}
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-xl font-semibold text-white group-hover:text-cyber-cyan transition-colors">
+              <h3 className="text-xl font-medium tracking-[-.025em] text-white/90 group-hover:text-cyan-100 transition-colors">
                 {feature.title}
               </h3>
               <span className="font-mono text-[10px] text-cyber-blue/50 px-2 py-0.5 rounded border border-cyber-blue/20">

@@ -21,45 +21,49 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      className={`fixed top-0 left-0 right-0 z-50 border-b transition-all duration-500 ${
         scrolled
-          ? "glass-strong shadow-[0_4px_30px_rgba(0,0,0,0.3)]"
-          : "bg-transparent"
+          ? "border-white/[0.07] bg-[#04070c]/80 shadow-[0_18px_60px_rgba(0,0,0,0.24)] backdrop-blur-2xl"
+          : "border-transparent bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 flex items-center justify-between h-16">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 flex items-center justify-between h-[4.5rem]">
         <a href="#hero" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-full border border-cyber-blue/30 flex items-center justify-center group-hover:border-cyber-blue/60 transition-colors">
+          <div className="relative w-8 h-8 rounded-full border border-white/10 bg-white/[0.025] flex items-center justify-center group-hover:border-cyber-blue/40 transition-colors">
+            <span className="absolute inset-1 rounded-full border border-cyber-blue/10" />
             <svg viewBox="0 0 24 24" className="w-4 h-4">
-              <circle cx="12" cy="12" r="8" fill="none" stroke="#00BFFF" strokeWidth="1.5" />
-              <circle cx="12" cy="12" r="3" fill="#00FFFF" />
+              <circle cx="12" cy="12" r="8" fill="none" stroke="#29B6F6" strokeWidth="1" />
+              <circle cx="12" cy="12" r="2.5" fill="#70E7FF" />
             </svg>
           </div>
-          <span className="text-sm font-bold tracking-[0.2em]">
+          <span className="text-[13px] font-semibold tracking-[0.22em] text-white/90">
             SYN<span className="text-cyber-blue">SIGHT</span>
+          </span>
+          <span className="ml-2 hidden border-l border-white/10 pl-3 font-mono text-[8px] tracking-[.16em] text-white/25 lg:block">
+            DIGITAL IDENTITY INTELLIGENCE
           </span>
         </a>
 
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-7">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="text-sm text-gray-400 hover:text-cyber-cyan transition-colors"
+              className="relative py-2 text-[12px] tracking-wide text-white/45 transition-colors after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 after:bg-cyber-cyan/70 after:transition-all hover:text-white/85 hover:after:w-full"
             >
               {link.label}
             </a>
           ))}
           <a
             href="#demo-scanner"
-            className="text-sm px-4 py-2 rounded-lg bg-gradient-to-r from-cyber-blue to-cyber-cyan text-space-black font-medium hover:shadow-[0_0_20px_rgba(0,191,255,0.3)] transition-shadow"
+            className="rounded-lg border border-cyber-blue/25 bg-cyber-blue/[0.06] px-4 py-2 text-[12px] font-medium text-cyan-100/90 transition-all hover:border-cyber-blue/45 hover:bg-cyber-blue/[0.1]"
           >
             Analyse starten
           </a>
         </div>
 
         <button
-          className="md:hidden text-cyber-blue p-2"
+          className="md:hidden rounded-lg border border-white/10 bg-white/[0.025] p-2 text-cyber-blue"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Menü öffnen"
         >
@@ -74,7 +78,7 @@ export default function Navbar() {
       </div>
 
       {menuOpen && (
-        <div className="md:hidden glass-strong border-t border-cyber-blue/10 px-6 py-4 space-y-3">
+        <div className="md:hidden border-t border-white/[0.07] bg-[#050911]/95 px-6 py-4 space-y-3 backdrop-blur-2xl">
           {navLinks.map((link) => (
             <a
               key={link.href}

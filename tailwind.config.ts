@@ -10,29 +10,29 @@ const config: Config = {
     extend: {
       colors: {
         space: {
-          black: "#05070D",
-          darker: "#030508",
-          light: "#0A0E18",
-          panel: "#0D1220",
+          black: "#03050A",
+          darker: "#020409",
+          light: "#09101B",
+          panel: "#0B1320",
         },
         cyber: {
-          blue: "#00BFFF",
-          cyan: "#00FFFF",
-          glow: "#33D6FF",
+          blue: "#29B6F6",
+          cyan: "#70E7FF",
+          glow: "#8FE8FF",
         },
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       animation: {
-        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
-        "scan-line": "scan-line 3s linear infinite",
-        "fade-in": "fade-in 0.8s ease-out forwards",
-        "fade-in-up": "fade-in-up 0.8s ease-out forwards",
-        "rotate-slow": "rotate-slow 20s linear infinite",
-        "float": "float 6s ease-in-out infinite",
-        "data-flow": "data-flow 2s ease-in-out infinite",
+        "pulse-glow": "pulse-glow 4s ease-in-out infinite",
+        "scan-line": "scan-line 4.5s linear infinite",
+        "fade-in": "fade-in 0.9s cubic-bezier(0.16,1,0.3,1) forwards",
+        "fade-in-up": "fade-in-up 0.9s cubic-bezier(0.16,1,0.3,1) forwards",
+        "rotate-slow": "rotate-slow 28s linear infinite",
+        "float": "float 9s ease-in-out infinite",
+        "data-flow": "data-flow 4s ease-in-out infinite",
         "blink": "blink 1.5s step-end infinite",
       },
       keyframes: {
@@ -71,7 +71,7 @@ const config: Config = {
       },
       backgroundImage: {
         "grid-pattern":
-          "linear-gradient(rgba(0, 191, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 191, 255, 0.03) 1px, transparent 1px)",
+          "linear-gradient(rgba(112, 231, 255, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(112, 231, 255, 0.025) 1px, transparent 1px)",
       },
       backgroundSize: {
         grid: "50px 50px",

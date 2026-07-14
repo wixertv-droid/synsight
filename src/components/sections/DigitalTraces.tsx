@@ -76,8 +76,9 @@ export default function DigitalTraces() {
   const { ref, isVisible } = useScrollAnimation();
 
   return (
-    <section id="traces" className="relative section-padding overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-space-black via-space-light/30 to-space-black pointer-events-none" />
+    <section id="traces" className="section-shell relative section-padding overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_36%,rgba(41,182,246,.055),transparent_32rem)] pointer-events-none" />
+      <div className="absolute left-0 top-28 h-px w-1/3 bg-gradient-to-r from-cyber-blue/20 to-transparent" />
 
       <div className="relative max-w-7xl mx-auto">
         <div
@@ -86,14 +87,14 @@ export default function DigitalTraces() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <span className="font-mono text-xs text-cyber-blue/50 tracking-[0.3em] uppercase">
-            Digitale Spuren
+          <span className="hud-label">
+            02 / Digitale Spuren
           </span>
-          <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
+          <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] leading-[1.02] mt-5 mb-7">
             Jeder Mensch hinterlässt{" "}
             <span className="cyber-gradient">digitale Spuren</span>
           </h2>
-          <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+          <p className="text-slate-300/60 max-w-2xl mx-auto text-lg leading-relaxed">
             Jede Anmeldung, jedes Foto, jeder Kommentar — alles wird gespeichert,
             indexiert und ist potenziell für immer abrufbar.
           </p>
@@ -126,9 +127,9 @@ function TraceCard({
       }`}
       style={{ transitionDelay: `${index * 100}ms` }}
     >
-      <GlassCard className="h-full group">
+      <GlassCard className="h-full group min-h-[250px]">
         <div className="flex items-start justify-between mb-4">
-          <div className="p-3 rounded-lg bg-cyber-blue/10 text-cyber-blue group-hover:bg-cyber-blue/20 transition-colors">
+          <div className="p-3 rounded-xl border border-white/[0.06] bg-white/[0.025] text-cyber-blue group-hover:border-cyber-blue/20 group-hover:bg-cyber-blue/[0.06] transition-colors">
             {trace.icon}
           </div>
           <span
@@ -137,7 +138,7 @@ function TraceCard({
             RISIKO: {trace.risk}
           </span>
         </div>
-        <h3 className="text-lg font-semibold mb-2 text-white group-hover:text-cyber-cyan transition-colors">
+        <h3 className="text-lg font-medium tracking-[-.02em] mb-2 text-white/90 group-hover:text-cyan-100 transition-colors">
           {trace.title}
         </h3>
         <p className="text-sm text-gray-400 leading-relaxed">

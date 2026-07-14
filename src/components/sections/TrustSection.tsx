@@ -55,7 +55,7 @@ export default function TrustSection() {
   const { ref, isVisible } = useScrollAnimation();
 
   return (
-    <section id="trust" className="relative section-padding overflow-hidden">
+    <section id="trust" className="section-shell relative section-padding overflow-hidden">
       <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyber-blue/20 to-transparent" />
 
       <div className="relative max-w-7xl mx-auto">
@@ -65,13 +65,13 @@ export default function TrustSection() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <span className="font-mono text-xs text-cyber-blue/50 tracking-[0.3em] uppercase">
-            Vertrauen
+          <span className="hud-label">
+            05 / Trust Architecture
           </span>
-          <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
+          <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] leading-[1.02] mt-5 mb-7">
             Gebaut auf <span className="cyber-gradient">Vertrauen</span>
           </h2>
-          <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+          <p className="text-slate-300/60 max-w-2xl mx-auto text-lg leading-relaxed">
             Enterprise-Grade Sicherheit und Transparenz — von Grund auf in
             SynSight verankert.
           </p>
@@ -83,18 +83,18 @@ export default function TrustSection() {
           ))}
         </div>
 
-        {/* Certification bar */}
+        {/* Security principles */}
         <div
-          className={`mt-16 glass rounded-xl p-6 flex flex-wrap items-center justify-center gap-8 transition-all duration-1000 delay-500 ${
+          className={`mt-16 glass hardware-panel rounded-xl p-6 flex flex-wrap items-center justify-center gap-8 transition-all duration-1000 delay-500 ${
             isVisible ? "opacity-100" : "opacity-0"
           }`}
         >
-          {["ISO 27001", "SOC 2 Type II", "DSGVO", "BSI Grundschutz"].map(
-            (cert) => (
-              <div key={cert} className="flex items-center gap-2">
+          {["Privacy by Design", "EU-Datenprinzip", "Zero-Trust-Architektur", "Nachvollziehbare Analyse"].map(
+            (principle) => (
+              <div key={principle} className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-cyber-cyan/60" />
                 <span className="font-mono text-xs text-gray-400 tracking-wider">
-                  {cert}
+                  {principle}
                 </span>
               </div>
             )
@@ -122,8 +122,8 @@ function TrustCard({
       }`}
       style={{ transitionDelay: `${index * 120}ms` }}
     >
-      <GlassCard className="text-center h-full group">
-        <div className="inline-flex p-4 rounded-2xl bg-cyber-blue/10 text-cyber-blue mb-5 group-hover:shadow-[0_0_25px_rgba(0,191,255,0.2)] transition-shadow">
+      <GlassCard className="text-center h-full group min-h-[290px]">
+        <div className="inline-flex p-4 rounded-2xl border border-white/[0.06] bg-cyber-blue/[0.07] text-cyber-blue mb-5 group-hover:border-cyber-blue/20 transition-colors">
           {item.icon}
         </div>
         <h3 className="text-lg font-semibold mb-3 text-white">
