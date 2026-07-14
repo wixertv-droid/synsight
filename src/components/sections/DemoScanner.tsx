@@ -37,6 +37,13 @@ const statusColors = {
   danger: "text-red-400 border-red-400/30",
 };
 
+const protectionBenefits = [
+  "Vollständiger Identitäts- und Datenleck-Scan",
+  "Kontinuierliche Überwachung neuer Risiken",
+  "Priorisierte Handlungsempfehlungen statt Datenflut",
+  "Persönlicher Schutzbericht zum Download",
+];
+
 export default function DemoScanner() {
   const [input, setInput] = useState("");
   const [phase, setPhase] = useState<ScanPhase>("idle");
@@ -91,14 +98,17 @@ export default function DemoScanner() {
           }`}
         >
           <span className="font-mono text-xs text-cyber-blue/50 tracking-[0.3em] uppercase">
-            Live Demo
+            Ihr digitaler Risiko-Check
           </span>
           <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
-            <span className="cyber-gradient">KI-Scanner</span> Demo
+            Wissen Sie, was das Internet{" "}
+            <span className="cyber-gradient">über Sie weiß?</span>
           </h2>
-          <p className="text-gray-400 max-w-xl mx-auto">
-            Erleben Sie die SynSight-Analyse in Echtzeit. Geben Sie eine
-            E-Mail oder einen Namen ein.
+          <p className="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
+            Ein einziges geleaktes Passwort oder ein vergessenes Profil kann
+            Ihre digitale Identität angreifbar machen. Der SynSight-Scanner
+            zeigt, wo Handlungsbedarf besteht — und was Sie als Nächstes tun
+            können.
           </p>
         </div>
 
@@ -139,32 +149,60 @@ export default function DemoScanner() {
           <div className="relative z-10">
             {/* Input area */}
             {phase !== "complete" && (
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && startScan()}
-                    placeholder="E-Mail oder Name eingeben"
-                    disabled={phase === "scanning"}
-                    className="w-full px-5 py-4 bg-space-black/60 border border-cyber-blue/20 rounded-lg text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-blue/50 focus:shadow-[0_0_20px_rgba(0,191,255,0.15)] transition-all disabled:opacity-50"
-                  />
-                  {phase === "scanning" && (
-                    <div className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
-                      <div className="absolute inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-cyber-cyan to-transparent animate-scan-line" />
-                    </div>
-                  )}
+              <>
+                <div className="mb-6">
+                  <p className="text-white font-semibold mb-1">
+                    Starten Sie Ihren kostenlosen Risiko-Check
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    In wenigen Sekunden erhalten Sie einen ersten Überblick.
+                  </p>
                 </div>
-                <Button
-                  size="lg"
-                  onClick={startScan}
-                  disabled={!input.trim() || phase === "scanning"}
-                  className="sm:w-auto w-full"
-                >
-                  {phase === "scanning" ? "Analysiere..." : "Analyse starten"}
-                </Button>
-              </div>
+                <div className="flex flex-col sm:flex-row gap-4 mb-5">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && startScan()}
+                      placeholder="E-Mail-Adresse oder vollständiger Name"
+                      disabled={phase === "scanning"}
+                      className="w-full px-5 py-4 bg-space-black/60 border border-cyber-blue/20 rounded-lg text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-blue/50 focus:shadow-[0_0_20px_rgba(0,191,255,0.15)] transition-all disabled:opacity-50"
+                    />
+                    {phase === "scanning" && (
+                      <div className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
+                        <div className="absolute inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-cyber-cyan to-transparent animate-scan-line" />
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    size="lg"
+                    onClick={startScan}
+                    disabled={!input.trim() || phase === "scanning"}
+                    className="sm:w-auto w-full"
+                  >
+                    {phase === "scanning"
+                      ? "Risiken werden geprüft..."
+                      : "Kostenlos prüfen"}
+                  </Button>
+                </div>
+                {phase === "idle" && (
+                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
+                    <span className="flex items-center gap-2">
+                      <span className="text-cyber-cyan">✓</span> Unverbindliche
+                      Demo
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-cyber-cyan">✓</span> Keine
+                      Registrierung
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-cyber-cyan">✓</span> Keine echten
+                      Datenabfragen
+                    </span>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Scan progress */}
@@ -241,24 +279,110 @@ export default function DemoScanner() {
                   ))}
                 </div>
 
-                <div className="flex justify-center">
+                <div className="rounded-xl border border-yellow-400/20 bg-yellow-400/[0.04] p-5 mb-8">
+                  <p className="text-white font-semibold mb-2">
+                    Ein mittleres Risiko ist kein Grund zur Panik — aber ein
+                    klarer Grund zu handeln.
+                  </p>
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    Sichtbare Profile, geleakte Zugangsdaten und öffentliche
+                    Erwähnungen können miteinander verknüpft werden. SynSight
+                    hilft Ihnen, die wichtigsten Risiken zuerst zu schließen,
+                    bevor daraus ein echtes Problem entsteht.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <p className="text-xs font-mono text-gray-500">
+                    DEMO-ERGEBNIS — Beispielhafte Darstellung
+                  </p>
                   <Button variant="secondary" onClick={reset}>
-                    Neue Analyse starten
+                    Andere Identität prüfen
                   </Button>
                 </div>
               </div>
             )}
-
-            {/* Idle state hint */}
-            {phase === "idle" && (
-              <div className="text-center py-4">
-                <p className="font-mono text-xs text-gray-500">
-                  DEMO-MODUS — Keine echten Daten werden abgefragt
-                </p>
-              </div>
-            )}
           </div>
         </GlassCard>
+
+        <div
+          className={`mt-10 transition-all duration-700 ${
+            phase === "complete"
+              ? "opacity-100 translate-y-0"
+              : "opacity-70 translate-y-0"
+          }`}
+        >
+          <div className="relative overflow-hidden rounded-2xl border border-cyber-blue/30 bg-gradient-to-br from-cyber-blue/[0.12] via-space-panel/95 to-cyber-cyan/[0.06] p-6 md:p-8 shadow-[0_0_50px_rgba(0,191,255,0.08)]">
+            <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-cyber-cyan/10 blur-3xl" />
+            <div className="relative grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+              <div>
+                <span className="inline-flex rounded-full border border-cyber-cyan/25 bg-cyber-cyan/10 px-3 py-1 font-mono text-[10px] tracking-widest text-cyber-cyan">
+                  SYNSIGHT PROTECT
+                </span>
+                <h3 className="mt-5 text-2xl md:text-3xl font-bold text-white">
+                  Erkennen ist der erste Schritt.
+                  <br />
+                  <span className="cyber-gradient">Schützen ist der entscheidende.</span>
+                </h3>
+                <p className="mt-4 max-w-xl text-sm md:text-base leading-relaxed text-gray-400">
+                  Statt einzelne Fundstellen selbst zu bewerten, erhalten Sie
+                  einen klaren Schutzplan: Was ist kritisch, was kann warten und
+                  welche Maßnahme reduziert Ihr Risiko am stärksten?
+                </p>
+
+                <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+                  {protectionBenefits.map((benefit) => (
+                    <li
+                      key={benefit}
+                      className="flex items-start gap-3 text-sm text-gray-300"
+                    >
+                      <span className="mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full bg-cyber-cyan/10 text-xs text-cyber-cyan">
+                        ✓
+                      </span>
+                      {benefit}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-xl border border-cyber-blue/20 bg-space-black/55 p-6">
+                <p className="font-mono text-xs tracking-wider text-cyber-blue/70">
+                  IHR SCHUTZPAKET
+                </p>
+                <div className="mt-4 flex items-end gap-2">
+                  <span className="text-4xl font-bold text-white">19,90 €</span>
+                  <span className="pb-1 text-sm text-gray-500">/ Monat</span>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Weniger als 0,67 € pro Tag für mehr Kontrolle über Ihre
+                  digitale Identität.
+                </p>
+                <a
+                  href="mailto:hello@synsight.de?subject=Interesse%20am%20SynSight%20Protect%20Paket"
+                  className="mt-6 block"
+                >
+                  <span className="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-cyber-blue to-cyber-cyan px-6 py-4 font-semibold text-space-black transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,191,255,0.35)]">
+                    Schutzpaket auswählen
+                  </span>
+                </a>
+                <div className="mt-4 space-y-2 text-xs text-gray-500">
+                  <p className="flex items-center gap-2">
+                    <span className="text-cyber-cyan">✓</span> Monatlich
+                    kündbar
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="text-cyber-cyan">✓</span> Transparente
+                    Ergebnisse ohne Fachjargon
+                  </p>
+                </div>
+                <p className="mt-5 border-t border-white/5 pt-4 text-center text-[10px] leading-relaxed text-gray-600">
+                  Der Button öffnet aktuell eine unverbindliche
+                  Produktanfrage. Es erfolgt keine automatische Buchung.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
