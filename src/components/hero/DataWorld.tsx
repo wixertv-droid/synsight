@@ -263,6 +263,10 @@ export default function DataWorld() {
 
     const draw = (time = 0) => {
       if (!running || !visible) return;
+      if (!reducedMotion && time - lastTime < 32) {
+        animationId = requestAnimationFrame(draw);
+        return;
+      }
       const width = canvas.offsetWidth;
       const height = canvas.offsetHeight;
       ctx.clearRect(0, 0, width, height);

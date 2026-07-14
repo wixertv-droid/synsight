@@ -1,6 +1,7 @@
 "use client";
 
 import GlassCard from "@/components/ui/GlassCard";
+import Button from "@/components/ui/Button";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const traces = [
@@ -11,7 +12,7 @@ const traces = [
       </svg>
     ),
     title: "Alte Accounts",
-    description: "Vergessene Profile auf Plattformen, die Sie längst nicht mehr nutzen.",
+    description: "Vergessene Profile können persönliche Daten länger sichtbar halten als beabsichtigt.",
     risk: "MITTEL",
     color: "text-yellow-400",
   },
@@ -33,7 +34,7 @@ const traces = [
       </svg>
     ),
     title: "Datenlecks",
-    description: "Kompromittierte Passwörter und E-Mail-Adressen in Darknet-Datenbanken.",
+    description: "Hinweise auf kompromittierte E-Mail-Adressen oder Zugangsdaten in bekannten Leaks.",
     risk: "HOCH",
     color: "text-red-400",
   },
@@ -66,7 +67,7 @@ const traces = [
       </svg>
     ),
     title: "Digitale Fußabdrücke",
-    description: "Die Gesamtheit Ihrer Online-Aktivitäten — jeder Klick hinterlässt Spuren.",
+    description: "Verteilte Signale ergeben zusammen ein überraschend genaues Bild Ihrer Online-Präsenz.",
     risk: "HOCH",
     color: "text-red-400",
   },
@@ -88,15 +89,16 @@ export default function DigitalTraces() {
           }`}
         >
           <span className="hud-label">
-            02 / Digitale Spuren
+            04 / Ihre digitale Spur
           </span>
           <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] leading-[1.02] mt-5 mb-7">
-            Jeder Mensch hinterlässt{" "}
-            <span className="cyber-gradient">digitale Spuren</span>
+            Was online bleibt, sollte{" "}
+            <span className="cyber-gradient">nicht unsichtbar bleiben.</span>
           </h2>
           <p className="text-slate-300/60 max-w-2xl mx-auto text-lg leading-relaxed">
-            Jede Anmeldung, jedes Foto, jeder Kommentar — alles wird gespeichert,
-            indexiert und ist potenziell für immer abrufbar.
+            Alte Accounts, öffentliche Profile und Erwähnungen verteilen sich
+            über Jahre und Plattformen. SynSight führt sie in einem
+            verständlichen Überblick zusammen.
           </p>
         </div>
 
@@ -104,6 +106,21 @@ export default function DigitalTraces() {
           {traces.map((trace, index) => (
             <TraceCard key={trace.title} trace={trace} index={index} />
           ))}
+        </div>
+        <div className="mt-12 flex flex-col items-center text-center">
+          <p className="mb-5 max-w-xl text-sm leading-relaxed text-white/40">
+            Sie müssen nicht selbst herausfinden, welche Spur relevant ist.
+            SynSight priorisiert die Signale für Sie.
+          </p>
+          <Button
+            onClick={() =>
+              document
+                .getElementById("demo-scanner")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+          >
+            Eigene digitale Spur prüfen
+          </Button>
         </div>
       </div>
     </section>

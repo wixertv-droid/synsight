@@ -13,8 +13,8 @@ const features = [
     ),
     title: "Digitale Identität",
     description:
-      "Verstehen Sie, welche Informationen über Sie öffentlich sichtbar sind.",
-    metric: "360° Analyse",
+      "Welche Profile, Daten und Bilder zu Ihnen öffentlich auffindbar sind.",
+    metric: "Identitätsbild",
   },
   {
     icon: (
@@ -23,8 +23,8 @@ const features = [
       </svg>
     ),
     title: "Datenlecks",
-    description: "Erkennen Sie kompromittierte Informationen.",
-    metric: "Echtzeit-Monitoring",
+    description: "Ob Ihre E-Mail-Adresse oder Zugangsdaten in bekannten Leaks auftauchen.",
+    metric: "Leak-Abgleich",
   },
   {
     icon: (
@@ -33,8 +33,8 @@ const features = [
       </svg>
     ),
     title: "Online Reputation",
-    description: "Analysieren Sie Ihren digitalen Ruf.",
-    metric: "Sentiment-Analyse",
+    description: "Wie Sie online wahrgenommen werden und welche Signale Aufmerksamkeit benötigen.",
+    metric: "Reputation",
   },
   {
     icon: (
@@ -43,8 +43,8 @@ const features = [
       </svg>
     ),
     title: "KI Schutzanalyse",
-    description: "Erhalten Sie intelligente Sicherheitsempfehlungen.",
-    metric: "KI-gestützt",
+    description: "Konkrete nächste Schritte, priorisiert nach Risiko statt nach Technik.",
+    metric: "Schutzplan",
   },
 ];
 
@@ -57,7 +57,7 @@ export default function WhatSynSightRecognizes() {
       <div className="telemetry-marquee absolute top-14 left-0 flex w-[200%] gap-12 overflow-hidden whitespace-nowrap font-mono text-[9px] tracking-[.22em] text-white/[0.08]">
         {[0, 1].map((group) => (
           <span key={group}>
-            SIGNAL CORRELATION&nbsp;&nbsp;•&nbsp;&nbsp;ENTITY RESOLUTION&nbsp;&nbsp;•&nbsp;&nbsp;EXPOSURE MAPPING&nbsp;&nbsp;•&nbsp;&nbsp;RISK PRIORITIZATION&nbsp;&nbsp;•&nbsp;&nbsp;
+            SIGNALE VERBINDEN&nbsp;&nbsp;•&nbsp;&nbsp;IDENTITÄT ZUORDNEN&nbsp;&nbsp;•&nbsp;&nbsp;RISIKEN VERSTEHEN&nbsp;&nbsp;•&nbsp;&nbsp;SCHUTZ PRIORISIEREN&nbsp;&nbsp;•&nbsp;&nbsp;
           </span>
         ))}
       </div>
@@ -70,14 +70,15 @@ export default function WhatSynSightRecognizes() {
           }`}
         >
           <span className="hud-label">
-            03 / Intelligence Layer
+            05 / Was SynSight erkennt
           </span>
           <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] leading-[1.02] mt-5 mb-7">
-            Was <span className="cyber-gradient">SynSight</span> erkennt
+            Transparenz für Ihre{" "}
+            <span className="cyber-gradient">digitale Identität.</span>
           </h2>
           <p className="text-slate-300/60 max-w-2xl mx-auto text-lg leading-relaxed">
-            Unsere KI-Engine analysiert Millionen von Datenpunkten, um ein
-            vollständiges Bild Ihrer digitalen Identität zu erstellen.
+            Moderne KI-Modelle ordnen relevante öffentliche Signale ein und
+            übersetzen technische Funde in verständliche Entscheidungen.
           </p>
         </div>
 

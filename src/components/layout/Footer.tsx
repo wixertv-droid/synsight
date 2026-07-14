@@ -1,27 +1,25 @@
 const footerLinks = {
   Produkt: [
-    { label: "Funktionen", href: "#technology" },
-    { label: "Demo", href: "#demo-scanner" },
-    { label: "Preise", href: "#" },
-    { label: "API", href: "#" },
+    { label: "Plattform", href: "#platform" },
+    { label: "Risiko-Check", href: "#demo-scanner" },
+    { label: "Schutzpaket", href: "#protect-package" },
+    { label: "Technologie", href: "#technology" },
   ],
   Unternehmen: [
-    { label: "Über uns", href: "#" },
-    { label: "Karriere", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Presse", href: "#" },
+    { label: "Über SynSight", href: "mailto:hello@synsight.de?subject=Über%20SynSight" },
+    { label: "Kontakt", href: "mailto:hello@synsight.de" },
+    { label: "Partnerschaften", href: "mailto:hello@synsight.de?subject=Partnerschaft" },
+    { label: "Presse", href: "mailto:hello@synsight.de?subject=Presseanfrage" },
   ],
   Rechtliches: [
-    { label: "Datenschutz", href: "#" },
-    { label: "Impressum", href: "#" },
-    { label: "AGB", href: "#" },
-    { label: "Cookie-Richtlinie", href: "#" },
+    { label: "Datenschutz", href: "/datenschutz" },
+    { label: "Impressum", href: "/impressum" },
+    { label: "AGB", href: "/agb" },
   ],
   Support: [
-    { label: "Hilfe-Center", href: "#" },
-    { label: "Kontakt", href: "#" },
-    { label: "Status", href: "#" },
-    { label: "Dokumentation", href: "#" },
+    { label: "Produktanfrage", href: "mailto:hello@synsight.de?subject=Produktanfrage" },
+    { label: "Datenschutzanfrage", href: "mailto:datenschutz@synsight.de" },
+    { label: "Technischer Kontakt", href: "mailto:hello@synsight.de?subject=Technische%20Anfrage" },
   ],
 };
 
@@ -52,21 +50,16 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-sm text-gray-500 leading-relaxed max-w-xs mb-6">
-              Die intelligente KI-Plattform zum Schutz Ihrer digitalen Identität.
-              Entwickelt in Deutschland.
+              Transparenz und Schutz für Ihre digitale Identität. KI-gestützt,
+              verständlich und in Deutschland entwickelt.
             </p>
-            <div className="flex gap-4">
-              {["X", "Li", "Gh"].map((social) => (
-                <a
-                  key={social}
-                  href="#"
-                  className="w-9 h-9 rounded-lg glass flex items-center justify-center text-xs font-mono text-gray-500 hover:text-cyber-blue hover:border-cyber-blue/30 transition-all"
-                  aria-label={social}
-                >
-                  {social}
-                </a>
-              ))}
-            </div>
+            <a
+              href="mailto:hello@synsight.de"
+              className="inline-flex items-center gap-2 text-sm text-cyber-blue/70 transition-colors hover:text-cyber-cyan"
+            >
+              hello@synsight.de
+              <span aria-hidden="true">↗</span>
+            </a>
           </div>
 
           {/* Link columns */}
@@ -94,13 +87,13 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="pt-8 border-t border-cyber-blue/10 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-600 font-mono">
-            &copy; {new Date().getFullYear()} SynSight GmbH — synsight.de — Alle
+            &copy; {new Date().getFullYear()} SynSight — synsight.de — Alle
             Rechte vorbehalten.
           </p>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-cyber-cyan/60" />
             <span className="text-xs font-mono text-gray-500">
-              Alle Systeme operational
+              Produktentwicklung in Deutschland · EU-Datenprinzip
             </span>
           </div>
         </div>
