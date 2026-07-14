@@ -399,6 +399,71 @@ body::before {
   to { transform: rotate(360deg); }
 }
 
+.platform-data-path {
+  stroke-dasharray: 10 22;
+  animation: platform-data-flow 11s linear infinite;
+}
+
+.platform-particle {
+  animation: platform-particle-float 7s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(112, 231, 255, 0.35);
+}
+
+.auth-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    112deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.025) 34%,
+    transparent 58%
+  );
+}
+
+.analysis-field {
+  background:
+    radial-gradient(circle at center, rgba(41, 182, 246, 0.08), transparent 48%),
+    linear-gradient(rgba(112, 231, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(112, 231, 255, 0.025) 1px, transparent 1px);
+  background-size: 100% 100%, 30px 30px, 30px 30px;
+}
+
+.analysis-scan-line {
+  top: -5rem;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(112, 231, 255, 0.08),
+    rgba(112, 231, 255, 0.2),
+    transparent
+  );
+  animation: analysis-field-scan 4.8s linear infinite;
+}
+
+@keyframes platform-data-flow {
+  to { stroke-dashoffset: -128; }
+}
+
+@keyframes platform-particle-float {
+  0%, 100% {
+    opacity: 0.18;
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    opacity: 0.65;
+    transform: translate3d(8px, -16px, 0);
+  }
+}
+
+@keyframes analysis-field-scan {
+  from { transform: translateY(0); opacity: 0; }
+  12% { opacity: 1; }
+  82% { opacity: 0.55; }
+  to { transform: translateY(460px); opacity: 0; }
+}
+
 @media (max-width: 767px) {
   .hero-atmosphere {
     background:
