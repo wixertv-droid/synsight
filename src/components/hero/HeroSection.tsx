@@ -1,9 +1,16 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import Button from "@/components/ui/Button";
-import CyberGlobe from "@/components/hero/CyberGlobe";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+
+const CyberGlobe = dynamic(() => import("@/components/hero/CyberGlobe"), {
+  ssr: false,
+  loading: () => (
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_73%_45%,rgba(41,182,246,.09),transparent_24rem)]" />
+  ),
+});
 
 export default function HeroSection() {
   const { ref, isVisible } = useScrollAnimation();
