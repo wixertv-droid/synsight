@@ -64,10 +64,16 @@ export default function Navbar() {
             </a>
           ))}
           <a
-            href="#demo-scanner"
+            href="/login"
+            className="text-[12px] tracking-wide text-white/45 transition-colors hover:text-white/85"
+          >
+            Login
+          </a>
+          <a
+            href="/register"
             className="rounded-lg border border-cyber-blue/25 bg-cyber-blue/[0.06] px-4 py-2 text-[12px] font-medium text-cyan-100/90 transition-all hover:border-cyber-blue/45 hover:bg-cyber-blue/[0.1]"
           >
-            Risiko-Check starten
+            Konto erstellen
           </a>
         </div>
 
@@ -101,11 +107,18 @@ export default function Navbar() {
             </a>
           ))}
           <a
-            href="#demo-scanner"
+            href="/register"
             className="mt-4 flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-cyber-blue to-cyber-cyan px-5 py-3 text-sm font-semibold text-space-black"
             onClick={() => setMenuOpen(false)}
           >
-            Kostenlosen Risiko-Check starten
+            Konto erstellen
+          </a>
+          <a
+            href="/login"
+            className="block py-2 text-center text-sm text-white/40"
+            onClick={() => setMenuOpen(false)}
+          >
+            Bereits registriert? Login
           </a>
         </div>
       )}
