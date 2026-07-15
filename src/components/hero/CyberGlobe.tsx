@@ -15,8 +15,19 @@ import {
   points,
   scanLocations,
 } from "@/components/hero/globe/globe-data";
-import { createHaloParticles } from "@/components/hero/globe/globe-utils";
+import {
+  createHaloParticles,
+  sanitizeArcs,
+  sanitizeCoordinates,
+  sanitizeCountryFeatures,
+  sanitizeLabels,
+  sanitizePoints,
+  sanitizeScanLocations,
+} from "@/components/hero/globe/globe-utils";
 import GlobeHud from "@/components/hero/globe/GlobeHud";
+
+/** H3 hex resolution for continent outlines — keep low to avoid heavy polyfills. */
+const HEX_POLYGON_RESOLUTION = 2;
 
 type WorldTopology = Topology<{
   countries: GeometryCollection;
@@ -35,16 +46,14 @@ export default function CyberGlobe() {
     const canvasHost = canvasRef.current;
     if (!root || !canvasHost || typeof window === "undefined") return;
 
-    // three-globe's ThreeDigest calls Array.forEach on each layer dataset.
-    // Never pass undefined/null — empty arrays keep digest cycles safe.
-    const safePoints = Array.isArray(points) ? points : [];
-    const safeArcs = Array.isArray(arcs) ? arcs : [];
-    const safeLabels = Array.isArray(labels) ? labels : [];
-    const safeRings = Array.isArray(hotspotRings) ? hotspotRings : [];
-    const safeNodes = Array.isArray(liveDataNodes) ? liveDataNodes : [];
-    const safeScanLocations = Array.isArray(scanLocations)
-      ? scanLocations
-      : [];
+    // Never pass undefined/invalid coords into three-globe — h3-js and
+    // ThreeDigest both crash on NaN / out-of-bounds geographic data.
+    const safePoints = sanitizePoints(points);
+    const safeArcs = sanitizeArcs(arcs);
+    const safeLabels = sanitizeLabels(labels);
+    const safeRings = sanitizeCoordinates(hotspotRings);
+    const safeNodes = sanitizeCoordinates(liveDataNodes);
+    const safeScanLocations = sanitizeScanLocations(scanLocations);
 
     let countries: GeoJSON.Feature[] = [];
     try {
@@ -52,15 +61,10 @@ export default function CyberGlobe() {
       const countryObject = topology?.objects?.countries;
       if (countryObject) {
         const collection = feature(topology, countryObject);
-        const features = collection?.features;
-        countries = Array.isArray(features)
-          ? features.filter(
-              (entry) =>
-                entry?.geometry &&
-                (entry.geometry.type === "Polygon" ||
-                  entry.geometry.type === "MultiPolygon")
-            )
-          : [];
+        countries = sanitizeCountryFeatures(
+          collection?.features,
+          HEX_POLYGON_RESOLUTION
+        );
       }
     } catch {
       countries = [];
@@ -87,6 +91,8 @@ export default function CyberGlobe() {
 
     let globe: ThreeGlobe;
     try {
+      // Build core layers first (points/arcs). Hex polygons are optional —
+      // h3-js polygonToCells can throw H3LibraryError on bad country shapes.
       globe = new ThreeGlobe({
         waitForGlobeReady: true,
         animateIn: !reducedMotion,
@@ -96,13 +102,6 @@ export default function CyberGlobe() {
         .showAtmosphere(true)
         .atmosphereColor("#29b6f6")
         .atmosphereAltitude(0.19)
-        .hexPolygonsData(countries)
-        .hexPolygonResolution(3)
-        .hexPolygonMargin(0.32)
-        .hexPolygonUseDots(true)
-        .hexPolygonDotResolution(3)
-        .hexPolygonAltitude(0.006)
-        .hexPolygonColor(() => "rgba(92, 220, 252, .9)")
         .pointsData(safePoints)
         .pointLat("lat")
         .pointLng("lng")
@@ -143,6 +142,24 @@ export default function CyberGlobe() {
         .labelDotRadius(0.22)
         .labelIncludeDot(true)
         .labelResolution(3);
+
+      if (countries.length > 0) {
+        try {
+          globe
+            .hexPolygonsData(countries)
+            .hexPolygonResolution(HEX_POLYGON_RESOLUTION)
+            .hexPolygonMargin(0.35)
+            .hexPolygonUseDots(true)
+            .hexPolygonDotResolution(2)
+            .hexPolygonAltitude(0.006)
+            .hexPolygonColor(() => "rgba(92, 220, 252, .9)");
+        } catch {
+          // Fallback: keep points/arcs running without continent hexes.
+          globe.hexPolygonsData([]);
+        }
+      } else {
+        globe.hexPolygonsData([]);
+      }
     } catch {
       renderer.dispose();
       renderer.domElement.remove();
