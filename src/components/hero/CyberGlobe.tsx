@@ -33,10 +33,39 @@ export default function CyberGlobe() {
   useEffect(() => {
     const root = rootRef.current;
     const canvasHost = canvasRef.current;
-    if (!root || !canvasHost) return;
+    if (!root || !canvasHost || typeof window === "undefined") return;
 
-    const topology = worldData as unknown as WorldTopology;
-    const countries = feature(topology, topology.objects.countries).features;
+    // three-globe's ThreeDigest calls Array.forEach on each layer dataset.
+    // Never pass undefined/null — empty arrays keep digest cycles safe.
+    const safePoints = Array.isArray(points) ? points : [];
+    const safeArcs = Array.isArray(arcs) ? arcs : [];
+    const safeLabels = Array.isArray(labels) ? labels : [];
+    const safeRings = Array.isArray(hotspotRings) ? hotspotRings : [];
+    const safeNodes = Array.isArray(liveDataNodes) ? liveDataNodes : [];
+    const safeScanLocations = Array.isArray(scanLocations)
+      ? scanLocations
+      : [];
+
+    let countries: GeoJSON.Feature[] = [];
+    try {
+      const topology = worldData as unknown as WorldTopology;
+      const countryObject = topology?.objects?.countries;
+      if (countryObject) {
+        const collection = feature(topology, countryObject);
+        const features = collection?.features;
+        countries = Array.isArray(features)
+          ? features.filter(
+              (entry) =>
+                entry?.geometry &&
+                (entry.geometry.type === "Polygon" ||
+                  entry.geometry.type === "MultiPolygon")
+            )
+          : [];
+      }
+    } catch {
+      countries = [];
+    }
+
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
@@ -53,64 +82,72 @@ export default function CyberGlobe() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    canvasHost.replaceChildren();
     canvasHost.appendChild(renderer.domElement);
 
-    const globe = new ThreeGlobe({
-      waitForGlobeReady: true,
-      animateIn: !reducedMotion,
-    })
-      .showGlobe(true)
-      .showGraticules(true)
-      .showAtmosphere(true)
-      .atmosphereColor("#29b6f6")
-      .atmosphereAltitude(0.19)
-      .hexPolygonsData(countries)
-      .hexPolygonResolution(3)
-      .hexPolygonMargin(0.32)
-      .hexPolygonUseDots(true)
-      .hexPolygonDotResolution(3)
-      .hexPolygonAltitude(0.006)
-      .hexPolygonColor(() => "rgba(92, 220, 252, .9)")
-      .pointsData(points)
-      .pointLat("lat")
-      .pointLng("lng")
-      .pointColor("color")
-      .pointRadius("radius")
-      .pointAltitude("altitude")
-      .pointResolution(8)
-      .pointsMerge(false)
-      .arcsData(arcs)
-      .arcStartLat("startLat")
-      .arcStartLng("startLng")
-      .arcEndLat("endLat")
-      .arcEndLng("endLng")
-      .arcColor("color")
-      .arcAltitudeAutoScale(0.24)
-      .arcStroke(0.18)
-      .arcDashLength(0.2)
-      .arcDashGap(0.48)
-      .arcDashInitialGap(() => Math.random())
-      .arcDashAnimateTime(reducedMotion ? 0 : 2350)
-      .ringsData(hotspotRings)
-      .ringLat("lat")
-      .ringLng("lng")
-      .ringAltitude(0.013)
-      .ringColor(() => (t: number) =>
-        `rgba(${t > 0.55 ? "255,138,92" : "112,231,255"},${1 - t})`
-      )
-      .ringMaxRadius(5.4)
-      .ringPropagationSpeed(reducedMotion ? 0 : 1.8)
-      .ringRepeatPeriod(reducedMotion ? 0 : 1700)
-      .labelsData(labels)
-      .labelLat("lat")
-      .labelLng("lng")
-      .labelText("text")
-      .labelColor("color")
-      .labelAltitude(0.035)
-      .labelSize(0.72)
-      .labelDotRadius(0.22)
-      .labelIncludeDot(true)
-      .labelResolution(3);
+    let globe: ThreeGlobe;
+    try {
+      globe = new ThreeGlobe({
+        waitForGlobeReady: true,
+        animateIn: !reducedMotion,
+      })
+        .showGlobe(true)
+        .showGraticules(true)
+        .showAtmosphere(true)
+        .atmosphereColor("#29b6f6")
+        .atmosphereAltitude(0.19)
+        .hexPolygonsData(countries)
+        .hexPolygonResolution(3)
+        .hexPolygonMargin(0.32)
+        .hexPolygonUseDots(true)
+        .hexPolygonDotResolution(3)
+        .hexPolygonAltitude(0.006)
+        .hexPolygonColor(() => "rgba(92, 220, 252, .9)")
+        .pointsData(safePoints)
+        .pointLat("lat")
+        .pointLng("lng")
+        .pointColor("color")
+        .pointRadius("radius")
+        .pointAltitude("altitude")
+        .pointResolution(8)
+        .pointsMerge(false)
+        .arcsData(safeArcs)
+        .arcStartLat("startLat")
+        .arcStartLng("startLng")
+        .arcEndLat("endLat")
+        .arcEndLng("endLng")
+        .arcColor("color")
+        .arcAltitudeAutoScale(0.24)
+        .arcStroke(0.18)
+        .arcDashLength(0.2)
+        .arcDashGap(0.48)
+        .arcDashInitialGap(() => Math.random())
+        .arcDashAnimateTime(reducedMotion ? 0 : 2350)
+        .ringsData(safeRings)
+        .ringLat("lat")
+        .ringLng("lng")
+        .ringAltitude(0.013)
+        .ringColor(() => (t: number) =>
+          `rgba(${t > 0.55 ? "255,138,92" : "112,231,255"},${1 - t})`
+        )
+        .ringMaxRadius(5.4)
+        .ringPropagationSpeed(reducedMotion ? 0 : 1.8)
+        .ringRepeatPeriod(reducedMotion ? 0 : 1700)
+        .labelsData(safeLabels)
+        .labelLat("lat")
+        .labelLng("lng")
+        .labelText("text")
+        .labelColor("color")
+        .labelAltitude(0.035)
+        .labelSize(0.72)
+        .labelDotRadius(0.22)
+        .labelIncludeDot(true)
+        .labelResolution(3);
+    } catch {
+      renderer.dispose();
+      renderer.domElement.remove();
+      return;
+    }
 
     globe.globeMaterial(
       new THREE.MeshPhongMaterial({
@@ -232,12 +269,19 @@ export default function CyberGlobe() {
               ? (0.94 - localPhase) / 0.16
               : 1;
 
-        const availableNodes = index === 1 ? scanLocations : liveDataNodes;
+        const availableNodes =
+          index === 1 ? safeScanLocations : safeNodes;
+        if (availableNodes.length === 0) {
+          connector.style.opacity = "0";
+          panel.style.opacity = "0";
+          return;
+        }
         let nodeIndex = (cycle * 23 + index * 17 + 5) % availableNodes.length;
         const worldPoint = new THREE.Vector3();
         let facingCamera = false;
         for (let attempt = 0; attempt < availableNodes.length; attempt++) {
           const candidate = availableNodes[nodeIndex];
+          if (!candidate) break;
           const coords = globe.getCoords(candidate.lat, candidate.lng, 0.025);
           worldPoint.set(coords.x, coords.y, coords.z);
           worldPoint.applyMatrix4(globe.matrixWorld);
@@ -255,11 +299,12 @@ export default function CyberGlobe() {
         }
 
         if (index === 1) {
-          const location = scanLocations[nodeIndex % scanLocations.length];
-          if (locationTitleRef.current) {
+          const location =
+            safeScanLocations[nodeIndex % safeScanLocations.length];
+          if (location && locationTitleRef.current) {
             locationTitleRef.current.textContent = `STANDORT-LEAK-BEREICH (${location.name})`;
           }
-          if (locationDetailRef.current) {
+          if (location && locationDetailRef.current) {
             locationDetailRef.current.textContent = `Koordinaten: Lat ${Math.abs(location.lat).toFixed(1)} ${location.lat >= 0 ? "N" : "S"}, Lon ${Math.abs(location.lng).toFixed(1)} ${location.lng >= 0 ? "E" : "W"}`;
           }
         }
@@ -357,6 +402,18 @@ export default function CyberGlobe() {
       visibilityObserver.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       controls.dispose();
+      // Stop three-globe's internal ticker before disposing geometry —
+      // otherwise ThreeDigest can forEach over cleared layer state.
+      try {
+        globe.pauseAnimation();
+        (
+          globe as ThreeGlobe & {
+            _destructor?: () => void;
+          }
+        )._destructor?.();
+      } catch {
+        /* ignore teardown races during React Strict Mode remount */
+      }
       globeGroup.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry?.dispose();
@@ -370,7 +427,9 @@ export default function CyberGlobe() {
       particleGeometry.dispose();
       particleMaterial.dispose();
       renderer.dispose();
-      renderer.domElement.remove();
+      if (renderer.domElement.parentNode === canvasHost) {
+        canvasHost.removeChild(renderer.domElement);
+      }
     };
   }, []);
 

@@ -5,12 +5,23 @@ import dynamic from "next/dynamic";
 import Button from "@/components/ui/Button";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
-const CyberGlobe = dynamic(() => import("@/components/hero/CyberGlobe"), {
-  ssr: false,
-  loading: () => (
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_73%_45%,rgba(41,182,246,.09),transparent_24rem)]" />
-  ),
-});
+/**
+ * three-globe touches `window` during module evaluation and must never
+ * run under SSR. Keep this `dynamic(..., { ssr: false })` import here —
+ * not a static import of CyberGlobe.
+ */
+const CyberGlobe = dynamic(
+  () => import("@/components/hero/CyberGlobe").then((mod) => mod.default),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="absolute inset-0 bg-[radial-gradient(circle_at_73%_45%,rgba(41,182,246,.09),transparent_24rem)]"
+        aria-hidden="true"
+      />
+    ),
+  }
+);
 
 export default function HeroSection() {
   const { ref, isVisible } = useScrollAnimation();
