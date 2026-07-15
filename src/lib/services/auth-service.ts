@@ -17,6 +17,8 @@ import {
   getAuditRepository,
   getSessionRepository,
   getUserRepository,
+  getProfileRepository,
+  getSecurityRepository,
 } from "@/lib/repositories";
 import { findUserByIdentifier } from "@/lib/repositories/mysql/user-repository";
 import { toDisplayName } from "@/lib/repositories/user-repository";
@@ -160,6 +162,17 @@ export async function registerUser(
     passwordHash: await hashPassword(input.password),
     firstName: input.firstName,
     lastName: input.lastName,
+  });
+  await getProfileRepository().ensureDraft(user.id, {
+    firstName: input.firstName,
+    lastName: input.lastName,
+    onboardingStep: 0,
+  });
+  await getSecurityRepository().upsertPreferences(user.id, {
+    monitoringEnabled: Boolean(input.monitoringOptIn),
+    consentMonitoringAt: input.monitoringOptIn
+      ? new Date().toISOString().slice(0, 23).replace("T", " ")
+      : null,
   });
   const verificationToken = await issueEmailVerification(user.id);
   await getAuditRepository().create({

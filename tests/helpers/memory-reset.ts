@@ -11,6 +11,9 @@ export function resetInMemoryStores(): void {
     __synsightNextTokenId?: number;
     __synsightAuditEvents?: unknown[];
     __synsightRateLimits?: Map<unknown, unknown>;
+    __synsightProfiles?: Map<unknown, unknown>;
+    __synsightOnboarding?: Map<unknown, unknown>;
+    __synsightSecurityProfiles?: Map<unknown, unknown>;
   };
 
   g.__synsightUsers?.clear();
@@ -23,4 +26,10 @@ export function resetInMemoryStores(): void {
   delete g.__synsightNextTokenId;
   delete g.__synsightAuditEvents;
   g.__synsightRateLimits?.clear();
+  g.__synsightProfiles?.clear();
+  delete g.__synsightProfiles;
+  g.__synsightOnboarding?.clear();
+  delete g.__synsightOnboarding;
+  g.__synsightSecurityProfiles?.clear();
+  delete g.__synsightSecurityProfiles;
 }

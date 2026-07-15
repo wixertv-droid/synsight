@@ -22,13 +22,13 @@ When `DATABASE_URL` is not set, repositories automatically fall back to in-memor
 
 ## ORM Decision: Drizzle
 
-| Criterion | Drizzle ORM | Prisma |
-|-----------|-------------|--------|
-| Next.js compatibility | Excellent — server-only, no edge constraints for DB ops | Good, but heavier client |
-| MySQL support | Native via `drizzle-orm/mysql-core` | Full support |
-| Migrations | `drizzle-kit` + reference SQL | Prisma Migrate |
-| Performance | Lightweight, SQL-first, minimal overhead | Query engine adds latency |
-| Maintainability | Schema in TypeScript, maps cleanly to repository pattern | Higher-level abstraction, less SQL control |
+| Criterion             | Drizzle ORM                                              | Prisma                                     |
+| --------------------- | -------------------------------------------------------- | ------------------------------------------ |
+| Next.js compatibility | Excellent — server-only, no edge constraints for DB ops  | Good, but heavier client                   |
+| MySQL support         | Native via `drizzle-orm/mysql-core`                      | Full support                               |
+| Migrations            | `drizzle-kit` + reference SQL                            | Prisma Migrate                             |
+| Performance           | Lightweight, SQL-first, minimal overhead                 | Query engine adds latency                  |
+| Maintainability       | Schema in TypeScript, maps cleanly to repository pattern | Higher-level abstraction, less SQL control |
 
 **Decision: Drizzle ORM** — lighter runtime, SQL transparency, and a natural fit for the existing repository/service layering on a self-hosted MySQL server.
 
@@ -61,34 +61,40 @@ src/lib/repositories/
 
 ### Core Identity
 
-| Table | Purpose |
-|-------|---------|
-| `users` | Accounts with Argon2id password hashes |
-| `profiles` | Personal data (1:1 with users) |
-| `sessions` | Server-side session records for audit and revocation |
-| `user_tokens` | Password reset, email verification, API keys |
-| `user_settings` | Theme, locale, notification preferences |
+| Table                       | Purpose                                              |
+| --------------------------- | ---------------------------------------------------- |
+| `users`                     | Accounts with Argon2id password hashes               |
+| `profiles`                  | Personal data (1:1 with users)                       |
+| `profile_aliases`           | Former names, nicknames, gaming/usernames            |
+| `profile_phone_numbers`     | Additional phone numbers                             |
+| `profile_additional_emails` | Additional emails                                    |
+| `social_accounts`           | Linked social networks                               |
+| `digital_traces`            | Websites, domains, companies, public profiles        |
+| `profile_images`            | Encrypted originals + analysis/thumbnail paths       |
+| `sessions`                  | Server-side session records for audit and revocation |
+| `user_tokens`               | Password reset, email verification, API keys         |
+| `user_settings`             | Theme, locale, notification preferences              |
 
 ### Security & Analysis
 
-| Table | Purpose |
-|-------|---------|
-| `security_profiles` | Monitoring preferences and security score |
-| `analysis_reports` | KI analysis runs (initial, scheduled, manual) |
-| `analysis_report_items` | Individual findings within a report |
+| Table                   | Purpose                                       |
+| ----------------------- | --------------------------------------------- |
+| `security_profiles`     | Monitoring preferences and security score     |
+| `analysis_reports`      | KI analysis runs (initial, scheduled, manual) |
+| `analysis_report_items` | Individual findings within a report           |
 
 ### Billing
 
-| Table | Purpose |
-|-------|---------|
+| Table                | Purpose                                 |
+| -------------------- | --------------------------------------- |
 | `subscription_plans` | Available plans (e.g. SynSight Protect) |
-| `subscriptions` | Active user subscriptions |
-| `payments` | Payment records linked to subscriptions |
+| `subscriptions`      | Active user subscriptions               |
+| `payments`           | Payment records linked to subscriptions |
 
 ### Audit
 
-| Table | Purpose |
-|-------|---------|
+| Table          | Purpose                                          |
+| -------------- | ------------------------------------------------ |
 | `audit_events` | Immutable event log for compliance and debugging |
 
 ## Relationships
@@ -111,33 +117,43 @@ subscriptions (1) ──→ (*) payments
 
 ## Migration Workflow
 
-### 1. Apply reference migration (manual)
+Ordered MySQL reference migrations live in `database/migrations/`:
+
+1. `001_initial_schema.sql`
+2. `002_production_identity.sql`
+3. `003_digital_traces_images.sql`
+
+### Apply via the supported workflow
 
 ```bash
-mysql -u synsight -p synsight < database/migrations/001_initial_schema.sql
-mysql -u synsight -p synsight < database/seeds/001_admin_user.sql
+DATABASE_URL=mysql://synsight:password@localhost:3306/synsight npm run db:migrate
 ```
 
-### 2. Programmatic seed (alternative)
+`database/migrate.ts` applies pending `NNN_*.sql` files in lexicographic order and
+records checksums in `_synsight_schema_migrations`. Re-runs are idempotent.
+
+### Seed after migrate
 
 ```bash
-DATABASE_URL=mysql://synsight:password@localhost:3306/synsight npx tsx database/seeds/seed.ts
+DATABASE_URL=mysql://synsight:password@localhost:3306/synsight npm run db:seed
 ```
 
-### 3. Drizzle Kit (future schema changes)
+### Schema evolution
 
-```bash
-npx drizzle-kit generate   # Generate migration from schema changes
-npx drizzle-kit migrate    # Apply pending migrations
-```
+1. Update `src/lib/database/schema.ts`
+2. Add the next numbered SQL file under `database/migrations/`
+3. Run `npm run db:migrate`
+
+`drizzle-kit generate` remains available for exploring diffs (`npm run db:generate`),
+but production apply always goes through `npm run db:migrate`.
 
 ## Development Admin User
 
-| Field | Value |
-|-------|-------|
-| Username | `admin` |
-| Password | `admin` (development only) |
-| Storage | Argon2id hash in `users.password_hash` — never plaintext |
+| Field    | Value                                                    |
+| -------- | -------------------------------------------------------- |
+| Username | `admin`                                                  |
+| Password | `admin` (development only)                               |
+| Storage  | Argon2id hash in `users.password_hash` — never plaintext |
 
 ## Authentication Flow
 
@@ -150,12 +166,18 @@ npx drizzle-kit migrate    # Apply pending migrations
 
 ## API Endpoints
 
-| Method | Path | Service | Auth |
-|--------|------|---------|------|
-| POST | `/api/auth/login` | `authService` | Public |
-| POST | `/api/auth/logout` | `authService` | Public |
-| GET | `/api/user/profile` | `userService` | Required |
-| GET | `/api/security/status` | `securityService` | Required |
+| Method    | Path                            | Service               | Auth     |
+| --------- | ------------------------------- | --------------------- | -------- |
+| POST      | `/api/auth/login`               | `authService`         | Public   |
+| POST      | `/api/auth/logout`              | `authService`         | Public   |
+| POST      | `/api/auth/register`            | `authService`         | Public   |
+| POST      | `/api/auth/verify-email`        | `verificationService` | Public   |
+| POST      | `/api/auth/resend-verification` | `verificationService` | Public   |
+| POST      | `/api/onboarding`               | `onboardingService`   | Required |
+| POST      | `/api/onboarding/images`        | `imagePipeline`       | Required |
+| GET/PATCH | `/api/user/profile`             | `profileService`      | Required |
+| GET       | `/api/security/status`          | `securityService`     | Required |
+| GET       | `/api/health`                   | health                | Public   |
 
 ## Future Roadmap
 

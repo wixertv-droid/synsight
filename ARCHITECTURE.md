@@ -43,14 +43,15 @@ Account lockout after repeated failures uses `users.failed_login_attempts` / `us
 
 ## Identity Data Model (MySQL)
 
-Core tables from `001_initial_schema.sql` plus production identity extensions in
-`002_production_identity.sql`:
+Core tables from `001_initial_schema.sql`, production identity extensions in
+`002_production_identity.sql`, and digital-trace / image metadata in
+`003_digital_traces_images.sql`:
 
 | Area       | Tables                                                                              |
 | ---------- | ----------------------------------------------------------------------------------- |
 | Account    | `users`, `sessions`, `user_tokens`, `audit_events`                                  |
 | Profile    | `profiles`, `profile_aliases`, `profile_phone_numbers`, `profile_additional_emails` |
-| Traces     | `social_accounts`, `profile_images`                                                 |
+| Traces     | `social_accounts`, `digital_traces`, `profile_images`                               |
 | Security   | `security_profiles`, analysis/report tables                                         |
 | Commercial | subscriptions / payments / settings                                                 |
 
@@ -58,20 +59,25 @@ TypeScript mirrors live in `src/types/domain.ts` and `src/lib/database/schema.ts
 
 ## Security Headers
 
-`next.config.ts` sets CSP, HSTS, frame denial, referrer policy, permissions
-policy, and cross-origin opener policy for production-ready defaults.
+`next.config.ts` sets CSP (always) plus production-only HSTS and
+`upgrade-insecure-requests`. Local HTTP / preview must not be upgraded to HTTPS.
+
+Private media is stored under `storage/private` (or `PRIVATE_STORAGE_ROOT`),
+outside the Next.js public web root. Originals are encrypted at rest.
 
 ## Tooling
 
-| Command                 | Role                                   |
-| ----------------------- | -------------------------------------- |
-| `npm run typecheck`     | `tsc --noEmit`                         |
-| `npm run lint`          | Next.js ESLint                         |
-| `npm run test`          | Vitest unit/integration                |
-| `npm run test:coverage` | Vitest + V8 coverage                   |
-| `npm run test:e2e`      | Playwright smoke (auth/route guards)   |
-| `npm run check`         | typecheck → lint → test → build        |
-| Husky + lint-staged     | Prettier on staged files before commit |
+| Command                 | Role                                       |
+| ----------------------- | ------------------------------------------ |
+| `npm run typecheck`     | `tsc --noEmit`                             |
+| `npm run lint`          | Next.js ESLint                             |
+| `npm run test`          | Vitest unit/integration                    |
+| `npm run test:coverage` | Vitest + V8 coverage                       |
+| `npm run test:e2e`      | Playwright smoke (auth/route guards)       |
+| `npm run db:migrate`    | Apply ordered SQL migrations (`001`–`003`) |
+| `npm run db:seed`       | Seed development admin user                |
+| `npm run check`         | typecheck → lint → test → build            |
+| Husky + lint-staged     | Prettier on staged files before commit     |
 
 ## Related Docs
 

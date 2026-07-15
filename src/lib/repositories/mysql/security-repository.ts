@@ -8,7 +8,9 @@ import {
   type SecurityStatusSummary,
 } from "../security-repository";
 
-function mapSecurityProfile(row: typeof securityProfiles.$inferSelect): SecurityProfile {
+function mapSecurityProfile(
+  row: typeof securityProfiles.$inferSelect
+): SecurityProfile {
   return {
     id: row.id,
     userId: row.userId,
@@ -23,7 +25,9 @@ function mapSecurityProfile(row: typeof securityProfiles.$inferSelect): Security
   };
 }
 
-export function createMysqlSecurityRepository(db: SynSightDatabase): SecurityRepository {
+export function createMysqlSecurityRepository(
+  db: SynSightDatabase
+): SecurityRepository {
   return {
     async findByUserId(userId) {
       const rows = await db
@@ -56,13 +60,38 @@ export function createMysqlSecurityRepository(db: SynSightDatabase): SecurityRep
         nextScanAt: profile.nextScanAt,
         openSignals: 3,
         criticalAlerts: profile.criticalAlerts,
-        statusLabel: profile.monitoringEnabled ? "System online" : "Monitoring pausiert",
+        statusLabel: profile.monitoringEnabled
+          ? "System online"
+          : "Monitoring pausiert",
       };
+    },
+
+    async upsertPreferences(userId, input) {
+      const existing = await this.findByUserId(userId);
+      if (existing) {
+        await db
+          .update(securityProfiles)
+          .set({
+            monitoringEnabled: input.monitoringEnabled,
+            consentMonitoringAt:
+              input.consentMonitoringAt ?? existing.consentMonitoringAt,
+          })
+          .where(eq(securityProfiles.userId, userId));
+        return;
+      }
+
+      await db.insert(securityProfiles).values({
+        userId,
+        monitoringEnabled: input.monitoringEnabled,
+        consentMonitoringAt: input.consentMonitoringAt ?? null,
+      });
     },
   };
 }
 
-export function createSecurityRepository(db: SynSightDatabase | null): SecurityRepository {
+export function createSecurityRepository(
+  db: SynSightDatabase | null
+): SecurityRepository {
   if (db) {
     return createMysqlSecurityRepository(db);
   }

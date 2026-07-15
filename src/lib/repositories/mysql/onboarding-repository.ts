@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { SynSightDatabase } from "@/lib/database/client";
 import {
+  digitalTraces,
   profileAdditionalEmails,
   profileAliases,
   profileImages,
@@ -12,8 +13,34 @@ import {
   createInMemoryOnboardingRepository,
   type OnboardingRepository,
 } from "../onboarding-repository";
+import type { OnboardingPayload } from "@/lib/validation/onboarding";
 
 const mysqlDate = () => new Date().toISOString().slice(0, 23).replace("T", " ");
+
+function buildDigitalTraceRows(userId: number, payload: OnboardingPayload) {
+  return [
+    ...payload.additionalData.websites.map((value) => ({
+      userId,
+      traceType: "website" as const,
+      value,
+    })),
+    ...payload.additionalData.domains.map((value) => ({
+      userId,
+      traceType: "domain" as const,
+      value,
+    })),
+    ...payload.additionalData.companies.map((value) => ({
+      userId,
+      traceType: "company" as const,
+      value,
+    })),
+    ...payload.additionalData.publicProfiles.map((value) => ({
+      userId,
+      traceType: "public_profile" as const,
+      value,
+    })),
+  ];
+}
 
 export function createMysqlOnboardingRepository(
   db: SynSightDatabase
@@ -28,6 +55,7 @@ export function createMysqlOnboardingRepository(
             lastName: payload.identity.lastName,
             publicAlias: payload.identity.publicAlias || null,
             phone: payload.identity.phoneNumbers[0] || null,
+            company: payload.additionalData.companies[0] || null,
             region:
               [payload.identity.city, payload.identity.country]
                 .filter(Boolean)
@@ -53,6 +81,9 @@ export function createMysqlOnboardingRepository(
           transaction
             .delete(profileImages)
             .where(eq(profileImages.userId, userId)),
+          transaction
+            .delete(digitalTraces)
+            .where(eq(digitalTraces.userId, userId)),
         ]);
 
         const aliases = [
@@ -87,8 +118,9 @@ export function createMysqlOnboardingRepository(
           })),
         ];
 
-        if (aliases.length)
+        if (aliases.length) {
           await transaction.insert(profileAliases).values(aliases);
+        }
         if (payload.identity.phoneNumbers.length) {
           await transaction.insert(profilePhoneNumbers).values(
             payload.identity.phoneNumbers.map((phoneNumber) => ({
@@ -115,12 +147,24 @@ export function createMysqlOnboardingRepository(
             }))
           );
         }
+
+        const traces = buildDigitalTraceRows(userId, payload);
+        if (traces.length) {
+          await transaction.insert(digitalTraces).values(traces);
+        }
+
         if (payload.imageProfile.images.length) {
           await transaction.insert(profileImages).values(
             payload.imageProfile.images.map((image) => ({
               userId,
               imageType: image.imageType,
               storagePath: image.storagePath,
+              originalPath: image.originalPath ?? null,
+              analysisPath: image.analysisPath ?? null,
+              thumbnailPath: image.thumbnailPath ?? null,
+              contentHash: image.contentHash ?? null,
+              mimeType: image.mimeType ?? null,
+              byteSize: image.byteSize ?? null,
             }))
           );
         }

@@ -97,7 +97,24 @@ export interface ProfileImage {
   userId: number;
   imageType: ProfileImageType;
   storagePath: string;
+  originalPath?: string | null;
+  analysisPath?: string | null;
+  thumbnailPath?: string | null;
+  contentHash?: string | null;
+  mimeType?: string | null;
+  byteSize?: number | null;
   uploadedAt: string;
+}
+
+export type DigitalTraceType =
+  "website" | "domain" | "company" | "public_profile";
+
+export interface DigitalTrace {
+  id: number;
+  userId: number;
+  traceType: DigitalTraceType;
+  value: string;
+  createdAt: string;
 }
 
 export interface SecurityProfile {

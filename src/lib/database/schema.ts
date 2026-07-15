@@ -225,6 +225,37 @@ export const socialAccounts = mysqlTable(
   ]
 );
 
+export const digitalTraces = mysqlTable(
+  "digital_traces",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    traceType: mysqlEnum("trace_type", [
+      "website",
+      "domain",
+      "company",
+      "public_profile",
+    ]).notNull(),
+    value: varchar("value", { length: 500 }).notNull(),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("digital_traces_user_id_idx").on(table.userId),
+    index("digital_traces_type_idx").on(table.traceType),
+    uniqueIndex("digital_traces_user_type_value_unique").on(
+      table.userId,
+      table.traceType,
+      table.value
+    ),
+  ]
+);
+
 export const profileImages = mysqlTable(
   "profile_images",
   {
@@ -241,6 +272,12 @@ export const profileImages = mysqlTable(
       "angled",
     ]).notNull(),
     storagePath: varchar("storage_path", { length: 500 }).notNull(),
+    originalPath: varchar("original_path", { length: 500 }),
+    analysisPath: varchar("analysis_path", { length: 500 }),
+    thumbnailPath: varchar("thumbnail_path", { length: 500 }),
+    contentHash: varchar("content_hash", { length: 64 }),
+    mimeType: varchar("mime_type", { length: 100 }),
+    byteSize: int("byte_size", { unsigned: true }),
     uploadedAt: timestamp("uploaded_at", { mode: "string", fsp: 3 })
       .notNull()
       .default(sql`CURRENT_TIMESTAMP(3)`),

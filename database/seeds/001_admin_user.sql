@@ -25,12 +25,13 @@ VALUES (
   'Morgan',
   'EU',
   'de-DE',
-  3,
+  4,
   CURRENT_TIMESTAMP(3)
 )
 ON DUPLICATE KEY UPDATE
   `first_name` = VALUES(`first_name`),
-  `last_name` = VALUES(`last_name`);
+  `last_name` = VALUES(`last_name`),
+  `onboarding_step` = VALUES(`onboarding_step`);
 
 INSERT INTO `security_profiles` (
   `user_id`,

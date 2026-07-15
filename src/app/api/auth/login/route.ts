@@ -11,6 +11,7 @@ import {
 } from "@/lib/security/rate-limit";
 import { getClientIp, validateMutationOrigin } from "@/lib/security/request";
 import { getProfileRepository } from "@/lib/repositories";
+import { isOnboardingComplete } from "@/lib/repositories/profile-repository";
 
 export async function POST(request: Request) {
   const csrfError = validateMutationOrigin(request);
@@ -72,7 +73,8 @@ export async function POST(request: Request) {
   const profile = await getProfileRepository().findByUserId(
     Number(result.user.id)
   );
-  const redirectTo =
-    !profile || profile.onboardingStep === 0 ? "/onboarding" : "/dashboard";
+  const redirectTo = isOnboardingComplete(profile)
+    ? "/dashboard"
+    : "/onboarding";
   return NextResponse.json(apiSuccess({ redirectTo }));
 }

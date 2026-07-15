@@ -175,7 +175,7 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
             label="Benutzername"
             name="identifier"
             autoComplete="username"
-            placeholder="admin"
+            placeholder="name@unternehmen.de"
             required
           />
         )}

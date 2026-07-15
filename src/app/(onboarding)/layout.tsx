@@ -4,6 +4,8 @@ import BrandLogo from "@/components/ui/BrandLogo";
 import PlatformBackground from "@/components/platform/PlatformBackground";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getProfileRepository } from "@/lib/repositories";
+import { isOnboardingComplete } from "@/lib/repositories/profile-repository";
 
 export const metadata: Metadata = {
   title: "Einrichtung — SynSight",
@@ -17,6 +19,11 @@ export default async function OnboardingLayout({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?from=/onboarding");
+
+  const profile = await getProfileRepository().findByUserId(Number(user.id));
+  if (isOnboardingComplete(profile)) {
+    redirect("/dashboard");
+  }
 
   return (
     <main className="relative min-h-[100svh] overflow-hidden bg-space-black px-5 py-7 md:px-8">

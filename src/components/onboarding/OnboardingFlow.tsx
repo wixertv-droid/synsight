@@ -95,8 +95,9 @@ export default function OnboardingFlow({
     publicProfiles: "",
   });
   const [images, setImages] = useState<
-    { imageType: ImageType; storagePath: string }[]
+    OnboardingPayload["imageProfile"]["images"]
   >([]);
+  const [uploadingType, setUploadingType] = useState<ImageType | null>(null);
 
   const payload = useMemo<OnboardingPayload>(
     () => ({
@@ -195,18 +196,46 @@ export default function OnboardingFlow({
     ]);
   };
 
-  const selectImage = (imageType: ImageType, file?: File) => {
-    setImages((current) => {
-      const withoutType = current.filter(
-        (image) => image.imageType !== imageType
+  const selectImage = async (imageType: ImageType, file?: File) => {
+    setErrorMessage(null);
+    if (!file) {
+      setImages((current) =>
+        current.filter((image) => image.imageType !== imageType)
       );
-      if (!file) return withoutType;
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-      return [
-        ...withoutType,
-        { imageType, storagePath: `pending/${imageType}/${safeName}` },
-      ];
-    });
+      return;
+    }
+
+    setUploadingType(imageType);
+    try {
+      const body = new FormData();
+      body.set("imageType", imageType);
+      body.set("file", file);
+      const response = await fetch("/api/onboarding/images", {
+        method: "POST",
+        body,
+      });
+      const payload = (await response.json()) as ApiResponseBody<
+        OnboardingPayload["imageProfile"]["images"][number]
+      >;
+      if (!response.ok || !payload.success) {
+        setErrorMessage(
+          !payload.success
+            ? payload.error.message
+            : "Das Bild konnte nicht hochgeladen werden."
+        );
+        return;
+      }
+      setImages((current) => {
+        const withoutType = current.filter(
+          (image) => image.imageType !== imageType
+        );
+        return [...withoutType, payload.data];
+      });
+    } catch {
+      setErrorMessage("Das Bild konnte nicht hochgeladen werden.");
+    } finally {
+      setUploadingType(null);
+    }
   };
 
   return (
@@ -542,26 +571,33 @@ export default function OnboardingFlow({
                         </InfoTooltip>
                       </span>
                       <span className="mt-5 block rounded-lg border border-white/[0.06] py-4 text-center font-mono text-[8px] tracking-[.14em] text-cyber-cyan/45">
-                        {selected ? "BILD AUSGEWÄHLT" : "BILD AUSWÄHLEN"}
+                        {uploadingType === type
+                          ? "WIRD OPTIMIERT…"
+                          : selected
+                            ? "BILD GESPEICHERT"
+                            : "BILD AUSWÄHLEN"}
                       </span>
                       <input
                         type="file"
-                        accept="image/jpeg,image/png,image/webp"
+                        accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,.heic"
                         className="sr-only"
-                        onChange={(event) =>
-                          selectImage(
+                        disabled={uploadingType !== null || finishing}
+                        onChange={(event) => {
+                          void selectImage(
                             type as ImageType,
                             event.target.files?.[0]
-                          )
-                        }
+                          );
+                          event.currentTarget.value = "";
+                        }}
                       />
                     </label>
                   );
                 })}
                 <p className="sm:col-span-2 text-[10px] leading-relaxed text-white/24">
-                  Zulässig: JPEG, PNG oder WebP. Der Upload-Adapter ist
-                  vorbereitet; eine Gesichtsanalyse findet in diesem Sprint
-                  ausdrücklich nicht statt.
+                  Zulässig: JPG, JPEG, PNG, WEBP oder HEIC (max. 8 MB). Jedes
+                  Bild wird serverseitig verschlüsselt archiviert und als
+                  Analyse-/Thumbnail-Version optimiert. Eine Gesichtsanalyse
+                  findet in diesem Sprint ausdrücklich nicht statt.
                 </p>
               </div>
             )}

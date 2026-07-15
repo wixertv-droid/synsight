@@ -43,13 +43,24 @@ export const onboardingDigitalIdentityStepSchema = z.object({
   socialAccounts: z.array(socialAccountSchema).max(30).default([]),
 });
 
+/** Accept bare domains/hosts and normalize to https:// URLs. */
+const flexibleUrlSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .transform((value) =>
+    /^https?:\/\//i.test(value) ? value : `https://${value}`
+  )
+  .pipe(z.string().url().max(500));
+
 export const onboardingAdditionalDataStepSchema = z.object({
   oldUsernames: z.array(z.string().trim().min(1).max(150)).max(30).default([]),
   gamingNames: z.array(z.string().trim().min(1).max(150)).max(30).default([]),
-  websites: z.array(z.string().trim().url().max(500)).max(20).default([]),
+  websites: z.array(flexibleUrlSchema).max(20).default([]),
   domains: z.array(z.string().trim().min(3).max(255)).max(20).default([]),
   companies: z.array(z.string().trim().min(1).max(150)).max(20).default([]),
-  publicProfiles: z.array(z.string().trim().url().max(500)).max(20).default([]),
+  publicProfiles: z.array(flexibleUrlSchema).max(20).default([]),
 });
 
 export const onboardingImageStepSchema = z.object({
@@ -58,6 +69,12 @@ export const onboardingImageStepSchema = z.object({
       z.object({
         imageType: z.enum(["front", "left_profile", "right_profile", "angled"]),
         storagePath: z.string().trim().min(1).max(500),
+        originalPath: z.string().trim().max(500).optional(),
+        analysisPath: z.string().trim().max(500).optional(),
+        thumbnailPath: z.string().trim().max(500).optional(),
+        contentHash: z.string().trim().length(64).optional(),
+        mimeType: z.string().trim().max(100).optional(),
+        byteSize: z.number().int().positive().optional(),
       })
     )
     .max(4)

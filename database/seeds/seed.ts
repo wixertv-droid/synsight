@@ -8,7 +8,10 @@
  */
 import { eq } from "drizzle-orm";
 import { DEV_ADMIN_PASSWORD_HASH } from "../../src/lib/auth/password";
-import { closeConnectionPool, isDatabaseConfigured } from "../../src/lib/database/connection";
+import {
+  closeConnectionPool,
+  isDatabaseConfigured,
+} from "../../src/lib/database/connection";
 import { getDatabase } from "../../src/lib/database/client";
 import {
   profiles,
@@ -68,13 +71,17 @@ async function seed() {
       lastName: "Morgan",
       region: "EU",
       locale: "de-DE",
-      onboardingStep: 3,
-      onboardingCompletedAt: new Date().toISOString().slice(0, 23).replace("T", " "),
+      onboardingStep: 4,
+      onboardingCompletedAt: new Date()
+        .toISOString()
+        .slice(0, 23)
+        .replace("T", " "),
     })
     .onDuplicateKeyUpdate({
       set: {
         firstName: "Alex",
         lastName: "Morgan",
+        onboardingStep: 4,
       },
     });
 
@@ -92,7 +99,10 @@ async function seed() {
         .toISOString()
         .slice(0, 23)
         .replace("T", " "),
-      consentMonitoringAt: new Date().toISOString().slice(0, 23).replace("T", " "),
+      consentMonitoringAt: new Date()
+        .toISOString()
+        .slice(0, 23)
+        .replace("T", " "),
     })
     .onDuplicateKeyUpdate({
       set: {
