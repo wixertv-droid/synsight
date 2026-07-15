@@ -23,4 +23,9 @@ export const DEV_AUTH_USERNAME = "admin";
 export const DEV_AUTH_PASSWORD = "admin";
 
 /** Route prefixes guarded by `src/middleware.ts`. */
-export const PROTECTED_ROUTE_PREFIXES = ["/dashboard", "/profile", "/settings"];
+export const PROTECTED_ROUTE_PREFIXES = [
+  "/dashboard",
+  "/profile",
+  "/settings",
+  "/onboarding",
+];

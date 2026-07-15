@@ -21,6 +21,8 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [monitoring, setMonitoring] = useState(true);
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isRegister = mode === "register";
 
@@ -37,12 +39,14 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
         lastName: String(formData.get("lastName") ?? ""),
         email: String(formData.get("email") ?? ""),
         password: String(formData.get("password") ?? ""),
+        passwordConfirm: String(formData.get("passwordConfirm") ?? ""),
         monitoringOptIn: monitoring,
       });
 
       if (!parsed.success) {
         setErrorMessage(
-          parsed.error.issues[0]?.message ?? "Bitte überprüfen Sie Ihre Eingaben."
+          parsed.error.issues[0]?.message ??
+            "Bitte überprüfen Sie Ihre Eingaben."
         );
         return;
       }
@@ -66,6 +70,21 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
     await submit(endpoint, parsed.data, "/dashboard");
   };
 
+  const strengthChecks = [
+    password.length >= 12,
+    /[a-z]/.test(password) && /[A-Z]/.test(password),
+    /[0-9]/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ];
+  const strength = strengthChecks.filter(Boolean).length;
+  const strengthLabel = [
+    "Sehr schwach",
+    "Schwach",
+    "Solide",
+    "Stark",
+    "Sehr stark",
+  ][strength];
+
   const submit = async (
     endpoint: string,
     payload: Record<string, unknown>,
@@ -78,7 +97,8 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const result = (await response.json()) as ApiResponseBody<AuthRedirectData>;
+      const result =
+        (await response.json()) as ApiResponseBody<AuthRedirectData>;
 
       if (!response.ok || !result.success) {
         setErrorMessage(
@@ -162,14 +182,60 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
 
         <FormField
           label="Passwort"
-          hint={isRegister ? "MIN. 8 ZEICHEN" : "DEV: admin"}
+          hint={isRegister ? "MIN. 12 ZEICHEN" : "SICHERER ZUGANG"}
           name="password"
           type="password"
           autoComplete={isRegister ? "new-password" : "current-password"}
           placeholder="••••••••••••"
-          minLength={isRegister ? 8 : undefined}
+          minLength={isRegister ? 12 : undefined}
+          value={isRegister ? password : undefined}
+          onChange={
+            isRegister ? (event) => setPassword(event.target.value) : undefined
+          }
           required
         />
+
+        {isRegister && (
+          <>
+            <div aria-live="polite">
+              <div className="mb-2 flex items-center justify-between font-mono text-[8px] tracking-[.12em]">
+                <span className="text-white/25">PASSWORTSTÄRKE</span>
+                <span className="text-cyber-cyan/65">{strengthLabel}</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[1, 2, 3, 4].map((level) => (
+                  <span
+                    key={level}
+                    className={`h-1 rounded-full transition-colors ${
+                      strength >= level
+                        ? "bg-gradient-to-r from-cyber-blue to-cyber-cyan"
+                        : "bg-white/[0.06]"
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="mt-2 text-[10px] leading-relaxed text-white/25">
+                12+ Zeichen, Groß-/Kleinbuchstaben, Zahl und Sonderzeichen.
+              </p>
+            </div>
+            <FormField
+              label="Passwort bestätigen"
+              name="passwordConfirm"
+              type="password"
+              autoComplete="new-password"
+              placeholder="••••••••••••"
+              minLength={12}
+              value={passwordConfirm}
+              onChange={(event) => setPasswordConfirm(event.target.value)}
+              hint={
+                passwordConfirm && password === passwordConfirm
+                  ? "STIMMT ÜBEREIN"
+                  : undefined
+              }
+              required
+            />
+          </>
+        )}
 
         {isRegister && (
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-4">
@@ -225,8 +291,7 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
       </div>
 
       <p className="mt-5 text-center font-mono text-[7px] tracking-[.12em] text-white/15">
-        DEVELOPMENT ONLY · Zugang admin / admin · Echte Authentifizierung
-        wird später angebunden
+        ARGON2ID · ENCRYPTED SESSION · PRIVACY BY DESIGN
       </p>
     </section>
   );

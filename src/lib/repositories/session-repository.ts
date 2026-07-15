@@ -17,8 +17,14 @@ export interface SessionRepository {
   revokeAllForUser(userId: number): Promise<void>;
 }
 
+const memory = globalThis as typeof globalThis & {
+  __synsightSessions?: Map<string, Session>;
+};
+
 export function createInMemorySessionRepository(): SessionRepository {
-  const sessions = new Map<string, Session>();
+  const sessions =
+    memory.__synsightSessions ??
+    (memory.__synsightSessions = new Map<string, Session>());
 
   return {
     async create(input) {

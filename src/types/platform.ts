@@ -7,6 +7,8 @@ export interface DashboardMetric {
   detail: string;
   trend: string;
   tone: "cyan" | "amber" | "green" | "red";
+  /** Optional help text rendered via InfoTooltip on dashboard cards. */
+  info?: string;
 }
 
 export interface RiskSignal {
@@ -30,4 +32,3 @@ export interface Recommendation {
   priority: "Jetzt" | "Diese Woche" | "Empfohlen";
   completed: boolean;
 }
-

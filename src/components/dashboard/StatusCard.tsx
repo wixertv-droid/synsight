@@ -1,4 +1,5 @@
 import type { DashboardMetric } from "@/types/platform";
+import InfoTooltip from "@/components/ui/InfoTooltip";
 
 const toneStyles = {
   cyan: "text-cyan-100 border-cyber-blue/15 bg-cyber-blue/[0.035]",
@@ -20,16 +21,23 @@ export default function StatusCard({
         <span className="font-mono text-[8px] tracking-[.16em] text-white/28">
           KPI / {String(index + 1).padStart(2, "0")}
         </span>
-        <span className={`h-1.5 w-1.5 rounded-full ${toneStyles[metric.tone].split(" ")[0]} bg-current opacity-70`} />
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${toneStyles[metric.tone].split(" ")[0]} bg-current opacity-70`}
+        />
       </div>
-      <p className="mt-5 text-[10px] font-medium uppercase tracking-[.14em] text-white/35">
-        {metric.label}
+      <p className="mt-5 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[.14em] text-white/35">
+        <span>{metric.label}</span>
+        {metric.info ? (
+          <InfoTooltip label={metric.label}>{metric.info}</InfoTooltip>
+        ) : null}
       </p>
       <div className="mt-2 flex items-end justify-between gap-3">
         <p className="text-3xl font-light tracking-[-.04em] text-white sm:text-4xl">
           {metric.value}
         </p>
-        <span className={`rounded-md border px-2 py-1 font-mono text-[7px] tracking-[.1em] ${toneStyles[metric.tone]}`}>
+        <span
+          className={`rounded-md border px-2 py-1 font-mono text-[7px] tracking-[.1em] ${toneStyles[metric.tone]}`}
+        >
           {metric.detail}
         </span>
       </div>

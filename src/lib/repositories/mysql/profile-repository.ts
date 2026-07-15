@@ -22,7 +22,9 @@ function mapProfile(row: typeof profiles.$inferSelect): Profile {
   };
 }
 
-export function createMysqlProfileRepository(db: SynSightDatabase): ProfileRepository {
+export function createMysqlProfileRepository(
+  db: SynSightDatabase
+): ProfileRepository {
   return {
     async findByUserId(userId) {
       const rows = await db
@@ -33,10 +35,24 @@ export function createMysqlProfileRepository(db: SynSightDatabase): ProfileRepos
 
       return rows[0] ? mapProfile(rows[0]) : null;
     },
+    async update(userId, input) {
+      await db
+        .update(profiles)
+        .set({
+          firstName: input.firstName,
+          lastName: input.lastName,
+          phone: input.phone || null,
+          company: input.company || null,
+          region: input.region,
+        })
+        .where(eq(profiles.userId, userId));
+    },
   };
 }
 
-export function createProfileRepository(db: SynSightDatabase | null): ProfileRepository {
+export function createProfileRepository(
+  db: SynSightDatabase | null
+): ProfileRepository {
   if (db) {
     return createMysqlProfileRepository(db);
   }

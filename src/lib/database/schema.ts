@@ -82,6 +82,10 @@ export const users = mysqlTable(
     username: varchar("username", { length: 100 }).notNull(),
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     status: userStatusEnum.notNull().default("pending_verification"),
+    failedLoginAttempts: int("failed_login_attempts", { unsigned: true })
+      .notNull()
+      .default(0),
+    lockedUntil: timestamp("locked_until", { mode: "string", fsp: 3 }),
     emailVerifiedAt: timestamp("email_verified_at", { mode: "string", fsp: 3 }),
     lastLoginAt: timestamp("last_login_at", { mode: "string", fsp: 3 }),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
@@ -125,6 +129,124 @@ export const profiles = mysqlTable("profiles", {
     .default(sql`CURRENT_TIMESTAMP(3)`)
     .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
 });
+
+export const profileAliases = mysqlTable(
+  "profile_aliases",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    alias: varchar("alias", { length: 150 }).notNull(),
+    aliasType: mysqlEnum("alias_type", [
+      "public_alias",
+      "former_name",
+      "nickname",
+      "username",
+      "gaming_name",
+    ]).notNull(),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [index("profile_aliases_user_id_idx").on(table.userId)]
+);
+
+export const profilePhoneNumbers = mysqlTable(
+  "profile_phone_numbers",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    phoneNumber: varchar("phone_number", { length: 32 }).notNull(),
+    label: varchar("label", { length: 50 }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [index("profile_phone_numbers_user_id_idx").on(table.userId)]
+);
+
+export const profileAdditionalEmails = mysqlTable(
+  "profile_additional_emails",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: varchar("email", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("profile_additional_emails_user_id_idx").on(table.userId),
+    uniqueIndex("profile_additional_emails_user_email_unique").on(
+      table.userId,
+      table.email
+    ),
+  ]
+);
+
+export const socialAccounts = mysqlTable(
+  "social_accounts",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: varchar("platform", { length: 32 }).notNull(),
+    username: varchar("username", { length: 150 }).notNull(),
+    profileUrl: varchar("profile_url", { length: 500 }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("social_accounts_user_id_idx").on(table.userId),
+    uniqueIndex("social_accounts_user_platform_username_unique").on(
+      table.userId,
+      table.platform,
+      table.username
+    ),
+  ]
+);
+
+export const profileImages = mysqlTable(
+  "profile_images",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    imageType: mysqlEnum("image_type", [
+      "front",
+      "left_profile",
+      "right_profile",
+      "angled",
+    ]).notNull(),
+    storagePath: varchar("storage_path", { length: 500 }).notNull(),
+    uploadedAt: timestamp("uploaded_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [index("profile_images_user_id_idx").on(table.userId)]
+);
 
 export const sessions = mysqlTable(
   "sessions",
@@ -174,34 +296,36 @@ export const userTokens = mysqlTable(
   ]
 );
 
-export const securityProfiles = mysqlTable("security_profiles", {
-  id: bigint("id", { mode: "number", unsigned: true })
-    .primaryKey()
-    .autoincrement(),
-  userId: bigint("user_id", { mode: "number", unsigned: true })
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  monitoringEnabled: boolean("monitoring_enabled").notNull().default(true),
-  criticalAlerts: boolean("critical_alerts").notNull().default(true),
-  weeklySummary: boolean("weekly_summary").notNull().default(true),
-  aiRecommendations: boolean("ai_recommendations").notNull().default(true),
-  securityScore: int("security_score", { unsigned: true }),
-  lastAnalysisAt: timestamp("last_analysis_at", { mode: "string", fsp: 3 }),
-  nextScanAt: timestamp("next_scan_at", { mode: "string", fsp: 3 }),
-  consentMonitoringAt: timestamp("consent_monitoring_at", {
-    mode: "string",
-    fsp: 3,
-  }),
-  createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP(3)`),
-  updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP(3)`)
-    .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
-}, (table) => [
-  uniqueIndex("security_profiles_user_id_unique").on(table.userId),
-]);
+export const securityProfiles = mysqlTable(
+  "security_profiles",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    monitoringEnabled: boolean("monitoring_enabled").notNull().default(true),
+    criticalAlerts: boolean("critical_alerts").notNull().default(true),
+    weeklySummary: boolean("weekly_summary").notNull().default(true),
+    aiRecommendations: boolean("ai_recommendations").notNull().default(true),
+    securityScore: int("security_score", { unsigned: true }),
+    lastAnalysisAt: timestamp("last_analysis_at", { mode: "string", fsp: 3 }),
+    nextScanAt: timestamp("next_scan_at", { mode: "string", fsp: 3 }),
+    consentMonitoringAt: timestamp("consent_monitoring_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [uniqueIndex("security_profiles_user_id_unique").on(table.userId)]
+);
 
 export const analysisReports = mysqlTable(
   "analysis_reports",
@@ -215,9 +339,7 @@ export const analysisReports = mysqlTable(
     reportType: reportTypeEnum.notNull(),
     status: reportStatusEnum.notNull().default("queued"),
     overallScore: int("overall_score", { unsigned: true }),
-    signalsCount: int("signals_count", { unsigned: true })
-      .notNull()
-      .default(0),
+    signalsCount: int("signals_count", { unsigned: true }).notNull().default(0),
     startedAt: timestamp("started_at", { mode: "string", fsp: 3 }),
     completedAt: timestamp("completed_at", { mode: "string", fsp: 3 }),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
@@ -358,7 +480,9 @@ export const userSettings = mysqlTable("user_settings", {
   theme: varchar("theme", { length: 32 }).notNull().default("dark"),
   notificationsJson: json("notifications_json"),
   locale: varchar("locale", { length: 10 }).notNull().default("de-DE"),
-  timezone: varchar("timezone", { length: 64 }).notNull().default("Europe/Berlin"),
+  timezone: varchar("timezone", { length: 64 })
+    .notNull()
+    .default("Europe/Berlin"),
   createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
     .notNull()
     .default(sql`CURRENT_TIMESTAMP(3)`),

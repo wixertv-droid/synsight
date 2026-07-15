@@ -7,6 +7,7 @@ import { profileSchema } from "@/lib/validation/profile";
 import { DEMO_USER } from "@/lib/demo/user";
 import { getInitials } from "@/lib/utils/strings";
 import type { AuthenticatedUser } from "@/lib/auth/types";
+import type { ApiResponseBody } from "@/lib/api/response";
 
 interface ProfileFormProps {
   user: AuthenticatedUser | null;
@@ -22,13 +23,14 @@ function splitDisplayName(displayName: string): {
 
 export default function ProfileForm({ user }: ProfileFormProps) {
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const displayName = user?.displayName ?? DEMO_USER.displayName;
   const email = user?.email || DEMO_USER.email;
   const { firstName, lastName } = splitDisplayName(displayName);
 
-  const save = (event: FormEvent<HTMLFormElement>) => {
+  const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
 
@@ -49,10 +51,33 @@ export default function ProfileForm({ user }: ProfileFormProps) {
       return;
     }
 
-    // No persistence layer exists yet — see docs/AUDIT_REPORT.md. Once
-    // `/api/profile` exists, submit `parsed.data` there instead.
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2200);
+    setSaving(true);
+    try {
+      const response = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
+      const result = (await response.json()) as ApiResponseBody<{
+        updated: boolean;
+      }>;
+      if (!response.ok || !result.success) {
+        setErrorMessage(
+          !result.success
+            ? result.error.message
+            : "Die Änderungen konnten nicht gespeichert werden."
+        );
+        return;
+      }
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2200);
+    } catch {
+      setErrorMessage(
+        "Die sichere Verbindung konnte nicht hergestellt werden."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -91,23 +116,49 @@ export default function ProfileForm({ user }: ProfileFormProps) {
           </p>
         </div>
         <div className="mt-7 grid gap-5 sm:grid-cols-2">
-          <FormField label="Vorname" name="firstName" defaultValue={firstName} />
+          <FormField
+            label="Vorname"
+            name="firstName"
+            defaultValue={firstName}
+          />
           <FormField label="Nachname" name="lastName" defaultValue={lastName} />
-          <FormField label="E-Mail" name="email" type="email" defaultValue={email} />
-          <FormField label="Telefon" hint="OPTIONAL" name="phone" placeholder="+49 ..." />
-          <FormField label="Unternehmen" hint="OPTIONAL" name="company" placeholder="Unternehmen" />
+          <FormField
+            label="E-Mail"
+            name="email"
+            type="email"
+            defaultValue={email}
+          />
+          <FormField
+            label="Telefon"
+            hint="OPTIONAL"
+            name="phone"
+            placeholder="+49 ..."
+          />
+          <FormField
+            label="Unternehmen"
+            hint="OPTIONAL"
+            name="company"
+            placeholder="Unternehmen"
+          />
           <FormField label="Region" name="region" defaultValue="Deutschland" />
         </div>
         {errorMessage && (
-          <p role="alert" className="mt-4 rounded-lg border border-rose-400/25 bg-rose-500/[0.06] px-4 py-3 text-xs text-rose-200/80">
+          <p
+            role="alert"
+            className="mt-4 rounded-lg border border-rose-400/25 bg-rose-500/[0.06] px-4 py-3 text-xs text-rose-200/80"
+          >
             {errorMessage}
           </p>
         )}
         <div className="mt-8 flex items-center justify-between border-t border-white/[0.06] pt-6">
-          <p className={`text-[10px] transition-opacity ${saved ? "text-emerald-200/60 opacity-100" : "opacity-0"}`}>
+          <p
+            className={`text-[10px] transition-opacity ${saved ? "text-emerald-200/60 opacity-100" : "opacity-0"}`}
+          >
             Änderungen lokal gespeichert.
           </p>
-          <Button type="submit">Profil speichern</Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? "Wird sicher gespeichert..." : "Profil speichern"}
+          </Button>
         </div>
       </section>
     </form>

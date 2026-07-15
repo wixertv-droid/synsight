@@ -12,12 +12,19 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from "./config";
 import { createSessionToken, verifySessionToken } from "./session-token";
+import { getSessionRepository, getUserRepository } from "@/lib/repositories";
+import { toDisplayName } from "@/lib/repositories/user-repository";
+import { hashToken } from "@/lib/utils/crypto";
 import type { AuthenticatedUser } from "./types";
 
-export async function createSession(user: AuthenticatedUser): Promise<string> {
+export async function createSession(
+  user: AuthenticatedUser,
+  sessionId: string
+): Promise<string> {
   const token = await createSessionToken(
     {
       sub: user.id,
+      sid: sessionId,
       displayName: user.displayName,
       email: user.email,
       role: user.role,
@@ -48,16 +55,40 @@ export async function destroySession(): Promise<void> {
   });
 }
 
-export const getCurrentUser = cache(async (): Promise<AuthenticatedUser | null> => {
+export async function getSessionToken(): Promise<string | null> {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  const payload = await verifySessionToken(token);
-  if (!payload) return null;
+  return cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
+}
 
-  return {
-    id: payload.sub,
-    displayName: payload.displayName,
-    email: payload.email,
-    role: payload.role,
-  };
-});
+export const getCurrentUser = cache(
+  async (): Promise<AuthenticatedUser | null> => {
+    const token = await getSessionToken();
+    const payload = await verifySessionToken(token);
+    if (!payload) return null;
+
+    if (token) {
+      const sessionRepository = getSessionRepository();
+      const session = await sessionRepository.findActiveByTokenHash(
+        hashToken(token)
+      );
+      if (!session || session.id !== payload.sid) return null;
+
+      const user = await getUserRepository().findById(session.userId);
+      if (!user || user.status !== "active") return null;
+      await sessionRepository.touch(session.id);
+      return {
+        id: String(user.id),
+        displayName: toDisplayName(user),
+        email: user.email,
+        role: user.role,
+      };
+    }
+
+    return {
+      id: payload.sub,
+      displayName: payload.displayName,
+      email: payload.email,
+      role: payload.role,
+    };
+  }
+);

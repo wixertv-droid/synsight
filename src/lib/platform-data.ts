@@ -12,6 +12,7 @@ export const dashboardMetrics: DashboardMetric[] = [
     detail: "Signale zugeordnet",
     trend: "+12 seit letzter Analyse",
     tone: "cyan",
+    info: "Ihr digitaler Fußabdruck fasst öffentlich auffindbare Profile, Aliase und Erwähnungen zusammen, die SynSight Ihrer Identität zuordnen konnte.",
   },
   {
     label: "Datenleck-Risiko",
@@ -19,6 +20,7 @@ export const dashboardMetrics: DashboardMetric[] = [
     detail: "Warnungen prüfen",
     trend: "1 hohe Priorität",
     tone: "red",
+    info: "Das Datenleck-Risiko zeigt bekannte oder wahrscheinliche Leaks mit Bezug zu Ihrer E-Mail, Ihren Aliasen oder verknüpften Konten.",
   },
   {
     label: "Online-Sichtbarkeit",
@@ -48,14 +50,16 @@ export const riskSignals: RiskSignal[] = [
     id: "risk-account",
     level: "medium",
     title: "Altes Benutzerkonto gefunden",
-    description: "Ein seit 2019 inaktives Konto ist weiterhin öffentlich sichtbar.",
+    description:
+      "Ein seit 2019 inaktives Konto ist weiterhin öffentlich sichtbar.",
     source: "Account Discovery",
   },
   {
     id: "risk-leak",
     level: "high",
     title: "Datenleck erkannt",
-    description: "Eine E-Mail-Adresse erscheint in einem bekannten Leak-Datensatz.",
+    description:
+      "Eine E-Mail-Adresse erscheint in einem bekannten Leak-Datensatz.",
     source: "Leak Intelligence",
   },
 ];
@@ -72,23 +76,25 @@ export const recommendations: Recommendation[] = [
   {
     id: "recommendation-password",
     title: "Passwort aktualisieren",
-    description: "Ändern Sie das Passwort des betroffenen Kontos und aktivieren Sie 2FA.",
+    description:
+      "Ändern Sie das Passwort des betroffenen Kontos und aktivieren Sie 2FA.",
     priority: "Jetzt",
     completed: false,
   },
   {
     id: "recommendation-profile",
     title: "Altes Profil entfernen",
-    description: "Schließen Sie das nicht mehr verwendete Profil oder reduzieren Sie dessen Sichtbarkeit.",
+    description:
+      "Schließen Sie das nicht mehr verwendete Profil oder reduzieren Sie dessen Sichtbarkeit.",
     priority: "Diese Woche",
     completed: false,
   },
   {
     id: "recommendation-privacy",
     title: "Privatsphäre erhöhen",
-    description: "Passen Sie die Sichtbarkeit Ihrer öffentlichen Social-Profile an.",
+    description:
+      "Passen Sie die Sichtbarkeit Ihrer öffentlichen Social-Profile an.",
     priority: "Empfohlen",
     completed: false,
   },
 ];
-

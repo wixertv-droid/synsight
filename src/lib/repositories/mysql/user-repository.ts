@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { SynSightDatabase } from "@/lib/database/client";
 import { profiles, users } from "@/lib/database/schema";
 import type { UserRole } from "@/lib/auth/types";
@@ -12,7 +12,9 @@ function resolveRole(username: string): UserRole {
   return username.toLowerCase() === "admin" ? "admin" : "demo";
 }
 
-export function createMysqlUserRepository(db: SynSightDatabase): UserRepository {
+export function createMysqlUserRepository(
+  db: SynSightDatabase
+): UserRepository {
   return {
     async findByUsername(username: string) {
       const rows = await db
@@ -22,6 +24,8 @@ export function createMysqlUserRepository(db: SynSightDatabase): UserRepository 
           username: users.username,
           passwordHash: users.passwordHash,
           status: users.status,
+          failedLoginAttempts: users.failedLoginAttempts,
+          lockedUntil: users.lockedUntil,
           firstName: profiles.firstName,
           lastName: profiles.lastName,
         })
@@ -42,6 +46,8 @@ export function createMysqlUserRepository(db: SynSightDatabase): UserRepository 
         firstName: row.firstName,
         lastName: row.lastName,
         role: resolveRole(row.username),
+        failedLoginAttempts: row.failedLoginAttempts,
+        lockedUntil: row.lockedUntil,
       } satisfies UserRecord;
     },
 
@@ -53,6 +59,8 @@ export function createMysqlUserRepository(db: SynSightDatabase): UserRepository 
           username: users.username,
           passwordHash: users.passwordHash,
           status: users.status,
+          failedLoginAttempts: users.failedLoginAttempts,
+          lockedUntil: users.lockedUntil,
           firstName: profiles.firstName,
           lastName: profiles.lastName,
         })
@@ -73,6 +81,8 @@ export function createMysqlUserRepository(db: SynSightDatabase): UserRepository 
         firstName: row.firstName,
         lastName: row.lastName,
         role: resolveRole(row.username),
+        failedLoginAttempts: row.failedLoginAttempts,
+        lockedUntil: row.lockedUntil,
       } satisfies UserRecord;
     },
 
@@ -84,6 +94,8 @@ export function createMysqlUserRepository(db: SynSightDatabase): UserRepository 
           username: users.username,
           passwordHash: users.passwordHash,
           status: users.status,
+          failedLoginAttempts: users.failedLoginAttempts,
+          lockedUntil: users.lockedUntil,
           firstName: profiles.firstName,
           lastName: profiles.lastName,
         })
@@ -104,7 +116,68 @@ export function createMysqlUserRepository(db: SynSightDatabase): UserRepository 
         firstName: row.firstName,
         lastName: row.lastName,
         role: resolveRole(row.username),
+        failedLoginAttempts: row.failedLoginAttempts,
+        lockedUntil: row.lockedUntil,
       } satisfies UserRecord;
+    },
+
+    async create(input) {
+      return db.transaction(async (transaction) => {
+        const result = await transaction.insert(users).values({
+          email: input.email,
+          username: input.username,
+          passwordHash: input.passwordHash,
+          status: "pending_verification",
+        });
+        const id = Number(result[0].insertId);
+        await transaction.insert(profiles).values({
+          userId: id,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          region: "EU",
+          locale: "de-DE",
+          onboardingStep: 0,
+        });
+        return {
+          id,
+          email: input.email,
+          username: input.username,
+          passwordHash: input.passwordHash,
+          status: "pending_verification",
+          firstName: input.firstName,
+          lastName: input.lastName,
+          role: resolveRole(input.username),
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        };
+      });
+    },
+
+    async activate(id) {
+      await db
+        .update(users)
+        .set({
+          status: "active",
+          emailVerifiedAt: sql`CURRENT_TIMESTAMP(3)`,
+        })
+        .where(eq(users.id, id));
+    },
+
+    async recordFailedLogin(id, lockedUntil) {
+      await db
+        .update(users)
+        .set({
+          failedLoginAttempts: sql`${users.failedLoginAttempts} + 1`,
+          lockedUntil,
+        })
+        .where(eq(users.id, id));
+    },
+
+    async clearFailedLogins(id) {
+      await db
+        .update(users)
+        .set({ failedLoginAttempts: 0, lockedUntil: null })
+        .where(eq(users.id, id));
     },
 
     async updateLastLogin(id: number) {
@@ -118,7 +191,9 @@ export function createMysqlUserRepository(db: SynSightDatabase): UserRepository 
   };
 }
 
-export function createUserRepository(db: SynSightDatabase | null): UserRepository {
+export function createUserRepository(
+  db: SynSightDatabase | null
+): UserRepository {
   if (db) {
     return createMysqlUserRepository(db);
   }

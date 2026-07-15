@@ -1,7 +1,7 @@
 /**
  * Profile service — read and update user profile data.
  */
-import { getProfileRepository } from "@/lib/repositories";
+import { getAuditRepository, getProfileRepository } from "@/lib/repositories";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 import type { Profile } from "@/types/domain";
 import { profileSchema } from "@/lib/validation/profile";
@@ -21,7 +21,9 @@ export async function getProfileForUser(
 
 export function validateProfileInput(
   input: unknown
-): { success: true; data: ProfileUpdateInput } | { success: false; message: string } {
+):
+  | { success: true; data: ProfileUpdateInput }
+  | { success: false; message: string } {
   const parsed = profileSchema.safeParse(input);
   if (!parsed.success) {
     return {
@@ -30,4 +32,21 @@ export function validateProfileInput(
     };
   }
   return { success: true, data: parsed.data };
+}
+
+export async function updateProfileForUser(
+  user: AuthenticatedUser,
+  input: ProfileUpdateInput
+): Promise<void> {
+  const userId = Number(user.id);
+  if (!Number.isFinite(userId)) {
+    throw new Error("Invalid authenticated user.");
+  }
+  await getProfileRepository().update(userId, input);
+  await getAuditRepository().create({
+    userId,
+    eventType: "profile.updated",
+    entityType: "profile",
+    entityId: String(userId),
+  });
 }

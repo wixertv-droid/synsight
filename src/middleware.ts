@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { PROTECTED_ROUTE_PREFIXES, SESSION_COOKIE_NAME } from "@/lib/auth/config";
+import {
+  PROTECTED_ROUTE_PREFIXES,
+  SESSION_COOKIE_NAME,
+} from "@/lib/auth/config";
 import { verifySessionToken } from "@/lib/auth/session-token";
 
 /**
@@ -35,5 +38,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile/:path*", "/settings/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/profile/:path*",
+    "/settings/:path*",
+    "/onboarding/:path*",
+  ],
 };

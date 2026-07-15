@@ -1,4 +1,5 @@
 import StatusDot from "@/components/ui/StatusDot";
+import InfoTooltip from "@/components/ui/InfoTooltip";
 
 export default function SecurityPanel() {
   return (
@@ -11,6 +12,11 @@ export default function SecurityPanel() {
             <span className="font-mono text-[9px] tracking-[.18em] text-emerald-100/50">
               SYNSIGHT AI SECURITY STATUS
             </span>
+            <InfoTooltip label="Risiko Score">
+              Der Risiko Score verdichtet aktuelle Signale, Datenleck-Hinweise
+              und Sichtbarkeit zu einem Gesamtstatus Ihrer digitalen Sicherheit
+              (0–100). Höhere Werte bedeuten einen stärkeren Schutzstatus.
+            </InfoTooltip>
           </div>
           <h2 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white md:text-4xl">
             System online.
@@ -31,7 +37,14 @@ export default function SecurityPanel() {
 
         <div className="relative flex h-44 w-44 items-center justify-center justify-self-center lg:h-48 lg:w-48">
           <svg viewBox="0 0 200 200" className="absolute inset-0 -rotate-90">
-            <circle cx="100" cy="100" r="78" fill="none" stroke="rgba(255,255,255,.055)" strokeWidth="8" />
+            <circle
+              cx="100"
+              cy="100"
+              r="78"
+              fill="none"
+              stroke="rgba(255,255,255,.055)"
+              strokeWidth="8"
+            />
             <circle
               cx="100"
               cy="100"

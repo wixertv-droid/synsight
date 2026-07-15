@@ -2,29 +2,29 @@
  * Application-level authentication service.
  *
  * Route Handlers call this layer instead of talking to repositories or
- * `session.ts` directly. When `DATABASE_URL` is set, credentials are
- * verified against Argon2id hashes in MySQL; otherwise the development
- * fallback in `dev-provider.ts` is used.
+ * `session.ts` directly. Credentials are always verified with Argon2id;
+ * repositories transparently select MySQL or the local development store.
  */
-import { DEV_AUTH_PASSWORD, DEV_AUTH_USERNAME } from "@/lib/auth/config";
-import { authenticateWithDevCredentials } from "@/lib/auth/dev-provider";
-import { verifyPassword } from "@/lib/auth/password";
-import { createSession, destroySession } from "@/lib/auth/session";
-import { SESSION_MAX_AGE_SECONDS } from "@/lib/auth/config";
-import { isDatabaseConfigured } from "@/lib/database/client";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import {
+  createSession,
+  destroySession,
+  getSessionToken,
+} from "@/lib/auth/session";
+import { verifySessionToken } from "@/lib/auth/session-token";
+import { SESSION_MAX_AGE_SECONDS } from "@/lib/auth/config";
+import {
+  getAuditRepository,
   getSessionRepository,
   getUserRepository,
 } from "@/lib/repositories";
-import {
-  findUserByIdentifier,
-} from "@/lib/repositories/mysql/user-repository";
-import {
-  toDisplayName,
-} from "@/lib/repositories/user-repository";
+import { findUserByIdentifier } from "@/lib/repositories/mysql/user-repository";
+import { toDisplayName } from "@/lib/repositories/user-repository";
 import { createSessionId, hashToken } from "@/lib/utils/crypto";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 import type { UserRecord } from "@/lib/repositories/user-repository";
+import type { RegisterInput } from "@/lib/validation/auth";
+import { issueEmailVerification } from "./verification-service";
 
 function toAuthenticatedUser(record: UserRecord): AuthenticatedUser {
   return {
@@ -35,43 +35,38 @@ function toAuthenticatedUser(record: UserRecord): AuthenticatedUser {
   };
 }
 
-async function loginWithDatabase(
-  identifier: string,
-  password: string,
+export type LoginResult =
+  | { status: "success"; user: AuthenticatedUser }
+  | { status: "invalid" | "locked" | "verification_required" };
+
+export type RegistrationResult =
+  | {
+      status: "created";
+      email: string;
+      verificationToken: string;
+    }
+  | { status: "email_exists" };
+
+async function createAuthenticatedSession(
+  record: UserRecord,
   requestMeta?: { ipAddress?: string | null; userAgent?: string | null }
-): Promise<AuthenticatedUser | null> {
-  const userRepository = getUserRepository();
-  const record = await findUserByIdentifier(userRepository, identifier);
-
-  if (!record || record.status !== "active") {
-    return null;
-  }
-
-  const passwordValid = await verifyPassword(record.passwordHash, password);
-  if (!passwordValid) {
-    return null;
-  }
-
-  await userRepository.updateLastLogin(record.id);
-
+): Promise<AuthenticatedUser> {
   const authUser = toAuthenticatedUser(record);
-  const token = await createSession(authUser);
-
-  const sessionRepository = getSessionRepository();
+  const sessionId = createSessionId();
+  const token = await createSession(authUser, sessionId);
   const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000)
     .toISOString()
     .slice(0, 23)
     .replace("T", " ");
 
-  await sessionRepository.create({
-    id: createSessionId(),
+  await getSessionRepository().create({
+    id: sessionId,
     userId: record.id,
     tokenHash: hashToken(token),
     ipAddress: requestMeta?.ipAddress ?? null,
     userAgent: requestMeta?.userAgent ?? null,
     expiresAt,
   });
-
   return authUser;
 }
 
@@ -79,35 +74,117 @@ export async function loginWithCredentials(
   identifier: string,
   password: string,
   requestMeta?: { ipAddress?: string | null; userAgent?: string | null }
-): Promise<AuthenticatedUser | null> {
-  if (isDatabaseConfigured()) {
-    return loginWithDatabase(identifier, password, requestMeta);
+): Promise<LoginResult> {
+  const userRepository = getUserRepository();
+  const record = await findUserByIdentifier(userRepository, identifier);
+
+  if (!record) {
+    await getAuditRepository().create({
+      eventType: "auth.login.failed",
+      ipAddress: requestMeta?.ipAddress,
+      metadata: { reason: "invalid_credentials" },
+    });
+    return { status: "invalid" };
   }
 
-  const user = await authenticateWithDevCredentials(identifier, password);
-  if (!user) return null;
+  if (
+    record.lockedUntil &&
+    new Date(record.lockedUntil).getTime() > Date.now()
+  ) {
+    return { status: "locked" };
+  }
 
-  await createSession(user);
-  return user;
+  if (record.status === "pending_verification") {
+    return { status: "verification_required" };
+  }
+  if (record.status !== "active") {
+    return { status: "invalid" };
+  }
+
+  const passwordValid = await verifyPassword(record.passwordHash, password);
+  if (!passwordValid) {
+    const attempts = record.failedLoginAttempts + 1;
+    const lockedUntil =
+      attempts >= 5
+        ? new Date(Date.now() + 15 * 60_000)
+            .toISOString()
+            .slice(0, 23)
+            .replace("T", " ")
+        : null;
+    await userRepository.recordFailedLogin(record.id, lockedUntil);
+    await getAuditRepository().create({
+      userId: record.id,
+      eventType: "auth.login.failed",
+      ipAddress: requestMeta?.ipAddress,
+      metadata: {
+        reason: "invalid_credentials",
+        accountLocked: Boolean(lockedUntil),
+      },
+    });
+    return { status: lockedUntil ? "locked" : "invalid" };
+  }
+
+  await userRepository.clearFailedLogins(record.id);
+  await userRepository.updateLastLogin(record.id);
+  const user = await createAuthenticatedSession(record, requestMeta);
+  await getAuditRepository().create({
+    userId: record.id,
+    eventType: "auth.login.succeeded",
+    ipAddress: requestMeta?.ipAddress,
+  });
+  return { status: "success", user };
 }
 
-/**
- * DEVELOPMENT ONLY: creates a session for a freshly "registered" identity
- * without persisting anything. A real implementation must create a user
- * row, hash the password, send a verification email, and only issue a
- * session once the account is confirmed.
- */
-export async function registerDevUser(user: AuthenticatedUser): Promise<void> {
-  await createSession(user);
+export async function registerUser(
+  input: RegisterInput,
+  requestMeta?: { ipAddress?: string | null }
+): Promise<RegistrationResult> {
+  const repository = getUserRepository();
+  if (await repository.findByEmail(input.email)) {
+    return { status: "email_exists" };
+  }
+
+  const localPart =
+    input.email
+      .split("@")[0]
+      ?.replace(/[^a-z0-9._-]/gi, "")
+      .toLowerCase() || "user";
+  let username = localPart;
+  if (await repository.findByUsername(username)) {
+    username = `${localPart}-${createSessionId().slice(0, 8)}`;
+  }
+
+  const user = await repository.create({
+    email: input.email,
+    username,
+    passwordHash: await hashPassword(input.password),
+    firstName: input.firstName,
+    lastName: input.lastName,
+  });
+  const verificationToken = await issueEmailVerification(user.id);
+  await getAuditRepository().create({
+    userId: user.id,
+    eventType: "auth.registration",
+    entityType: "user",
+    entityId: String(user.id),
+    ipAddress: requestMeta?.ipAddress,
+  });
+  return {
+    status: "created",
+    email: user.email,
+    verificationToken,
+  };
 }
 
 export async function logout(): Promise<void> {
+  const token = await getSessionToken();
+  const payload = await verifySessionToken(token);
+  if (payload) {
+    await getSessionRepository().revoke(payload.sid);
+    await getAuditRepository().create({
+      userId: Number(payload.sub) || null,
+      eventType: "auth.logout",
+    });
+  }
   await destroySession();
-}
-
-export function getDevCredentialsHint(): { username: string; password: string } {
-  return {
-    username: DEV_AUTH_USERNAME,
-    password: DEV_AUTH_PASSWORD,
-  };
 }

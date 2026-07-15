@@ -1,15 +1,32 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { registerDevUser } from "@/lib/services/auth-service";
+import { registerUser } from "@/lib/services/auth-service";
 import { registerSchema } from "@/lib/validation/auth";
+import {
+  checkRateLimit,
+  rateLimitHeaders,
+  recordRateLimitFailure,
+  REGISTER_RATE_LIMIT,
+} from "@/lib/security/rate-limit";
+import { getClientIp, validateMutationOrigin } from "@/lib/security/request";
 
-/**
- * DEVELOPMENT ONLY: issues a session for the submitted identity without
- * persisting anything. A production implementation must create a `users`
- * row, hash the password (Argon2id), and send an email verification link
- * before ever issuing a session — see docs/AUDIT_REPORT.md.
- */
 export async function POST(request: Request) {
+  const csrfError = validateMutationOrigin(request);
+  if (csrfError) return csrfError;
+
+  const ipAddress = getClientIp(request);
+  const rateLimitKey = `register:${ipAddress}`;
+  const currentLimit = checkRateLimit(rateLimitKey, REGISTER_RATE_LIMIT);
+  if (!currentLimit.allowed) {
+    return NextResponse.json(
+      apiError(
+        "RATE_LIMITED",
+        "Zu viele Registrierungsversuche. Bitte versuchen Sie es später erneut."
+      ),
+      { status: 429, headers: rateLimitHeaders(currentLimit) }
+    );
+  }
+
   const json = await request.json().catch(() => null);
   const parsed = registerSchema.safeParse(json);
 
@@ -23,12 +40,27 @@ export async function POST(request: Request) {
     );
   }
 
-  await registerDevUser({
-    id: `dev-${Date.now()}`,
-    displayName: `${parsed.data.firstName} ${parsed.data.lastName}`.trim(),
-    email: parsed.data.email,
-    role: "demo",
-  });
+  const result = await registerUser(parsed.data, { ipAddress });
+  if (result.status === "email_exists") {
+    recordRateLimitFailure(rateLimitKey, REGISTER_RATE_LIMIT);
+    return NextResponse.json(
+      apiError(
+        "EMAIL_EXISTS",
+        "Für diese E-Mail-Adresse besteht bereits ein Konto."
+      ),
+      { status: 409 }
+    );
+  }
 
-  return NextResponse.json(apiSuccess({ redirectTo: "/onboarding" }));
+  const previewToken =
+    process.env.NODE_ENV === "production" ? null : result.verificationToken;
+  const query = new URLSearchParams({ email: result.email });
+  if (previewToken) query.set("preview", previewToken);
+
+  return NextResponse.json(
+    apiSuccess({
+      redirectTo: `/verify-email?${query.toString()}`,
+    }),
+    { status: 201 }
+  );
 }

@@ -1,0 +1,7 @@
+.git
+.next
+node_modules
+coverage
+package-lock.json
+world-atlas
+*.min.js

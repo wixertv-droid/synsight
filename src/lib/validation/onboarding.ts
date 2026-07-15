@@ -1,41 +1,74 @@
 import { z } from "zod";
 
-/**
- * Prepared onboarding validation schemas.
- *
- * These are not yet wired into `OnboardingFlow` (no persistence exists
- * yet), but they define the exact shape a future `/api/onboarding` route
- * must accept so the client and server agree on validation rules from day
- * one.
- */
-
 export const onboardingIdentityStepSchema = z.object({
-  fullName: z.string().min(1, "Bitte geben Sie Ihren vollständigen Namen ein."),
-  email: z.string().email("Bitte geben Sie eine gültige E-Mail-Adresse ein."),
-  region: z.string().min(1, "Bitte wählen Sie ein Land oder eine Region aus."),
-  alias: z.string().optional(),
+  firstName: z.string().trim().min(1).max(100),
+  lastName: z.string().trim().min(1).max(100),
+  publicAlias: z.string().trim().max(100).optional().default(""),
+  formerNames: z.array(z.string().trim().min(1).max(150)).max(20).default([]),
+  nicknames: z.array(z.string().trim().min(1).max(150)).max(20).default([]),
+  city: z.string().trim().max(100).optional().default(""),
+  country: z.string().trim().max(100).optional().default(""),
+  phoneNumbers: z.array(z.string().trim().min(5).max(32)).max(10).default([]),
+  additionalEmails: z
+    .array(z.string().trim().toLowerCase().email())
+    .max(10)
+    .default([]),
 });
 
-export const onboardingSourcesStepSchema = z.object({
-  emailAddresses: z.boolean(),
-  usernames: z.boolean(),
-  webMentions: z.boolean(),
-  knownDomains: z.boolean(),
+export const socialPlatformSchema = z.enum([
+  "Instagram",
+  "Facebook",
+  "LinkedIn",
+  "TikTok",
+  "YouTube",
+  "X",
+  "GitHub",
+  "Reddit",
+  "Pinterest",
+  "Discord",
+  "Telegram",
+  "Threads",
+  "Twitch",
+]);
+
+export const socialAccountSchema = z.object({
+  platform: socialPlatformSchema,
+  username: z.string().trim().min(1).max(150),
+  profileUrl: z
+    .union([z.literal(""), z.string().trim().url().max(500)])
+    .default(""),
 });
 
-export const onboardingPreferencesStepSchema = z.object({
-  continuousMonitoring: z.boolean(),
-  criticalAlerts: z.boolean(),
-  monthlySummary: z.boolean(),
-  aiRecommendations: z.boolean(),
+export const onboardingDigitalIdentityStepSchema = z.object({
+  socialAccounts: z.array(socialAccountSchema).max(30).default([]),
 });
 
-export type OnboardingIdentityInput = z.infer<
-  typeof onboardingIdentityStepSchema
->;
-export type OnboardingSourcesInput = z.infer<
-  typeof onboardingSourcesStepSchema
->;
-export type OnboardingPreferencesInput = z.infer<
-  typeof onboardingPreferencesStepSchema
->;
+export const onboardingAdditionalDataStepSchema = z.object({
+  oldUsernames: z.array(z.string().trim().min(1).max(150)).max(30).default([]),
+  gamingNames: z.array(z.string().trim().min(1).max(150)).max(30).default([]),
+  websites: z.array(z.string().trim().url().max(500)).max(20).default([]),
+  domains: z.array(z.string().trim().min(3).max(255)).max(20).default([]),
+  companies: z.array(z.string().trim().min(1).max(150)).max(20).default([]),
+  publicProfiles: z.array(z.string().trim().url().max(500)).max(20).default([]),
+});
+
+export const onboardingImageStepSchema = z.object({
+  images: z
+    .array(
+      z.object({
+        imageType: z.enum(["front", "left_profile", "right_profile", "angled"]),
+        storagePath: z.string().trim().min(1).max(500),
+      })
+    )
+    .max(4)
+    .default([]),
+});
+
+export const onboardingPayloadSchema = z.object({
+  identity: onboardingIdentityStepSchema,
+  digitalIdentity: onboardingDigitalIdentityStepSchema,
+  additionalData: onboardingAdditionalDataStepSchema,
+  imageProfile: onboardingImageStepSchema,
+});
+
+export type OnboardingPayload = z.infer<typeof onboardingPayloadSchema>;

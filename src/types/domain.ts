@@ -1,19 +1,16 @@
 /**
  * Persistence-oriented domain entities.
  *
- * These interfaces describe data as it will exist once the platform is
- * backed by MySQL (see `database/migrations/001_initial_schema.sql`). They are
- * intentionally decoupled from `types/platform.ts`, which holds UI-facing
- * view models (dashboard cards, risk tiles, etc.) — components should never
- * assume a page renders these entities directly; a future service layer is
- * responsible for mapping between the two.
+ * These interfaces describe data as it exists in the MySQL model
+ * (`database/migrations/001_initial_schema.sql` +
+ * `002_production_identity.sql`). They are intentionally decoupled from
+ * `types/platform.ts`, which holds UI-facing view models — components should
+ * never assume a page renders these entities directly; the service layer maps
+ * between the two.
  */
 
 export type UserStatus =
-  | "pending_verification"
-  | "active"
-  | "suspended"
-  | "deleted";
+  "pending_verification" | "active" | "suspended" | "deleted";
 
 export interface User {
   id: number;
@@ -21,6 +18,8 @@ export interface User {
   username: string;
   passwordHash: string;
   status: UserStatus;
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
   emailVerifiedAt: string | null;
   lastLoginAt: string | null;
   createdAt: string;
@@ -50,6 +49,55 @@ export interface Profile {
   publicAlias: string | null;
   onboardingStep: number;
   onboardingCompletedAt: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type ProfileAliasType =
+  "public_alias" | "former_name" | "nickname" | "username" | "gaming_name";
+
+export interface ProfileAlias {
+  id: number;
+  userId: number;
+  alias: string;
+  aliasType: ProfileAliasType;
+  createdAt: string;
+}
+
+export interface ProfilePhoneNumber {
+  id: number;
+  userId: number;
+  phoneNumber: string;
+  label: string | null;
+  createdAt: string;
+}
+
+export interface ProfileAdditionalEmail {
+  id: number;
+  userId: number;
+  email: string;
+  createdAt: string;
+}
+
+export interface SocialAccount {
+  id: number;
+  userId: number;
+  platform: string;
+  username: string;
+  profileUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProfileImageType =
+  "front" | "left_profile" | "right_profile" | "angled";
+
+export interface ProfileImage {
+  id: number;
+  userId: number;
+  imageType: ProfileImageType;
+  storagePath: string;
+  uploadedAt: string;
 }
 
 export interface SecurityProfile {
@@ -66,11 +114,7 @@ export interface SecurityProfile {
 }
 
 export type AnalysisReportStatus =
-  | "queued"
-  | "running"
-  | "completed"
-  | "failed"
-  | "cancelled";
+  "queued" | "running" | "completed" | "failed" | "cancelled";
 
 export interface AnalysisReport {
   id: number;
@@ -110,11 +154,7 @@ export interface SubscriptionPlan {
 }
 
 export type SubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "cancelled"
-  | "expired";
+  "trialing" | "active" | "past_due" | "cancelled" | "expired";
 
 export interface Subscription {
   id: number;
@@ -161,10 +201,7 @@ export interface AuditEvent {
   createdAt: string;
 }
 
-export type UserTokenType =
-  | "password_reset"
-  | "email_verification"
-  | "api_key";
+export type UserTokenType = "password_reset" | "email_verification" | "api_key";
 
 export interface UserToken {
   id: number;

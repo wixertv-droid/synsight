@@ -13,20 +13,22 @@
  * database-backed sessions without changing callers of `getCurrentUser()`.
  */
 
-const SESSION_SECRET =
-  process.env.SESSION_SECRET ?? "development-only-insecure-secret-change-me";
-
-if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
-  console.warn(
-    "[synsight] SESSION_SECRET is not set. Using an insecure development " +
-      "fallback secret in production is unsafe — configure a real secret " +
-      "before shipping real authentication."
-  );
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (
+    process.env.NODE_ENV === "production" &&
+    (!secret || secret.length < 32)
+  ) {
+    throw new Error("Secure session configuration is unavailable.");
+  }
+  return secret ?? "development-only-insecure-secret-change-me";
 }
 
 export interface SessionPayload {
   /** Subject — the authenticated user's id. */
   sub: string;
+  /** Server-side session id used for rotation and revocation. */
+  sid: string;
   displayName: string;
   email: string;
   role: "admin" | "demo";
@@ -42,7 +44,7 @@ function getSigningKey(): Promise<CryptoKey> {
   if (!cachedKey) {
     cachedKey = crypto.subtle.importKey(
       "raw",
-      new TextEncoder().encode(SESSION_SECRET),
+      new TextEncoder().encode(getSessionSecret()),
       { name: "HMAC", hash: "SHA-256" },
       false,
       ["sign", "verify"]
@@ -56,7 +58,10 @@ function toBase64Url(bytes: Uint8Array): string {
   bytes.forEach((byte) => {
     binary += String.fromCharCode(byte);
   });
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 function fromBase64Url(value: string): Uint8Array {
@@ -70,7 +75,10 @@ function fromBase64Url(value: string): Uint8Array {
 }
 
 export async function createSessionToken(
-  payload: Pick<SessionPayload, "sub" | "displayName" | "email" | "role">,
+  payload: Pick<
+    SessionPayload,
+    "sub" | "sid" | "displayName" | "email" | "role"
+  >,
   maxAgeSeconds: number
 ): Promise<string> {
   const issuedAt = Math.floor(Date.now() / 1000);
@@ -112,7 +120,12 @@ export async function verifySessionToken(
       new TextDecoder().decode(fromBase64Url(body))
     ) as SessionPayload;
 
-    if (payload.exp < Math.floor(Date.now() / 1000)) {
+    if (
+      typeof payload.sub !== "string" ||
+      typeof payload.sid !== "string" ||
+      typeof payload.exp !== "number" ||
+      payload.exp < Math.floor(Date.now() / 1000)
+    ) {
       return null;
     }
 
