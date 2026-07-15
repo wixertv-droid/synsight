@@ -12,9 +12,9 @@ const memory = globalThis as typeof globalThis & {
 };
 
 export function createInMemoryProfileRepository(): ProfileRepository {
-  const profiles =
+  const profiles: Map<number, Profile> =
     memory.__synsightProfiles ??
-    (memory.__synsightProfiles = new Map([
+    (memory.__synsightProfiles = new Map<number, Profile>([
       [
         1,
         {

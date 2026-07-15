@@ -15,6 +15,15 @@ export default defineConfig({
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
+    env: {
+      ...process.env,
+      NODE_ENV: "production",
+      APP_URL: "http://127.0.0.1:3000",
+      SESSION_SECRET:
+        process.env.SESSION_SECRET ?? "playwright-e2e-session-secret-32chars!",
+      ALLOW_DEV_AUTH: "false",
+      EMAIL_DELIVERY_MODE: "disabled",
+    },
   },
   projects: [
     {
