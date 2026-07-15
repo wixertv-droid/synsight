@@ -47,7 +47,18 @@ export type RegistrationResult =
       email: string;
       verificationToken: string;
     }
-  | { status: "email_exists" };
+  | { status: "email_exists" }
+  | { status: "reserved_username" };
+
+const RESERVED_USERNAMES = new Set([
+  "admin",
+  "administrator",
+  "root",
+  "system",
+  "synsight",
+  "support",
+  "security",
+]);
 
 async function createAuthenticatedSession(
   record: UserRecord,
@@ -151,9 +162,18 @@ export async function registerUser(
       .split("@")[0]
       ?.replace(/[^a-z0-9._-]/gi, "")
       .toLowerCase() || "user";
+
+  if (RESERVED_USERNAMES.has(localPart)) {
+    return { status: "reserved_username" };
+  }
+
   let username = localPart;
   if (await repository.findByUsername(username)) {
     username = `${localPart}-${createSessionId().slice(0, 8)}`;
+  }
+
+  if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+    return { status: "reserved_username" };
   }
 
   const user = await repository.create({

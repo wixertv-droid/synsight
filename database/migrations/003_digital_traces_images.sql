@@ -1,5 +1,8 @@
 -- SynSight Sprint 5 completion: digital traces + image pipeline metadata
 -- MySQL 8 compatible; apply after 002_production_identity.sql.
+-- Idempotent: safe to re-run if previous apply crashed mid-file.
+
+SET @db := DATABASE();
 
 CREATE TABLE IF NOT EXISTS `digital_traces` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -15,10 +18,44 @@ CREATE TABLE IF NOT EXISTS `digital_traces` (
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-ALTER TABLE `profile_images`
-  ADD COLUMN `original_path` VARCHAR(500) NULL AFTER `storage_path`,
-  ADD COLUMN `analysis_path` VARCHAR(500) NULL AFTER `original_path`,
-  ADD COLUMN `thumbnail_path` VARCHAR(500) NULL AFTER `analysis_path`,
-  ADD COLUMN `content_hash` VARCHAR(64) NULL AFTER `thumbnail_path`,
-  ADD COLUMN `mime_type` VARCHAR(100) NULL AFTER `content_hash`,
-  ADD COLUMN `byte_size` INT UNSIGNED NULL AFTER `mime_type`;
+SET @exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = @db AND TABLE_NAME = 'profile_images' AND COLUMN_NAME = 'original_path'
+);
+SET @sql := IF(@exists = 0, 'ALTER TABLE `profile_images` ADD COLUMN `original_path` VARCHAR(500) NULL AFTER `storage_path`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = @db AND TABLE_NAME = 'profile_images' AND COLUMN_NAME = 'analysis_path'
+);
+SET @sql := IF(@exists = 0, 'ALTER TABLE `profile_images` ADD COLUMN `analysis_path` VARCHAR(500) NULL AFTER `original_path`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = @db AND TABLE_NAME = 'profile_images' AND COLUMN_NAME = 'thumbnail_path'
+);
+SET @sql := IF(@exists = 0, 'ALTER TABLE `profile_images` ADD COLUMN `thumbnail_path` VARCHAR(500) NULL AFTER `analysis_path`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = @db AND TABLE_NAME = 'profile_images' AND COLUMN_NAME = 'content_hash'
+);
+SET @sql := IF(@exists = 0, 'ALTER TABLE `profile_images` ADD COLUMN `content_hash` VARCHAR(64) NULL AFTER `thumbnail_path`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = @db AND TABLE_NAME = 'profile_images' AND COLUMN_NAME = 'mime_type'
+);
+SET @sql := IF(@exists = 0, 'ALTER TABLE `profile_images` ADD COLUMN `mime_type` VARCHAR(100) NULL AFTER `content_hash`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = @db AND TABLE_NAME = 'profile_images' AND COLUMN_NAME = 'byte_size'
+);
+SET @sql := IF(@exists = 0, 'ALTER TABLE `profile_images` ADD COLUMN `byte_size` INT UNSIGNED NULL AFTER `mime_type`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;

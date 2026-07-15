@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { getDatabaseHealth } from "@/lib/database/client";
-import { validateEnvironment } from "@/lib/config/env";
+import { isDatabaseRequired, validateEnvironment } from "@/lib/config/env";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const environment = validateEnvironment();
   const database = await getDatabaseHealth();
-  const healthy =
-    environment.valid && (!database.configured || database.reachable);
+  const databaseRequired = isDatabaseRequired();
+
+  const databaseOk = databaseRequired
+    ? database.configured && database.reachable
+    : !database.configured || database.reachable;
+
+  const healthy = environment.valid && databaseOk;
 
   return NextResponse.json(
     {
@@ -19,7 +24,9 @@ export async function GET() {
           ? database.reachable
             ? "ok"
             : "unreachable"
-          : "not_configured",
+          : databaseRequired
+            ? "required_missing"
+            : "not_configured",
       },
       timestamp: new Date().toISOString(),
     },

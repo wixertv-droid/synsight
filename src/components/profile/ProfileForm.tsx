@@ -11,6 +11,13 @@ import type { ApiResponseBody } from "@/lib/api/response";
 
 interface ProfileFormProps {
   user: AuthenticatedUser | null;
+  initialProfile?: {
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+    company: string | null;
+    region: string;
+  } | null;
 }
 
 function splitDisplayName(displayName: string): {
@@ -21,14 +28,22 @@ function splitDisplayName(displayName: string): {
   return { firstName, lastName: rest.join(" ") };
 }
 
-export default function ProfileForm({ user }: ProfileFormProps) {
+export default function ProfileForm({
+  user,
+  initialProfile = null,
+}: ProfileFormProps) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const displayName = user?.displayName ?? DEMO_USER.displayName;
   const email = user?.email || DEMO_USER.email;
-  const { firstName, lastName } = splitDisplayName(displayName);
+  const fromName = splitDisplayName(displayName);
+  const firstName = initialProfile?.firstName || fromName.firstName;
+  const lastName = initialProfile?.lastName || fromName.lastName;
+  const phone = initialProfile?.phone ?? "";
+  const company = initialProfile?.company ?? "";
+  const region = initialProfile?.region || "EU";
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -133,14 +148,16 @@ export default function ProfileForm({ user }: ProfileFormProps) {
             hint="OPTIONAL"
             name="phone"
             placeholder="+49 ..."
+            defaultValue={phone}
           />
           <FormField
             label="Unternehmen"
             hint="OPTIONAL"
             name="company"
             placeholder="Unternehmen"
+            defaultValue={company}
           />
-          <FormField label="Region" name="region" defaultValue="Deutschland" />
+          <FormField label="Region" name="region" defaultValue={region} />
         </div>
         {errorMessage && (
           <p
@@ -154,7 +171,7 @@ export default function ProfileForm({ user }: ProfileFormProps) {
           <p
             className={`text-[10px] transition-opacity ${saved ? "text-emerald-200/60 opacity-100" : "opacity-0"}`}
           >
-            Änderungen lokal gespeichert.
+            Änderungen sicher gespeichert.
           </p>
           <Button type="submit" disabled={saving}>
             {saving ? "Wird sicher gespeichert..." : "Profil speichern"}

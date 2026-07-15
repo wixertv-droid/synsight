@@ -12,10 +12,10 @@ export default function SecurityPanel() {
             <span className="font-mono text-[9px] tracking-[.18em] text-emerald-100/50">
               SYNSIGHT AI SECURITY STATUS
             </span>
-            <InfoTooltip label="Risiko Score">
-              Der Risiko Score verdichtet aktuelle Signale, Datenleck-Hinweise
+            <InfoTooltip label="Schutzstatus">
+              Der Schutzstatus verdichtet aktuelle Signale, Datenleck-Hinweise
               und Sichtbarkeit zu einem Gesamtstatus Ihrer digitalen Sicherheit
-              (0–100). Höhere Werte bedeuten einen stärkeren Schutzstatus.
+              (0–100). Höhere Werte bedeuten einen stärkeren Schutz.
             </InfoTooltip>
           </div>
           <h2 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white md:text-4xl">

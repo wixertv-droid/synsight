@@ -26,6 +26,17 @@ describe("validateMutationOrigin", () => {
     });
     expect(validateMutationOrigin(request)?.status).toBe(403);
   });
+
+  it("rejects missing Origin when CSRF_STRICT is enabled", () => {
+    const previous = process.env.CSRF_STRICT;
+    process.env.CSRF_STRICT = "true";
+    const request = new Request("https://synsight.de/api/auth/login", {
+      method: "POST",
+    });
+    expect(validateMutationOrigin(request)?.status).toBe(403);
+    if (previous === undefined) delete process.env.CSRF_STRICT;
+    else process.env.CSRF_STRICT = previous;
+  });
 });
 
 describe("getClientIp", () => {

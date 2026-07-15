@@ -26,7 +26,8 @@ describe("database migrations workflow", () => {
     );
     expect(pkg.scripts["db:migrate"]).toBe("tsx database/migrate.ts");
     expect(migrate).toContain("_synsight_schema_migrations");
-    expect(migrate).toContain("001");
+    expect(migrate).toContain("Checksum mismatch");
+    expect(migrate).toContain("GET_LOCK");
   });
 
   it("adds digital_traces and image pipeline columns in 003", () => {

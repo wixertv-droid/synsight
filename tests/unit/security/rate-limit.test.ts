@@ -27,7 +27,8 @@ describe("rate limit", () => {
     const now = 5_000;
     recordRateLimitFailure("test:login", policy, now);
     recordRateLimitFailure("test:login", policy, now + 1);
-    const blocked = recordRateLimitFailure("test:login", policy, now + 2);
+    recordRateLimitFailure("test:login", policy, now + 2);
+    const blocked = recordRateLimitFailure("test:login", policy, now + 3);
     expect(blocked.allowed).toBe(false);
     expect(blocked.retryAfterSeconds).toBeGreaterThan(0);
   });

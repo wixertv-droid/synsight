@@ -2,8 +2,9 @@
  * Ordered SQL migrator for SynSight.
  *
  * Applies `database/migrations/*.sql` files alphabetically and records
- * them in `_synsight_schema_migrations`. This is the supported workflow
- * for the hand-authored MySQL 8 reference migrations (001–003).
+ * them in `_synsight_schema_migrations`. Re-runs verify checksums and
+ * skip already-applied files. DDL statements are applied one-by-one
+ * (MySQL auto-commits DDL; wrapping them in a transaction is unreliable).
  *
  * Usage:
  *   DATABASE_URL=mysql://... npm run db:migrate
@@ -14,6 +15,7 @@ import path from "node:path";
 import mysql from "mysql2/promise";
 
 const MIGRATIONS_DIR = path.join(process.cwd(), "database", "migrations");
+const LOCK_NAME = "synsight_schema_migrate";
 
 function requireDatabaseUrl(): string {
   const url = process.env.DATABASE_URL?.trim();
@@ -45,25 +47,19 @@ async function listMigrationFiles(): Promise<string[]> {
     .sort((a, b) => a.localeCompare(b));
 }
 
-async function alreadyApplied(
+async function getAppliedChecksum(
   connection: mysql.Connection,
   name: string
-): Promise<boolean> {
+): Promise<string | null> {
   const [rows] = await connection.query<mysql.RowDataPacket[]>(
-    "SELECT 1 AS ok FROM `_synsight_schema_migrations` WHERE `name` = ? LIMIT 1",
+    "SELECT `checksum` FROM `_synsight_schema_migrations` WHERE `name` = ? LIMIT 1",
     [name]
   );
-  return rows.length > 0;
+  return rows[0]?.checksum ? String(rows[0].checksum) : null;
 }
 
-async function applyMigration(
-  connection: mysql.Connection,
-  name: string,
-  sql: string,
-  checksum: string
-) {
-  // Split on semicolons but keep DELIMITER-free MySQL statements.
-  const statements = sql
+function splitStatements(sql: string): string[] {
+  return sql
     .split(/;\s*(?:\r?\n|$)/)
     .map((part) =>
       part
@@ -73,21 +69,36 @@ async function applyMigration(
         .trim()
     )
     .filter(Boolean);
+}
 
-  await connection.beginTransaction();
-  try {
-    for (const statement of statements) {
-      await connection.query(statement);
-    }
-    await connection.query(
-      "INSERT INTO `_synsight_schema_migrations` (`name`, `checksum`) VALUES (?, ?)",
-      [name, checksum]
-    );
-    await connection.commit();
-  } catch (error) {
-    await connection.rollback();
-    throw error;
+async function applyMigration(
+  connection: mysql.Connection,
+  name: string,
+  sql: string,
+  checksum: string
+) {
+  const statements = splitStatements(sql);
+  for (const statement of statements) {
+    await connection.query(statement);
   }
+  await connection.query(
+    "INSERT INTO `_synsight_schema_migrations` (`name`, `checksum`) VALUES (?, ?)",
+    [name, checksum]
+  );
+}
+
+async function acquireLock(connection: mysql.Connection): Promise<void> {
+  const [rows] = await connection.query<mysql.RowDataPacket[]>(
+    "SELECT GET_LOCK(?, 60) AS locked",
+    [LOCK_NAME]
+  );
+  if (!rows[0] || Number(rows[0].locked) !== 1) {
+    throw new Error("Could not acquire migration lock.");
+  }
+}
+
+async function releaseLock(connection: mysql.Connection): Promise<void> {
+  await connection.query("SELECT RELEASE_LOCK(?)", [LOCK_NAME]);
 }
 
 async function main() {
@@ -95,6 +106,8 @@ async function main() {
   const connection = await mysql.createConnection(databaseUrl);
   try {
     await ensureMigrationsTable(connection);
+    await acquireLock(connection);
+
     const files = await listMigrationFiles();
     if (files.length === 0) {
       console.log("No migration files found.");
@@ -103,12 +116,21 @@ async function main() {
 
     let applied = 0;
     for (const name of files) {
-      if (await alreadyApplied(connection, name)) {
-        console.log(`skip  ${name}`);
-        continue;
-      }
       const sql = await readFile(path.join(MIGRATIONS_DIR, name), "utf8");
       const checksum = createHash("sha256").update(sql).digest("hex");
+      const existing = await getAppliedChecksum(connection, name);
+
+      if (existing) {
+        if (existing !== checksum) {
+          throw new Error(
+            `Checksum mismatch for ${name}. Refusing to continue. ` +
+              `Applied=${existing} Current=${checksum}`
+          );
+        }
+        console.log(`skip  ${name} (checksum ok)`);
+        continue;
+      }
+
       console.log(`apply ${name}`);
       await applyMigration(connection, name, sql, checksum);
       applied += 1;
@@ -120,6 +142,11 @@ async function main() {
         : `Applied ${applied} migration(s) successfully.`
     );
   } finally {
+    try {
+      await releaseLock(connection);
+    } catch {
+      /* ignore unlock failures */
+    }
     await connection.end();
   }
 }

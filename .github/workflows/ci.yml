@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "cursor/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Typecheck · Lint · Unit Tests · Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build
+        env:
+          SESSION_SECRET: ci-only-session-secret-at-least-32chars
+          APP_URL: http://127.0.0.1:3000
+          EMAIL_DELIVERY_MODE: disabled
+          ALLOW_PUBLIC_REGISTRATION: "false"
+          REQUIRE_DATABASE: "false"
+
+  database:
+    name: MySQL Migrate · Seed
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: synsight
+          MYSQL_USER: synsight
+          MYSQL_PASSWORD: synsight
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DATABASE_URL: mysql://synsight:synsight@127.0.0.1:3306/synsight
+      SESSION_SECRET: ci-only-session-secret-at-least-32chars
+      APP_URL: http://127.0.0.1:3000
+      REQUIRE_DATABASE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations twice (idempotency / checksum)
+        run: |
+          npm run db:migrate
+          npm run db:migrate
+      - name: Seed admin user
+        run: npm run db:seed

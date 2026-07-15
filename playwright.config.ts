@@ -22,7 +22,9 @@ export default defineConfig({
       SESSION_SECRET:
         process.env.SESSION_SECRET ?? "playwright-e2e-session-secret-32chars!",
       ALLOW_DEV_AUTH: "false",
-      EMAIL_DELIVERY_MODE: "disabled",
+      EMAIL_DELIVERY_MODE: "log-link",
+      ALLOW_PUBLIC_REGISTRATION: "true",
+      REQUIRE_DATABASE: "false",
     },
   },
   projects: [

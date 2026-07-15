@@ -291,7 +291,7 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
       </div>
 
       <p className="mt-5 text-center font-mono text-[7px] tracking-[.12em] text-white/15">
-        ARGON2ID · ENCRYPTED SESSION · PRIVACY BY DESIGN
+        ARGON2ID · SIGNED SESSION · PRIVACY BY DESIGN
       </p>
     </section>
   );

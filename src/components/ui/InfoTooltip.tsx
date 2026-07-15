@@ -19,11 +19,15 @@ export default function InfoTooltip({ label, children }: InfoTooltipProps) {
     >
       <button
         type="button"
-        className="flex h-4 w-4 items-center justify-center rounded-full border border-cyber-cyan/25 font-mono text-[9px] text-cyber-cyan/60 transition hover:border-cyber-cyan/50 hover:text-cyber-cyan focus:outline-none focus:ring-2 focus:ring-cyber-blue/40"
+        className="flex h-4 w-4 items-center justify-center rounded-full border border-cyber-cyan/25 font-mono text-[9px] text-cyber-cyan/70 transition hover:border-cyber-cyan/50 hover:text-cyber-cyan focus:outline-none focus:ring-2 focus:ring-cyber-blue/40"
         aria-label={`Mehr Informationen zu ${label}`}
         aria-describedby={open ? id : undefined}
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen((value) => !value);
+        }}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={(event) => {

@@ -1,16 +1,32 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useCallback } from "react";
 import LaunchScreen from "@/components/loading/LaunchScreen";
 import HeroSection from "@/components/hero/HeroSection";
-import DigitalTraces from "@/components/sections/DigitalTraces";
-import WhatSynSightRecognizes from "@/components/sections/WhatSynSightRecognizes";
-import DemoScanner from "@/components/sections/DemoScanner";
-import TrustSection from "@/components/sections/TrustSection";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
 import SystemRail from "@/components/layout/SystemRail";
-import IntelligenceConsole from "@/components/sections/IntelligenceConsole";
+
+const IntelligenceConsole = dynamic(
+  () => import("@/components/sections/IntelligenceConsole"),
+  { ssr: false }
+);
+const DemoScanner = dynamic(() => import("@/components/sections/DemoScanner"), {
+  ssr: false,
+});
+const DigitalTraces = dynamic(
+  () => import("@/components/sections/DigitalTraces"),
+  { ssr: false }
+);
+const WhatSynSightRecognizes = dynamic(
+  () => import("@/components/sections/WhatSynSightRecognizes"),
+  { ssr: false }
+);
+const TrustSection = dynamic(
+  () => import("@/components/sections/TrustSection"),
+  { ssr: false }
+);
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -30,12 +46,16 @@ export default function Home() {
         <Navbar />
         <SystemRail />
         <HeroSection />
-        <IntelligenceConsole />
-        <DemoScanner />
-        <DigitalTraces />
-        <WhatSynSightRecognizes />
-        <TrustSection />
-        <Footer />
+        {!loading && (
+          <>
+            <IntelligenceConsole />
+            <DemoScanner />
+            <DigitalTraces />
+            <WhatSynSightRecognizes />
+            <TrustSection />
+            <Footer />
+          </>
+        )}
       </main>
     </>
   );

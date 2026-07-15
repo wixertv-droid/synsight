@@ -21,18 +21,18 @@ export default function FormField({
   const errorId = error && fieldId ? `${fieldId}-error` : undefined;
 
   return (
-    <label htmlFor={fieldId} className="block">
-      <span className="mb-2 flex items-center justify-between text-[11px] font-medium tracking-wide text-white/55">
+    <div className="block">
+      <div className="mb-2 flex items-center justify-between text-[11px] font-medium tracking-wide text-white/55">
         <span className="flex items-center gap-2">
-          {label}
+          <label htmlFor={fieldId}>{label}</label>
           {info && <InfoTooltip label={label}>{info}</InfoTooltip>}
         </span>
         {hint && (
-          <span className="font-mono text-[8px] tracking-[.12em] text-white/20">
+          <span className="font-mono text-[8px] tracking-[.12em] text-white/28">
             {hint}
           </span>
         )}
-      </span>
+      </div>
       <input
         id={fieldId}
         aria-invalid={Boolean(error)}
@@ -53,6 +53,6 @@ export default function FormField({
           {error}
         </span>
       )}
-    </label>
+    </div>
   );
 }

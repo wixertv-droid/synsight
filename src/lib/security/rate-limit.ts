@@ -82,11 +82,39 @@ export function recordRateLimitFailure(
   policy: RateLimitPolicy,
   now = Date.now()
 ): RateLimitResult {
+  return recordRateLimitAttempt(key, policy, now);
+}
+
+/** Counts any attempt (success or failure) against the policy window. */
+export function recordRateLimitAttempt(
+  key: string,
+  policy: RateLimitPolicy,
+  now = Date.now()
+): RateLimitResult {
   const current = store.get(key);
   const bucket =
     !current || now - current.windowStartedAt >= policy.windowMs
       ? { attempts: 0, windowStartedAt: now, blockedUntil: 0 }
-      : current;
+      : { ...current };
+
+  if (bucket.blockedUntil > now) {
+    store.set(key, bucket);
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: Math.ceil((bucket.blockedUntil - now) / 1000),
+    };
+  }
+
+  if (bucket.attempts >= policy.limit) {
+    bucket.blockedUntil = now + policy.blockMs;
+    store.set(key, bucket);
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: Math.ceil(policy.blockMs / 1000),
+    };
+  }
 
   bucket.attempts += 1;
   if (bucket.attempts >= policy.limit) {
@@ -94,7 +122,11 @@ export function recordRateLimitFailure(
   }
   store.set(key, bucket);
 
-  return checkRateLimit(key, policy, now);
+  return {
+    allowed: true,
+    remaining: Math.max(0, policy.limit - bucket.attempts),
+    retryAfterSeconds: 0,
+  };
 }
 
 export function clearRateLimit(key: string): void {

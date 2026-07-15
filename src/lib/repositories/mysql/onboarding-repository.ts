@@ -14,6 +14,7 @@ import {
   type OnboardingRepository,
 } from "../onboarding-repository";
 import type { OnboardingPayload } from "@/lib/validation/onboarding";
+import { assertOwnedImagePath } from "@/lib/media/image-pipeline";
 
 const mysqlDate = () => new Date().toISOString().slice(0, 23).replace("T", " ");
 
@@ -154,8 +155,15 @@ export function createMysqlOnboardingRepository(
         }
 
         if (payload.imageProfile.images.length) {
-          await transaction.insert(profileImages).values(
-            payload.imageProfile.images.map((image) => ({
+          const images = payload.imageProfile.images.map((image) => {
+            assertOwnedImagePath(userId, image.storagePath);
+            if (image.originalPath)
+              assertOwnedImagePath(userId, image.originalPath);
+            if (image.analysisPath)
+              assertOwnedImagePath(userId, image.analysisPath);
+            if (image.thumbnailPath)
+              assertOwnedImagePath(userId, image.thumbnailPath);
+            return {
               userId,
               imageType: image.imageType,
               storagePath: image.storagePath,
@@ -165,8 +173,9 @@ export function createMysqlOnboardingRepository(
               contentHash: image.contentHash ?? null,
               mimeType: image.mimeType ?? null,
               byteSize: image.byteSize ?? null,
-            }))
-          );
+            };
+          });
+          await transaction.insert(profileImages).values(images);
         }
       });
     },

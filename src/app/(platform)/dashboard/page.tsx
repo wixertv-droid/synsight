@@ -48,6 +48,15 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      <p
+        className="mb-6 rounded-xl border border-amber-300/15 bg-amber-300/[0.04] px-4 py-3 text-[11px] leading-relaxed text-amber-50/70"
+        role="status"
+      >
+        Kennzahlen und Risikosignale auf dieser Übersicht sind derzeit
+        Illustrationsdaten zur Produktvorschau. Ihre echten Onboarding-Spuren
+        fließen in Sprint 6 in die Analyse ein.
+      </p>
+
       <SecurityPanel />
 
       <section
@@ -97,9 +106,21 @@ export default async function DashboardPage() {
         className="mt-6 grid gap-px overflow-hidden rounded-[1.4rem] border border-white/[0.06] bg-white/[0.06] sm:grid-cols-3"
       >
         {[
-          ["MONITORING", "Aktiv", "Neue Signale werden kontinuierlich bewertet."],
-          ["BERICHTE", "1 verfügbar", "Ihr monatlicher Schutzbericht ist bereit."],
-          ["NÄCHSTER SCAN", "In 06:42 h", "Automatischer Analysezyklus geplant."],
+          [
+            "MONITORING",
+            "Aktiv",
+            "Neue Signale werden kontinuierlich bewertet.",
+          ],
+          [
+            "BERICHTE",
+            "1 verfügbar",
+            "Ihr monatlicher Schutzbericht ist bereit.",
+          ],
+          [
+            "NÄCHSTER SCAN",
+            "In 06:42 h",
+            "Automatischer Analysezyklus geplant.",
+          ],
         ].map(([label, value, detail]) => (
           <article key={label} className="bg-[#050a13]/95 p-5 md:p-6">
             <p className="font-mono text-[8px] tracking-[.16em] text-white/22">

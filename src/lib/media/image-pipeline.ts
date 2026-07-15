@@ -11,15 +11,36 @@ import sharp from "sharp";
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
-  "image/jpg",
   "image/png",
   "image/webp",
   "image/heic",
   "image/heif",
 ]);
 
-const ALLOWED_EXT = new Set(["jpg", "jpeg", "png", "webp", "heic", "heif"]);
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
+const MAGIC_MIME: Array<{ mime: string; test: (bytes: Buffer) => boolean }> = [
+  {
+    mime: "image/jpeg",
+    test: (bytes) => bytes.length > 2 && bytes[0] === 0xff && bytes[1] === 0xd8,
+  },
+  {
+    mime: "image/png",
+    test: (bytes) =>
+      bytes.length > 8 &&
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47,
+  },
+  {
+    mime: "image/webp",
+    test: (bytes) =>
+      bytes.length > 12 &&
+      bytes.toString("ascii", 0, 4) === "RIFF" &&
+      bytes.toString("ascii", 8, 12) === "WEBP",
+  },
+];
 
 export interface ProcessedProfileImage {
   imageType: "front" | "left_profile" | "right_profile" | "angled";
@@ -64,17 +85,38 @@ function privateStorageRoot(): string {
   );
 }
 
-export function assertAllowedImage(file: {
-  type: string;
-  name: string;
-  size: number;
-}): void {
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  if (!ALLOWED_MIME.has(file.type) && !ALLOWED_EXT.has(ext)) {
-    throw new Error("Nur JPG, JPEG, PNG, WEBP oder HEIC sind erlaubt.");
+function sniffMime(bytes: Buffer, declared: string): string {
+  const magic = MAGIC_MIME.find((entry) => entry.test(bytes))?.mime;
+  if (magic) return magic;
+
+  // HEIC/HEIF often need container parsing; allow only if sharp can decode later
+  // and the client declared an allowed HEIF family type.
+  if (
+    declared === "image/heic" ||
+    declared === "image/heif" ||
+    declared === "image/heic-sequence"
+  ) {
+    return "image/heic";
   }
-  if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("Die Bilddatei darf höchstens 8 MB groß sein.");
+
+  throw new Error("Die Datei ist kein erlaubtes Bildformat.");
+}
+
+export function assertOwnedImagePath(
+  userId: number,
+  relativePath: string
+): void {
+  const normalized = relativePath.replace(/\\/g, "/");
+  if (
+    normalized.includes("..") ||
+    normalized.startsWith("/") ||
+    normalized.includes("\0")
+  ) {
+    throw new Error("Ungültiger Speicherpfad.");
+  }
+  const prefix = `users/${userId}/images/`;
+  if (!normalized.startsWith(prefix)) {
+    throw new Error("Ungültiger Speicherpfad.");
   }
 }
 
@@ -85,11 +127,24 @@ export async function processAndStoreProfileImage(input: {
   mimeType: string;
   bytes: Buffer;
 }): Promise<ProcessedProfileImage> {
-  assertAllowedImage({
-    type: input.mimeType,
-    name: input.fileName,
-    size: input.bytes.byteLength,
-  });
+  if (
+    input.bytes.byteLength <= 0 ||
+    input.bytes.byteLength > MAX_UPLOAD_BYTES
+  ) {
+    throw new Error("Die Bilddatei darf höchstens 8 MB groß sein.");
+  }
+
+  const sniffed = sniffMime(input.bytes, input.mimeType);
+  if (!ALLOWED_MIME.has(sniffed) && sniffed !== "image/heic") {
+    throw new Error("Nur JPG, JPEG, PNG, WEBP oder HEIC sind erlaubt.");
+  }
+
+  // Verify decodability with sharp (rejects polyglot/non-image payloads).
+  try {
+    await sharp(input.bytes, { failOn: "error" }).metadata();
+  } catch {
+    throw new Error("Die Bilddatei konnte nicht verarbeitet werden.");
+  }
 
   const imageId = randomUUID();
   const relativeDir = path.posix.join(
@@ -104,7 +159,7 @@ export async function processAndStoreProfileImage(input: {
   const contentHash = createHash("sha256").update(input.bytes).digest("hex");
   const encryptedOriginal = encryptBuffer(input.bytes);
 
-  const normalized = sharp(input.bytes, { failOn: "none" }).rotate();
+  const normalized = sharp(input.bytes, { failOn: "error" }).rotate();
   const analysisBuffer = await normalized
     .clone()
     .resize({
@@ -138,6 +193,7 @@ export async function processAndStoreProfileImage(input: {
   ]);
 
   const storagePath = path.posix.join(relativeDir, analysisName);
+  assertOwnedImagePath(input.userId, storagePath);
 
   return {
     imageType: input.imageType,

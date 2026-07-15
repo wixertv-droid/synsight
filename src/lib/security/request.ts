@@ -12,25 +12,15 @@ function normalizeOrigin(value: string): string | null {
 /**
  * Origin-based CSRF protection for cookie-authenticated mutations.
  * SameSite=Lax remains the first layer; this rejects cross-origin POSTs.
+ *
+ * Production browser requests must present a matching Origin (or Referer).
+ * Missing Origin is only tolerated in non-production for tooling, and then
+ * only when Sec-Fetch-Site is same-origin/same-site/none — never cross-site.
  */
 export function validateMutationOrigin(request: Request): NextResponse | null {
   const origin = request.headers.get("origin");
-  if (!origin) {
-    // Non-browser clients may omit Origin. Require same-origin fetch metadata
-    // when browsers provide it and otherwise allow server-to-server clients.
-    const fetchSite = request.headers.get("sec-fetch-site");
-    if (
-      fetchSite &&
-      !["same-origin", "same-site", "none"].includes(fetchSite)
-    ) {
-      return NextResponse.json(
-        apiError("CSRF_REJECTED", "Die Anfrage konnte nicht bestätigt werden."),
-        { status: 403 }
-      );
-    }
-    return null;
-  }
-
+  const referer = request.headers.get("referer");
+  const fetchSite = request.headers.get("sec-fetch-site");
   const requestOrigin = normalizeOrigin(request.url);
   const configuredOrigin = process.env.APP_URL
     ? normalizeOrigin(process.env.APP_URL)
@@ -41,17 +31,41 @@ export function validateMutationOrigin(request: Request): NextResponse | null {
     )
   );
 
-  if (!allowed.has(normalizeOrigin(origin) ?? "")) {
-    return NextResponse.json(
+  const reject = () =>
+    NextResponse.json(
       apiError("CSRF_REJECTED", "Die Anfrage konnte nicht bestätigt werden."),
       { status: 403 }
     );
+
+  if (fetchSite === "cross-site") {
+    return reject();
+  }
+
+  const candidate = origin ?? (referer ? normalizeOrigin(referer) : null);
+  if (candidate) {
+    if (!allowed.has(normalizeOrigin(candidate) ?? "")) {
+      return reject();
+    }
+    return null;
+  }
+
+  // No Origin/Referer: strict in production (or when CSRF_STRICT=true).
+  const strictCsrf =
+    process.env.CSRF_STRICT === "true" || process.env.NODE_ENV === "production";
+  if (strictCsrf) {
+    return reject();
+  }
+
+  if (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite)) {
+    return reject();
   }
 
   return null;
 }
 
 export function getClientIp(request: Request): string {
+  // Prefer platform-provided IP. When behind a trusted reverse proxy that
+  // overwrites X-Forwarded-For, the left-most hop is the client.
   const forwarded = request.headers.get("x-forwarded-for");
   const value =
     forwarded?.split(",")[0]?.trim() ||
