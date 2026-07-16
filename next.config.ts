@@ -1,6 +1,20 @@
 import type { NextConfig } from "next";
 
-const isProduction = process.env.NODE_ENV === "production";
+/**
+ * HTTPS-only headers must NOT key off NODE_ENV alone.
+ * `next build` always runs with NODE_ENV=production; baking
+ * `upgrade-insecure-requests` into every production artifact breaks HTTP
+ * hostnames (VPS IP / domain without TLS) — CSS, fonts and JS fail with
+ * SSL errors and the UI renders as an unstyled document.
+ */
+function isHttpsEnforced(): boolean {
+  if (process.env.FORCE_HTTPS === "true") return true;
+  if (process.env.FORCE_HTTPS === "false") return false;
+  const appUrl = process.env.APP_URL?.trim() ?? "";
+  return appUrl.startsWith("https://");
+}
+
+const enforceHttps = isHttpsEnforced();
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -15,8 +29,7 @@ const contentSecurityPolicy = [
   "connect-src 'self'",
   "worker-src 'self' blob:",
   "media-src 'self'",
-  // Only force HTTPS upgrades in production — never in local/preview HTTP.
-  ...(isProduction ? ["upgrade-insecure-requests"] : []),
+  ...(enforceHttps ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const securityHeaders: { key: string; value: string }[] = [
@@ -40,7 +53,7 @@ const securityHeaders: { key: string; value: string }[] = [
   },
 ];
 
-if (isProduction) {
+if (enforceHttps) {
   securityHeaders.push({
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",

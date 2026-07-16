@@ -14,7 +14,10 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const appUrl = process.env.APP_URL?.trim() || "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl),
   title: "SynSight — Digitale Identität erkennen und schützen",
   description:
     "KI-Analyse für öffentliche Profile, Datenlecks und digitale Spuren. SynSight macht Risiken verständlich und zeigt klare nächste Schritte.",
@@ -29,7 +32,7 @@ export const metadata: Metadata = {
     title: "SynSight — Digitale Identität erkennen und schützen",
     description:
       "Entdecken Sie Ihre digitale Spur. Verstehen Sie Risiken. Schützen Sie, was online über Sie sichtbar ist.",
-    url: "https://synsight.de",
+    url: appUrl,
     siteName: "SynSight",
     locale: "de_DE",
     type: "website",

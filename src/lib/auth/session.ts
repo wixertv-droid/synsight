@@ -14,6 +14,7 @@ import { SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from "./config";
 import { createSessionToken, verifySessionToken } from "./session-token";
 import { getSessionRepository, getUserRepository } from "@/lib/repositories";
 import { toDisplayName } from "@/lib/repositories/user-repository";
+import { isSecureCookieRequired } from "@/lib/security/https";
 import { hashToken } from "@/lib/utils/crypto";
 import type { AuthenticatedUser } from "./types";
 
@@ -35,7 +36,7 @@ export async function createSession(
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookieRequired(),
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
@@ -48,7 +49,7 @@ export async function destroySession(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookieRequired(),
     sameSite: "lax",
     path: "/",
     maxAge: 0,
