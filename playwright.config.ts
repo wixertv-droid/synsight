@@ -13,7 +13,8 @@ export default defineConfig({
   webServer: {
     command: "npm run build && npm run start",
     url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    // Only reuse when explicitly requested — a stale process on :3000 breaks auth e2e.
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE === "true",
     timeout: 180_000,
     env: {
       ...process.env,

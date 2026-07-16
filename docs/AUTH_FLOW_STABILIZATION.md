@@ -119,6 +119,15 @@ Manuelle Tests:
 
 ---
 
-## 9. Quality Gates
+## 9. Quality Gates (Agent-Lauf)
 
-Siehe CI-/Agent-Lauf: `typecheck`, `lint`, `test`, `build`, `test:e2e`.
+| Command             | Result      |
+| ------------------- | ----------- |
+| `npm run typecheck` | ✅          |
+| `npm run lint`      | ✅          |
+| `npm run test`      | ✅ 56 tests |
+| `npm run build`     | ✅          |
+| `npm run test:e2e`  | ✅ 6 tests  |
+
+**AUTH FLOW FREIGEGEBEN**  
+**DATABASE TEST READY**
