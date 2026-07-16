@@ -7,26 +7,26 @@
 
 ## 1. Analyse — Was existiert?
 
-| Bereich                     | Status                                              | Pfad / Hinweis                                |
-| --------------------------- | --------------------------------------------------- | --------------------------------------------- |
-| Drizzle Config              | ✅                                                  | `drizzle.config.ts` → MySQL/MariaDB dialect   |
-| Schema (Drizzle)            | ✅                                                  | `src/lib/database/schema.ts`                  |
-| Connection Pool             | ✅                                                  | `src/lib/database/client.ts`, `connection.ts` |
-| Repository Layer            | ✅                                                  | `src/lib/repositories/*`                      |
-| Service Layer               | ✅                                                  | `src/lib/services/*`                          |
-| Auth API                    | ✅                                                  | `/api/auth/*`                                 |
-| Migrator                    | ✅                                                  | `database/migrate.ts` (Lock + Checksum)       |
-| Migration 001               | ✅                                                  | Core: users, profiles, sessions, …            |
-| Migration 002               | ✅                                                  | Production identity + social_accounts         |
-| Migration 003               | ✅                                                  | digital_traces, profile_images                |
-| Seed Runner                 | ✅                                                  | `database/seeds/seed.ts`                      |
-| Admin Seed SQL              | ✅                                                  | `database/seeds/001_admin_user.sql`           |
-| `npm run db:migrate`        | ✅                                                  | vorhanden                                     |
-| `npm run db:seed`           | ✅                                                  | vorhanden                                     |
-| `npm run db:status`         | ❌ fehlte → wird ergänzt                            |
-| `role` Spalte               | ❌ fehlte → Migration 004                           |
-| Admin Email Server-tauglich | ⚠️ war `admin@synsight.de` → `admin@synsight.local` |
-| `.env.local` Template       | ⚠️ dokumentiert in `.env.example`                   |
+| Bereich                     | Status | Pfad / Hinweis                                |
+| --------------------------- | ------ | --------------------------------------------- |
+| Drizzle Config              | ✅     | `drizzle.config.ts` → MySQL/MariaDB dialect   |
+| Schema (Drizzle)            | ✅     | `src/lib/database/schema.ts`                  |
+| Connection Pool             | ✅     | `src/lib/database/client.ts`, `connection.ts` |
+| Repository Layer            | ✅     | `src/lib/repositories/*`                      |
+| Service Layer               | ✅     | `src/lib/services/*`                          |
+| Auth API                    | ✅     | `/api/auth/*`                                 |
+| Migrator                    | ✅     | `database/migrate.ts` (Lock + Checksum)       |
+| Migration 001               | ✅     | Core: users, profiles, sessions, …            |
+| Migration 002               | ✅     | Production identity + social_accounts         |
+| Migration 003               | ✅     | digital_traces, profile_images                |
+| Seed Runner                 | ✅     | `database/seeds/seed.ts`                      |
+| Admin Seed SQL              | ✅     | `database/seeds/001_admin_user.sql`           |
+| `npm run db:migrate`        | ✅     | vorhanden                                     |
+| `npm run db:seed`           | ✅     | vorhanden                                     |
+| `npm run db:status`         | ✅     | `database/status.ts`                          |
+| `role` Spalte               | ✅     | Migration 004                                 |
+| Admin Email Server-tauglich | ✅     | `admin@synsight.local`                        |
+| `.env.local` Template       | ✅     | `.env.local.example`                          |
 
 ### Architektur (bereits korrekt)
 
