@@ -30,7 +30,7 @@ const userStatusEnum = mysqlEnum("status", [
   "deleted",
 ]);
 
-const userRoleEnum = mysqlEnum("role", ["admin", "demo"]);
+const userRoleEnum = mysqlEnum("role", ["admin", "user"]);
 
 const tokenTypeEnum = mysqlEnum("token_type", [
   "password_reset",
@@ -85,7 +85,7 @@ export const users = mysqlTable(
     username: varchar("username", { length: 100 }).notNull(),
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     status: userStatusEnum.notNull().default("pending_verification"),
-    role: userRoleEnum.notNull().default("demo"),
+    role: userRoleEnum.notNull().default("user"),
     failedLoginAttempts: int("failed_login_attempts", { unsigned: true })
       .notNull()
       .default(0),

@@ -16,6 +16,7 @@ import {
 } from "./connection";
 import * as schema from "./schema";
 import type { DatabaseHealth } from "./types";
+import { isDatabaseRequired } from "@/lib/config/env";
 
 export type SynSightDatabase = MySql2Database<typeof schema>;
 
@@ -23,6 +24,11 @@ let database: SynSightDatabase | null = null;
 
 export function getDatabase(): SynSightDatabase | null {
   if (!isDatabaseConfigured()) {
+    if (isDatabaseRequired()) {
+      throw new Error(
+        "DATABASE_URL is required. In-memory repositories are disabled for this environment."
+      );
+    }
     return null;
   }
 

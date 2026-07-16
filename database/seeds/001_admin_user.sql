@@ -2,7 +2,7 @@
 -- Email: admin@synsight.local
 -- Password: admin (NEVER store plaintext — Argon2id hash only)
 -- Role: admin
--- Run after migrations (001–004).
+-- Run after all migrations (currently 001–006).
 
 SET NAMES utf8mb4;
 

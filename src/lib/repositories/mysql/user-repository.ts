@@ -12,8 +12,8 @@ function normalizeRole(
   role: string | null | undefined,
   username: string
 ): UserRole {
-  if (role === "admin" || role === "demo") return role;
-  return username.toLowerCase() === "admin" ? "admin" : "demo";
+  if (role === "admin" || role === "user") return role;
+  return username.toLowerCase() === "admin" ? "admin" : "user";
 }
 
 function mapUserRow(row: {
@@ -102,7 +102,7 @@ export function createMysqlUserRepository(
           username: input.username,
           passwordHash: input.passwordHash,
           status: "pending_verification",
-          role: "demo",
+          role: "user",
         });
         const id = Number(result[0].insertId);
         await transaction.insert(profiles).values({
@@ -121,7 +121,7 @@ export function createMysqlUserRepository(
           status: "pending_verification",
           firstName: input.firstName,
           lastName: input.lastName,
-          role: "demo",
+          role: "user",
           failedLoginAttempts: 0,
           lockedUntil: null,
         };

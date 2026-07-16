@@ -76,8 +76,9 @@ Seed: `npm run db:seed` bzw. `database/seeds/001_admin_user.sql`
 ## 4–6. Register / Verify / Login
 
 - Register legt `users` + `profiles` + `security_profiles` an
-- `AUTO_VERIFY_EMAIL=true` → sofort `active`, Redirect `/login?registered=1`
-- `AUTO_VERIFY_EMAIL=false` + `EMAIL_DELIVERY_MODE=log-link` → Token in DB, Link in Server-Logs
+- Production: `AUTO_VERIFY_EMAIL=false` + `EMAIL_DELIVERY_MODE=provider` → SMTP-Mail, Token in DB
+- Lokaler Test: `EMAIL_DELIVERY_MODE=log-link` → Link in Server-Logs
+- Nur E2E: `AUTO_VERIFY_EMAIL=true` → sofort `active`
 - Login: Email/Username → Argon2 → Status → Session → Cookie → `/dashboard`
 
 ---

@@ -58,6 +58,7 @@ describe("auth-service", () => {
 
     const user = await getUserRepository().findByEmail("new.user@example.com");
     expect(user?.status).toBe("pending_verification");
+    expect(user?.role).toBe("user");
     expect(result.verificationToken.length).toBeGreaterThan(20);
 
     const verified = await verifyEmailToken(result.verificationToken);

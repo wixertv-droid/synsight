@@ -109,7 +109,7 @@ export function createInMemoryUserRepository(): UserRepository {
         status: "pending_verification",
         firstName: input.firstName,
         lastName: input.lastName,
-        role: "demo",
+        role: "user",
         failedLoginAttempts: 0,
         lockedUntil: null,
       };

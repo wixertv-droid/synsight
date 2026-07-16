@@ -6,6 +6,7 @@ import {
 import { createOpaqueToken, hashToken } from "@/lib/utils/crypto";
 import { getEnvironment } from "@/lib/config/env";
 import { getObservability } from "@/lib/observability";
+import { sendVerificationEmail } from "@/lib/email/smtp";
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60_000;
 
@@ -18,7 +19,8 @@ async function deliverVerificationEmail(
   email: string,
   token: string
 ): Promise<void> {
-  const mode = getEnvironment().EMAIL_DELIVERY_MODE;
+  const env = getEnvironment();
+  const mode = env.EMAIL_DELIVERY_MODE;
   const url = buildVerificationUrl(token);
 
   if (mode === "disabled") {
@@ -34,17 +36,26 @@ async function deliverVerificationEmail(
     return;
   }
 
-  // Provider mode: seam for a future outbound mail adapter.
-  getObservability().captureError(
-    new Error("EMAIL_DELIVERY_MODE=provider is not configured yet."),
-    {
-      operation: "email.verification.deliver",
-      tags: { mode, emailDomain: email.split("@")[1] ?? "unknown" },
-    }
-  );
-  console.warn(
-    `[email:provider] Delivery adapter not configured. Verification prepared for ${email}.`
-  );
+  try {
+    await sendVerificationEmail(env, {
+      to: email,
+      verificationUrl: url,
+    });
+    getObservability().recordMetric("email.verification.sent", 1, { mode });
+  } catch (error) {
+    getObservability().captureError(
+      error instanceof Error ? error : new Error("SMTP delivery failed."),
+      {
+        operation: "email.verification.deliver",
+        tags: { mode, emailDomain: email.split("@")[1] ?? "unknown" },
+      }
+    );
+    // The token remains valid and the user can request a resend. Do not roll
+    // back the account after it has already been persisted.
+    console.error(
+      `[email:provider] Verification delivery failed for domain ${email.split("@")[1] ?? "unknown"}.`
+    );
+  }
 }
 
 export async function issueEmailVerification(userId: number): Promise<string> {

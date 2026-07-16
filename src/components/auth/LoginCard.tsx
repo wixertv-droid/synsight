@@ -141,7 +141,7 @@ export default function LoginCard({
       </h1>
       <p className="mt-3 max-w-sm text-sm leading-relaxed text-slate-300/50">
         {isRegister
-          ? "Registrieren Sie sich mit Ihrer E-Mail-Adresse. Das Konto ist danach sofort aktiv — Sie können sich direkt anmelden."
+          ? "Registrieren Sie sich mit Ihrer E-Mail-Adresse. Anschließend bestätigen Sie Ihr Konto über den Link in der E-Mail."
           : "Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an."}
       </p>
 

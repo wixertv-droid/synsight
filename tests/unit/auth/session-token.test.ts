@@ -58,7 +58,7 @@ describe("session tokens", () => {
         sid: "session-abc",
         displayName: "Alex Morgan",
         email: "alex@synsight.de",
-        role: "demo",
+        role: "user",
       },
       -10
     );

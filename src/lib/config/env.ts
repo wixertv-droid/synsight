@@ -25,13 +25,19 @@ const environmentSchema = z
     EMAIL_DELIVERY_MODE: z
       .enum(["log-link", "disabled", "provider"])
       .default("log-link"),
+    SMTP_HOST: z.string().min(1).optional(),
+    SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+    SMTP_SECURE: z.enum(["true", "false"]).default("false"),
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASS: z.string().min(1).optional(),
+    SMTP_FROM: z.string().min(3).optional(),
     /** Self-serve registration. Set "false" to disable. */
     ALLOW_PUBLIC_REGISTRATION: z.enum(["true", "false"]).optional(),
     /**
      * When true, new registrations are activated immediately (no email wait).
      * Intended for database / auth integration testing.
      */
-    AUTO_VERIFY_EMAIL: z.enum(["true", "false"]).default("true"),
+    AUTO_VERIFY_EMAIL: z.enum(["true", "false"]).default("false"),
   })
   .superRefine((env, ctx) => {
     // Production requires MySQL unless explicitly opted out (e2e/local prod.mode).
@@ -63,6 +69,23 @@ const environmentSchema = z
         message: "Development authentication cannot run in production.",
       });
     }
+
+    if (env.EMAIL_DELIVERY_MODE === "provider") {
+      for (const key of [
+        "SMTP_HOST",
+        "SMTP_USER",
+        "SMTP_PASS",
+        "SMTP_FROM",
+      ] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: `${key} is required for EMAIL_DELIVERY_MODE=provider.`,
+          });
+        }
+      }
+    }
   });
 
 export type Environment = z.infer<typeof environmentSchema>;
@@ -79,6 +102,12 @@ function parseEnv() {
     IMAGE_ENCRYPTION_KEY: process.env.IMAGE_ENCRYPTION_KEY,
     ALLOW_DEV_AUTH: process.env.ALLOW_DEV_AUTH,
     EMAIL_DELIVERY_MODE: process.env.EMAIL_DELIVERY_MODE,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_SECURE: process.env.SMTP_SECURE,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
+    SMTP_FROM: process.env.SMTP_FROM,
     ALLOW_PUBLIC_REGISTRATION: process.env.ALLOW_PUBLIC_REGISTRATION,
     AUTO_VERIFY_EMAIL: process.env.AUTO_VERIFY_EMAIL,
   });
@@ -134,5 +163,5 @@ export function isPublicRegistrationAllowed(): boolean {
 
 /** Activate accounts immediately after register (skip inbox wait). */
 export function isAutoVerifyEmailEnabled(): boolean {
-  return process.env.AUTO_VERIFY_EMAIL !== "false";
+  return process.env.AUTO_VERIFY_EMAIL === "true";
 }

@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "demo";
+export type UserRole = "admin" | "user";
 
 /**
  * The authenticated identity used throughout the app. This intentionally
