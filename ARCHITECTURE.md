@@ -59,10 +59,10 @@ TypeScript mirrors live in `src/types/domain.ts` and `src/lib/database/schema.ts
 
 ## Security Headers
 
-`next.config.ts` sets CSP always. HSTS and `upgrade-insecure-requests` are
-enabled only when `APP_URL` starts with `https://` (or `FORCE_HTTPS=true`).
-Do not key these off `NODE_ENV` alone — production HTTP hostnames would lose
-CSS/fonts/JS via forced HTTPS upgrades. Rebuild after changing `APP_URL`.
+`next.config.ts` sets a HTTP-safe CSP (no `upgrade-insecure-requests`).
+HSTS and `upgrade-insecure-requests` are applied at runtime in `middleware`
+only when the request is HTTPS (`x-forwarded-proto` or direct TLS). HTTP
+access via IP/hostname must never force HTTPS asset loads.
 
 Private media is stored under `storage/private` (or `PRIVATE_STORAGE_ROOT`),
 outside the Next.js public web root. Originals are encrypted at rest.
