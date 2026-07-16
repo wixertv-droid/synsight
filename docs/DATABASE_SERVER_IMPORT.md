@@ -2,6 +2,8 @@
 
 Alles für Schema + Admin-Seed liegt im Repo unter `database/`. Kein separater Dump nötig — Migrationen sind die Quelle der Wahrheit.
 
+Bei Registrierungsfehlern / `Access denied` / SMTP siehe zusätzlich **`docs/VPS_DEPLOY_FIX.md`**.
+
 ## 1. Code holen
 
 ```bash

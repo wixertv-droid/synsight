@@ -44,14 +44,39 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await loginWithCredentials(
-    parsed.data.identifier,
-    parsed.data.password,
-    {
-      ipAddress,
-      userAgent: request.headers.get("user-agent"),
+  let result;
+  try {
+    result = await loginWithCredentials(
+      parsed.data.identifier,
+      parsed.data.password,
+      {
+        ipAddress,
+        userAgent: request.headers.get("user-agent"),
+      }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[auth.login] failed:", message);
+    if (
+      message.includes("Access denied") ||
+      message.includes("ER_ACCESS_DENIED_ERROR")
+    ) {
+      return NextResponse.json(
+        apiError(
+          "DATABASE_AUTH_FAILED",
+          "Datenbankzugriff fehlgeschlagen. Prüfen Sie DATABASE_URL in .env.production und starten Sie PM2 neu."
+        ),
+        { status: 503 }
+      );
     }
-  );
+    return NextResponse.json(
+      apiError(
+        "LOGIN_FAILED",
+        "Die Anmeldung konnte nicht verarbeitet werden. Bitte versuchen Sie es erneut."
+      ),
+      { status: 500 }
+    );
+  }
 
   if (result.status !== "success") {
     const failedLimit = recordRateLimitFailure(rateLimitKey, LOGIN_RATE_LIMIT);

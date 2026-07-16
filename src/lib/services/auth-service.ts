@@ -201,7 +201,16 @@ export async function registerUser(
   if (autoVerified) {
     await repository.activate(user.id);
   } else {
-    verificationToken = await issueEmailVerification(user.id);
+    try {
+      verificationToken = await issueEmailVerification(user.id);
+    } catch (error) {
+      // Account + profile already exist. Never fail the whole registration
+      // because outbound mail or token delivery misbehaved.
+      console.error(
+        "[auth.registration] verification step failed:",
+        error instanceof Error ? error.message : error
+      );
+    }
   }
   await getAuditRepository().create({
     userId: user.id,

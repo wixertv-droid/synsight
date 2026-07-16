@@ -50,7 +50,35 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await registerUser(parsed.data, { ipAddress });
+  let result;
+  try {
+    result = await registerUser(parsed.data, { ipAddress });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[auth.register] failed:", message);
+
+    if (
+      message.includes("Access denied") ||
+      message.includes("ER_ACCESS_DENIED_ERROR")
+    ) {
+      return NextResponse.json(
+        apiError(
+          "DATABASE_AUTH_FAILED",
+          "Datenbankzugriff fehlgeschlagen. Prüfen Sie DATABASE_URL und den MariaDB-Benutzer in .env.production, dann PM2 neu starten."
+        ),
+        { status: 503, headers: rateLimitHeaders(attempt) }
+      );
+    }
+
+    return NextResponse.json(
+      apiError(
+        "REGISTRATION_FAILED",
+        "Die Registrierung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut."
+      ),
+      { status: 500, headers: rateLimitHeaders(attempt) }
+    );
+  }
+
   if (result.status === "email_exists") {
     return NextResponse.json(
       apiError(

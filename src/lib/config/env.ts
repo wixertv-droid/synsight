@@ -70,22 +70,9 @@ const environmentSchema = z
       });
     }
 
-    if (env.EMAIL_DELIVERY_MODE === "provider") {
-      for (const key of [
-        "SMTP_HOST",
-        "SMTP_USER",
-        "SMTP_PASS",
-        "SMTP_FROM",
-      ] as const) {
-        if (!env[key]) {
-          ctx.addIssue({
-            code: "custom",
-            path: [key],
-            message: `${key} is required for EMAIL_DELIVERY_MODE=provider.`,
-          });
-        }
-      }
-    }
+    // SMTP credentials are validated at send time in `src/lib/email/smtp.ts`.
+    // Do not fail getEnvironment() here — that aborts registration after the
+    // user row was already inserted.
   });
 
 export type Environment = z.infer<typeof environmentSchema>;

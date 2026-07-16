@@ -4,23 +4,32 @@ import {
   getUserTokenRepository,
 } from "@/lib/repositories";
 import { createOpaqueToken, hashToken } from "@/lib/utils/crypto";
-import { getEnvironment } from "@/lib/config/env";
+import { getEnvironment, resetEnvironmentCache } from "@/lib/config/env";
 import { getObservability } from "@/lib/observability";
 import { sendVerificationEmail } from "@/lib/email/smtp";
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60_000;
 
+function resolveAppUrl(): string {
+  const fromProcess = process.env.APP_URL?.trim();
+  if (fromProcess) return fromProcess.replace(/\/$/, "");
+
+  try {
+    return getEnvironment().APP_URL.replace(/\/$/, "");
+  } catch {
+    return "https://synsight.de";
+  }
+}
+
 function buildVerificationUrl(token: string): string {
-  const appUrl = getEnvironment().APP_URL.replace(/\/$/, "");
-  return `${appUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  return `${resolveAppUrl()}/verify-email?token=${encodeURIComponent(token)}`;
 }
 
 async function deliverVerificationEmail(
   email: string,
   token: string
 ): Promise<void> {
-  const env = getEnvironment();
-  const mode = env.EMAIL_DELIVERY_MODE;
+  const mode = process.env.EMAIL_DELIVERY_MODE ?? "log-link";
   const url = buildVerificationUrl(token);
 
   if (mode === "disabled") {
@@ -28,7 +37,6 @@ async function deliverVerificationEmail(
   }
 
   if (mode === "log-link") {
-    // Intentionally avoid logging the raw token alone; URL is for local/dev use.
     console.info(`[email:log-link] verification for ${email}: ${url}`);
     getObservability().recordMetric("email.verification.logged", 1, {
       mode,
@@ -37,6 +45,9 @@ async function deliverVerificationEmail(
   }
 
   try {
+    // Fresh parse so SMTP edits in .env.production take effect after PM2 restart.
+    resetEnvironmentCache();
+    const env = getEnvironment();
     await sendVerificationEmail(env, {
       to: email,
       verificationUrl: url,
@@ -50,11 +61,14 @@ async function deliverVerificationEmail(
         tags: { mode, emailDomain: email.split("@")[1] ?? "unknown" },
       }
     );
-    // The token remains valid and the user can request a resend. Do not roll
-    // back the account after it has already been persisted.
+    // Token stays valid; registration must still succeed. Operator can resend
+    // or temporarily switch to EMAIL_DELIVERY_MODE=log-link.
     console.error(
-      `[email:provider] Verification delivery failed for domain ${email.split("@")[1] ?? "unknown"}.`
+      `[email:provider] Verification delivery failed for domain ${
+        email.split("@")[1] ?? "unknown"
+      }: ${error instanceof Error ? error.message : String(error)}`
     );
+    console.info(`[email:fallback-log] verification for ${email}: ${url}`);
   }
 }
 

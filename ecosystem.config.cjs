@@ -1,12 +1,45 @@
 /**
  * PM2 process file for SynSight — auth + MariaDB server deploy.
  *
- * Set APP_URL / DATABASE_URL / SESSION_SECRET in the process environment
- * (or `.env.production`) before start. Example:
+ * Loads `/opt/synsight/.env.production` into the process env so DATABASE_URL,
+ * SESSION_SECRET and SMTP_* are always available. Do NOT rely on PM2
+ * `env_file` — many PM2 versions ignore it.
  *
- *   export APP_URL=https://synsight.de
+ *   cd /opt/synsight
+ *   pm2 delete synsight 2>/dev/null || true
  *   pm2 start ecosystem.config.cjs --update-env
+ *   pm2 save
  */
+const fs = require("node:fs");
+const path = require("node:path");
+
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+
+  const env = {};
+  for (const rawLine of fs.readFileSync(filePath, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const separator = line.indexOf("=");
+    if (separator <= 0) continue;
+
+    const key = line.slice(0, separator).trim();
+    let value = line.slice(separator + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    env[key] = value;
+  }
+  return env;
+}
+
+const fileEnv = loadEnvFile(path.join(__dirname, ".env.production"));
+const merged = { ...fileEnv, ...process.env };
+
 module.exports = {
   apps: [
     {
@@ -19,18 +52,22 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         REQUIRE_DATABASE: "true",
-        APP_URL: process.env.APP_URL || "https://synsight.de",
-        ALLOW_PUBLIC_REGISTRATION: "true",
-        AUTO_VERIFY_EMAIL: process.env.AUTO_VERIFY_EMAIL || "false",
-        EMAIL_DELIVERY_MODE: process.env.EMAIL_DELIVERY_MODE || "provider",
-        SMTP_HOST: process.env.SMTP_HOST,
-        SMTP_PORT: process.env.SMTP_PORT || "587",
-        SMTP_SECURE: process.env.SMTP_SECURE || "false",
-        SMTP_USER: process.env.SMTP_USER,
-        SMTP_PASS: process.env.SMTP_PASS,
-        SMTP_FROM: process.env.SMTP_FROM,
-        // Production default is strict; same-origin Sec-Fetch-Site still passes.
-        CSRF_STRICT: process.env.CSRF_STRICT || "true",
+        DATABASE_URL: merged.DATABASE_URL,
+        SESSION_SECRET: merged.SESSION_SECRET,
+        IMAGE_ENCRYPTION_KEY: merged.IMAGE_ENCRYPTION_KEY,
+        APP_URL: merged.APP_URL || "https://synsight.de",
+        PRIVATE_STORAGE_ROOT: merged.PRIVATE_STORAGE_ROOT,
+        ALLOW_PUBLIC_REGISTRATION: merged.ALLOW_PUBLIC_REGISTRATION || "true",
+        AUTO_VERIFY_EMAIL: merged.AUTO_VERIFY_EMAIL || "false",
+        EMAIL_DELIVERY_MODE: merged.EMAIL_DELIVERY_MODE || "provider",
+        SMTP_HOST: merged.SMTP_HOST,
+        SMTP_PORT: merged.SMTP_PORT || "587",
+        SMTP_SECURE: merged.SMTP_SECURE || "false",
+        SMTP_USER: merged.SMTP_USER,
+        SMTP_PASS: merged.SMTP_PASS,
+        SMTP_FROM: merged.SMTP_FROM,
+        CSRF_STRICT: merged.CSRF_STRICT || "true",
+        COOKIE_SECURE: merged.COOKIE_SECURE || "true",
         ALLOW_DEV_AUTH: "false",
       },
     },
