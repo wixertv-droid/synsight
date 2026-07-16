@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-const optionalUrl = z
+/** MariaDB/MySQL connection URIs are not always accepted by Zod's URL() helper. */
+const optionalDatabaseUrl = z
   .string()
-  .url()
+  .regex(/^mysql:\/\//i, "DATABASE_URL must use mysql://…")
   .optional()
   .or(z.literal("").transform(() => undefined));
 
@@ -16,7 +17,7 @@ const environmentSchema = z
      * mandatory and in-memory fallbacks are rejected at boot/health checks.
      */
     REQUIRE_DATABASE: z.enum(["true", "false"]).default("false"),
-    DATABASE_URL: optionalUrl,
+    DATABASE_URL: optionalDatabaseUrl,
     APP_URL: z.string().url().default("http://localhost:3000"),
     SESSION_SECRET: z.string().min(32).optional(),
     IMAGE_ENCRYPTION_KEY: z.string().min(32).optional(),

@@ -22,7 +22,8 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 
-const userStatusEnum = mysqlEnum("user_status", [
+// mysqlEnum(firstArg) is the physical column name — must match SQL migrations.
+const userStatusEnum = mysqlEnum("status", [
   "pending_verification",
   "active",
   "suspended",
@@ -43,7 +44,7 @@ const reportTypeEnum = mysqlEnum("report_type", [
   "manual",
 ]);
 
-const reportStatusEnum = mysqlEnum("report_status", [
+const reportStatusEnum = mysqlEnum("status", [
   "queued",
   "running",
   "completed",
@@ -51,7 +52,7 @@ const reportStatusEnum = mysqlEnum("report_status", [
   "cancelled",
 ]);
 
-const itemSeverityEnum = mysqlEnum("item_severity", [
+const itemSeverityEnum = mysqlEnum("severity", [
   "info",
   "low",
   "medium",
@@ -59,7 +60,7 @@ const itemSeverityEnum = mysqlEnum("item_severity", [
   "critical",
 ]);
 
-const subscriptionStatusEnum = mysqlEnum("subscription_status", [
+const subscriptionStatusEnum = mysqlEnum("status", [
   "trialing",
   "active",
   "past_due",
@@ -67,7 +68,7 @@ const subscriptionStatusEnum = mysqlEnum("subscription_status", [
   "expired",
 ]);
 
-const paymentStatusEnum = mysqlEnum("payment_status", [
+const paymentStatusEnum = mysqlEnum("status", [
   "pending",
   "completed",
   "failed",

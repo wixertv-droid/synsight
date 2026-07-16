@@ -103,7 +103,12 @@ async function releaseLock(connection: mysql.Connection): Promise<void> {
 
 async function main() {
   const databaseUrl = requireDatabaseUrl();
-  const connection = await mysql.createConnection(databaseUrl);
+  // multipleStatements: migrations use PREPARE/EXECUTE/DEALLOCATE on one line
+  // (information_schema guards). Required for MariaDB and MySQL.
+  const connection = await mysql.createConnection({
+    uri: databaseUrl,
+    multipleStatements: true,
+  });
   try {
     await ensureMigrationsTable(connection);
     await acquireLock(connection);

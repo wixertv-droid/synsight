@@ -8,11 +8,12 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–003 migration files", () => {
+  it("ships ordered 001–004 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
       "003_digital_traces_images.sql",
+      "004_admin_role_and_compat.sql",
     ]);
   });
 
@@ -25,9 +26,11 @@ describe("database migrations workflow", () => {
       readFileSync(path.join(process.cwd(), "package.json"), "utf8")
     );
     expect(pkg.scripts["db:migrate"]).toBe("tsx database/migrate.ts");
+    expect(pkg.scripts["db:status"]).toBe("tsx database/status.ts");
     expect(migrate).toContain("_synsight_schema_migrations");
     expect(migrate).toContain("Checksum mismatch");
     expect(migrate).toContain("GET_LOCK");
+    expect(migrate).toContain("multipleStatements");
   });
 
   it("adds digital_traces and image pipeline columns in 003", () => {
@@ -40,5 +43,17 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("`analysis_path`");
     expect(sql).toContain("`thumbnail_path`");
     expect(sql).toContain("`content_hash`");
+  });
+
+  it("adds admin role and compatibility views in 004", () => {
+    const sql = readFileSync(
+      path.join(dir, "004_admin_role_and_compat.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("`role`");
+    expect(sql).toContain("CREATE OR REPLACE VIEW `identity_images`");
+    expect(sql).toContain("CREATE OR REPLACE VIEW `analysis_items`");
+    expect(sql).toContain("CREATE OR REPLACE VIEW `audit_logs`");
+    expect(sql).toContain("`risk_level`");
   });
 });
