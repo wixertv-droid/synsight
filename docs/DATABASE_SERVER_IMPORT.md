@@ -7,8 +7,8 @@ Alles für Schema + Admin-Seed liegt im Repo unter `database/`. Kein separater D
 ```bash
 cd /path/to/synsight
 git fetch origin
-git checkout cursor/open-auth-for-db-testing-7c12
-git pull origin cursor/open-auth-for-db-testing-7c12
+git checkout cursor/auth-flow-stabilize-7c12
+git pull origin cursor/auth-flow-stabilize-7c12
 ```
 
 ## 2. Datenbank vorbereiten
@@ -28,7 +28,8 @@ cp .env.production.example .env.production
 #   ALLOW_PUBLIC_REGISTRATION=true
 #   AUTO_VERIFY_EMAIL=true
 #   EMAIL_DELIVERY_MODE=log-link
-#   CSRF_STRICT=false
+#   CSRF_STRICT=true  (Browser same-origin Login funktioniert trotzdem)
+#   APP_URL=https://synsight.de
 export $(grep -v '^#' .env.production | xargs)
 ```
 

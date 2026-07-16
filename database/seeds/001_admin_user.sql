@@ -19,7 +19,8 @@ ON DUPLICATE KEY UPDATE
   `email` = VALUES(`email`),
   `password_hash` = VALUES(`password_hash`),
   `status` = VALUES(`status`),
-  `role` = VALUES(`role`);
+  `role` = VALUES(`role`),
+  `email_verified_at` = COALESCE(`email_verified_at`, CURRENT_TIMESTAMP(3));
 
 SET @admin_user_id = (SELECT `id` FROM `users` WHERE `username` = 'admin' LIMIT 1);
 

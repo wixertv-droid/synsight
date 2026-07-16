@@ -28,12 +28,10 @@ test.describe("auth surfaces", () => {
   });
 });
 
-test.describe("auth happy path (in-memory)", () => {
-  test("login, dashboard access, and logout work for seeded admin", async ({
-    page,
-  }) => {
+test.describe("auth happy path", () => {
+  test("admin login, dashboard access, and logout", async ({ page }) => {
     await page.goto("/login");
-    await page.locator('input[name="identifier"]').fill("admin");
+    await page.locator('input[name="identifier"]').fill("admin@synsight.local");
     await page.locator('input[name="password"]').fill("admin");
     await page.getByRole("button", { name: /anmelden/i }).click();
 
@@ -47,7 +45,7 @@ test.describe("auth happy path (in-memory)", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("registration reaches verification surface", async ({ page }) => {
+  test("register (auto-verify), login, dashboard, logout", async ({ page }) => {
     const email = `e2e.${Date.now()}@example.com`;
     await page.goto("/register");
     await page.locator('input[name="firstName"]').fill("Erika");
@@ -57,6 +55,17 @@ test.describe("auth happy path (in-memory)", () => {
     await page.locator('input[name="passwordConfirm"]').fill("SecurePass1!");
     await page.getByRole("button", { name: /konto erstellen/i }).click();
 
-    await expect(page).toHaveURL(/\/verify-email/, { timeout: 20_000 });
+    // AUTO_VERIFY_EMAIL=true → immediate login surface
+    await expect(page).toHaveURL(/\/login\?registered=1/, { timeout: 20_000 });
+
+    await page.locator('input[name="identifier"]').fill(email);
+    await page.locator('input[name="password"]').fill("SecurePass1!");
+    await page.getByRole("button", { name: /anmelden/i }).click();
+
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+    await expect(page.locator("#synsight-dashboard")).toBeVisible();
+
+    await page.getByRole("button", { name: /abmelden/i }).click();
+    await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
   });
 });

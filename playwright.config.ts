@@ -24,6 +24,8 @@ export default defineConfig({
       ALLOW_DEV_AUTH: "false",
       EMAIL_DELIVERY_MODE: "log-link",
       ALLOW_PUBLIC_REGISTRATION: "true",
+      AUTO_VERIFY_EMAIL: "true",
+      CSRF_STRICT: "false",
       REQUIRE_DATABASE: "false",
     },
   },

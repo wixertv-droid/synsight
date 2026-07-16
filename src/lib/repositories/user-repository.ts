@@ -1,4 +1,3 @@
-import { DEMO_USER } from "@/lib/demo/user";
 import { DEV_ADMIN_PASSWORD_HASH } from "@/lib/auth/password";
 import type { UserRole } from "@/lib/auth/types";
 import type { UserStatus } from "@/types/domain";
@@ -61,7 +60,8 @@ function getMemoryUsers(): Map<number, UserRecord> {
         1,
         {
           id: 1,
-          email: DEMO_USER.email,
+          // Matches MariaDB seed (`admin@synsight.local` / `admin`).
+          email: "admin@synsight.local",
           username: "admin",
           passwordHash: DEV_ADMIN_PASSWORD_HASH,
           status: "active",

@@ -65,6 +65,10 @@ async function seed() {
         passwordHash: DEV_ADMIN_PASSWORD_HASH,
         status: "active",
         role: "admin",
+        emailVerifiedAt: new Date()
+          .toISOString()
+          .slice(0, 23)
+          .replace("T", " "),
       })
       .where(eq(users.id, adminId));
     console.log(`Updated admin user (id=${adminId}, email=${ADMIN_EMAIL})`);

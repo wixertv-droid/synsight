@@ -1,8 +1,11 @@
 /**
- * PM2 process file for SynSight — open for database / auth testing.
+ * PM2 process file for SynSight — auth + MariaDB server deploy.
  *
- *   pm2 start ecosystem.config.cjs
- *   pm2 restart synsight --update-env
+ * Set APP_URL / DATABASE_URL / SESSION_SECRET in the process environment
+ * (or `.env.production`) before start. Example:
+ *
+ *   export APP_URL=https://synsight.de
+ *   pm2 start ecosystem.config.cjs --update-env
  */
 module.exports = {
   apps: [
@@ -16,10 +19,12 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         REQUIRE_DATABASE: "true",
+        APP_URL: process.env.APP_URL || "https://synsight.de",
         ALLOW_PUBLIC_REGISTRATION: "true",
         AUTO_VERIFY_EMAIL: "true",
         EMAIL_DELIVERY_MODE: "log-link",
-        CSRF_STRICT: "false",
+        // Production default is strict; same-origin Sec-Fetch-Site still passes.
+        CSRF_STRICT: process.env.CSRF_STRICT || "true",
         ALLOW_DEV_AUTH: "false",
       },
     },
