@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 const navLinks = [
   { label: "Plattform", href: "#platform" },
   { label: "Risiko-Check", href: "#demo-scanner" },
-  { label: "Technologie", href: "#technology" },
+  { label: "SynCredits", href: "#syncredits" },
   { label: "Sicherheit", href: "#trust" },
 ];
 
@@ -41,7 +41,14 @@ export default function Navbar() {
           <div className="relative w-8 h-8 rounded-full border border-white/10 bg-white/[0.025] flex items-center justify-center group-hover:border-cyber-blue/40 transition-colors">
             <span className="absolute inset-1 rounded-full border border-cyber-blue/10" />
             <svg viewBox="0 0 24 24" className="w-4 h-4">
-              <circle cx="12" cy="12" r="8" fill="none" stroke="#29B6F6" strokeWidth="1" />
+              <circle
+                cx="12"
+                cy="12"
+                r="8"
+                fill="none"
+                stroke="#29B6F6"
+                strokeWidth="1"
+              />
               <circle cx="12" cy="12" r="2.5" fill="#70E7FF" />
             </svg>
           </div>
@@ -84,7 +91,13 @@ export default function Navbar() {
           aria-expanded={menuOpen}
           aria-controls="mobile-navigation"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="w-6 h-6"
+          >
             {menuOpen ? (
               <path d="M6 18L18 6M6 6l12 12" />
             ) : (
@@ -95,7 +108,10 @@ export default function Navbar() {
       </div>
 
       {menuOpen && (
-        <div id="mobile-navigation" className="md:hidden border-t border-white/[0.07] bg-[#050911]/95 px-6 py-4 space-y-3 backdrop-blur-2xl">
+        <div
+          id="mobile-navigation"
+          className="md:hidden border-t border-white/[0.07] bg-[#050911]/95 px-6 py-4 space-y-3 backdrop-blur-2xl"
+        >
           {navLinks.map((link) => (
             <a
               key={link.href}

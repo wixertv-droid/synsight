@@ -15,6 +15,15 @@ export function resetInMemoryStores(): void {
     __synsightOnboarding?: Map<unknown, unknown>;
     __synsightSecurityProfiles?: Map<unknown, unknown>;
     __synsightIdentity?: Map<unknown, unknown>;
+    __synsightCreditAccounts?: Map<unknown, unknown>;
+    __synsightCreditTx?: unknown[];
+    __synsightCreditTxId?: number;
+    __synsightCreditPackages?: unknown[];
+    __synsightCreditPayments?: unknown[];
+    __synsightCreditPaymentId?: number;
+    __synsightUsageLogs?: unknown[];
+    __synsightUsageLogId?: number;
+    __synsightInvoiceId?: number;
   };
 
   g.__synsightUsers?.clear();
@@ -35,4 +44,14 @@ export function resetInMemoryStores(): void {
   delete g.__synsightSecurityProfiles;
   g.__synsightIdentity?.clear();
   delete g.__synsightIdentity;
+  g.__synsightCreditAccounts?.clear();
+  delete g.__synsightCreditAccounts;
+  delete g.__synsightCreditTx;
+  delete g.__synsightCreditTxId;
+  delete g.__synsightCreditPackages;
+  delete g.__synsightCreditPayments;
+  delete g.__synsightCreditPaymentId;
+  delete g.__synsightUsageLogs;
+  delete g.__synsightUsageLogId;
+  delete g.__synsightInvoiceId;
 }

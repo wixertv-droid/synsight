@@ -512,6 +512,175 @@ export const subscriptions = mysqlTable(
   ]
 );
 
+export const paymentProviders = mysqlTable(
+  "payment_providers",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    code: varchar("code", { length: 64 }).notNull(),
+    name: varchar("name", { length: 150 }).notNull(),
+    isActive: boolean("is_active").notNull().default(false),
+    supportsCheckout: boolean("supports_checkout").notNull().default(true),
+    configJson: json("config_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [uniqueIndex("payment_providers_code_unique").on(table.code)]
+);
+
+export const creditPackages = mysqlTable(
+  "credit_packages",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    code: varchar("code", { length: 64 }).notNull(),
+    name: varchar("name", { length: 150 }).notNull(),
+    credits: int("credits", { unsigned: true }).notNull(),
+    bonusCredits: int("bonus_credits", { unsigned: true }).notNull().default(0),
+    priceCents: int("price_cents", { unsigned: true }).notNull(),
+    currency: char("currency", { length: 3 }).notNull().default("EUR"),
+    badge: varchar("badge", { length: 64 }),
+    sortOrder: int("sort_order", { unsigned: true }).notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("credit_packages_code_unique").on(table.code),
+    index("credit_packages_active_idx").on(table.isActive, table.sortOrder),
+  ]
+);
+
+export const creditAccounts = mysqlTable("credit_accounts", {
+  userId: bigint("user_id", { mode: "number", unsigned: true })
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  balance: int("balance").notNull().default(0),
+  lifetimePurchased: int("lifetime_purchased", { unsigned: true })
+    .notNull()
+    .default(0),
+  lifetimeSpent: int("lifetime_spent", { unsigned: true }).notNull().default(0),
+  lifetimeBonus: int("lifetime_bonus", { unsigned: true }).notNull().default(0),
+  createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP(3)`),
+  updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP(3)`)
+    .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+});
+
+export const creditTransactions = mysqlTable(
+  "credit_transactions",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: mysqlEnum("type", [
+      "purchase",
+      "consume",
+      "bonus",
+      "admin_grant",
+      "admin_revoke",
+      "refund",
+      "adjustment",
+    ]).notNull(),
+    amount: int("amount").notNull(),
+    balanceAfter: int("balance_after").notNull(),
+    analysisKey: varchar("analysis_key", { length: 64 }),
+    packageCode: varchar("package_code", { length: 64 }),
+    paymentId: bigint("payment_id", { mode: "number", unsigned: true }),
+    usageLogId: bigint("usage_log_id", { mode: "number", unsigned: true }),
+    description: varchar("description", { length: 255 }).notNull(),
+    metadataJson: json("metadata_json"),
+    createdByAdminId: bigint("created_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("credit_transactions_user_id_idx").on(table.userId),
+    index("credit_transactions_type_idx").on(table.type),
+    index("credit_transactions_created_at_idx").on(table.createdAt),
+  ]
+);
+
+export const invoices = mysqlTable(
+  "invoices",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    paymentId: bigint("payment_id", { mode: "number", unsigned: true }),
+    invoiceNumber: varchar("invoice_number", { length: 64 }).notNull(),
+    amountCents: int("amount_cents", { unsigned: true }).notNull(),
+    currency: char("currency", { length: 3 }).notNull().default("EUR"),
+    status: mysqlEnum("status", ["draft", "open", "paid", "void", "refunded"])
+      .notNull()
+      .default("draft"),
+    issuedAt: timestamp("issued_at", { mode: "string", fsp: 3 }),
+    paidAt: timestamp("paid_at", { mode: "string", fsp: 3 }),
+    pdfPath: varchar("pdf_path", { length: 500 }),
+    metadataJson: json("metadata_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("invoices_invoice_number_unique").on(table.invoiceNumber),
+    index("invoices_user_id_idx").on(table.userId),
+  ]
+);
+
+export const usageLogs = mysqlTable(
+  "usage_logs",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    analysisKey: varchar("analysis_key", { length: 64 }).notNull(),
+    creditsCharged: int("credits_charged", { unsigned: true }).notNull(),
+    status: mysqlEnum("status", ["reserved", "completed", "failed", "refunded"])
+      .notNull()
+      .default("completed"),
+    transactionId: bigint("transaction_id", { mode: "number", unsigned: true }),
+    requestId: varchar("request_id", { length: 64 }),
+    metadataJson: json("metadata_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("usage_logs_user_id_idx").on(table.userId),
+    index("usage_logs_analysis_key_idx").on(table.analysisKey),
+    index("usage_logs_created_at_idx").on(table.createdAt),
+  ]
+);
+
 export const payments = mysqlTable(
   "payments",
   {
@@ -525,10 +694,17 @@ export const payments = mysqlTable(
       mode: "number",
       unsigned: true,
     }).references(() => subscriptions.id, { onDelete: "set null" }),
+    purpose: mysqlEnum("purpose", ["subscription", "credits", "other"])
+      .notNull()
+      .default("subscription"),
+    packageId: bigint("package_id", { mode: "number", unsigned: true }),
     amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    amountCents: int("amount_cents", { unsigned: true }),
     currency: char("currency", { length: 3 }).notNull().default("EUR"),
     status: paymentStatusEnum.notNull().default("pending"),
     provider: varchar("provider", { length: 64 }).notNull().default("manual"),
+    providerId: bigint("provider_id", { mode: "number", unsigned: true }),
+    invoiceId: bigint("invoice_id", { mode: "number", unsigned: true }),
     providerReference: varchar("provider_reference", { length: 255 }),
     paidAt: timestamp("paid_at", { mode: "string", fsp: 3 }),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })

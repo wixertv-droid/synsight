@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–006 migration files", () => {
+  it("ships ordered 001–007 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -16,6 +16,7 @@ describe("database migrations workflow", () => {
       "004_admin_role_and_compat.sql",
       "005_identity_profile_fields.sql",
       "006_production_user_role.sql",
+      "007_syncredits.sql",
     ]);
   });
 
@@ -79,5 +80,16 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("SET `role` = 'user'");
     expect(sql).toContain("ENUM('admin','user')");
     expect(sql).toContain("DEFAULT 'user'");
+  });
+
+  it("adds SynCredits ledger tables in 007", () => {
+    const sql = readFileSync(path.join(dir, "007_syncredits.sql"), "utf8");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `credit_accounts`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `credit_transactions`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `credit_packages`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `payment_providers`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `invoices`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `usage_logs`");
+    expect(sql).toContain("pack_7800");
   });
 });

@@ -27,6 +27,10 @@ const TrustSection = dynamic(
   () => import("@/components/sections/TrustSection"),
   { ssr: false }
 );
+const SynCreditsSection = dynamic(
+  () => import("@/components/sections/SynCreditsSection"),
+  { ssr: false }
+);
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -52,6 +56,7 @@ export default function Home() {
             <DemoScanner />
             <DigitalTraces />
             <WhatSynSightRecognizes />
+            <SynCreditsSection />
             <TrustSection />
             <Footer />
           </>

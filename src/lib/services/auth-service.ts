@@ -19,6 +19,7 @@ import {
   getUserRepository,
   getProfileRepository,
   getSecurityRepository,
+  getCreditsRepository,
 } from "@/lib/repositories";
 import { findUserByIdentifier } from "@/lib/repositories/mysql/user-repository";
 import { toDisplayName } from "@/lib/repositories/user-repository";
@@ -196,6 +197,7 @@ export async function registerUser(
       ? new Date().toISOString().slice(0, 23).replace("T", " ")
       : null,
   });
+  await getCreditsRepository().ensureAccount(user.id);
   const autoVerified = isAutoVerifyEmailEnabled();
   let verificationToken = "";
   if (autoVerified) {

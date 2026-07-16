@@ -5,6 +5,7 @@ import RecommendationsPanel from "@/components/dashboard/RecommendationsPanel";
 import RiskCard from "@/components/dashboard/RiskCard";
 import SecurityPanel from "@/components/dashboard/SecurityPanel";
 import StatusCard from "@/components/dashboard/StatusCard";
+import CreditsPanel from "@/components/dashboard/CreditsPanel";
 import { dashboardMetrics, riskSignals } from "@/lib/platform-data";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getIdentityCompleteness } from "@/lib/services/identity-service";
@@ -109,6 +110,8 @@ export default async function DashboardPage() {
       </p>
 
       <SecurityPanel />
+
+      {user ? <CreditsPanel userId={userId} /> : null}
 
       <section
         id="digital-traces"

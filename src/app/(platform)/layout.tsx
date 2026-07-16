@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getCreditsOverview } from "@/lib/services/credits-service";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -24,5 +25,11 @@ export default async function PlatformLayout({
     redirect("/login");
   }
 
-  return <DashboardShell user={user}>{children}</DashboardShell>;
+  const credits = await getCreditsOverview(Number(user.id));
+
+  return (
+    <DashboardShell user={user} creditBalance={credits.balance}>
+      {children}
+    </DashboardShell>
+  );
 }

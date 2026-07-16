@@ -104,7 +104,10 @@ export default function DemoScanner() {
   };
 
   return (
-    <section id="demo-scanner" className="section-shell relative section-padding overflow-hidden">
+    <section
+      id="demo-scanner"
+      className="section-shell relative section-padding overflow-hidden"
+    >
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,rgba(20,122,174,.09),transparent_42rem)] pointer-events-none" />
 
       <div className="relative max-w-4xl mx-auto">
@@ -114,17 +117,14 @@ export default function DemoScanner() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <span className="hud-label">
-            03 / Ihr Risiko-Check
-          </span>
+          <span className="hud-label">03 / Ihr Risiko-Check</span>
           <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] leading-[1.02] mt-5 mb-7">
             Entdecken Sie Ihre{" "}
             <span className="cyber-gradient">digitale Spur.</span>
           </h2>
           <p className="text-slate-300/60 max-w-2xl mx-auto text-lg leading-relaxed">
-            Erleben Sie, wie SynSight verstreute Signale zusammenführt,
-            Risiken verständlich macht und daraus klare nächste Schritte
-            entwickelt.
+            Erleben Sie, wie SynSight verstreute Signale zusammenführt, Risiken
+            verständlich macht und daraus klare nächste Schritte entwickelt.
           </p>
         </div>
 
@@ -167,10 +167,7 @@ export default function DemoScanner() {
             </div>
           )}
 
-          <div
-            className="relative z-10"
-            aria-busy={phase === "scanning"}
-          >
+          <div className="relative z-10" aria-busy={phase === "scanning"}>
             {/* Input area */}
             {phase !== "complete" && (
               <>
@@ -349,7 +346,10 @@ export default function DemoScanner() {
               : "opacity-70 translate-y-0"
           }`}
         >
-          <div id="protect-package" className="relative scroll-mt-24 overflow-hidden rounded-2xl border border-cyber-blue/30 bg-gradient-to-br from-cyber-blue/[0.12] via-space-panel/95 to-cyber-cyan/[0.06] p-6 md:p-8 shadow-[0_0_50px_rgba(0,191,255,0.08)]">
+          <div
+            id="protect-package"
+            className="relative scroll-mt-24 overflow-hidden rounded-2xl border border-cyber-blue/30 bg-gradient-to-br from-cyber-blue/[0.12] via-space-panel/95 to-cyber-cyan/[0.06] p-6 md:p-8 shadow-[0_0_50px_rgba(0,191,255,0.08)]"
+          >
             <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-cyber-cyan/10 blur-3xl" />
             <div className="relative grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
               <div>
@@ -359,7 +359,9 @@ export default function DemoScanner() {
                 <h3 className="mt-5 text-2xl md:text-3xl font-bold text-white">
                   Erkennen ist der erste Schritt.
                   <br />
-                  <span className="cyber-gradient">Schützen ist der entscheidende.</span>
+                  <span className="cyber-gradient">
+                    Schützen ist der entscheidende.
+                  </span>
                 </h3>
                 <p className="mt-4 max-w-xl text-sm md:text-base leading-relaxed text-gray-400">
                   Statt einzelne Fundstellen selbst zu bewerten, erhalten Sie
@@ -384,38 +386,30 @@ export default function DemoScanner() {
 
               <div className="rounded-xl border border-cyber-blue/20 bg-space-black/55 p-6">
                 <p className="font-mono text-xs tracking-wider text-cyber-blue/70">
-                  IHR SCHUTZPAKET
+                  SYNCREDITS
                 </p>
                 <div className="mt-4 flex items-end gap-2">
-                  <span className="text-4xl font-bold text-white">19,90 €</span>
-                  <span className="pb-1 text-sm text-gray-500">/ Monat</span>
+                  <span className="text-4xl font-bold text-white">ab 5 €</span>
                 </div>
                 <p className="mt-2 text-xs text-gray-500">
-                  Weniger als 0,67 € pro Tag für mehr Kontrolle über Ihre
-                  digitale Identität.
+                  Kein Abo — zahlen Sie nur für Analysen, die Sie wirklich
+                  starten.
                 </p>
-                <a
-                  href="mailto:hello@synsight.de?subject=Interesse%20am%20SynSight%20Protect%20Paket"
-                  className="mt-6 block"
-                >
+                <a href="#syncredits" className="mt-6 block">
                   <span className="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-cyber-blue to-cyber-cyan px-6 py-4 font-semibold text-space-black transition-all duration-500 hover:brightness-110 hover:shadow-[0_14px_40px_rgba(0,191,255,0.22)]">
-                    Schutzpaket auswählen
+                    SynCredits ansehen
                   </span>
                 </a>
                 <div className="mt-4 space-y-2 text-xs text-gray-500">
                   <p className="flex items-center gap-2">
-                    <span className="text-cyber-cyan">✓</span> Monatlich
-                    kündbar
+                    <span className="text-cyber-cyan">✓</span> Jederzeit
+                    aufladbar
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-cyber-cyan">✓</span> Transparente
-                    Ergebnisse ohne Fachjargon
+                    Analysepreise
                   </p>
                 </div>
-                <p className="mt-5 border-t border-white/5 pt-4 text-center text-[10px] leading-relaxed text-gray-600">
-                  Der Button öffnet aktuell eine unverbindliche
-                  Produktanfrage. Es erfolgt keine automatische Buchung.
-                </p>
               </div>
             </div>
           </div>
