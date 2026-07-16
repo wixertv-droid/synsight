@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Environment } from "@/lib/config/env";
 
-const { sendMail, createTransport } = vi.hoisted(() => {
+const { sendMail, createTransport, close } = vi.hoisted(() => {
   const hoistedSendMail = vi.fn();
+  const hoistedClose = vi.fn();
   return {
     sendMail: hoistedSendMail,
-    createTransport: vi.fn(() => ({ sendMail: hoistedSendMail })),
+    close: hoistedClose,
+    createTransport: vi.fn(() => ({
+      sendMail: hoistedSendMail,
+      close: hoistedClose,
+    })),
   };
 });
 
@@ -50,6 +55,9 @@ describe("SMTP verification delivery", () => {
       port: 587,
       secure: false,
       auth: { user: "smtp-user", pass: "smtp-password" },
+      connectionTimeout: 8_000,
+      greetingTimeout: 8_000,
+      socketTimeout: 10_000,
     });
     expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({

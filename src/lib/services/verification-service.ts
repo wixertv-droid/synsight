@@ -89,7 +89,8 @@ export async function issueEmailVerification(userId: number): Promise<string> {
 
   const user = await getUserRepository().findById(userId);
   if (user) {
-    await deliverVerificationEmail(user.email, token);
+    // Never block the HTTP response on slow/broken SMTP (avoids nginx 504).
+    void deliverVerificationEmail(user.email, token);
   }
 
   return token;

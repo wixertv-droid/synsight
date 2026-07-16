@@ -77,20 +77,32 @@ Hinweise:
 - Passwort mit Sonderzeichen: URL-encoden (`@` → `%40`, `#` → `%23`) **oder** nur alphanumerisches Passwort verwenden
 - `SMTP_FROM` in Anführungszeichen lassen
 
-### SMTP noch nicht fertig? Temporär Links in den Logs
+### SMTP noch nicht fertig? Temporär Links in den Logs (empfohlen jetzt)
+
+Wenn die Logs `Connection timeout` / Browser `504` zeigen, SMTP blockiert
+(Port 587/465 ausgehend oft bei VPS gesperrt). Bis SMTP steht:
 
 ```dotenv
 EMAIL_DELIVERY_MODE=log-link
 AUTO_VERIFY_EMAIL=false
 ```
 
-Dann nach Registrierung:
+Dann:
 
 ```bash
+pm2 delete synsight
+pm2 start ecosystem.config.cjs --update-env
+pm2 save
 pm2 logs synsight --lines 200 | grep email
 ```
 
 Link öffnen → User wird `active`.
+
+Bereits angelegte pending User manuell aktivieren:
+
+```bash
+mysql -u synsight -p synsight -e "UPDATE users SET status='active', email_verified_at=CURRENT_TIMESTAMP(3), role='user' WHERE email='wixertv@googlemail.com';"
+```
 
 ---
 
@@ -111,22 +123,40 @@ DATABASE_URL='mysql://synsight:NEUES_STARKES_PASSWORT@localhost:3306/synsight' n
 
 ## 5. PM2 sauber neu starten (alte Config verwerfen)
 
+Zuerst `.env.production` muss dasselbe DB-Passwort haben wie der funktionierende
+Migrate-Befehl. Sonst: `Access denied for user 'synsight'@'localhost'`.
+
+```bash
+# Zeile prüfen (Passwort sichtbar — danach Terminal history beachten)
+grep '^DATABASE_URL=' /opt/synsight/.env.production
+
+# Gegenprobe: dasselbe Passwort muss lokal funktionieren
+mysql -u synsight -p -e "SELECT 1;"
+```
+
+Falsches `.env` (ohne `.production`) kann verwirren — für PM2 zählt
+`.env.production`. Optional umbenennen:
+
+```bash
+mv -f /opt/synsight/.env /opt/synsight/.env.unused.bak 2>/dev/null || true
+```
+
 ```bash
 cd /opt/synsight
 
 # Alte/manuelle Config entfernen
 pm2 delete synsight 2>/dev/null || true
-rm -f ecosystem.config.js.bak
 
-# Repo-Config nutzen (lädt .env.production selbst)
+# Repo-Config nutzen (lädt .env.production selbst; Datei schlägt Shell-Env)
 pm2 start ecosystem.config.cjs --update-env
 pm2 save
 
-# Prüfen, ob DATABASE_URL im Prozess ankommt (Passwort wird maskiert angezeigt)
+# Prüfen, ob DATABASE_URL im Prozess ankommt
 pm2 env 0 | grep -E 'DATABASE_URL|APP_URL|EMAIL_DELIVERY|SMTP_HOST|SMTP_USER'
 ```
 
-Wenn du unbedingt `ecosystem.config.js` starten willst: Die Datei im Repo ist nur ein Wrapper auf `ecosystem.config.cjs`. **Kein** manuelles `env_file` eintragen.
+`DATABASE_URL` muss hier sichtbar sein und zum MariaDB-Passwort passen.
+Wenn du `ecosystem.config.js` startest: nur den Repo-Wrapper verwenden.
 
 ---
 

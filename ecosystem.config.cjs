@@ -38,7 +38,14 @@ function loadEnvFile(filePath) {
 }
 
 const fileEnv = loadEnvFile(path.join(__dirname, ".env.production"));
-const merged = { ...fileEnv, ...process.env };
+// .env.production MUST win over stale shell/PM2 dump values.
+const merged = { ...process.env, ...fileEnv };
+
+if (!merged.DATABASE_URL) {
+  console.error(
+    "[ecosystem] DATABASE_URL fehlt in .env.production — Auth wird fehlschlagen."
+  );
+}
 
 module.exports = {
   apps: [
@@ -59,7 +66,8 @@ module.exports = {
         PRIVATE_STORAGE_ROOT: merged.PRIVATE_STORAGE_ROOT,
         ALLOW_PUBLIC_REGISTRATION: merged.ALLOW_PUBLIC_REGISTRATION || "true",
         AUTO_VERIFY_EMAIL: merged.AUTO_VERIFY_EMAIL || "false",
-        EMAIL_DELIVERY_MODE: merged.EMAIL_DELIVERY_MODE || "provider",
+        // Default log-link until SMTP is proven; override in .env.production.
+        EMAIL_DELIVERY_MODE: merged.EMAIL_DELIVERY_MODE || "log-link",
         SMTP_HOST: merged.SMTP_HOST,
         SMTP_PORT: merged.SMTP_PORT || "587",
         SMTP_SECURE: merged.SMTP_SECURE || "false",
