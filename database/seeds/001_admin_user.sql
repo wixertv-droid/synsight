@@ -1,28 +1,34 @@
--- SynSight development seed: admin user
+-- SynSight development / server seed: admin user
+-- Email: admin@synsight.local
 -- Password: admin (NEVER store plaintext — Argon2id hash only)
--- Run after 001_initial_schema.sql
+-- Role: admin
+-- Run after migrations (001–004).
 
 SET NAMES utf8mb4;
 
-INSERT INTO `users` (`email`, `username`, `password_hash`, `status`, `email_verified_at`)
+INSERT INTO `users` (`email`, `username`, `password_hash`, `status`, `role`, `email_verified_at`)
 VALUES (
-  'admin@synsight.de',
+  'admin@synsight.local',
   'admin',
   '$argon2id$v=19$m=65536,t=3,p=4$PrFVeH70yPNJ59suHjfHcA$GgSHI1UGZf57RVnVL/ujfq2YeL//MEqceOEdpkP5QEs',
   'active',
+  'admin',
   CURRENT_TIMESTAMP(3)
 )
 ON DUPLICATE KEY UPDATE
+  `email` = VALUES(`email`),
   `password_hash` = VALUES(`password_hash`),
-  `status` = VALUES(`status`);
+  `status` = VALUES(`status`),
+  `role` = VALUES(`role`);
 
 SET @admin_user_id = (SELECT `id` FROM `users` WHERE `username` = 'admin' LIMIT 1);
 
-INSERT INTO `profiles` (`user_id`, `first_name`, `last_name`, `region`, `locale`, `onboarding_step`, `onboarding_completed_at`)
+INSERT INTO `profiles` (`user_id`, `first_name`, `last_name`, `location`, `region`, `locale`, `onboarding_step`, `onboarding_completed_at`)
 VALUES (
   @admin_user_id,
   'Alex',
   'Morgan',
+  'Gera, Thüringen',
   'EU',
   'de-DE',
   4,
@@ -31,6 +37,7 @@ VALUES (
 ON DUPLICATE KEY UPDATE
   `first_name` = VALUES(`first_name`),
   `last_name` = VALUES(`last_name`),
+  `location` = VALUES(`location`),
   `onboarding_step` = VALUES(`onboarding_step`);
 
 INSERT INTO `security_profiles` (

@@ -44,7 +44,7 @@ export function createConnectionPool(config?: Partial<DatabaseConfig>): Pool {
   const url = config?.url ?? getDatabaseUrl();
   if (!url) {
     throw new Error(
-      "DATABASE_URL is not configured. Set it in .env to enable MySQL."
+      "DATABASE_URL is not configured. Set it in .env.local (e.g. mysql://user:pass@localhost:3306/synsight) to enable MariaDB/MySQL."
     );
   }
 

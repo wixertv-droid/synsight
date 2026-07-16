@@ -1,10 +1,11 @@
 /**
- * Programmatic database seed for development and CI.
+ * Programmatic database seed for development, CI, and Debian/MariaDB servers.
  *
  * Usage:
- *   DATABASE_URL=mysql://... npx tsx database/seeds/seed.ts
+ *   DATABASE_URL=mysql://... npm run db:seed
  *
  * Idempotent — safe to run multiple times.
+ * Admin password is Argon2id only (never plaintext).
  */
 import { eq } from "drizzle-orm";
 import { DEV_ADMIN_PASSWORD_HASH } from "../../src/lib/auth/password";
@@ -22,6 +23,9 @@ import {
   users,
 } from "../../src/lib/database/schema";
 
+const ADMIN_EMAIL = "admin@synsight.local";
+const ADMIN_USERNAME = "admin";
+
 async function seed() {
   if (!isDatabaseConfigured()) {
     console.error("DATABASE_URL is not set. Aborting seed.");
@@ -37,30 +41,33 @@ async function seed() {
   const existing = await db
     .select({ id: users.id })
     .from(users)
-    .where(eq(users.username, "admin"))
+    .where(eq(users.username, ADMIN_USERNAME))
     .limit(1);
 
   let adminId = existing[0]?.id;
 
   if (!adminId) {
     const inserted = await db.insert(users).values({
-      email: "admin@synsight.de",
-      username: "admin",
+      email: ADMIN_EMAIL,
+      username: ADMIN_USERNAME,
       passwordHash: DEV_ADMIN_PASSWORD_HASH,
       status: "active",
+      role: "admin",
       emailVerifiedAt: new Date().toISOString().slice(0, 23).replace("T", " "),
     });
     adminId = Number(inserted[0].insertId);
-    console.log(`Created admin user (id=${adminId})`);
+    console.log(`Created admin user (id=${adminId}, email=${ADMIN_EMAIL})`);
   } else {
     await db
       .update(users)
       .set({
+        email: ADMIN_EMAIL,
         passwordHash: DEV_ADMIN_PASSWORD_HASH,
         status: "active",
+        role: "admin",
       })
       .where(eq(users.id, adminId));
-    console.log(`Updated admin user (id=${adminId})`);
+    console.log(`Updated admin user (id=${adminId}, email=${ADMIN_EMAIL})`);
   }
 
   await db
@@ -69,6 +76,7 @@ async function seed() {
       userId: adminId,
       firstName: "Alex",
       lastName: "Morgan",
+      location: "Gera, Thüringen",
       region: "EU",
       locale: "de-DE",
       onboardingStep: 4,
@@ -81,6 +89,7 @@ async function seed() {
       set: {
         firstName: "Alex",
         lastName: "Morgan",
+        location: "Gera, Thüringen",
         onboardingStep: 4,
       },
     });
@@ -173,6 +182,7 @@ async function seed() {
     });
 
   console.log("Seed completed successfully.");
+  console.log(`Admin login: ${ADMIN_EMAIL} / admin (Argon2id)`);
   await closeConnectionPool();
 }
 

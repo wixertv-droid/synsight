@@ -8,9 +8,52 @@ import {
   type UserRepository,
 } from "../user-repository";
 
-function resolveRole(username: string): UserRole {
+function normalizeRole(
+  role: string | null | undefined,
+  username: string
+): UserRole {
+  if (role === "admin" || role === "demo") return role;
   return username.toLowerCase() === "admin" ? "admin" : "demo";
 }
+
+function mapUserRow(row: {
+  id: number;
+  email: string;
+  username: string;
+  passwordHash: string;
+  status: UserRecord["status"];
+  role: string | null;
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}): UserRecord {
+  return {
+    id: row.id,
+    email: row.email,
+    username: row.username,
+    passwordHash: row.passwordHash,
+    status: row.status,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    role: normalizeRole(row.role, row.username),
+    failedLoginAttempts: row.failedLoginAttempts,
+    lockedUntil: row.lockedUntil,
+  };
+}
+
+const userSelect = {
+  id: users.id,
+  email: users.email,
+  username: users.username,
+  passwordHash: users.passwordHash,
+  status: users.status,
+  role: users.role,
+  failedLoginAttempts: users.failedLoginAttempts,
+  lockedUntil: users.lockedUntil,
+  firstName: profiles.firstName,
+  lastName: profiles.lastName,
+};
 
 export function createMysqlUserRepository(
   db: SynSightDatabase
@@ -18,107 +61,38 @@ export function createMysqlUserRepository(
   return {
     async findByUsername(username: string) {
       const rows = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          username: users.username,
-          passwordHash: users.passwordHash,
-          status: users.status,
-          failedLoginAttempts: users.failedLoginAttempts,
-          lockedUntil: users.lockedUntil,
-          firstName: profiles.firstName,
-          lastName: profiles.lastName,
-        })
+        .select(userSelect)
         .from(users)
         .leftJoin(profiles, eq(profiles.userId, users.id))
         .where(eq(users.username, username.trim().toLowerCase()))
         .limit(1);
 
       const row = rows[0];
-      if (!row) return null;
-
-      return {
-        id: row.id,
-        email: row.email,
-        username: row.username,
-        passwordHash: row.passwordHash,
-        status: row.status,
-        firstName: row.firstName,
-        lastName: row.lastName,
-        role: resolveRole(row.username),
-        failedLoginAttempts: row.failedLoginAttempts,
-        lockedUntil: row.lockedUntil,
-      } satisfies UserRecord;
+      return row ? mapUserRow(row) : null;
     },
 
     async findByEmail(email: string) {
       const rows = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          username: users.username,
-          passwordHash: users.passwordHash,
-          status: users.status,
-          failedLoginAttempts: users.failedLoginAttempts,
-          lockedUntil: users.lockedUntil,
-          firstName: profiles.firstName,
-          lastName: profiles.lastName,
-        })
+        .select(userSelect)
         .from(users)
         .leftJoin(profiles, eq(profiles.userId, users.id))
         .where(eq(users.email, email.trim().toLowerCase()))
         .limit(1);
 
       const row = rows[0];
-      if (!row) return null;
-
-      return {
-        id: row.id,
-        email: row.email,
-        username: row.username,
-        passwordHash: row.passwordHash,
-        status: row.status,
-        firstName: row.firstName,
-        lastName: row.lastName,
-        role: resolveRole(row.username),
-        failedLoginAttempts: row.failedLoginAttempts,
-        lockedUntil: row.lockedUntil,
-      } satisfies UserRecord;
+      return row ? mapUserRow(row) : null;
     },
 
     async findById(id: number) {
       const rows = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          username: users.username,
-          passwordHash: users.passwordHash,
-          status: users.status,
-          failedLoginAttempts: users.failedLoginAttempts,
-          lockedUntil: users.lockedUntil,
-          firstName: profiles.firstName,
-          lastName: profiles.lastName,
-        })
+        .select(userSelect)
         .from(users)
         .leftJoin(profiles, eq(profiles.userId, users.id))
         .where(eq(users.id, id))
         .limit(1);
 
       const row = rows[0];
-      if (!row) return null;
-
-      return {
-        id: row.id,
-        email: row.email,
-        username: row.username,
-        passwordHash: row.passwordHash,
-        status: row.status,
-        firstName: row.firstName,
-        lastName: row.lastName,
-        role: resolveRole(row.username),
-        failedLoginAttempts: row.failedLoginAttempts,
-        lockedUntil: row.lockedUntil,
-      } satisfies UserRecord;
+      return row ? mapUserRow(row) : null;
     },
 
     async create(input) {
@@ -128,6 +102,7 @@ export function createMysqlUserRepository(
           username: input.username,
           passwordHash: input.passwordHash,
           status: "pending_verification",
+          role: "demo",
         });
         const id = Number(result[0].insertId);
         await transaction.insert(profiles).values({
@@ -146,7 +121,7 @@ export function createMysqlUserRepository(
           status: "pending_verification",
           firstName: input.firstName,
           lastName: input.lastName,
-          role: resolveRole(input.username),
+          role: "demo",
           failedLoginAttempts: 0,
           lockedUntil: null,
         };

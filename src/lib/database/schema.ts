@@ -1,9 +1,9 @@
 /**
- * Drizzle ORM schema — single source of truth for the MySQL 8 data model.
+ * Drizzle ORM schema — single source of truth for the MariaDB / MySQL data model.
  *
- * `database/migrations/001_initial_schema.sql` mirrors this schema as a
- * reference migration for self-hosted deployments. Keep both in sync when
- * adding tables or columns.
+ * SQL migrations under `database/migrations/` are the deployment source of
+ * truth for self-hosted Debian/MariaDB servers. Keep Drizzle schema and
+ * migrations in sync when adding tables or columns.
  */
 import { relations, sql } from "drizzle-orm";
 import {
@@ -28,6 +28,8 @@ const userStatusEnum = mysqlEnum("user_status", [
   "suspended",
   "deleted",
 ]);
+
+const userRoleEnum = mysqlEnum("role", ["admin", "demo"]);
 
 const tokenTypeEnum = mysqlEnum("token_type", [
   "password_reset",
@@ -82,6 +84,7 @@ export const users = mysqlTable(
     username: varchar("username", { length: 100 }).notNull(),
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     status: userStatusEnum.notNull().default("pending_verification"),
+    role: userRoleEnum.notNull().default("demo"),
     failedLoginAttempts: int("failed_login_attempts", { unsigned: true })
       .notNull()
       .default(0),
@@ -100,6 +103,7 @@ export const users = mysqlTable(
     uniqueIndex("users_email_unique").on(table.email),
     uniqueIndex("users_username_unique").on(table.username),
     index("users_status_idx").on(table.status),
+    index("users_role_idx").on(table.role),
   ]
 );
 
@@ -111,6 +115,7 @@ export const profiles = mysqlTable("profiles", {
   lastName: varchar("last_name", { length: 100 }).notNull(),
   phone: varchar("phone", { length: 32 }),
   company: varchar("company", { length: 150 }),
+  location: varchar("location", { length: 150 }),
   region: varchar("region", { length: 100 }).notNull().default("EU"),
   locale: varchar("locale", { length: 10 }).notNull().default("de-DE"),
   publicAlias: varchar("public_alias", { length: 100 }),
@@ -241,6 +246,16 @@ export const digitalTraces = mysqlTable(
       "public_profile",
     ]).notNull(),
     value: varchar("value", { length: 500 }).notNull(),
+    source: varchar("source", { length: 128 }),
+    riskLevel: mysqlEnum("risk_level", [
+      "info",
+      "low",
+      "medium",
+      "high",
+      "critical",
+    ])
+      .notNull()
+      .default("info"),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
       .notNull()
       .default(sql`CURRENT_TIMESTAMP(3)`),
@@ -248,6 +263,7 @@ export const digitalTraces = mysqlTable(
   (table) => [
     index("digital_traces_user_id_idx").on(table.userId),
     index("digital_traces_type_idx").on(table.traceType),
+    index("digital_traces_risk_level_idx").on(table.riskLevel),
     uniqueIndex("digital_traces_user_type_value_unique").on(
       table.userId,
       table.traceType,
