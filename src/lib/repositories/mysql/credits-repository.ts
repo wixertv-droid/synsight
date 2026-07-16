@@ -11,6 +11,7 @@ import {
 import {
   createInMemoryCreditsRepository,
   type CreditsRepository,
+  type CreditTransactionSource,
   type CreditTransactionType,
 } from "../credits-repository";
 
@@ -111,6 +112,9 @@ export function createMysqlCreditsRepository(
         metadataJson:
           (row.metadataJson as Record<string, unknown> | null) ?? null,
         createdByAdminId: row.createdByAdminId,
+        performedBy: row.performedBy,
+        reason: row.reason,
+        transactionSource: row.transactionSource as CreditTransactionSource,
         createdAt: row.createdAt,
       }));
     },
@@ -138,39 +142,46 @@ export function createMysqlCreditsRepository(
           .values({ userId: input.userId, balance: 0 })
           .onDuplicateKeyUpdate({ set: { userId: input.userId } });
 
-        const locked = await tx
+        const purchasedDelta =
+          input.amount > 0 && input.type === "purchase" ? input.amount : 0;
+        const bonusDelta =
+          input.amount > 0 &&
+          (input.type === "bonus" || input.type === "admin_grant")
+            ? input.amount
+            : 0;
+        const spentDelta = input.amount < 0 ? Math.abs(input.amount) : 0;
+
+        // Atomic conditional update: concurrent admin/API changes cannot lose
+        // balance updates, and the balance can never become negative.
+        const updated = await tx
+          .update(creditAccounts)
+          .set({
+            balance: sql`${creditAccounts.balance} + ${input.amount}`,
+            lifetimePurchased: sql`${creditAccounts.lifetimePurchased} + ${purchasedDelta}`,
+            lifetimeBonus: sql`${creditAccounts.lifetimeBonus} + ${bonusDelta}`,
+            lifetimeSpent: sql`${creditAccounts.lifetimeSpent} + ${spentDelta}`,
+          })
+          .where(
+            and(
+              eq(creditAccounts.userId, input.userId),
+              sql`${creditAccounts.balance} + ${input.amount} >= 0`
+            )
+          );
+        if (Number(updated[0].affectedRows) !== 1) {
+          throw new Error("INSUFFICIENT_CREDITS");
+        }
+
+        const rows = await tx
           .select()
           .from(creditAccounts)
           .where(eq(creditAccounts.userId, input.userId))
           .limit(1);
-        const account = locked[0];
+        const account = rows[0];
         if (!account) throw new Error("CREDIT_ACCOUNT_MISSING");
-
-        const nextBalance = account.balance + input.amount;
-        if (nextBalance < 0) throw new Error("INSUFFICIENT_CREDITS");
-
-        const lifetimePurchased =
-          account.lifetimePurchased +
-          (input.amount > 0 && input.type === "purchase" ? input.amount : 0);
-        const lifetimeBonus =
-          account.lifetimeBonus +
-          (input.amount > 0 &&
-          (input.type === "bonus" || input.type === "admin_grant")
-            ? input.amount
-            : 0);
-        const lifetimeSpent =
-          account.lifetimeSpent +
-          (input.amount < 0 ? Math.abs(input.amount) : 0);
-
-        await tx
-          .update(creditAccounts)
-          .set({
-            balance: nextBalance,
-            lifetimePurchased,
-            lifetimeBonus,
-            lifetimeSpent,
-          })
-          .where(eq(creditAccounts.userId, input.userId));
+        const nextBalance = account.balance;
+        const lifetimePurchased = account.lifetimePurchased;
+        const lifetimeBonus = account.lifetimeBonus;
+        const lifetimeSpent = account.lifetimeSpent;
 
         const inserted = await tx.insert(creditTransactions).values({
           userId: input.userId,
@@ -184,6 +195,9 @@ export function createMysqlCreditsRepository(
           description: input.description,
           metadataJson: input.metadataJson ?? null,
           createdByAdminId: input.createdByAdminId ?? null,
+          performedBy: input.performedBy ?? input.createdByAdminId ?? null,
+          reason: input.reason ?? input.description,
+          transactionSource: input.transactionSource ?? "adjustment",
         });
         const transactionId = Number(inserted[0].insertId);
 
@@ -208,6 +222,9 @@ export function createMysqlCreditsRepository(
             description: input.description,
             metadataJson: input.metadataJson ?? null,
             createdByAdminId: input.createdByAdminId ?? null,
+            performedBy: input.performedBy ?? input.createdByAdminId ?? null,
+            reason: input.reason ?? input.description,
+            transactionSource: input.transactionSource ?? "adjustment",
             createdAt: new Date().toISOString(),
           },
         };

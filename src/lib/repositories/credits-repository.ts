@@ -12,6 +12,15 @@ export type CreditTransactionType =
   | "refund"
   | "adjustment";
 
+export type CreditTransactionSource =
+  | "purchase"
+  | "analysis"
+  | "bonus"
+  | "refund"
+  | "admin_credit"
+  | "admin_remove"
+  | "adjustment";
+
 export interface CreditAccountRecord {
   userId: number;
   balance: number;
@@ -46,6 +55,9 @@ export interface CreditTransactionRecord {
   description: string;
   metadataJson: Record<string, unknown> | null;
   createdByAdminId: number | null;
+  performedBy: number | null;
+  reason: string | null;
+  transactionSource: CreditTransactionSource;
   createdAt: string;
 }
 
@@ -96,6 +108,9 @@ export interface CreditsRepository {
     usageLogId?: number | null;
     metadataJson?: Record<string, unknown> | null;
     createdByAdminId?: number | null;
+    performedBy?: number | null;
+    reason?: string | null;
+    transactionSource?: CreditTransactionSource;
   }): Promise<{
     account: CreditAccountRecord;
     transaction: CreditTransactionRecord;
@@ -261,6 +276,9 @@ export function createInMemoryCreditsRepository(): CreditsRepository {
         description: input.description,
         metadataJson: input.metadataJson ?? null,
         createdByAdminId: input.createdByAdminId ?? null,
+        performedBy: input.performedBy ?? input.createdByAdminId ?? null,
+        reason: input.reason ?? input.description,
+        transactionSource: input.transactionSource ?? "adjustment",
         createdAt: new Date().toISOString(),
       };
       memory.__synsightCreditTx = [

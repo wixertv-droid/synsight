@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–007 migration files", () => {
+  it("ships ordered 001–008 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -17,6 +17,7 @@ describe("database migrations workflow", () => {
       "005_identity_profile_fields.sql",
       "006_production_user_role.sql",
       "007_syncredits.sql",
+      "008_admin_control_center.sql",
     ]);
   });
 
@@ -91,5 +92,17 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS `invoices`");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS `usage_logs`");
     expect(sql).toContain("pack_7800");
+  });
+
+  it("adds admin transaction audit metadata in 008", () => {
+    const sql = readFileSync(
+      path.join(dir, "008_admin_control_center.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("`performed_by`");
+    expect(sql).toContain("`reason`");
+    expect(sql).toContain("`transaction_source`");
+    expect(sql).toContain("'admin_credit'");
+    expect(sql).toContain("'admin_remove'");
   });
 });

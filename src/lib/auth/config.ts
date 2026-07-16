@@ -28,4 +28,5 @@ export const PROTECTED_ROUTE_PREFIXES = [
   "/profile",
   "/settings",
   "/onboarding",
+  "/admin",
 ];

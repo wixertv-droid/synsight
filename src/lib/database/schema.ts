@@ -612,6 +612,22 @@ export const creditTransactions = mysqlTable(
       mode: "number",
       unsigned: true,
     }),
+    performedBy: bigint("performed_by", {
+      mode: "number",
+      unsigned: true,
+    }),
+    reason: varchar("reason", { length: 500 }),
+    transactionSource: mysqlEnum("transaction_source", [
+      "purchase",
+      "analysis",
+      "bonus",
+      "refund",
+      "admin_credit",
+      "admin_remove",
+      "adjustment",
+    ])
+      .notNull()
+      .default("adjustment"),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
       .notNull()
       .default(sql`CURRENT_TIMESTAMP(3)`),
@@ -620,6 +636,8 @@ export const creditTransactions = mysqlTable(
     index("credit_transactions_user_id_idx").on(table.userId),
     index("credit_transactions_type_idx").on(table.type),
     index("credit_transactions_created_at_idx").on(table.createdAt),
+    index("credit_transactions_performed_by_idx").on(table.performedBy),
+    index("credit_transactions_source_idx").on(table.transactionSource),
   ]
 );
 

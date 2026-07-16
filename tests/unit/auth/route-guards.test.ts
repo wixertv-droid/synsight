@@ -14,6 +14,8 @@ describe("route guards", () => {
     expect(isProtectedRoute("/profile")).toBe(true);
     expect(isProtectedRoute("/settings/security")).toBe(true);
     expect(isProtectedRoute("/onboarding")).toBe(true);
+    expect(isProtectedRoute("/admin")).toBe(true);
+    expect(isProtectedRoute("/admin/users")).toBe(true);
   });
 
   it("leaves public auth and marketing routes open", () => {

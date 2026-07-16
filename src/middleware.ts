@@ -34,6 +34,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (
+    (pathname === "/admin" || pathname.startsWith("/admin/")) &&
+    session.role !== "admin"
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   return NextResponse.next();
 }
 
@@ -43,5 +50,6 @@ export const config = {
     "/profile/:path*",
     "/settings/:path*",
     "/onboarding/:path*",
+    "/admin/:path*",
   ],
 };

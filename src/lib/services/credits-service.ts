@@ -152,6 +152,7 @@ export async function purchaseCreditPackage(
     description: `SynCredits Paket ${pack.name}`,
     packageCode: pack.code,
     paymentId: payment.id,
+    transactionSource: "purchase",
   });
 
   let balance = purchased.account.balance;
@@ -163,6 +164,7 @@ export async function purchaseCreditPackage(
       description: `Bonus für Paket ${pack.name}`,
       packageCode: pack.code,
       paymentId: payment.id,
+      transactionSource: "bonus",
     });
     balance = bonus.account.balance;
   }
@@ -208,6 +210,7 @@ export async function consumeCredits(
       analysisKey: price.key,
       usageLogId: usage.id,
       metadataJson: { requestId: requestId ?? null },
+      transactionSource: "analysis",
     });
 
     return {
@@ -249,6 +252,9 @@ export async function adminGrantCredits(
     amount,
     description: reason || "Admin-Gutschrift",
     createdByAdminId: adminId,
+    performedBy: adminId,
+    reason,
+    transactionSource: "admin_credit",
   });
 }
 
@@ -266,5 +272,8 @@ export async function adminRevokeCredits(
     amount: -amount,
     description: reason || "Admin-Abbuchung",
     createdByAdminId: adminId,
+    performedBy: adminId,
+    reason,
+    transactionSource: "admin_remove",
   });
 }
