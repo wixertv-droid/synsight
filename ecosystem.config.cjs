@@ -3,10 +3,9 @@
  *
  * Usage:
  *   pm2 start ecosystem.config.cjs
- *   pm2 restart synsight
+ *   pm2 restart synsight --update-env
  *
- * Important: set APP_URL to the exact public origin users type in the browser
- * BEFORE `npm run build`. HTTP origins must stay http:// until TLS is live.
+ * Set APP_URL to your HTTPS domain before `npm run build`.
  */
 module.exports = {
   apps: [
@@ -19,6 +18,9 @@ module.exports = {
       exec_mode: "fork",
       env: {
         NODE_ENV: "production",
+        // Public registration enabled for testing (verification links → PM2 logs)
+        ALLOW_PUBLIC_REGISTRATION: "true",
+        EMAIL_DELIVERY_MODE: "log-link",
       },
     },
   ],
