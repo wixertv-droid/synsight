@@ -37,6 +37,19 @@ export function createMysqlUserTokenRepository(
         .limit(1);
       return rows[0] ?? null;
     },
+    async findByHash(tokenHash, tokenType) {
+      const rows = await db
+        .select()
+        .from(userTokens)
+        .where(
+          and(
+            eq(userTokens.tokenHash, tokenHash),
+            eq(userTokens.tokenType, tokenType)
+          )
+        )
+        .limit(1);
+      return rows[0] ?? null;
+    },
     async markUsed(id) {
       await db
         .update(userTokens)

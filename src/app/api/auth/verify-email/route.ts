@@ -20,12 +20,27 @@ export async function POST(request: Request) {
 
   const result = await verifyEmailToken(parsed.data.token);
   if (!result.success) {
+    if (result.reason === "already_used") {
+      return NextResponse.json(
+        apiError(
+          "TOKEN_ALREADY_USED",
+          "Dieser Link wurde bereits verwendet. Bitte melden Sie sich an."
+        ),
+        { status: 409 }
+      );
+    }
+    if (result.reason === "expired") {
+      return NextResponse.json(
+        apiError(
+          "TOKEN_EXPIRED",
+          "Der Bestätigungslink ist abgelaufen. Bitte fordern Sie eine neue E-Mail an."
+        ),
+        { status: 410 }
+      );
+    }
     return NextResponse.json(
-      apiError(
-        "TOKEN_EXPIRED",
-        "Der Bestätigungslink ist abgelaufen oder wurde bereits verwendet."
-      ),
-      { status: 410 }
+      apiError("INVALID_TOKEN", "Der Bestätigungslink ist ungültig."),
+      { status: 400 }
     );
   }
 

@@ -114,9 +114,19 @@ export const profiles = mysqlTable("profiles", {
     .references(() => users.id, { onDelete: "cascade" }),
   firstName: varchar("first_name", { length: 100 }).notNull(),
   lastName: varchar("last_name", { length: 100 }).notNull(),
+  birthDate: varchar("birth_date", { length: 10 }),
+  gender: mysqlEnum("gender", [
+    "female",
+    "male",
+    "non_binary",
+    "prefer_not_to_say",
+    "other",
+  ]),
   phone: varchar("phone", { length: 32 }),
   company: varchar("company", { length: 150 }),
   location: varchar("location", { length: 150 }),
+  addressLine: varchar("address_line", { length: 255 }),
+  previousLocations: json("previous_locations").$type<string[] | null>(),
   region: varchar("region", { length: 100 }).notNull().default("EU"),
   locale: varchar("locale", { length: 10 }).notNull().default("de-DE"),
   publicAlias: varchar("public_alias", { length: 100 }),
@@ -213,6 +223,9 @@ export const socialAccounts = mysqlTable(
     platform: varchar("platform", { length: 32 }).notNull(),
     username: varchar("username", { length: 150 }).notNull(),
     profileUrl: varchar("profile_url", { length: 500 }),
+    accountStatus: mysqlEnum("account_status", ["active", "former", "unknown"])
+      .notNull()
+      .default("active"),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
       .notNull()
       .default(sql`CURRENT_TIMESTAMP(3)`),
@@ -223,6 +236,7 @@ export const socialAccounts = mysqlTable(
   },
   (table) => [
     index("social_accounts_user_id_idx").on(table.userId),
+    index("social_accounts_status_idx").on(table.accountStatus),
     uniqueIndex("social_accounts_user_platform_username_unique").on(
       table.userId,
       table.platform,

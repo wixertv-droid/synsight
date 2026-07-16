@@ -3,8 +3,6 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getProfileRepository } from "@/lib/repositories";
-import { isOnboardingComplete } from "@/lib/repositories/profile-repository";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -12,8 +10,8 @@ export const metadata: Metadata = {
 
 /**
  * `src/middleware.ts` already redirects unauthenticated requests before
- * this layout renders. This second check is defense in depth and enforces
- * completed onboarding before any platform surface is reachable.
+ * this layout renders. Sprint 5D: onboarding is no longer a hard gate —
+ * users land on the dashboard and complete their identity profile voluntarily.
  */
 export default async function PlatformLayout({
   children,
@@ -24,11 +22,6 @@ export default async function PlatformLayout({
 
   if (!user) {
     redirect("/login");
-  }
-
-  const profile = await getProfileRepository().findByUserId(Number(user.id));
-  if (!isOnboardingComplete(profile)) {
-    redirect("/onboarding");
   }
 
   return <DashboardShell user={user}>{children}</DashboardShell>;

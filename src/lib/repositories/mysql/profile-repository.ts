@@ -8,12 +8,18 @@ import {
 } from "../profile-repository";
 
 function mapProfile(row: typeof profiles.$inferSelect): Profile {
+  const previous = row.previousLocations;
   return {
     userId: row.userId,
     firstName: row.firstName,
     lastName: row.lastName,
+    birthDate: row.birthDate ?? null,
+    gender: row.gender ?? null,
     phone: row.phone,
     company: row.company,
+    location: row.location ?? null,
+    addressLine: row.addressLine ?? null,
+    previousLocations: Array.isArray(previous) ? previous : [],
     region: row.region,
     locale: row.locale,
     publicAlias: row.publicAlias,

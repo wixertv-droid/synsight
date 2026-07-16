@@ -15,12 +15,42 @@ interface DashboardSidebarProps {
 }
 
 const navigation = [
-  { label: "Dashboard", href: "/dashboard", code: "01", icon: "M4 13h6V4H4v9zm0 7h6v-5H4v5zm10 0h6v-9h-6v9zm0-16v5h6V4h-6z" },
-  { label: "Analyse starten", href: "/dashboard#analysis-center", code: "02", icon: "M12 3v18m9-9H3" },
-  { label: "Digitale Spuren", href: "/dashboard#digital-traces", code: "03", icon: "M12 21a9 9 0 100-18 9 9 0 000 18zm0 0c2 0 3.5-4 3.5-9S14 3 12 3 8.5 7 8.5 12 10 21 12 21zM3 12h18" },
-  { label: "Risikoanalyse", href: "/dashboard#risk-analysis", code: "04", icon: "M12 9v4m0 4h.01M10.3 3.7 2.6 17a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 3.7a2 2 0 00-3.4 0z" },
-  { label: "Überwachung", href: "/dashboard#monitoring", code: "05", icon: "M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zm9 3a3 3 0 100-6 3 3 0 000 6z" },
-  { label: "Berichte", href: "/dashboard#reports", code: "06", icon: "M6 3h9l3 3v15H6V3zm3 6h6m-6 4h6m-6 4h4" },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    code: "01",
+    icon: "M4 13h6V4H4v9zm0 7h6v-5H4v5zm10 0h6v-9h-6v9zm0-16v5h6V4h-6z",
+  },
+  {
+    label: "Analyse starten",
+    href: "/dashboard#analysis-center",
+    code: "02",
+    icon: "M12 3v18m9-9H3",
+  },
+  {
+    label: "Digitale Spuren",
+    href: "/dashboard#digital-traces",
+    code: "03",
+    icon: "M12 21a9 9 0 100-18 9 9 0 000 18zm0 0c2 0 3.5-4 3.5-9S14 3 12 3 8.5 7 8.5 12 10 21 12 21zM3 12h18",
+  },
+  {
+    label: "Risikoanalyse",
+    href: "/dashboard#risk-analysis",
+    code: "04",
+    icon: "M12 9v4m0 4h.01M10.3 3.7 2.6 17a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 3.7a2 2 0 00-3.4 0z",
+  },
+  {
+    label: "Überwachung",
+    href: "/dashboard#monitoring",
+    code: "05",
+    icon: "M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zm9 3a3 3 0 100-6 3 3 0 000 6z",
+  },
+  {
+    label: "Berichte",
+    href: "/dashboard#reports",
+    code: "06",
+    icon: "M6 3h9l3 3v15H6V3zm3 6h6m-6 4h6m-6 4h4",
+  },
 ];
 
 export default function DashboardSidebar({
@@ -53,7 +83,12 @@ export default function DashboardSidebar({
             className="rounded-lg border border-white/[0.06] p-2 text-white/35 lg:hidden"
             aria-label="Navigation schließen"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor">
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+            >
               <path d="M6 18 18 6M6 6l12 12" />
             </svg>
           </button>
@@ -67,9 +102,13 @@ export default function DashboardSidebar({
           <span className="font-mono text-[8px] text-white/18">EU-01</span>
         </div>
 
-        <nav className="mt-7 flex-1 space-y-1 overflow-y-auto" aria-label="Dashboard Navigation">
+        <nav
+          className="mt-7 flex-1 space-y-1 overflow-y-auto"
+          aria-label="Dashboard Navigation"
+        >
           {navigation.map((item) => {
-            const active = item.href === "/dashboard" && pathname === "/dashboard";
+            const active =
+              item.href === "/dashboard" && pathname === "/dashboard";
             return (
               <Link
                 key={item.label}
@@ -84,22 +123,38 @@ export default function DashboardSidebar({
                 <span className="font-mono text-[8px] text-cyber-cyan/35">
                   {item.code}
                 </span>
-                <svg viewBox="0 0 24 24" className="h-4 w-4 flex-none" fill="none" stroke="currentColor" strokeWidth="1.35">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4 flex-none"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.35"
+                >
                   <path d={item.icon} />
                 </svg>
                 <span className="text-xs">{item.label}</span>
-                {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cyber-cyan shadow-[0_0_8px_rgba(112,231,255,.45)]" />}
+                {active && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cyber-cyan shadow-[0_0_8px_rgba(112,231,255,.45)]" />
+                )}
               </Link>
             );
           })}
         </nav>
 
         <div className="space-y-1 border-t border-white/[0.06] pt-5">
-          <Link href="/profile" onClick={onClose} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs transition-colors ${pathname === "/profile" ? "bg-white/[0.04] text-white/80" : "text-white/35 hover:text-white/70"}`}>
+          <Link
+            href="/profile"
+            onClick={onClose}
+            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs transition-colors ${pathname === "/profile" ? "bg-white/[0.04] text-white/80" : "text-white/35 hover:text-white/70"}`}
+          >
             <span className="font-mono text-[8px] text-white/18">07</span>
-            Benutzerprofil
+            Identitätsprofil
           </Link>
-          <Link href="/settings" onClick={onClose} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs transition-colors ${pathname === "/settings" ? "bg-white/[0.04] text-white/80" : "text-white/35 hover:text-white/70"}`}>
+          <Link
+            href="/settings"
+            onClick={onClose}
+            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs transition-colors ${pathname === "/settings" ? "bg-white/[0.04] text-white/80" : "text-white/35 hover:text-white/70"}`}
+          >
             <span className="font-mono text-[8px] text-white/18">08</span>
             Einstellungen
           </Link>
@@ -110,9 +165,7 @@ export default function DashboardSidebar({
             {getInitials(user.displayName)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs text-white/70">
-              {user.displayName}
-            </p>
+            <p className="truncate text-xs text-white/70">{user.displayName}</p>
             <p className="mt-1 truncate font-mono text-[7px] tracking-wider text-white/20">
               {user.role === "admin" ? "PROTECT ACCOUNT" : "DEMO ACCOUNT"}
             </p>

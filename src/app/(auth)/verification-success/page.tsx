@@ -7,20 +7,20 @@ export default function VerificationSuccessPage() {
         ✓
       </span>
       <p className="mt-7 font-mono text-[8px] tracking-[.18em] text-emerald-200/55">
-        IDENTITY VERIFIED
+        E-MAIL BESTÄTIGT
       </p>
       <h1 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-white">
-        Konto erfolgreich aktiviert.
+        E-Mail bestätigt
       </h1>
       <p className="mt-4 text-sm leading-relaxed text-slate-300/50">
-        Ihre E-Mail-Adresse wurde bestätigt. Melden Sie sich jetzt an und
-        richten Sie Ihr geschütztes Profil ein.
+        Ihr Konto wurde aktiviert. Sie können sich jetzt mit Ihrer
+        E-Mail-Adresse und Ihrem Passwort anmelden.
       </p>
       <Link
         href="/login"
         className="mt-8 inline-flex rounded-xl border border-cyber-blue/30 bg-cyber-blue/[0.08] px-6 py-3 text-sm text-cyan-100 transition hover:bg-cyber-blue/[0.14]"
       >
-        Zum sicheren Login
+        Zum Login
       </Link>
     </section>
   );

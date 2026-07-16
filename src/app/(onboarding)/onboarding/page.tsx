@@ -1,7 +1,6 @@
-import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
-import { getCurrentUser } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 
-export default async function OnboardingPage() {
-  const user = await getCurrentUser();
-  return <OnboardingFlow displayName={user?.displayName} />;
+/** Legacy route — Sprint 5D moved voluntary identity capture to /profile. */
+export default function OnboardingPage() {
+  redirect("/profile");
 }

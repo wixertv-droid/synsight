@@ -14,6 +14,7 @@ export function resetInMemoryStores(): void {
     __synsightProfiles?: Map<unknown, unknown>;
     __synsightOnboarding?: Map<unknown, unknown>;
     __synsightSecurityProfiles?: Map<unknown, unknown>;
+    __synsightIdentity?: Map<unknown, unknown>;
   };
 
   g.__synsightUsers?.clear();
@@ -32,4 +33,6 @@ export function resetInMemoryStores(): void {
   delete g.__synsightOnboarding;
   g.__synsightSecurityProfiles?.clear();
   delete g.__synsightSecurityProfiles;
+  g.__synsightIdentity?.clear();
+  delete g.__synsightIdentity;
 }

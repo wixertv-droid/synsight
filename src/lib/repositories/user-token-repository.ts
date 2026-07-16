@@ -21,6 +21,10 @@ export interface UserTokenRepository {
     tokenHash: string,
     tokenType: UserTokenType
   ): Promise<UserTokenRecord | null>;
+  findByHash(
+    tokenHash: string,
+    tokenType: UserTokenType
+  ): Promise<UserTokenRecord | null>;
   markUsed(id: number): Promise<void>;
   revokeForUser(userId: number, tokenType: UserTokenType): Promise<void>;
 }
@@ -56,6 +60,14 @@ export function createInMemoryUserTokenRepository(): UserTokenRepository {
             token.tokenType === tokenType &&
             !token.usedAt &&
             new Date(token.expiresAt) > new Date()
+        ) ?? null
+      );
+    },
+    async findByHash(tokenHash, tokenType) {
+      return (
+        [...tokens.values()].find(
+          (token) =>
+            token.tokenHash === tokenHash && token.tokenType === tokenType
         ) ?? null
       );
     },

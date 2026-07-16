@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import type { ApiResponseBody } from "@/lib/api/response";
@@ -20,9 +21,12 @@ export default function EmailVerificationCard({
   >(token ? "verifying" : "waiting");
   const [message, setMessage] = useState(
     token
-      ? "Bestätigungslink wird sicher geprüft ..."
-      : "Öffnen Sie den Link in Ihrer Bestätigungs-E-Mail."
+      ? "Bestätigungslink wird geprüft …"
+      : "Vielen Dank für Ihre Registrierung. Wir haben Ihnen eine E-Mail mit einem Bestätigungslink gesendet. Bitte bestätigen Sie Ihre E-Mail-Adresse, bevor Sie sich anmelden."
   );
+  const [errorKind, setErrorKind] = useState<
+    "invalid" | "expired" | "already" | "generic" | null
+  >(null);
 
   useEffect(() => {
     if (!token) return;
@@ -35,15 +39,29 @@ export default function EmailVerificationCard({
       .then(async (response) => {
         const body = (await response.json()) as ApiResponseBody<{
           redirectTo: string;
-        }>;
+        }> & { error?: { code?: string; message: string } };
         if (!active) return;
         if (!response.ok || !body.success) {
           setStatus("failed");
-          setMessage(
-            !body.success
-              ? body.error.message
-              : "Der Link konnte nicht bestätigt werden."
-          );
+          const code = !body.success ? body.error.code : "";
+          if (code === "TOKEN_ALREADY_USED") {
+            setErrorKind("already");
+            setMessage(
+              "Dieser Link wurde bereits verwendet. Ihr Konto ist möglicherweise schon bestätigt."
+            );
+          } else if (code === "TOKEN_EXPIRED") {
+            setErrorKind("expired");
+            setMessage(
+              "Dieser Bestätigungslink ist abgelaufen. Bitte fordern Sie eine neue E-Mail an."
+            );
+          } else {
+            setErrorKind("invalid");
+            setMessage(
+              !body.success
+                ? body.error.message
+                : "Der Link ist ungültig oder konnte nicht bestätigt werden."
+            );
+          }
           return;
         }
         router.replace(body.data.redirectTo);
@@ -51,7 +69,8 @@ export default function EmailVerificationCard({
       .catch(() => {
         if (active) {
           setStatus("failed");
-          setMessage("Die sichere Verbindung konnte nicht hergestellt werden.");
+          setErrorKind("generic");
+          setMessage("Die Verbindung konnte nicht hergestellt werden.");
         }
       });
     return () => {
@@ -76,6 +95,7 @@ export default function EmailVerificationCard({
       return;
     }
     setStatus("resent");
+    setErrorKind(null);
     setMessage(body.data.message);
     if (body.data.previewToken) {
       window.setTimeout(() => {
@@ -88,13 +108,17 @@ export default function EmailVerificationCard({
 
   return (
     <section className="auth-card glass-strong hardware-panel relative w-full max-w-[520px] rounded-[1.5rem] border border-white/[0.1] p-7 shadow-[0_45px_120px_rgba(0,0,0,.48)] sm:p-10">
-      <p className="hud-label">Identity Verification</p>
+      <p className="hud-label">E-Mail-Bestätigung</p>
       <h1 className="mt-6 text-3xl font-semibold tracking-[-.04em] text-white sm:text-4xl">
-        E-Mail bestätigen.
+        {status === "failed"
+          ? "Bestätigung nicht möglich"
+          : status === "verifying"
+            ? "E-Mail wird bestätigt…"
+            : "Bitte E-Mail bestätigen"}
       </h1>
       <p className="mt-4 text-sm leading-relaxed text-slate-300/55">
-        Erst nach der Bestätigung wird Ihr Konto aktiviert. So verhindern wir,
-        dass fremde Personen Ihre Adresse für ein Analyseprofil verwenden.
+        Ohne bestätigte E-Mail-Adresse ist keine Anmeldung möglich. So bleibt
+        Ihr Konto geschützt.
       </p>
 
       <div
@@ -103,29 +127,45 @@ export default function EmailVerificationCard({
         aria-live="polite"
       >
         <p className="font-mono text-[8px] tracking-[.16em] text-cyber-cyan/55">
-          VERIFICATION STATUS
+          STATUS
         </p>
-        <p className="mt-3 text-sm text-white/65">{message}</p>
+        <p className="mt-3 text-sm text-white/70">{message}</p>
         {email && (
           <p className="mt-2 break-all font-mono text-[9px] text-white/28">
             {email}
           </p>
         )}
+        {status === "verifying" && (
+          <span
+            className="mt-4 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-cyber-cyan"
+            aria-hidden
+          />
+        )}
       </div>
 
-      {status !== "verifying" && email && (
-        <Button className="mt-7 w-full" onClick={resend}>
-          Bestätigung erneut senden
-        </Button>
-      )}
-      {status === "failed" && (
-        <Button
-          variant="secondary"
-          className="mt-3 w-full"
-          onClick={() => router.push("/verification-expired")}
+      {status === "waiting" && (
+        <Link
+          href="/login"
+          className="mt-7 inline-flex w-full items-center justify-center rounded-xl border border-white/[0.08] px-6 py-3 text-sm text-white/55 transition hover:border-white/[0.14] hover:text-white/80"
         >
-          Hilfe zur Bestätigung
-        </Button>
+          Zum Login
+        </Link>
+      )}
+
+      {(status === "failed" || status === "resent" || status === "waiting") &&
+        email && (
+          <Button className="mt-4 w-full" onClick={resend}>
+            Neue E-Mail anfordern
+          </Button>
+        )}
+
+      {status === "failed" && errorKind === "already" && (
+        <Link
+          href="/login"
+          className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-cyber-blue/30 bg-cyber-blue/[0.08] px-6 py-3 text-sm text-cyan-100 transition hover:bg-cyber-blue/[0.14]"
+        >
+          Zum Login
+        </Link>
       )}
     </section>
   );

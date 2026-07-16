@@ -20,7 +20,6 @@ interface AuthRedirectData {
 export default function LoginCard({ mode = "login" }: LoginCardProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
-  const [monitoring, setMonitoring] = useState(true);
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -40,7 +39,7 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
         email: String(formData.get("email") ?? ""),
         password: String(formData.get("password") ?? ""),
         passwordConfirm: String(formData.get("passwordConfirm") ?? ""),
-        monitoringOptIn: monitoring,
+        monitoringOptIn: false,
       });
 
       if (!parsed.success) {
@@ -51,7 +50,7 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
         return;
       }
 
-      await submit(endpoint, parsed.data, "/onboarding");
+      await submit(endpoint, parsed.data, "/verify-email");
       return;
     }
 
@@ -125,7 +124,7 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-2 font-mono text-[8px] tracking-[.16em] text-cyber-cyan/50">
           <StatusDot pulse />
-          {isRegister ? "NEW IDENTITY PROFILE" : "SECURE ACCESS"}
+          {isRegister ? "NEW ACCOUNT" : "SECURE ACCESS"}
         </div>
         <span className="font-mono text-[8px] tracking-[.14em] text-white/18">
           TLS 1.3 / EU
@@ -133,12 +132,12 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
       </div>
 
       <h1 className="text-3xl font-semibold tracking-[-.04em] text-white sm:text-4xl">
-        {isRegister ? "Ihre Sicherheit beginnt hier." : "Willkommen zurück"}
+        {isRegister ? "Konto erstellen" : "Willkommen zurück"}
       </h1>
       <p className="mt-3 max-w-sm text-sm leading-relaxed text-slate-300/50">
         {isRegister
-          ? "Erstellen Sie Ihre persönliche SynSight Sicherheitszentrale."
-          : "Verbinden Sie sich mit Ihrer digitalen Sicherheitszentrale."}
+          ? "Registrieren Sie sich mit Ihrer E-Mail-Adresse. Eine Anmeldung ist erst nach der E-Mail-Bestätigung möglich."
+          : "Melden Sie sich mit Ihrer bestätigten E-Mail-Adresse und Ihrem Passwort an."}
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
@@ -172,10 +171,12 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
           />
         ) : (
           <FormField
-            label="Benutzername"
+            label="E-Mail"
             name="identifier"
+            type="text"
             autoComplete="username"
             placeholder="name@unternehmen.de"
+            info="Verwenden Sie die E-Mail-Adresse, mit der Sie sich registriert haben."
             required
           />
         )}
@@ -219,7 +220,7 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
               </p>
             </div>
             <FormField
-              label="Passwort bestätigen"
+              label="Passwort wiederholen"
               name="passwordConfirm"
               type="password"
               autoComplete="new-password"
@@ -228,33 +229,15 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
               value={passwordConfirm}
               onChange={(event) => setPasswordConfirm(event.target.value)}
               hint={
-                passwordConfirm && password === passwordConfirm
-                  ? "STIMMT ÜBEREIN"
+                passwordConfirm.length > 0
+                  ? password === passwordConfirm
+                    ? "STIMMT ÜBEREIN"
+                    : "STIMMT NICHT ÜBEREIN"
                   : undefined
               }
               required
             />
           </>
-        )}
-
-        {isRegister && (
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-4">
-            <input
-              type="checkbox"
-              checked={monitoring}
-              onChange={(event) => setMonitoring(event.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-cyan-400"
-            />
-            <span>
-              <span className="block text-xs text-white/70">
-                Digitale Identität überwachen
-              </span>
-              <span className="mt-1 block text-[10px] leading-relaxed text-white/28">
-                SynSight darf neue Risikosignale für mein Analyseprofil
-                beobachten.
-              </span>
-            </span>
-          </label>
         )}
 
         {errorMessage && (
@@ -272,11 +255,19 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
           className="w-full"
           disabled={submitting}
         >
-          {submitting
-            ? "Sichere Verbindung wird aufgebaut..."
-            : isRegister
-              ? "Konto erstellen"
-              : "System starten"}
+          {submitting ? (
+            <span className="inline-flex items-center justify-center gap-2">
+              <span
+                className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/25 border-t-white/80"
+                aria-hidden
+              />
+              {isRegister ? "Konto wird erstellt…" : "Anmeldung läuft…"}
+            </span>
+          ) : isRegister ? (
+            "Konto erstellen"
+          ) : (
+            "Anmelden"
+          )}
         </Button>
       </form>
 

@@ -10,8 +10,6 @@ import {
   recordRateLimitFailure,
 } from "@/lib/security/rate-limit";
 import { getClientIp, validateMutationOrigin } from "@/lib/security/request";
-import { getProfileRepository } from "@/lib/repositories";
-import { isOnboardingComplete } from "@/lib/repositories/profile-repository";
 
 export async function POST(request: Request) {
   const csrfError = validateMutationOrigin(request);
@@ -70,11 +68,5 @@ export async function POST(request: Request) {
   }
 
   clearRateLimit(rateLimitKey);
-  const profile = await getProfileRepository().findByUserId(
-    Number(result.user.id)
-  );
-  const redirectTo = isOnboardingComplete(profile)
-    ? "/dashboard"
-    : "/onboarding";
-  return NextResponse.json(apiSuccess({ redirectTo }));
+  return NextResponse.json(apiSuccess({ redirectTo: "/dashboard" }));
 }

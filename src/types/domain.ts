@@ -38,12 +38,20 @@ export interface Session {
   createdAt: string;
 }
 
+export type ProfileGender =
+  "female" | "male" | "non_binary" | "prefer_not_to_say" | "other";
+
 export interface Profile {
   userId: number;
   firstName: string;
   lastName: string;
+  birthDate?: string | null;
+  gender?: ProfileGender | null;
   phone: string | null;
   company: string | null;
+  location?: string | null;
+  addressLine?: string | null;
+  previousLocations?: string[] | null;
   region: string;
   locale: string;
   publicAlias: string | null;
@@ -79,12 +87,15 @@ export interface ProfileAdditionalEmail {
   createdAt: string;
 }
 
+export type SocialAccountStatus = "active" | "former" | "unknown";
+
 export interface SocialAccount {
   id: number;
   userId: number;
   platform: string;
   username: string;
   profileUrl: string | null;
+  accountStatus?: SocialAccountStatus;
   createdAt: string;
   updatedAt: string;
 }

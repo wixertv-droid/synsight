@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import AnalysisWidget from "@/components/dashboard/AnalysisWidget";
 import RecommendationsPanel from "@/components/dashboard/RecommendationsPanel";
 import RiskCard from "@/components/dashboard/RiskCard";
@@ -6,6 +7,8 @@ import SecurityPanel from "@/components/dashboard/SecurityPanel";
 import StatusCard from "@/components/dashboard/StatusCard";
 import { dashboardMetrics, riskSignals } from "@/lib/platform-data";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getIdentityCompleteness } from "@/lib/services/identity-service";
+import { getProfileRepository } from "@/lib/repositories";
 
 export const metadata: Metadata = {
   title: "Dashboard — SynSight Command Center",
@@ -15,6 +18,16 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   const firstName = user?.displayName.split(" ")[0] ?? "Gast";
+  const userId = user ? Number(user.id) : 0;
+
+  if (user) {
+    await getProfileRepository().ensureDraft(userId, {
+      firstName: user.displayName.split(" ")[0] || "User",
+      lastName: user.displayName.split(" ").slice(1).join(" ") || "Account",
+    });
+  }
+
+  const completeness = user ? await getIdentityCompleteness(userId) : 0;
 
   const now = new Date();
   const formattedDate = new Intl.DateTimeFormat("de-DE", {
@@ -48,13 +61,51 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      <section className="mb-6 rounded-[1.4rem] border border-cyber-blue/15 bg-cyber-blue/[0.04] p-5 md:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="font-mono text-[8px] tracking-[.16em] text-cyber-cyan/55">
+              WILLKOMMEN
+            </p>
+            <h2 className="mt-2 text-xl font-medium tracking-[-.02em] text-white/85">
+              Vervollständigen Sie Ihr Identitätsprofil, um genauere Ergebnisse
+              zu erhalten.
+            </h2>
+            <p className="mt-2 max-w-2xl text-xs leading-relaxed text-white/35">
+              Es gibt keine Pflichtfelder. Jede freiwillige Angabe verbessert
+              spätere Such- und Vergleichsfunktionen.
+            </p>
+          </div>
+          <div className="min-w-[180px]">
+            <p className="font-mono text-[8px] tracking-[.14em] text-white/28">
+              PROFIL
+            </p>
+            <p className="mt-2 text-3xl font-semibold text-cyber-cyan/80">
+              {completeness} %
+            </p>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-cyber-blue to-cyber-cyan"
+                style={{ width: `${completeness}%` }}
+              />
+            </div>
+            <Link
+              href="/profile"
+              className="mt-4 inline-flex text-xs text-cyber-blue/80 transition hover:text-cyber-cyan"
+            >
+              Zum Identitätsprofil →
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <p
         className="mb-6 rounded-xl border border-amber-300/15 bg-amber-300/[0.04] px-4 py-3 text-[11px] leading-relaxed text-amber-50/70"
         role="status"
       >
         Kennzahlen und Risikosignale auf dieser Übersicht sind derzeit
-        Illustrationsdaten zur Produktvorschau. Ihre echten Onboarding-Spuren
-        fließen in Sprint 6 in die Analyse ein.
+        Illustrationsdaten zur Produktvorschau. Ihre Identitätsdaten fließen in
+        späteren Sprints in die Analyse ein.
       </p>
 
       <SecurityPanel />

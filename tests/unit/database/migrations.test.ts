@@ -8,12 +8,13 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–004 migration files", () => {
+  it("ships ordered 001–005 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
       "003_digital_traces_images.sql",
       "004_admin_role_and_compat.sql",
+      "005_identity_profile_fields.sql",
     ]);
   });
 
@@ -55,5 +56,17 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("CREATE OR REPLACE VIEW `analysis_items`");
     expect(sql).toContain("CREATE OR REPLACE VIEW `audit_logs`");
     expect(sql).toContain("`risk_level`");
+  });
+
+  it("adds identity profile fields in 005", () => {
+    const sql = readFileSync(
+      path.join(dir, "005_identity_profile_fields.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("`birth_date`");
+    expect(sql).toContain("`gender`");
+    expect(sql).toContain("`address_line`");
+    expect(sql).toContain("`previous_locations`");
+    expect(sql).toContain("`account_status`");
   });
 });

@@ -35,13 +35,8 @@ test.describe("auth happy path (in-memory)", () => {
     await page.goto("/login");
     await page.locator('input[name="identifier"]').fill("admin");
     await page.locator('input[name="password"]').fill("admin");
-    await page.getByRole("button", { name: /system starten/i }).click();
+    await page.getByRole("button", { name: /anmelden/i }).click();
 
-    await expect(page).toHaveURL(/\/(dashboard|onboarding)/, {
-      timeout: 15_000,
-    });
-
-    // Admin seed profile is onboarding-complete → dashboard.
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
     await expect(page.locator("#synsight-dashboard")).toBeVisible();
 

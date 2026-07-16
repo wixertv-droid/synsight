@@ -70,20 +70,37 @@ export async function issueEmailVerification(userId: number): Promise<string> {
   return token;
 }
 
+export type VerifyEmailResult =
+  | { success: true; userId: number }
+  | {
+      success: false;
+      reason: "invalid" | "expired" | "already_used" | "account_blocked";
+    };
+
 export async function verifyEmailToken(
   plainToken: string
-): Promise<{ success: true; userId: number } | { success: false }> {
+): Promise<VerifyEmailResult> {
   const tokenRepository = getUserTokenRepository();
+  const tokenHash = hashToken(plainToken);
   const token = await tokenRepository.findValid(
-    hashToken(plainToken),
+    tokenHash,
     "email_verification"
   );
-  if (!token) return { success: false };
+
+  if (!token) {
+    const existing = await tokenRepository.findByHash(
+      tokenHash,
+      "email_verification"
+    );
+    if (!existing) return { success: false, reason: "invalid" };
+    if (existing.usedAt) return { success: false, reason: "already_used" };
+    return { success: false, reason: "expired" };
+  }
 
   const userRepository = getUserRepository();
   const user = await userRepository.findById(token.userId);
   if (!user || user.status === "deleted" || user.status === "suspended") {
-    return { success: false };
+    return { success: false, reason: "account_blocked" };
   }
 
   await userRepository.activate(user.id);
