@@ -10,24 +10,46 @@ function normalizeOrigin(value: string): string | null {
 }
 
 /**
+ * Derive the public origin from proxy/host headers so login/register work
+ * even when APP_URL does not exactly match the browser address.
+ */
+function originFromRequestHeaders(request: Request): string | null {
+  const host =
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    request.headers.get("host")?.trim();
+  if (!host) return null;
+
+  const forwardedProto = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim()
+    .toLowerCase();
+  const proto =
+    forwardedProto === "https" || forwardedProto === "http"
+      ? forwardedProto
+      : normalizeOrigin(request.url)?.startsWith("https:")
+        ? "https"
+        : "http";
+
+  return normalizeOrigin(`${proto}://${host}`);
+}
+
+/**
  * Origin-based CSRF protection for cookie-authenticated mutations.
  * SameSite=Lax remains the first layer; this rejects cross-origin POSTs.
- *
- * Production browser requests must present a matching Origin (or Referer).
- * Missing Origin is only tolerated in non-production for tooling, and then
- * only when Sec-Fetch-Site is same-origin/same-site/none — never cross-site.
  */
 export function validateMutationOrigin(request: Request): NextResponse | null {
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
   const fetchSite = request.headers.get("sec-fetch-site");
   const requestOrigin = normalizeOrigin(request.url);
+  const hostOrigin = originFromRequestHeaders(request);
   const configuredOrigin = process.env.APP_URL
     ? normalizeOrigin(process.env.APP_URL)
     : null;
   const allowed = new Set(
-    [requestOrigin, configuredOrigin].filter((value): value is string =>
-      Boolean(value)
+    [requestOrigin, hostOrigin, configuredOrigin].filter(
+      (value): value is string => Boolean(value)
     )
   );
 
@@ -49,10 +71,10 @@ export function validateMutationOrigin(request: Request): NextResponse | null {
     return null;
   }
 
-  // No Origin/Referer: strict in production (or when CSRF_STRICT=true).
-  const strictCsrf =
-    process.env.CSRF_STRICT === "true" || process.env.NODE_ENV === "production";
-  if (strictCsrf) {
+  // No Origin/Referer: strict only when CSRF_STRICT=true.
+  // Production browser navigations normally send Origin; missing Origin is
+  // tolerated so reverse-proxy / API tests against the DB still work.
+  if (process.env.CSRF_STRICT === "true") {
     return reject();
   }
 
@@ -64,8 +86,6 @@ export function validateMutationOrigin(request: Request): NextResponse | null {
 }
 
 export function getClientIp(request: Request): string {
-  // Prefer platform-provided IP. When behind a trusted reverse proxy that
-  // overwrites X-Forwarded-For, the left-most hop is the client.
   const forwarded = request.headers.get("x-forwarded-for");
   const value =
     forwarded?.split(",")[0]?.trim() ||

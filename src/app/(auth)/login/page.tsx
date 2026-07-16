@@ -6,6 +6,16 @@ export const metadata: Metadata = {
   description: "Sicherer Zugang zu Ihrer SynSight Sicherheitszentrale.",
 };
 
-export default function LoginPage() {
-  return <LoginCard mode="login" />;
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ registered?: string }>;
+}) {
+  const params = await searchParams;
+  const notice =
+    params.registered === "1"
+      ? "Konto erstellt. Sie können sich jetzt anmelden."
+      : null;
+
+  return <LoginCard mode="login" notice={notice} />;
 }

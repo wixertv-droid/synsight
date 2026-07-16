@@ -26,6 +26,7 @@ import { createSessionId, hashToken } from "@/lib/utils/crypto";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 import type { UserRecord } from "@/lib/repositories/user-repository";
 import type { RegisterInput } from "@/lib/validation/auth";
+import { isAutoVerifyEmailEnabled } from "@/lib/config/env";
 import { issueEmailVerification } from "./verification-service";
 
 function toAuthenticatedUser(record: UserRecord): AuthenticatedUser {
@@ -46,6 +47,7 @@ export type RegistrationResult =
       status: "created";
       email: string;
       verificationToken: string;
+      autoVerified: boolean;
     }
   | { status: "email_exists" }
   | { status: "reserved_username" };
@@ -194,7 +196,13 @@ export async function registerUser(
       ? new Date().toISOString().slice(0, 23).replace("T", " ")
       : null,
   });
-  const verificationToken = await issueEmailVerification(user.id);
+  const autoVerified = isAutoVerifyEmailEnabled();
+  let verificationToken = "";
+  if (autoVerified) {
+    await repository.activate(user.id);
+  } else {
+    verificationToken = await issueEmailVerification(user.id);
+  }
   await getAuditRepository().create({
     userId: user.id,
     eventType: "auth.registration",
@@ -206,6 +214,7 @@ export async function registerUser(
     status: "created",
     email: user.email,
     verificationToken,
+    autoVerified,
   };
 }
 

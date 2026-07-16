@@ -1,11 +1,8 @@
 /**
- * PM2 process file for SynSight on Debian.
+ * PM2 process file for SynSight — open for database / auth testing.
  *
- * Usage:
  *   pm2 start ecosystem.config.cjs
  *   pm2 restart synsight --update-env
- *
- * Set APP_URL to your HTTPS domain before `npm run build`.
  */
 module.exports = {
   apps: [
@@ -18,9 +15,12 @@ module.exports = {
       exec_mode: "fork",
       env: {
         NODE_ENV: "production",
-        // Public registration enabled for testing (verification links → PM2 logs)
+        REQUIRE_DATABASE: "true",
         ALLOW_PUBLIC_REGISTRATION: "true",
+        AUTO_VERIFY_EMAIL: "true",
         EMAIL_DELIVERY_MODE: "log-link",
+        CSRF_STRICT: "false",
+        ALLOW_DEV_AUTH: "false",
       },
     },
   ],

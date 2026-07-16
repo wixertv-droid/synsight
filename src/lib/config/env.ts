@@ -24,9 +24,14 @@ const environmentSchema = z
     ALLOW_DEV_AUTH: z.enum(["true", "false"]).default("false"),
     EMAIL_DELIVERY_MODE: z
       .enum(["log-link", "disabled", "provider"])
-      .default("disabled"),
-    /** Self-serve registration. Forced off in production unless explicitly enabled. */
+      .default("log-link"),
+    /** Self-serve registration. Set "false" to disable. */
     ALLOW_PUBLIC_REGISTRATION: z.enum(["true", "false"]).optional(),
+    /**
+     * When true, new registrations are activated immediately (no email wait).
+     * Intended for database / auth integration testing.
+     */
+    AUTO_VERIFY_EMAIL: z.enum(["true", "false"]).default("true"),
   })
   .superRefine((env, ctx) => {
     // Production requires MySQL unless explicitly opted out (e2e/local prod.mode).
@@ -75,6 +80,7 @@ function parseEnv() {
     ALLOW_DEV_AUTH: process.env.ALLOW_DEV_AUTH,
     EMAIL_DELIVERY_MODE: process.env.EMAIL_DELIVERY_MODE,
     ALLOW_PUBLIC_REGISTRATION: process.env.ALLOW_PUBLIC_REGISTRATION,
+    AUTO_VERIFY_EMAIL: process.env.AUTO_VERIFY_EMAIL,
   });
 }
 
@@ -119,22 +125,14 @@ export function isDatabaseRequired(): boolean {
 }
 
 /**
- * Public self-registration:
- * - development/test: allowed by default
- * - production: disabled unless ALLOW_PUBLIC_REGISTRATION=true AND email can be delivered
+ * Public self-registration — open unless explicitly disabled.
+ * Set ALLOW_PUBLIC_REGISTRATION=false to lock registration again.
  */
 export function isPublicRegistrationAllowed(): boolean {
-  const nodeEnv = process.env.NODE_ENV ?? "development";
-  if (nodeEnv !== "production") {
-    return process.env.ALLOW_PUBLIC_REGISTRATION !== "false";
-  }
+  return process.env.ALLOW_PUBLIC_REGISTRATION !== "false";
+}
 
-  if (process.env.ALLOW_PUBLIC_REGISTRATION !== "true") {
-    return false;
-  }
-
-  const mode = process.env.EMAIL_DELIVERY_MODE ?? "disabled";
-  if (mode === "disabled") return false;
-  if (mode === "provider" && !process.env.EMAIL_PROVIDER_API_KEY) return false;
-  return true;
+/** Activate accounts immediately after register (skip inbox wait). */
+export function isAutoVerifyEmailEnabled(): boolean {
+  return process.env.AUTO_VERIFY_EMAIL !== "false";
 }

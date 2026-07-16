@@ -37,6 +37,26 @@ describe("validateMutationOrigin", () => {
     if (previous === undefined) delete process.env.CSRF_STRICT;
     else process.env.CSRF_STRICT = previous;
   });
+
+  it("allows Origin matching forwarded Host when APP_URL differs", () => {
+    const previousApp = process.env.APP_URL;
+    const previousStrict = process.env.CSRF_STRICT;
+    process.env.APP_URL = "https://internal.example";
+    process.env.CSRF_STRICT = "false";
+    const request = new Request("http://127.0.0.1:3000/api/auth/login", {
+      method: "POST",
+      headers: {
+        origin: "https://synsight.de",
+        host: "synsight.de",
+        "x-forwarded-proto": "https",
+      },
+    });
+    expect(validateMutationOrigin(request)).toBeNull();
+    if (previousApp === undefined) delete process.env.APP_URL;
+    else process.env.APP_URL = previousApp;
+    if (previousStrict === undefined) delete process.env.CSRF_STRICT;
+    else process.env.CSRF_STRICT = previousStrict;
+  });
 });
 
 describe("getClientIp", () => {

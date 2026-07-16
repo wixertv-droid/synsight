@@ -71,8 +71,21 @@ export async function POST(request: Request) {
     );
   }
 
+  // Auto-verified accounts can log in immediately (DB / auth testing).
+  if (result.autoVerified) {
+    return NextResponse.json(
+      apiSuccess({
+        redirectTo: "/login?registered=1",
+      }),
+      { status: 201, headers: rateLimitHeaders(attempt) }
+    );
+  }
+
   const previewToken =
-    process.env.NODE_ENV === "production" ? null : result.verificationToken;
+    process.env.EMAIL_DELIVERY_MODE === "log-link" ||
+    process.env.NODE_ENV !== "production"
+      ? result.verificationToken
+      : null;
   const query = new URLSearchParams({ email: result.email });
   if (previewToken) query.set("preview", previewToken);
 

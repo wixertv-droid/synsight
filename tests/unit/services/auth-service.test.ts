@@ -37,6 +37,9 @@ describe("auth-service", () => {
     cookieStore.get.mockClear();
     delete process.env.DATABASE_URL;
     process.env.SESSION_SECRET = "unit-test-session-secret-32chars!";
+    process.env.EMAIL_DELIVERY_MODE = "log-link";
+    // Explicit verification-flow tests set this to "false".
+    process.env.AUTO_VERIFY_EMAIL = "false";
   });
 
   it("registers a pending user and issues a verification token", async () => {
@@ -51,6 +54,7 @@ describe("auth-service", () => {
 
     expect(result.status).toBe("created");
     if (result.status !== "created") return;
+    expect(result.autoVerified).toBe(false);
 
     const user = await getUserRepository().findByEmail("new.user@example.com");
     expect(user?.status).toBe("pending_verification");
@@ -62,6 +66,32 @@ describe("auth-service", () => {
       "new.user@example.com"
     );
     expect(activated?.status).toBe("active");
+  });
+
+  it("auto-verifies registration and allows immediate login", async () => {
+    process.env.AUTO_VERIFY_EMAIL = "true";
+    const registration = await registerUser({
+      firstName: "Ready",
+      lastName: "User",
+      email: "ready@example.com",
+      password: "SecurePass1!",
+      passwordConfirm: "SecurePass1!",
+      monitoringOptIn: false,
+    });
+    expect(registration.status).toBe("created");
+    if (registration.status === "created") {
+      expect(registration.autoVerified).toBe(true);
+      expect(registration.verificationToken).toBe("");
+    }
+
+    const user = await getUserRepository().findByEmail("ready@example.com");
+    expect(user?.status).toBe("active");
+
+    const login = await loginWithCredentials(
+      "ready@example.com",
+      "SecurePass1!"
+    );
+    expect(login.status).toBe("success");
   });
 
   it("rejects duplicate email registration", async () => {

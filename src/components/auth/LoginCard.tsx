@@ -11,13 +11,18 @@ import type { ApiResponseBody } from "@/lib/api/response";
 
 interface LoginCardProps {
   mode?: "login" | "register";
+  /** Shown after successful registration when auto-verify is enabled. */
+  notice?: string | null;
 }
 
 interface AuthRedirectData {
   redirectTo: string;
 }
 
-export default function LoginCard({ mode = "login" }: LoginCardProps) {
+export default function LoginCard({
+  mode = "login",
+  notice = null,
+}: LoginCardProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [password, setPassword] = useState("");
@@ -136,9 +141,18 @@ export default function LoginCard({ mode = "login" }: LoginCardProps) {
       </h1>
       <p className="mt-3 max-w-sm text-sm leading-relaxed text-slate-300/50">
         {isRegister
-          ? "Registrieren Sie sich mit Ihrer E-Mail-Adresse. Eine Anmeldung ist erst nach der E-Mail-Bestätigung möglich."
-          : "Melden Sie sich mit Ihrer bestätigten E-Mail-Adresse und Ihrem Passwort an."}
+          ? "Registrieren Sie sich mit Ihrer E-Mail-Adresse. Das Konto ist danach sofort aktiv — Sie können sich direkt anmelden."
+          : "Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an."}
       </p>
+
+      {!isRegister && notice ? (
+        <p
+          className="mt-5 rounded-xl border border-cyber-cyan/25 bg-cyber-cyan/10 px-4 py-3 text-sm text-cyber-cyan"
+          role="status"
+        >
+          {notice}
+        </p>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         {isRegister && (
