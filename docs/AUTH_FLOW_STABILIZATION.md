@@ -126,7 +126,7 @@ Manuelle Tests:
 | ------------------- | ----------- |
 | `npm run typecheck` | ✅          |
 | `npm run lint`      | ✅          |
-| `npm run test`      | ✅ 56 tests |
+| `npm run test`      | ✅ 61 tests |
 | `npm run build`     | ✅          |
 | `npm run test:e2e`  | ✅ 6 tests  |
 
