@@ -48,34 +48,32 @@ Session-Cookies nutzten `secure: NODE_ENV === "production"`. Über reines HTTP w
 
 ## Fixes
 
-1. **`next.config.ts`** — CSP ohne `upgrade-insecure-requests` (niemals im Build gebacken)
-2. **`src/middleware.ts`** — HSTS/`upgrade-insecure-requests` nur zur Laufzeit bei echten HTTPS-Requests
-3. **`src/lib/security/https.ts` + `csp.ts`** — zentrale Helper
-4. **`src/lib/auth/session.ts`** — `Secure`-Cookie nur bei HTTPS-Konfiguration
-5. **`src/app/layout.tsx`** — `metadataBase` aus `APP_URL`
-6. **`.env.production.example`** + **`ecosystem.config.cjs`** — Deploy-Hinweise
+1. **`next.config.ts`** — `upgrade-insecure-requests` + HSTS nur wenn `APP_URL` mit `https://` beginnt oder `FORCE_HTTPS=true`
+2. **`src/lib/security/https.ts`** — zentrale Helper
+3. **`src/lib/auth/session.ts`** — `Secure`-Cookie nur bei HTTPS-Konfiguration
+4. **`src/app/layout.tsx`** — `metadataBase` aus `APP_URL` (keine feste localhost-/Domain-Annahme für OG)
+5. **`.env.production.example`** + **`ecosystem.config.cjs`** — Deploy-Hinweise
 
 ---
 
-## Server-Anweisung (für http://159.195.157.24:3000)
+## Server-Anweisung
 
 ```bash
 git fetch origin
 git checkout cursor/sprint-5d-hotfix-deploy-7c12
 git pull
 
-export APP_URL=http://159.195.157.24:3000
-export COOKIE_SECURE=false
-export FORCE_HTTPS=false
+# APP_URL = exakt die Origin, die Nutzer im Browser öffnen
+# Ohne TLS:
+export APP_URL=http://IHRE-IP-ODER-DOMAIN:3000
+# Mit TLS:
+# export APP_URL=https://synsight.de
 
 npm ci
-npm run build
+npm run build    # wichtig: nach APP_URL-Änderung neu bauen
 pm2 restart synsight
 # oder: pm2 start ecosystem.config.cjs
 ```
-
-Danach Hard-Reload im Browser (Cache leeren). In DevTools → Network darf kein
-`https://159.195.157.24:3000/_next/...` mehr erscheinen.
 
 ---
 

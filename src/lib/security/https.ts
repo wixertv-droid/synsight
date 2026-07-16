@@ -1,8 +1,12 @@
 /**
- * HTTPS detection for cookies and optional explicit overrides.
+ * HTTPS enforcement helpers.
  *
- * Request-protocol checks live in middleware (Edge). Cookie Secure flags are
- * set in Node route handlers and follow APP_URL / explicit env overrides.
+ * Production builds previously toggled CSP `upgrade-insecure-requests` and
+ * HSTS purely on `NODE_ENV === "production"`. That breaks HTTP deployments
+ * (IP/hostname without TLS): browsers upgrade CSS/JS/font requests to HTTPS,
+ * assets fail, and the UI falls back to unstyled defaults.
+ *
+ * Enforce HTTPS only when explicitly configured.
  */
 
 export function isHttpsEnforced(): boolean {
@@ -17,23 +21,4 @@ export function isSecureCookieRequired(): boolean {
   if (process.env.COOKIE_SECURE === "true") return true;
   if (process.env.COOKIE_SECURE === "false") return false;
   return isHttpsEnforced();
-}
-
-/**
- * True when this HTTP request reached the app as HTTPS
- * (direct TLS or reverse-proxy via X-Forwarded-Proto).
- */
-export function isHttpsRequest(request: {
-  headers: { get(name: string): string | null };
-  nextUrl: { protocol: string };
-}): boolean {
-  if (process.env.FORCE_HTTPS === "true") return true;
-  if (process.env.FORCE_HTTPS === "false") return false;
-
-  const forwarded = request.headers.get("x-forwarded-proto");
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim().toLowerCase() === "https";
-  }
-
-  return request.nextUrl.protocol === "https:";
 }

@@ -1,49 +1,23 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { buildContentSecurityPolicy } from "@/lib/security/csp";
-import {
-  isHttpsEnforced,
-  isHttpsRequest,
-  isSecureCookieRequired,
-} from "@/lib/security/https";
+import { isHttpsEnforced, isSecureCookieRequired } from "@/lib/security/https";
 
 describe("security headers configuration", () => {
-  const nextConfig = readFileSync(
+  const source = readFileSync(
     path.join(process.cwd(), "next.config.ts"),
     "utf8"
   );
-  const middleware = readFileSync(
-    path.join(process.cwd(), "src/middleware.ts"),
-    "utf8"
-  );
 
-  it("keeps build-time CSP free of protocol upgrades", () => {
-    expect(nextConfig).toContain("buildContentSecurityPolicy(false)");
-    expect(nextConfig).not.toContain("Strict-Transport-Security");
-    expect(buildContentSecurityPolicy(false)).not.toContain(
-      "upgrade-insecure-requests"
+  it("gates HSTS and upgrade-insecure-requests on HTTPS config, not NODE_ENV alone", () => {
+    expect(source).toContain("upgrade-insecure-requests");
+    expect(source).toContain("Strict-Transport-Security");
+    expect(source).toContain("FORCE_HTTPS");
+    expect(source).toContain("APP_URL");
+    expect(source).not.toMatch(
+      /const isProduction = process\.env\.NODE_ENV === "production"/
     );
-  });
-
-  it("applies HTTPS upgrades only at runtime in middleware", () => {
-    expect(middleware).toContain("isHttpsRequest");
-    expect(middleware).toContain("buildContentSecurityPolicy(true)");
-    expect(middleware).toContain("Strict-Transport-Security");
-  });
-});
-
-describe("CSP builder", () => {
-  it("omits upgrade directive for HTTP", () => {
-    expect(buildContentSecurityPolicy(false)).not.toContain(
-      "upgrade-insecure-requests"
-    );
-  });
-
-  it("includes upgrade directive for HTTPS", () => {
-    expect(buildContentSecurityPolicy(true)).toContain(
-      "upgrade-insecure-requests"
-    );
+    expect(source).toMatch(/enforceHttps \? \["upgrade-insecure-requests"\]/);
   });
 });
 
@@ -63,29 +37,22 @@ describe("https helpers", () => {
 
   it("does not enforce HTTPS for http APP_URL", () => {
     process.env.FORCE_HTTPS = "false";
-    process.env.APP_URL = "http://159.195.157.24:3000";
+    process.env.APP_URL = "http://synsight.local:3000";
     expect(isHttpsEnforced()).toBe(false);
     expect(isSecureCookieRequired()).toBe(false);
   });
 
-  it("detects HTTP requests without upgrade", () => {
+  it("enforces HTTPS for https APP_URL", () => {
     delete process.env.FORCE_HTTPS;
-    const https = isHttpsRequest({
-      headers: { get: () => null },
-      nextUrl: { protocol: "http:" },
-    });
-    expect(https).toBe(false);
+    delete process.env.COOKIE_SECURE;
+    process.env.APP_URL = "https://synsight.de";
+    expect(isHttpsEnforced()).toBe(true);
+    expect(isSecureCookieRequired()).toBe(true);
   });
 
-  it("detects HTTPS via x-forwarded-proto", () => {
-    delete process.env.FORCE_HTTPS;
-    const https = isHttpsRequest({
-      headers: {
-        get: (name: string) =>
-          name.toLowerCase() === "x-forwarded-proto" ? "https" : null,
-      },
-      nextUrl: { protocol: "http:" },
-    });
-    expect(https).toBe(true);
+  it("respects FORCE_HTTPS override", () => {
+    process.env.APP_URL = "http://example.com";
+    process.env.FORCE_HTTPS = "true";
+    expect(isHttpsEnforced()).toBe(true);
   });
 });
