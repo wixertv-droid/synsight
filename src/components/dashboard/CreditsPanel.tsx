@@ -87,6 +87,7 @@ export default async function CreditsPanel({ userId }: CreditsPanelProps) {
               {recentCharges.length === 0 ? (
                 <li>
                   <InfoPanel
+                    compact
                     title="Noch keine Abbuchungen"
                     description={guidance.empty.transactions}
                     actionLabel="SynCredits aufladen"

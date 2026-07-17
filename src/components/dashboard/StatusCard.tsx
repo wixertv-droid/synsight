@@ -16,7 +16,7 @@ export default function StatusCard({
   index: number;
 }) {
   return (
-    <article className="glass hardware-panel group min-h-[170px] rounded-2xl p-5 transition-all duration-500 hover:border-cyber-blue/22">
+    <article className="glass hardware-panel group relative z-0 min-h-[170px] overflow-visible rounded-2xl p-5 transition-all duration-500 hover:z-10 hover:border-cyber-blue/22">
       <div className="flex items-center justify-between">
         <span className="font-mono text-[8px] tracking-[.16em] text-white/28">
           KPI / {String(index + 1).padStart(2, "0")}

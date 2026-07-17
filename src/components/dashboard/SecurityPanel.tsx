@@ -4,8 +4,8 @@ import { guidance } from "@/lib/content/guidance";
 
 export default function SecurityPanel() {
   return (
-    <section className="glass-strong hardware-panel relative mb-6 overflow-hidden rounded-[1.4rem] border border-cyber-blue/15 p-6 shadow-[0_35px_100px_rgba(0,0,0,.3)] md:p-8">
-      <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-cyber-blue/[0.07] blur-[80px]" />
+    <section className="glass-strong hardware-panel relative z-0 mb-6 overflow-visible rounded-[1.4rem] border border-cyber-blue/15 p-6 shadow-[0_35px_100px_rgba(0,0,0,.3)] md:p-8">
+      <div className="absolute -right-24 -top-24 h-72 w-72 overflow-hidden rounded-full bg-cyber-blue/[0.07] blur-[80px]" />
       <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
         <div>
           <div className="flex items-center gap-3">
