@@ -31,6 +31,9 @@ const environmentSchema = z
     SMTP_USER: z.string().min(1).optional(),
     SMTP_PASS: z.string().min(1).optional(),
     SMTP_FROM: z.string().min(3).optional(),
+    CONTACT_EMAIL: z.string().email().optional(),
+    PRESS_EMAIL: z.string().email().optional(),
+    PARTNER_EMAIL: z.string().email().optional(),
     /** Self-serve registration. Set "false" to disable. */
     ALLOW_PUBLIC_REGISTRATION: z.enum(["true", "false"]).optional(),
     /**
@@ -103,6 +106,9 @@ function parseEnv() {
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASS: process.env.SMTP_PASS,
     SMTP_FROM: process.env.SMTP_FROM,
+    CONTACT_EMAIL: process.env.CONTACT_EMAIL || undefined,
+    PRESS_EMAIL: process.env.PRESS_EMAIL || undefined,
+    PARTNER_EMAIL: process.env.PARTNER_EMAIL || undefined,
     ALLOW_PUBLIC_REGISTRATION: process.env.ALLOW_PUBLIC_REGISTRATION,
     AUTO_VERIFY_EMAIL: process.env.AUTO_VERIFY_EMAIL,
   });

@@ -6,7 +6,7 @@ import {
 import { createOpaqueToken, hashToken } from "@/lib/utils/crypto";
 import { getEnvironment, resetEnvironmentCache } from "@/lib/config/env";
 import { getObservability } from "@/lib/observability";
-import { sendVerificationEmail } from "@/lib/email/smtp";
+import { sanitizeSmtpError, sendVerificationEmail } from "@/lib/email/smtp";
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60_000;
 
@@ -66,9 +66,15 @@ async function deliverVerificationEmail(
     console.error(
       `[email:provider] Verification delivery failed for domain ${
         email.split("@")[1] ?? "unknown"
-      }: ${error instanceof Error ? error.message : String(error)}`
+      }: ${sanitizeSmtpError(error)}`
     );
-    console.info(`[email:fallback-log] verification for ${email}: ${url}`);
+    // Do not log the raw verification URL in production provider mode —
+    // operators can resend; fallback log only confirms failure path.
+    console.info(
+      `[email:fallback-log] verification delivery deferred for domain ${
+        email.split("@")[1] ?? "unknown"
+      } (token remains valid; user can request resend)`
+    );
   }
 }
 

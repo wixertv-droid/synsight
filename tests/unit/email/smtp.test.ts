@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Environment } from "@/lib/config/env";
 
-const { sendMail, createTransport, close } = vi.hoisted(() => {
+const { sendMail, createTransport, close, verify } = vi.hoisted(() => {
   const hoistedSendMail = vi.fn();
   const hoistedClose = vi.fn();
+  const hoistedVerify = vi.fn();
   return {
     sendMail: hoistedSendMail,
     close: hoistedClose,
+    verify: hoistedVerify,
     createTransport: vi.fn(() => ({
       sendMail: hoistedSendMail,
       close: hoistedClose,
+      verify: hoistedVerify,
     })),
   };
 });
@@ -18,7 +21,12 @@ vi.mock("nodemailer", () => ({
   default: { createTransport },
 }));
 
-import { sendSmtpMail, sendVerificationEmail } from "@/lib/email/smtp";
+import {
+  sanitizeSmtpError,
+  sendSmtpMail,
+  sendVerificationEmail,
+} from "@/lib/email/smtp";
+import { buildVerificationEmail } from "@/lib/email/templates/verification-email";
 
 const env = {
   NODE_ENV: "production",
@@ -42,6 +50,7 @@ describe("SMTP delivery", () => {
     createTransport.mockClear();
     sendMail.mockReset();
     close.mockClear();
+    verify.mockReset();
     sendMail.mockResolvedValue({ messageId: "test-message" });
   });
 
@@ -51,23 +60,26 @@ describe("SMTP delivery", () => {
       verificationUrl: "https://synsight.de/verify-email?token=secret",
     });
 
-    expect(createTransport).toHaveBeenCalledWith({
-      host: "mxf920.netcup.net",
-      port: 465,
-      secure: true,
-      auth: { user: "noreply@synsight.de", pass: "smtp-password" },
-      connectionTimeout: 8_000,
-      greetingTimeout: 8_000,
-      socketTimeout: 10_000,
-    });
+    expect(createTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "mxf920.netcup.net",
+        port: 465,
+        secure: true,
+        auth: { user: "noreply@synsight.de", pass: "smtp-password" },
+        connectionTimeout: 20_000,
+        greetingTimeout: 20_000,
+        socketTimeout: 25_000,
+      })
+    );
     expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
         from: "SynSight <noreply@synsight.de>",
         to: "new.user@example.com",
-        subject: expect.stringContaining("bestätigen"),
+        subject: "Bestätigen Sie Ihr SynSight Konto",
         text: expect.stringContaining(
           "https://synsight.de/verify-email?token=secret"
         ),
+        html: expect.stringContaining("E-Mail-Adresse bestätigen"),
         envelope: {
           from: "noreply@synsight.de",
           to: "new.user@example.com",
@@ -98,6 +110,26 @@ describe("SMTP delivery", () => {
     );
   });
 
+  it("falls back to port 587 when 465 times out", async () => {
+    sendMail
+      .mockRejectedValueOnce(new Error("Connection timeout"))
+      .mockResolvedValueOnce({ messageId: "via-587" });
+
+    const result = await sendSmtpMail(env, {
+      from: env.SMTP_FROM as string,
+      to: "ops@synsight.de",
+      subject: "Fallback",
+      text: "ok",
+    });
+
+    expect(result.via).toContain("587");
+    expect(createTransport).toHaveBeenCalledTimes(2);
+    expect(createTransport).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ port: 587, secure: false, requireTLS: true })
+    );
+  });
+
   it("rejects incomplete SMTP settings", async () => {
     await expect(
       sendVerificationEmail(
@@ -108,5 +140,24 @@ describe("SMTP delivery", () => {
         }
       )
     ).rejects.toThrow("SMTP configuration is incomplete");
+  });
+
+  it("redacts secrets in SMTP error messages", () => {
+    expect(
+      sanitizeSmtpError(new Error("auth failed SMTP_PASS=supersecret"))
+    ).not.toContain("supersecret");
+  });
+});
+
+describe("verification email template", () => {
+  it("uses the production subject and CTA", () => {
+    const template = buildVerificationEmail({
+      verificationUrl: "https://synsight.de/verify-email?token=abc",
+    });
+    expect(template.subject).toBe("Bestätigen Sie Ihr SynSight Konto");
+    expect(template.text).toContain("Willkommen bei SynSight.");
+    expect(template.html).toContain("SYN");
+    expect(template.html).toContain("SIGHT");
+    expect(template.html).toContain("E-Mail-Adresse bestätigen");
   });
 });
