@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -16,6 +16,11 @@ const jetbrainsMono = JetBrains_Mono({
 
 const appUrl = process.env.APP_URL?.trim() || "http://localhost:3000";
 
+export const viewport: Viewport = {
+  themeColor: "#04070C",
+  colorScheme: "dark",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: "SynSight — Digitale Identität erkennen und schützen",
@@ -28,6 +33,15 @@ export const metadata: Metadata = {
     "Cybersicherheit",
     "Online-Reputation",
   ],
+  applicationName: "SynSight",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
     title: "SynSight — Digitale Identität erkennen und schützen",
     description:
