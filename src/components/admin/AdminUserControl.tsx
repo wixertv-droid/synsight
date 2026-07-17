@@ -74,9 +74,9 @@ export default function AdminUserControl() {
     }
   }
 
-  async function selectUser(userId: number) {
+  async function selectUser(userId: number, clearMessage = true) {
     setBusy(true);
-    setMessage(null);
+    if (clearMessage) setMessage(null);
     try {
       const response = await fetch(`/api/admin/user/${userId}`);
       const result = (await response.json()) as ApiEnvelope<UserDetail>;
@@ -125,10 +125,10 @@ export default function AdminUserControl() {
         );
         return;
       }
+      await selectUser(selected.user.id, false);
       setMessage(
         `Transaktion #${result.data.transactionId} gespeichert. Neues Guthaben: ${result.data.balance.toLocaleString("de-DE")} SynCredits.`
       );
-      await selectUser(selected.user.id);
       setAmount("");
       setReason("");
       setConfirmed(false);

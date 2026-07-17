@@ -126,13 +126,13 @@ Keine Credit- oder Berechtigungs-Business-Logik liegt in React-Komponenten.
 
 ## Tests
 
-| Gate                | Ergebnis                      |
-| ------------------- | ----------------------------- |
-| `npm run typecheck` | ✅                            |
-| `npm run lint`      | ✅                            |
-| `npm run test`      | ✅ 76 Tests                   |
-| `npm run build`     | ✅                            |
-| `npm run test:e2e`  | ausstehend vor finalem Commit |
+| Gate                | Ergebnis                         |
+| ------------------- | -------------------------------- |
+| `npm run typecheck` | ✅                               |
+| `npm run lint`      | ✅                               |
+| `npm run test`      | ✅ 76 Tests                      |
+| `npm run build`     | ✅                               |
+| `npm run test:e2e`  | ✅ 6 Tests (inkl. Rollenprüfung) |
 
 ## Server-Update
 

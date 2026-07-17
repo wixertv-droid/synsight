@@ -1,9 +1,11 @@
 import type { AuthenticatedUser } from "@/lib/auth/types";
 import { getDatabaseHealth } from "@/lib/database/client";
-import { getAdminRepository, getAuditRepository } from "@/lib/repositories";
 import {
-  adminGrantCredits,
-  adminRevokeCredits,
+  getAdminRepository,
+  getAuditRepository,
+  getCreditsRepository,
+} from "@/lib/repositories";
+import {
   getCreditsHistory,
   getCreditsOverview,
 } from "@/lib/services/credits-service";
@@ -97,22 +99,20 @@ export async function adjustCreditsByAdmin(input: {
 
   const adminId = Number(input.actor.id);
   const reason = input.reason.trim();
+  const creditsRepository = getCreditsRepository();
   let result;
   try {
-    result =
-      input.operation === "add"
-        ? await adminGrantCredits(
-            input.targetUserId,
-            input.amount,
-            adminId,
-            reason
-          )
-        : await adminRevokeCredits(
-            input.targetUserId,
-            input.amount,
-            adminId,
-            reason
-          );
+    result = await creditsRepository.applyCreditChange({
+      userId: input.targetUserId,
+      type: input.operation === "add" ? "admin_grant" : "admin_revoke",
+      amount: input.operation === "add" ? input.amount : -input.amount,
+      description: reason,
+      createdByAdminId: adminId,
+      performedBy: adminId,
+      reason,
+      transactionSource:
+        input.operation === "add" ? "admin_credit" : "admin_remove",
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "INSUFFICIENT_CREDITS") {
       const credits = await getCreditsOverview(input.targetUserId);
