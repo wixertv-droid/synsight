@@ -1,8 +1,8 @@
 const footerLinks = {
   Produkt: [
-    { label: "Plattform", href: "#platform" },
-    { label: "Risiko-Check", href: "#demo-scanner" },
-    { label: "Schutzpaket", href: "#protect-package" },
+    { label: "Plattform", href: "/#platform" },
+    { label: "Risiko-Check", href: "/#demo-scanner" },
+    { label: "Schutzpaket", href: "/#protect-package" },
     { label: "Dashboard Demo", href: "/dashboard" },
   ],
   Unternehmen: [
@@ -12,20 +12,20 @@ const footerLinks = {
     { label: "Presse", href: "/press" },
   ],
   Rechtliches: [
-    { label: "Datenschutz", href: "/datenschutz" },
     { label: "Impressum", href: "/impressum" },
+    { label: "Datenschutz", href: "/datenschutz" },
     { label: "AGB", href: "/agb" },
+    { label: "Cookies", href: "/cookies" },
+    { label: "Nutzungsbedingungen", href: "/nutzungsbedingungen" },
+    { label: "Security", href: "/security" },
   ],
   Support: [
+    { label: "Kontakt", href: "/contact" },
     { label: "Login", href: "/login" },
-    {
-      label: "Produktanfrage",
-      href: "mailto:hello@synsight.de?subject=Produktanfrage",
-    },
     { label: "Datenschutzanfrage", href: "mailto:datenschutz@synsight.de" },
     {
       label: "Technischer Kontakt",
-      href: "mailto:hello@synsight.de?subject=Technische%20Anfrage",
+      href: "mailto:contact@synsight.de?subject=Technische%20Anfrage",
     },
   ],
 };
@@ -61,10 +61,10 @@ export default function Footer() {
               verständlich und in Deutschland entwickelt.
             </p>
             <a
-              href="mailto:hello@synsight.de"
+              href="mailto:contact@synsight.de"
               className="inline-flex items-center gap-2 text-sm text-cyber-blue/70 transition-colors hover:text-cyber-cyan"
             >
-              hello@synsight.de
+              contact@synsight.de
               <span aria-hidden="true">↗</span>
             </a>
           </div>

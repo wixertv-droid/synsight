@@ -15,10 +15,10 @@ type SessionState =
   | { status: "authenticated"; user: SessionUser };
 
 const navLinks = [
-  { label: "Plattform", href: "#platform" },
-  { label: "Risiko-Check", href: "#demo-scanner" },
-  { label: "SynCredits", href: "#syncredits" },
-  { label: "Sicherheit", href: "#trust" },
+  { label: "Plattform", href: "/#platform" },
+  { label: "Risiko-Check", href: "/#demo-scanner" },
+  { label: "SynCredits", href: "/#syncredits" },
+  { label: "Sicherheit", href: "/#trust" },
 ];
 
 export default function Navbar() {
