@@ -65,6 +65,7 @@ describe("SMTP delivery", () => {
         host: "mxf920.netcup.net",
         port: 465,
         secure: true,
+        family: 4,
         auth: { user: "noreply@synsight.de", pass: "smtp-password" },
         connectionTimeout: 20_000,
         greetingTimeout: 20_000,

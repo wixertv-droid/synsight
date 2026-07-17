@@ -93,31 +93,33 @@ grep -E '^SMTP_|^EMAIL_DELIVERY' /opt/synsight/.env.production
 
 ### `Connection timeout`
 
-Ursache: Outbound-Port 465 blockiert oder SMTP unerreichbar.
+Häufige Ursachen:
 
-SynSight versucht automatisch **Fallback auf Port 587 (STARTTLS)**.
-
-Manuell prüfen:
+1. **IPv6 zuerst, IPv6-Route kaputt** (Netcup VPS): Hostname hat A + AAAA, System nimmt AAAA → Timeout. SynSight erzwingt IPv4 (`family: 4`).
+2. Outbound-Port 465/587 blockiert.
+3. Falsche Werte nur in der Shell gesetzt — `.env.production` überschreibt das.
 
 ```bash
-# Port 465
-timeout 8 bash -c 'cat < /dev/null > /dev/tcp/mxf920.netcup.net/465' && echo OK465 || echo FAIL465
+dig +short A mxf920.netcup.net      # z.B. 46.38.249.32
+dig +short AAAA mxf920.netcup.net
 
-# Port 587
-timeout 8 bash -c 'cat < /dev/null > /dev/tcp/mxf920.netcup.net/587' && echo OK587 || echo FAIL587
+# Direkt IPv4 testen (nicht den Hostnamen — der kann auf IPv6 gehen):
+timeout 5 bash -c 'cat < /dev/null > /dev/tcp/46.38.249.32/465' && echo OK465v4 || echo FAIL465v4
+timeout 5 bash -c 'cat < /dev/null > /dev/tcp/46.38.249.32/587' && echo OK587v4 || echo FAIL587v4
 ```
 
-Falls 465 failt, in `.env.production` setzen:
+Port in **Datei** ändern (nicht nur Shell):
 
 ```bash
-SMTP_PORT=587
-SMTP_SECURE=false
+nano /opt/synsight/.env.production
+# SMTP_PORT=587
+# SMTP_SECURE=false
+pm2 restart ecosystem.config.cjs --update-env
 ```
 
-Firewall (falls ufw):
+Firewall:
 
 ```bash
-# Outbound ist meist offen; bei restriktiven Regeln SMTP erlauben
 sudo ufw status
 ```
 

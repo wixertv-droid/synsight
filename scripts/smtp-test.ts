@@ -11,6 +11,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { getEnvironment, resetEnvironmentCache } from "../src/lib/config/env";
 import {
+  diagnoseSmtpDns,
   sanitizeSmtpError,
   sendSmtpMail,
   verifySmtpConnection,
@@ -96,7 +97,23 @@ async function main() {
     secure: env.SMTP_SECURE,
     user: env.SMTP_USER,
     from: env.SMTP_FROM,
+    forceIpv4: process.env.SMTP_FORCE_IPV4 !== "false",
   });
+
+  const dnsInfo = await diagnoseSmtpDns(env.SMTP_HOST as string);
+  console.info("[email:test] DNS", dnsInfo);
+  if (dnsInfo.ipv4.length === 0 && dnsInfo.ipv6.length > 0) {
+    console.warn(
+      "[email:test] host has only AAAA (IPv6). If IPv6 routing is broken, SMTP will time out."
+    );
+  }
+
+  // Quick IPv4 TCP probe hint for operators
+  if (dnsInfo.ipv4[0]) {
+    console.info(
+      `[email:test] tip: test IPv4 with: timeout 5 bash -c 'cat < /dev/null > /dev/tcp/${dnsInfo.ipv4[0]}/465' && echo OK || echo FAIL`
+    );
+  }
 
   const verified = await verifySmtpConnection(env);
   if (!verified.ok) {

@@ -1,6 +1,15 @@
+import dns from "node:dns";
 import nodemailer, { type Transporter } from "nodemailer";
 import type { Environment } from "@/lib/config/env";
 import { buildVerificationEmail } from "@/lib/email/templates/verification-email";
+
+// Many VPS hosts resolve AAAA first; broken IPv6 routes cause SMTP timeouts
+// even when IPv4 (A) works. Prefer IPv4 for outbound mail.
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {
+  // Node < 17 — ignore
+}
 
 export interface VerificationEmail {
   to: string;
@@ -89,11 +98,15 @@ function createTransport(
   env: Environment,
   profile: TransportProfile
 ): Transporter {
+  // family: 4 forces IPv4 sockets (avoids broken IPv6-only paths on some VPS).
+  const forceIpv4 = process.env.SMTP_FORCE_IPV4 !== "false";
+
   return nodemailer.createTransport({
     host: profile.host,
     port: profile.port,
     secure: profile.secure,
     requireTLS: profile.requireTLS,
+    ...(forceIpv4 ? { family: 4 as const } : {}),
     auth: {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS,
@@ -167,6 +180,26 @@ export async function sendVerificationEmail(
     text: template.text,
     html: template.html,
   });
+}
+
+/** Resolve SMTP host for ops diagnostics (A / AAAA). */
+export async function diagnoseSmtpDns(host: string): Promise<{
+  ipv4: string[];
+  ipv6: string[];
+}> {
+  const ipv4: string[] = [];
+  const ipv6: string[] = [];
+  try {
+    ipv4.push(...(await dns.promises.resolve4(host)));
+  } catch {
+    // no A record
+  }
+  try {
+    ipv6.push(...(await dns.promises.resolve6(host)));
+  } catch {
+    // no AAAA record
+  }
+  return { ipv4, ipv6 };
 }
 
 /** Lightweight connectivity check for ops / scripts. */
