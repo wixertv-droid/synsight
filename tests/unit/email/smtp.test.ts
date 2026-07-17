@@ -18,7 +18,7 @@ vi.mock("nodemailer", () => ({
   default: { createTransport },
 }));
 
-import { sendVerificationEmail } from "@/lib/email/smtp";
+import { sendSmtpMail, sendVerificationEmail } from "@/lib/email/smtp";
 
 const env = {
   NODE_ENV: "production",
@@ -28,33 +28,34 @@ const env = {
   SESSION_SECRET: "unit-test-session-secret-32chars!!",
   ALLOW_DEV_AUTH: "false",
   EMAIL_DELIVERY_MODE: "provider",
-  SMTP_HOST: "smtp.example.com",
-  SMTP_PORT: 587,
-  SMTP_SECURE: "false",
-  SMTP_USER: "smtp-user",
+  SMTP_HOST: "mxf920.netcup.net",
+  SMTP_PORT: 465,
+  SMTP_SECURE: "true",
+  SMTP_USER: "noreply@synsight.de",
   SMTP_PASS: "smtp-password",
   SMTP_FROM: "SynSight <noreply@synsight.de>",
   AUTO_VERIFY_EMAIL: "false",
 } satisfies Environment;
 
-describe("SMTP verification delivery", () => {
+describe("SMTP delivery", () => {
   beforeEach(() => {
     createTransport.mockClear();
     sendMail.mockReset();
+    close.mockClear();
     sendMail.mockResolvedValue({ messageId: "test-message" });
   });
 
-  it("sends the verification URL through authenticated SMTP", async () => {
+  it("authenticates as SMTP_USER with SSL on port 465", async () => {
     await sendVerificationEmail(env, {
       to: "new.user@example.com",
       verificationUrl: "https://synsight.de/verify-email?token=secret",
     });
 
     expect(createTransport).toHaveBeenCalledWith({
-      host: "smtp.example.com",
-      port: 587,
-      secure: false,
-      auth: { user: "smtp-user", pass: "smtp-password" },
+      host: "mxf920.netcup.net",
+      port: 465,
+      secure: true,
+      auth: { user: "noreply@synsight.de", pass: "smtp-password" },
       connectionTimeout: 8_000,
       greetingTimeout: 8_000,
       socketTimeout: 10_000,
@@ -67,6 +68,32 @@ describe("SMTP verification delivery", () => {
         text: expect.stringContaining(
           "https://synsight.de/verify-email?token=secret"
         ),
+        envelope: {
+          from: "noreply@synsight.de",
+          to: "new.user@example.com",
+        },
+      })
+    );
+    expect(close).toHaveBeenCalled();
+  });
+
+  it("allows a dynamic From while keeping envelope on SMTP_USER", async () => {
+    await sendSmtpMail(env, {
+      from: "SynSight Kontakt <contact@synsight.de>",
+      to: "ops@synsight.de",
+      subject: "Test",
+      text: "Hallo",
+      replyTo: "visitor@example.com",
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: "SynSight Kontakt <contact@synsight.de>",
+        replyTo: "visitor@example.com",
+        envelope: {
+          from: "noreply@synsight.de",
+          to: "ops@synsight.de",
+        },
       })
     );
   });

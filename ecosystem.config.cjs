@@ -45,11 +45,11 @@ module.exports = {
         PRIVATE_STORAGE_ROOT: merged.PRIVATE_STORAGE_ROOT,
         ALLOW_PUBLIC_REGISTRATION: merged.ALLOW_PUBLIC_REGISTRATION || "true",
         AUTO_VERIFY_EMAIL: merged.AUTO_VERIFY_EMAIL || "false",
-        // Default log-link until SMTP is proven; override in .env.production.
+        // Prefer provider when .env.production sets it; else keep log-link fallback.
         EMAIL_DELIVERY_MODE: merged.EMAIL_DELIVERY_MODE || "log-link",
         SMTP_HOST: merged.SMTP_HOST,
-        SMTP_PORT: merged.SMTP_PORT || "587",
-        SMTP_SECURE: merged.SMTP_SECURE || "false",
+        SMTP_PORT: merged.SMTP_PORT || "465",
+        SMTP_SECURE: merged.SMTP_SECURE || "true",
         SMTP_USER: merged.SMTP_USER,
         SMTP_PASS: merged.SMTP_PASS,
         SMTP_FROM: merged.SMTP_FROM,

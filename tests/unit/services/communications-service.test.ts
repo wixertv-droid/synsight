@@ -28,6 +28,7 @@ describe("communications-service", () => {
   beforeEach(() => {
     resetInMemoryStores();
     delete process.env.DATABASE_URL;
+    process.env.EMAIL_DELIVERY_MODE = "log-link";
   });
 
   it("stores contact requests and prepares email notifications", async () => {
@@ -117,8 +118,12 @@ describe("communications-service", () => {
   });
 });
 
-describe("email-service stubs", () => {
-  it("queues notifications without delivering", async () => {
+describe("email-service delivery modes", () => {
+  beforeEach(() => {
+    process.env.EMAIL_DELIVERY_MODE = "log-link";
+  });
+
+  it("logs contact notifications in log-link mode", async () => {
     const contact = await sendContactNotification({
       to: "contact@synsight.de",
       requestId: 1,
@@ -126,6 +131,13 @@ describe("email-service stubs", () => {
       email: "a@b.de",
       subject: "Hallo",
     });
+    expect(contact.provider).toBe("log-link");
+    expect(contact.delivered).toBe(false);
+    expect(contact.queued).toBe(true);
+  });
+
+  it("returns disabled result when delivery is off", async () => {
+    process.env.EMAIL_DELIVERY_MODE = "disabled";
     const press = await sendPressNotification({
       to: "press@synsight.de",
       requestId: 2,
@@ -134,17 +146,7 @@ describe("email-service stubs", () => {
       medium: "Mag",
       topic: "Thema",
     });
-    const partner = await sendPartnerNotification({
-      to: "partners@synsight.de",
-      requestId: 3,
-      name: "C",
-      email: "c@d.de",
-      company: "Co",
-      partnershipType: "Kooperationen",
-    });
-
-    expect(contact.provider).toBe("stub");
+    expect(press.provider).toBe("disabled");
     expect(press.delivered).toBe(false);
-    expect(partner.queued).toBe(true);
   });
 });

@@ -61,6 +61,7 @@ export async function submitContactRequest(input: {
     email: record.email,
     subject: record.subject,
     company: record.company,
+    message: record.message,
   });
 
   return { request: record, notification };
@@ -91,6 +92,7 @@ export async function submitPartnerRequest(input: {
     email: record.email,
     company: record.company,
     partnershipType: record.partnershipType,
+    message: record.message,
   });
 
   return { request: record, notification };
@@ -122,6 +124,7 @@ export async function submitPressRequest(input: {
     email: record.email,
     medium: record.medium,
     topic: record.topic,
+    message: record.message,
   });
 
   return { request: record, notification };
