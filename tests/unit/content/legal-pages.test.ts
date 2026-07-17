@@ -33,6 +33,10 @@ describe("Sprint 7 legal compliance pages", () => {
       expect(footer).toContain(`href: "/${route}"`);
     }
     expect(footer).toContain('href: "/contact"');
+    expect(footer).toContain('href: "/login"');
+    expect(footer).toContain('href: "/register"');
+    expect(footer).toContain("mailto:datenschutz@synsight.de");
+    expect(footer).toContain("mailto:contact@synsight.de");
   });
 
   it("uses real operator data in the Impressum", () => {

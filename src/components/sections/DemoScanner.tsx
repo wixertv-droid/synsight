@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import GlassCard from "@/components/ui/GlassCard";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
@@ -70,6 +71,7 @@ function createDemoResults(value: string): ResultCard[] {
 }
 
 export default function DemoScanner() {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [phase, setPhase] = useState<ScanPhase>("idle");
   const [currentStep, setCurrentStep] = useState(0);
@@ -172,11 +174,14 @@ export default function DemoScanner() {
             {phase !== "complete" && (
               <>
                 <div className="mb-6">
-                  <p className="text-white font-semibold mb-1">
-                    Kostenloser Einblick. Klare nächste Schritte.
+                  <p className="mb-1 font-semibold text-white">
+                    Die meisten unterschätzen, was online über sie auffindbar
+                    ist.
                   </p>
-                  <p className="text-sm text-gray-500">
-                    In wenigen Sekunden erhalten Sie einen ersten Überblick.
+                  <p className="text-sm leading-relaxed text-gray-500">
+                    Prüfen Sie es jetzt — unverbindlich. Den vollständigen
+                    Überblick und Ihren persönlichen Schutzbereich sichern Sie
+                    danach in wenigen Schritten mit einem SynSight-Konto.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 mb-5">
@@ -214,16 +219,16 @@ export default function DemoScanner() {
                 {phase === "idle" && (
                   <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
                     <span className="flex items-center gap-2">
-                      <span className="text-cyber-cyan">✓</span> Verschlüsselte
-                      Verbindung
+                      <span className="text-cyber-cyan">✓</span> Unverbindlicher
+                      Erst-Check
                     </span>
                     <span className="flex items-center gap-2">
-                      <span className="text-cyber-cyan">✓</span> Keine
-                      Registrierung
+                      <span className="text-cyber-cyan">✓</span> Ergebnis in
+                      Sekunden
                     </span>
                     <span className="flex items-center gap-2">
-                      <span className="text-cyber-cyan">✓</span> Entwickelt in
-                      Deutschland
+                      <span className="text-cyber-cyan">✓</span> Danach optional
+                      Konto für Ihren Schutzbereich
                     </span>
                   </div>
                 )}
@@ -304,32 +309,37 @@ export default function DemoScanner() {
                   ))}
                 </div>
 
-                <div className="rounded-xl border border-yellow-400/20 bg-yellow-400/[0.04] p-5 mb-8">
-                  <p className="text-white font-semibold mb-2">
-                    Ihr Überblick ist da. Jetzt zählt die richtige Reihenfolge.
+                <div className="mb-8 rounded-xl border border-yellow-400/20 bg-yellow-400/[0.04] p-5">
+                  <p className="mb-2 font-semibold text-white">
+                    Das war nur die Oberfläche.
                   </p>
-                  <p className="text-sm text-gray-400 leading-relaxed">
-                    SynSight ordnet einzelne Signale in ihren Zusammenhang ein.
-                    So erkennen Sie, welche Punkte zuerst geprüft werden sollten
-                    und wo kein unmittelbarer Handlungsdruck besteht.
+                  <p className="text-sm leading-relaxed text-gray-400">
+                    In der Demo sehen Sie beispielhafte Signale. Mit einem Konto
+                    speichert SynSight Ihren Status, priorisiert echte Funde und
+                    zeigt Ihnen, was zuerst geschützt werden sollte — bevor
+                    jemand anderes danach sucht.
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <p className="text-xs font-mono text-gray-500">
+                <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+                  <p className="font-mono text-xs text-gray-500">
                     DEMO-ERGEBNIS — Beispielhafte Darstellung
                   </p>
                   <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button onClick={() => router.push("/register")}>
+                      Persönlichen Schutzbereich öffnen
+                    </Button>
                     <Button
+                      variant="secondary"
                       onClick={() =>
                         document
                           .getElementById("protect-package")
                           ?.scrollIntoView({ behavior: "smooth" })
                       }
                     >
-                      Schutzmöglichkeiten ansehen
+                      Mehr erfahren
                     </Button>
-                    <Button variant="secondary" onClick={reset}>
+                    <Button variant="ghost" onClick={reset}>
                       Erneut prüfen
                     </Button>
                   </div>

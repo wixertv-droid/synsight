@@ -54,10 +54,7 @@ export default function HeroSection() {
       id="hero"
       className="relative min-h-[100svh] flex items-center overflow-hidden border-b border-white/[0.05]"
     >
-      <div
-        ref={visualRef}
-        className="absolute inset-0 will-change-transform"
-      >
+      <div ref={visualRef} className="absolute inset-0 will-change-transform">
         <CyberGlobe />
       </div>
 
@@ -86,15 +83,31 @@ export default function HeroSection() {
         </div>
         <div className="mt-4 flex items-end justify-between">
           <div>
-            <span className="text-2xl font-light tabular-nums text-white">360°</span>
+            <span className="text-2xl font-light tabular-nums text-white">
+              360°
+            </span>
             <span className="mt-1 block font-mono text-[7px] tracking-[.12em] text-cyber-cyan/35">
               GLOBAL DATA MESH
             </span>
           </div>
           <svg viewBox="0 0 76 28" className="h-7 w-20 text-cyber-cyan/70">
-            <path d="M1 24L12 18L22 20L31 7L42 14L53 9L64 12L75 2" fill="none" stroke="currentColor" strokeWidth="1" />
-            <path d="M1 24L12 18L22 20L31 7L42 14L53 9L64 12L75 2V28H1Z" fill="url(#heroChart)" opacity=".12" />
-            <defs><linearGradient id="heroChart" x1="0" y1="0" x2="0" y2="1"><stop stopColor="currentColor" /><stop offset="1" stopColor="currentColor" stopOpacity="0" /></linearGradient></defs>
+            <path
+              d="M1 24L12 18L22 20L31 7L42 14L53 9L64 12L75 2"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+            />
+            <path
+              d="M1 24L12 18L22 20L31 7L42 14L53 9L64 12L75 2V28H1Z"
+              fill="url(#heroChart)"
+              opacity=".12"
+            />
+            <defs>
+              <linearGradient id="heroChart" x1="0" y1="0" x2="0" y2="1">
+                <stop stopColor="currentColor" />
+                <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+              </linearGradient>
+            </defs>
           </svg>
         </div>
         <div className="mt-3 flex items-center gap-2">
@@ -136,9 +149,7 @@ export default function HeroSection() {
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
         }`}
       >
-        <div className="hud-label mb-8">
-          Digitale Identität / KI-Analyse
-        </div>
+        <div className="hud-label mb-8">Digitale Identität / KI-Analyse</div>
 
         <h1 className="max-w-4xl text-balance text-5xl font-semibold leading-[.98] tracking-[-.055em] text-white sm:text-6xl md:text-7xl lg:text-[5.5rem]">
           Sehen Sie, was das Internet
@@ -156,8 +167,17 @@ export default function HeroSection() {
         <div className="mt-10 flex flex-wrap gap-4">
           <Button size="lg" onClick={() => scrollTo("demo-scanner")}>
             Kostenlosen Risiko-Check starten
-            <svg viewBox="0 0 20 20" fill="none" className="ml-3 h-4 w-4" aria-hidden="true">
-              <path d="M4 10h12m-4-4 4 4-4 4" stroke="currentColor" strokeWidth="1.5" />
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              className="ml-3 h-4 w-4"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 10h12m-4-4 4 4-4 4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
             </svg>
           </Button>
           <Button
@@ -170,14 +190,16 @@ export default function HeroSection() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-white/35">
-          {["Keine Registrierung", "Unverbindliche Demo", "Privacy by Design"].map(
-            (item) => (
-              <span key={item} className="flex items-center gap-2">
-                <i className="h-1 w-1 rounded-full bg-cyber-cyan/70" />
-                {item}
-              </span>
-            )
-          )}
+          {[
+            "Unverbindlicher Erst-Check",
+            "Klarer Schutzpfad danach",
+            "Privacy by Design",
+          ].map((item) => (
+            <span key={item} className="flex items-center gap-2">
+              <i className="h-1 w-1 rounded-full bg-cyber-cyan/70" />
+              {item}
+            </span>
+          ))}
         </div>
 
         {/* Mission telemetry */}
@@ -188,7 +210,10 @@ export default function HeroSection() {
             { label: "Auswertung", value: "Priorisiert" },
             { label: "Datenprinzip", value: "EU" },
           ].map((stat) => (
-            <div key={stat.label} className="border-white/[0.06] p-4 first:border-0 odd:border-r md:border-l md:odd:border-r-0">
+            <div
+              key={stat.label}
+              className="border-white/[0.06] p-4 first:border-0 odd:border-r md:border-l md:odd:border-r-0"
+            >
               <p className="font-mono text-lg font-medium tabular-nums text-cyan-100/90">
                 {stat.value}
               </p>

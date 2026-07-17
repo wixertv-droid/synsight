@@ -794,3 +794,60 @@ body::before {
     transform: none;
   }
 }
+
+/* Footer signal field — light counterpart to hero globe */
+.footer-signal-grid {
+  background-image:
+    linear-gradient(rgba(112, 231, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(112, 231, 255, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 80% 40%, black, transparent);
+}
+
+.footer-orbit {
+  animation: footer-orbit-spin 18s linear infinite;
+}
+
+.footer-orbit-delay {
+  animation-duration: 26s;
+  animation-direction: reverse;
+}
+
+.footer-orbit-delay-2 {
+  animation-duration: 34s;
+}
+
+.footer-ping {
+  animation: footer-ping 2.8s var(--ease-premium) infinite;
+}
+
+@keyframes footer-orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes footer-ping {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.55;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(8);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(8);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-orbit,
+  .footer-ping {
+    animation: none;
+  }
+}
