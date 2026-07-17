@@ -17,6 +17,7 @@ import { createIdentityRepository } from "./mysql/identity-repository";
 import { createCreditsRepository } from "./mysql/credits-repository";
 import { createAdminRepository } from "./mysql/admin-repository";
 import { createPricingRepository } from "./mysql/pricing-repository";
+import { createPromotionsRepository } from "./mysql/promotions-repository";
 import type { AuditRepository } from "./audit-repository";
 import type { ProfileRepository } from "./profile-repository";
 import type { SecurityRepository } from "./security-repository";
@@ -28,6 +29,7 @@ import type { IdentityRepository } from "./identity-repository";
 import type { CreditsRepository } from "./credits-repository";
 import type { AdminRepository } from "./admin-repository";
 import type { PricingRepository } from "./pricing-repository";
+import type { PromotionsRepository } from "./promotions-repository";
 
 export function getUserRepository(): UserRepository {
   return createUserRepository(getDatabase());
@@ -71,4 +73,8 @@ export function getAdminRepository(): AdminRepository {
 
 export function getPricingRepository(): PricingRepository {
   return createPricingRepository(getDatabase());
+}
+
+export function getPromotionsRepository(): PromotionsRepository {
+  return createPromotionsRepository(getDatabase());
 }

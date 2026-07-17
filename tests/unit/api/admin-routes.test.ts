@@ -32,6 +32,10 @@ import {
   GET as pricingGet,
   PUT as pricingPut,
 } from "@/app/api/admin/pricing/route";
+import {
+  GET as promotionsGet,
+  PUT as promotionsPut,
+} from "@/app/api/admin/promotions/route";
 
 describe("admin API role guards", () => {
   beforeEach(async () => {
@@ -130,5 +134,47 @@ describe("admin API role guards", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.data.analysis.credits).toBe(12);
+  });
+
+  it("forbids promotions access for normal users", async () => {
+    accessState.role = "user";
+    const response = await promotionsGet();
+    expect(response.status).toBe(403);
+  });
+
+  it("creates promotions through the admin API", async () => {
+    const response = await promotionsPut(
+      new Request("https://synsight.de/api/admin/promotions", {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://synsight.de",
+          "sec-fetch-site": "same-origin",
+        },
+        body: JSON.stringify({
+          action: "create",
+          name: "Beta-Test",
+          description: "Bonus für Beta-Nutzer",
+          isActive: true,
+          startsAt: null,
+          endsAt: null,
+          timeFrom: null,
+          timeTo: null,
+          timezone: "Europe/Berlin",
+          bonusCredits: 75,
+          promoCodeRequired: false,
+          promoCode: null,
+          newUsersOnly: true,
+          existingUsersOnly: false,
+          singleUsePerUser: true,
+          maxParticipants: null,
+          minBalance: null,
+          budgetCredits: null,
+        }),
+      })
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.data.promotion.name).toBe("Beta-Test");
   });
 });

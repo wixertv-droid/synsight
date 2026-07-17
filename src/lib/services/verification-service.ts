@@ -138,6 +138,17 @@ export async function verifyEmailToken(
     entityId: String(user.id),
   });
 
+  try {
+    const { processAutomaticNewUserPromotions } =
+      await import("./promotions-service");
+    await processAutomaticNewUserPromotions({ userId: user.id });
+  } catch (error) {
+    console.error(
+      "[verification] automatic promotion grant failed:",
+      error instanceof Error ? error.message : error
+    );
+  }
+
   return { success: true, userId: user.id };
 }
 

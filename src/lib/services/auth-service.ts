@@ -211,6 +211,19 @@ export async function registerUser(
   let verificationToken = "";
   if (autoVerified) {
     await repository.activate(user.id);
+    try {
+      const { processAutomaticNewUserPromotions } =
+        await import("./promotions-service");
+      await processAutomaticNewUserPromotions({
+        userId: user.id,
+        ipAddress: requestMeta?.ipAddress,
+      });
+    } catch (error) {
+      console.error(
+        "[auth.registration] automatic promotion grant failed:",
+        error instanceof Error ? error.message : error
+      );
+    }
   } else {
     try {
       verificationToken = await issueEmailVerification(user.id);

@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–009 migration files", () => {
+  it("ships ordered 001–010 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -19,6 +19,7 @@ describe("database migrations workflow", () => {
       "007_syncredits.sql",
       "008_admin_control_center.sql",
       "009_pricing_and_image_hardening.sql",
+      "010_promotions.sql",
     ]);
   });
 
@@ -117,5 +118,14 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("'alias_analysis'");
     expect(sql).toContain("`default_price_cents`");
     expect(sql).toContain("profile_images_user_type_unique");
+  });
+
+  it("adds promotions tables and welcome bonus seed in 010", () => {
+    const sql = readFileSync(path.join(dir, "010_promotions.sql"), "utf8");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `promotions`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `promotion_rewards`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `promotion_logs`");
+    expect(sql).toContain("'promotion'");
+    expect(sql).toContain("Willkommensbonus");
   });
 });

@@ -174,6 +174,13 @@ export default function DashboardSidebar({
               >
                 A2 / PREISVERWALTUNG
               </Link>
+              <Link
+                href="/admin#promotions-management"
+                onClick={onClose}
+                className="ml-8 flex items-center gap-2 rounded-lg px-3 py-2 font-mono text-[8px] tracking-[.1em] text-cyber-cyan/40 transition hover:bg-cyber-cyan/[0.04] hover:text-cyber-cyan/75"
+              >
+                A3 / PROMOTIONEN
+              </Link>
             </>
           ) : null}
         </nav>

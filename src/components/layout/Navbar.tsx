@@ -1,6 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+interface SessionUser {
+  displayName: string;
+  email: string;
+  role: "admin" | "user";
+}
+
+type SessionState =
+  | { status: "loading" }
+  | { status: "guest" }
+  | { status: "authenticated"; user: SessionUser };
 
 const navLinks = [
   { label: "Plattform", href: "#platform" },
@@ -10,8 +22,11 @@ const navLinks = [
 ];
 
 export default function Navbar() {
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [session, setSession] = useState<SessionState>({ status: "loading" });
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -27,6 +42,131 @@ export default function Navbar() {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [menuOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSession() {
+      try {
+        const response = await fetch("/api/auth/session", {
+          credentials: "same-origin",
+        });
+        const result = (await response.json()) as {
+          success: boolean;
+          data?: {
+            authenticated: boolean;
+            user: SessionUser | null;
+          };
+        };
+        if (cancelled) return;
+        if (result.success && result.data?.authenticated && result.data.user) {
+          setSession({ status: "authenticated", user: result.data.user });
+        } else {
+          setSession({ status: "guest" });
+        }
+      } catch {
+        if (!cancelled) setSession({ status: "guest" });
+      }
+    }
+    void loadSession();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      setSession({ status: "guest" });
+      setMenuOpen(false);
+      router.push("/");
+      router.refresh();
+      setLogoutLoading(false);
+    }
+  };
+
+  const renderAuthLinks = (mobile = false) => {
+    if (session.status === "loading") {
+      return (
+        <span
+          className={`font-mono text-[10px] tracking-[.12em] text-white/25 ${mobile ? "block py-2" : ""}`}
+        >
+          …
+        </span>
+      );
+    }
+
+    if (session.status === "authenticated") {
+      return (
+        <>
+          <a
+            href="/dashboard"
+            className={
+              mobile
+                ? "block rounded-lg border border-cyber-blue/20 bg-cyber-blue/[0.06] px-4 py-3 text-sm text-cyan-100/90"
+                : "text-[12px] tracking-wide text-white/45 transition-colors hover:text-white/85"
+            }
+            onClick={() => setMenuOpen(false)}
+          >
+            Dashboard
+          </a>
+          {session.user.role === "admin" ? (
+            <a
+              href="/admin"
+              className={
+                mobile
+                  ? "block py-2 text-sm text-cyber-cyan/70"
+                  : "text-[12px] tracking-wide text-cyber-cyan/55 transition-colors hover:text-cyber-cyan/85"
+              }
+              onClick={() => setMenuOpen(false)}
+            >
+              Admin Center
+            </a>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            disabled={logoutLoading}
+            className={
+              mobile
+                ? "block w-full py-2 text-center text-sm text-white/40 disabled:opacity-50"
+                : "rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] text-white/55 transition hover:border-white/20 hover:text-white/80 disabled:opacity-50"
+            }
+          >
+            Abmelden
+          </button>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <a
+          href="/login"
+          className={
+            mobile
+              ? "block py-2 text-center text-sm text-white/40"
+              : "text-[12px] tracking-wide text-white/45 transition-colors hover:text-white/85"
+          }
+          onClick={() => setMenuOpen(false)}
+        >
+          Login
+        </a>
+        <a
+          href="/register"
+          className={
+            mobile
+              ? "mt-4 flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-cyber-blue to-cyber-cyan px-5 py-3 text-sm font-semibold text-space-black"
+              : "rounded-lg border border-cyber-blue/25 bg-cyber-blue/[0.06] px-4 py-2 text-[12px] font-medium text-cyan-100/90 transition-all hover:border-cyber-blue/45 hover:bg-cyber-blue/[0.1]"
+          }
+          onClick={() => setMenuOpen(false)}
+        >
+          {mobile ? "Konto erstellen" : "Registrieren"}
+        </a>
+      </>
+    );
+  };
 
   return (
     <nav
@@ -70,18 +210,7 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-          <a
-            href="/login"
-            className="text-[12px] tracking-wide text-white/45 transition-colors hover:text-white/85"
-          >
-            Login
-          </a>
-          <a
-            href="/register"
-            className="rounded-lg border border-cyber-blue/25 bg-cyber-blue/[0.06] px-4 py-2 text-[12px] font-medium text-cyan-100/90 transition-all hover:border-cyber-blue/45 hover:bg-cyber-blue/[0.1]"
-          >
-            Konto erstellen
-          </a>
+          {renderAuthLinks()}
         </div>
 
         <button
@@ -122,20 +251,9 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-          <a
-            href="/register"
-            className="mt-4 flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-cyber-blue to-cyber-cyan px-5 py-3 text-sm font-semibold text-space-black"
-            onClick={() => setMenuOpen(false)}
-          >
-            Konto erstellen
-          </a>
-          <a
-            href="/login"
-            className="block py-2 text-center text-sm text-white/40"
-            onClick={() => setMenuOpen(false)}
-          >
-            Bereits registriert? Login
-          </a>
+          <div className="space-y-3 border-t border-white/[0.06] pt-4">
+            {renderAuthLinks(true)}
+          </div>
         </div>
       )}
     </nav>

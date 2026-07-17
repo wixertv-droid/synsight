@@ -7,7 +7,8 @@ export type AuditEventType =
   | "auth.password.changed"
   | "profile.updated"
   | "security.settings.updated"
-  | "admin.action";
+  | "admin.action"
+  | "promotion.granted";
 
 export interface CreateAuditEvent {
   userId?: number | null;

@@ -7,6 +7,7 @@ import RiskCard from "@/components/dashboard/RiskCard";
 import SecurityPanel from "@/components/dashboard/SecurityPanel";
 import StatusCard from "@/components/dashboard/StatusCard";
 import CreditsPanel from "@/components/dashboard/CreditsPanel";
+import PromotionWelcomeBanner from "@/components/dashboard/PromotionWelcomeBanner";
 import { dashboardMetrics, riskSignals } from "@/lib/platform-data";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getIdentityForUser } from "@/lib/services/identity-service";
@@ -63,6 +64,8 @@ export default async function DashboardPage() {
           <span>{formattedTime} UTC</span>
         </div>
       </div>
+
+      <PromotionWelcomeBanner />
 
       <section className="mb-6 rounded-[1.4rem] border border-cyber-blue/15 bg-cyber-blue/[0.04] p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

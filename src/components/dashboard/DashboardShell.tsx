@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import PlatformBackground from "@/components/platform/PlatformBackground";
+import LogoutButton from "@/components/dashboard/LogoutButton";
 import StatusDot from "@/components/ui/StatusDot";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 
@@ -57,6 +58,7 @@ export default function DashboardShell({
             </span>
           </div>
           <div className="ml-auto flex items-center gap-3">
+            <LogoutButton variant="text" className="hidden sm:inline-flex" />
             <a
               href="/dashboard#syncredits-dashboard"
               className="hidden rounded-lg border border-cyber-cyan/20 bg-cyber-cyan/[0.05] px-3 py-2 transition hover:border-cyber-cyan/40 sm:block"

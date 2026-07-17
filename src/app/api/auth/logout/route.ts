@@ -7,5 +7,5 @@ export async function POST(request: Request) {
   const csrfError = validateMutationOrigin(request);
   if (csrfError) return csrfError;
   await logout();
-  return NextResponse.json(apiSuccess({ redirectTo: "/login" }));
+  return NextResponse.json(apiSuccess({ redirectTo: "/" }));
 }

@@ -674,6 +674,7 @@ export const creditTransactions = mysqlTable(
       "admin_credit",
       "admin_remove",
       "adjustment",
+      "promotion",
     ])
       .notNull()
       .default("adjustment"),
@@ -802,6 +803,128 @@ export const userSettings = mysqlTable("user_settings", {
     .default(sql`CURRENT_TIMESTAMP(3)`)
     .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
 });
+
+export const promotions = mysqlTable(
+  "promotions",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    name: varchar("name", { length: 150 }).notNull(),
+    description: text("description"),
+    isActive: boolean("is_active").notNull().default(false),
+    startsAt: varchar("starts_at", { length: 10 }),
+    endsAt: varchar("ends_at", { length: 10 }),
+    timeFrom: varchar("time_from", { length: 8 }),
+    timeTo: varchar("time_to", { length: 8 }),
+    timezone: varchar("timezone", { length: 64 })
+      .notNull()
+      .default("Europe/Berlin"),
+    bonusCredits: int("bonus_credits", { unsigned: true }).notNull().default(0),
+    promoCodeRequired: boolean("promo_code_required").notNull().default(false),
+    promoCode: varchar("promo_code", { length: 64 }),
+    newUsersOnly: boolean("new_users_only").notNull().default(false),
+    existingUsersOnly: boolean("existing_users_only").notNull().default(false),
+    singleUsePerUser: boolean("single_use_per_user").notNull().default(true),
+    maxParticipants: int("max_participants", { unsigned: true }),
+    minBalance: int("min_balance", { unsigned: true }),
+    budgetCredits: int("budget_credits", { unsigned: true }),
+    createdByAdminId: bigint("created_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("promotions_promo_code_unique").on(table.promoCode),
+    index("promotions_active_idx").on(
+      table.isActive,
+      table.startsAt,
+      table.endsAt
+    ),
+  ]
+);
+
+export const promotionRewards = mysqlTable(
+  "promotion_rewards",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    promotionId: bigint("promotion_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => promotions.id, { onDelete: "cascade" }),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    credits: int("credits", { unsigned: true }).notNull(),
+    creditTransactionId: bigint("credit_transaction_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => creditTransactions.id, { onDelete: "set null" }),
+    promoCodeUsed: varchar("promo_code_used", { length: 64 }),
+    notificationShownAt: timestamp("notification_shown_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+    grantedAt: timestamp("granted_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("promotion_rewards_promotion_id_idx").on(table.promotionId),
+    index("promotion_rewards_user_id_idx").on(table.userId),
+    index("promotion_rewards_notification_idx").on(
+      table.userId,
+      table.notificationShownAt
+    ),
+  ]
+);
+
+export const promotionLogs = mysqlTable(
+  "promotion_logs",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    promotionId: bigint("promotion_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => promotions.id, { onDelete: "cascade" }),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    promotionRewardId: bigint("promotion_reward_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => promotionRewards.id, { onDelete: "set null" }),
+    credits: int("credits", { unsigned: true }).notNull(),
+    reason: varchar("reason", { length: 500 }).notNull(),
+    adminId: bigint("admin_id", { mode: "number", unsigned: true }).references(
+      () => users.id,
+      { onDelete: "set null" }
+    ),
+    creditTransactionId: bigint("credit_transaction_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => creditTransactions.id, { onDelete: "set null" }),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    metadataJson: json("metadata_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("promotion_logs_promotion_id_idx").on(table.promotionId),
+    index("promotion_logs_user_id_idx").on(table.userId),
+    index("promotion_logs_created_at_idx").on(table.createdAt),
+  ]
+);
 
 export const auditEvents = mysqlTable(
   "audit_events",

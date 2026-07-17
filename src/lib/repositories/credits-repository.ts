@@ -16,7 +16,8 @@ export type CreditTransactionSource =
   | "refund"
   | "admin_credit"
   | "admin_remove"
-  | "adjustment";
+  | "adjustment"
+  | "promotion";
 
 export interface CreditAccountRecord {
   userId: number;
