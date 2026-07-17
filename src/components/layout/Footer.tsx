@@ -6,10 +6,10 @@ const footerLinks = {
     { label: "Dashboard Demo", href: "/dashboard" },
   ],
   Unternehmen: [
-    { label: "Über SynSight", href: "mailto:hello@synsight.de?subject=Über%20SynSight" },
-    { label: "Kontakt", href: "mailto:hello@synsight.de" },
-    { label: "Partnerschaften", href: "mailto:hello@synsight.de?subject=Partnerschaft" },
-    { label: "Presse", href: "mailto:hello@synsight.de?subject=Presseanfrage" },
+    { label: "Über SynSight", href: "/company" },
+    { label: "Kontakt", href: "/contact" },
+    { label: "Partnerschaften", href: "/partners" },
+    { label: "Presse", href: "/press" },
   ],
   Rechtliches: [
     { label: "Datenschutz", href: "/datenschutz" },
@@ -18,9 +18,15 @@ const footerLinks = {
   ],
   Support: [
     { label: "Login", href: "/login" },
-    { label: "Produktanfrage", href: "mailto:hello@synsight.de?subject=Produktanfrage" },
+    {
+      label: "Produktanfrage",
+      href: "mailto:hello@synsight.de?subject=Produktanfrage",
+    },
     { label: "Datenschutzanfrage", href: "mailto:datenschutz@synsight.de" },
-    { label: "Technischer Kontakt", href: "mailto:hello@synsight.de?subject=Technische%20Anfrage" },
+    {
+      label: "Technischer Kontakt",
+      href: "mailto:hello@synsight.de?subject=Technische%20Anfrage",
+    },
   ],
 };
 

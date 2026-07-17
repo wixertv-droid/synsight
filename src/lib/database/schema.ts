@@ -952,6 +952,129 @@ export const auditEvents = mysqlTable(
   ]
 );
 
+const requestStatusEnum = mysqlEnum("status", [
+  "new",
+  "processing",
+  "answered",
+  "archived",
+]);
+
+export const communicationSettings = mysqlTable("communication_settings", {
+  id: int("id", { unsigned: true }).primaryKey().default(1),
+  contactEmail: varchar("contact_email", { length: 255 })
+    .notNull()
+    .default("contact@synsight.de"),
+  pressEmail: varchar("press_email", { length: 255 })
+    .notNull()
+    .default("press@synsight.de"),
+  partnersEmail: varchar("partners_email", { length: 255 })
+    .notNull()
+    .default("partners@synsight.de"),
+  updatedByAdminId: bigint("updated_by_admin_id", {
+    mode: "number",
+    unsigned: true,
+  }).references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP(3)`),
+  updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP(3)`)
+    .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+});
+
+export const contactRequests = mysqlTable(
+  "contact_requests",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    name: varchar("name", { length: 150 }).notNull(),
+    company: varchar("company", { length: 200 }),
+    email: varchar("email", { length: 255 }).notNull(),
+    phone: varchar("phone", { length: 64 }),
+    subject: varchar("subject", { length: 200 }).notNull(),
+    message: text("message").notNull(),
+    status: requestStatusEnum.notNull().default("new"),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: varchar("user_agent", { length: 500 }),
+    adminNotes: text("admin_notes"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("contact_requests_status_idx").on(table.status),
+    index("contact_requests_created_at_idx").on(table.createdAt),
+    index("contact_requests_email_idx").on(table.email),
+  ]
+);
+
+export const partnerRequests = mysqlTable(
+  "partner_requests",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    name: varchar("name", { length: 150 }).notNull(),
+    company: varchar("company", { length: 200 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    partnershipType: varchar("partnership_type", { length: 120 }).notNull(),
+    message: text("message").notNull(),
+    status: requestStatusEnum.notNull().default("new"),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: varchar("user_agent", { length: 500 }),
+    adminNotes: text("admin_notes"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("partner_requests_status_idx").on(table.status),
+    index("partner_requests_created_at_idx").on(table.createdAt),
+    index("partner_requests_email_idx").on(table.email),
+  ]
+);
+
+export const pressRequests = mysqlTable(
+  "press_requests",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    name: varchar("name", { length: 150 }).notNull(),
+    medium: varchar("medium", { length: 200 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    phone: varchar("phone", { length: 64 }),
+    topic: varchar("topic", { length: 200 }).notNull(),
+    message: text("message").notNull(),
+    status: requestStatusEnum.notNull().default("new"),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: varchar("user_agent", { length: 500 }),
+    adminNotes: text("admin_notes"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("press_requests_status_idx").on(table.status),
+    index("press_requests_created_at_idx").on(table.createdAt),
+    index("press_requests_email_idx").on(table.email),
+  ]
+);
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(profiles, {
     fields: [users.id],

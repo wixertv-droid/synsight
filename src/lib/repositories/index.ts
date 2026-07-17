@@ -18,6 +18,7 @@ import { createCreditsRepository } from "./mysql/credits-repository";
 import { createAdminRepository } from "./mysql/admin-repository";
 import { createPricingRepository } from "./mysql/pricing-repository";
 import { createPromotionsRepository } from "./mysql/promotions-repository";
+import { createCommunicationsRepository } from "./mysql/communications-repository";
 import type { AuditRepository } from "./audit-repository";
 import type { ProfileRepository } from "./profile-repository";
 import type { SecurityRepository } from "./security-repository";
@@ -30,6 +31,7 @@ import type { CreditsRepository } from "./credits-repository";
 import type { AdminRepository } from "./admin-repository";
 import type { PricingRepository } from "./pricing-repository";
 import type { PromotionsRepository } from "./promotions-repository";
+import type { CommunicationsRepository } from "./communications-repository";
 
 export function getUserRepository(): UserRepository {
   return createUserRepository(getDatabase());
@@ -77,4 +79,8 @@ export function getPricingRepository(): PricingRepository {
 
 export function getPromotionsRepository(): PromotionsRepository {
   return createPromotionsRepository(getDatabase());
+}
+
+export function getCommunicationsRepository(): CommunicationsRepository {
+  return createCommunicationsRepository(getDatabase());
 }

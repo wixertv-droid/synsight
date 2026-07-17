@@ -48,6 +48,13 @@ export const IMAGE_UPLOAD_RATE_LIMIT: RateLimitPolicy = {
   blockMs: 60 * 60_000,
 };
 
+/** Public contact / partner / press form submissions. */
+export const COMMUNICATION_RATE_LIMIT: RateLimitPolicy = {
+  limit: 5,
+  windowMs: 60 * 60_000,
+  blockMs: 60 * 60_000,
+};
+
 export function checkRateLimit(
   key: string,
   policy: RateLimitPolicy,

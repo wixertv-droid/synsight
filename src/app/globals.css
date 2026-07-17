@@ -27,8 +27,16 @@ html {
 body {
   background-color: var(--space-black);
   background-image:
-    radial-gradient(circle at 76% 5%, rgba(20, 119, 176, 0.13), transparent 32rem),
-    radial-gradient(circle at 8% 42%, rgba(0, 79, 125, 0.08), transparent 38rem),
+    radial-gradient(
+      circle at 76% 5%,
+      rgba(20, 119, 176, 0.13),
+      transparent 32rem
+    ),
+    radial-gradient(
+      circle at 8% 42%,
+      rgba(0, 79, 125, 0.08),
+      transparent 38rem
+    ),
     linear-gradient(180deg, #03050a 0%, #050913 46%, #03050a 100%);
   color: #e8edf5;
   overflow-x: hidden;
@@ -134,8 +142,14 @@ body::before {
     z-index: -1;
     pointer-events: none;
     background:
-      linear-gradient(115deg, rgba(255,255,255,0.065), transparent 20%, transparent 78%, rgba(41,182,246,0.035)),
-      radial-gradient(circle at 0 0, rgba(112,231,255,0.07), transparent 32%);
+      linear-gradient(
+        115deg,
+        rgba(255, 255, 255, 0.065),
+        transparent 20%,
+        transparent 78%,
+        rgba(41, 182, 246, 0.035)
+      ),
+      radial-gradient(circle at 0 0, rgba(112, 231, 255, 0.07), transparent 32%);
   }
 
   .hardware-panel::after {
@@ -146,7 +160,12 @@ body::before {
     width: 50%;
     height: 1px;
     pointer-events: none;
-    background: linear-gradient(90deg, transparent, rgba(165, 238, 255, 0.75), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(165, 238, 255, 0.75),
+      transparent
+    );
     transition: left 900ms var(--ease-premium);
   }
 
@@ -168,32 +187,43 @@ body::before {
     width: min(86vw, 1180px);
     height: 1px;
     transform: translateX(-50%);
-    background: linear-gradient(90deg, transparent, var(--hairline) 20%, rgba(112,231,255,.18) 50%, var(--hairline) 80%, transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--hairline) 20%,
+      rgba(112, 231, 255, 0.18) 50%,
+      var(--hairline) 80%,
+      transparent
+    );
   }
 
   .hud-label {
     display: inline-flex;
     align-items: center;
-    gap: .65rem;
+    gap: 0.65rem;
     font-family: var(--font-mono);
-    font-size: .65rem;
-    letter-spacing: .2em;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: rgba(153, 213, 237, .62);
+    color: rgba(153, 213, 237, 0.62);
   }
 
   .hud-label::before {
     content: "";
     width: 1.5rem;
     height: 1px;
-    background: linear-gradient(90deg, rgba(41,182,246,.2), rgba(112,231,255,.8));
+    background: linear-gradient(
+      90deg,
+      rgba(41, 182, 246, 0.2),
+      rgba(112, 231, 255, 0.8)
+    );
   }
 }
 
 @layer utilities {
   .animate-on-scroll {
     opacity: 0;
-    transform: perspective(900px) translate3d(0, 48px, -80px) scale(.98);
+    transform: perspective(900px) translate3d(0, 48px, -80px) scale(0.98);
     transition:
       opacity 1s var(--ease-premium),
       transform 1s var(--ease-premium);
@@ -206,6 +236,59 @@ body::before {
 
   .text-balance {
     text-wrap: balance;
+  }
+
+  .company-timeline-rail {
+    background: linear-gradient(
+      180deg,
+      rgba(112, 231, 255, 0.05),
+      rgba(41, 182, 246, 0.55),
+      rgba(112, 231, 255, 0.15)
+    );
+    box-shadow: 0 0 18px rgba(41, 182, 246, 0.25);
+  }
+
+  .company-timeline-rail::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 3px;
+    height: 28%;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      rgba(112, 231, 255, 0.95),
+      transparent
+    );
+    animation: company-energy-flow 4.5s var(--ease-premium) infinite;
+  }
+
+  .company-timeline-node {
+    transition: transform 0.6s var(--ease-premium);
+  }
+
+  @keyframes company-energy-flow {
+    0% {
+      top: 0%;
+      opacity: 0.2;
+    }
+    35% {
+      opacity: 1;
+    }
+    100% {
+      top: 72%;
+      opacity: 0.15;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .company-timeline-rail::after {
+      animation: none;
+      opacity: 0.5;
+    }
   }
 }
 
@@ -231,8 +314,16 @@ body::before {
 
 .launch-ambient {
   background:
-    radial-gradient(circle at 78% 47%, rgba(41, 182, 246, 0.105), transparent 25rem),
-    radial-gradient(circle at 10% 100%, rgba(23, 91, 129, 0.08), transparent 34rem),
+    radial-gradient(
+      circle at 78% 47%,
+      rgba(41, 182, 246, 0.105),
+      transparent 25rem
+    ),
+    radial-gradient(
+      circle at 10% 100%,
+      rgba(23, 91, 129, 0.08),
+      transparent 34rem
+    ),
     linear-gradient(105deg, #020408 0%, #040911 56%, #020509 100%);
 }
 
@@ -322,12 +413,19 @@ body::before {
 }
 
 @keyframes launch-sweep {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes horizon-breathe {
-  0%, 100% { opacity: 0.34; }
-  50% { opacity: 0.8; }
+  0%,
+  100% {
+    opacity: 0.34;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 @keyframes launch-copy-in {
@@ -342,26 +440,56 @@ body::before {
 }
 
 @keyframes launch-lock {
-  0% { opacity: 0; }
-  35% { opacity: 1; }
-  100% { opacity: 0.2; }
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.2;
+  }
 }
 
 @keyframes launch-lock-line {
-  0% { width: 0; opacity: 0; }
-  40% { width: 100%; opacity: 0.85; }
-  100% { width: 100%; opacity: 0; }
+  0% {
+    width: 0;
+    opacity: 0;
+  }
+  40% {
+    width: 100%;
+    opacity: 0.85;
+  }
+  100% {
+    width: 100%;
+    opacity: 0;
+  }
 }
 
 .hero-atmosphere {
   background:
-    radial-gradient(ellipse at 73% 43%, rgba(31, 174, 231, .2) 0%, rgba(3, 5, 10, 0) 45%),
-    linear-gradient(90deg, rgba(3,5,10,.98) 0%, rgba(3,5,10,.82) 38%, rgba(3,5,10,.13) 68%, rgba(3,5,10,.22) 100%),
-    linear-gradient(180deg, rgba(3,5,10,.25), transparent 55%, #03050a 100%);
+    radial-gradient(
+      ellipse at 73% 43%,
+      rgba(31, 174, 231, 0.2) 0%,
+      rgba(3, 5, 10, 0) 45%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(3, 5, 10, 0.98) 0%,
+      rgba(3, 5, 10, 0.82) 38%,
+      rgba(3, 5, 10, 0.13) 68%,
+      rgba(3, 5, 10, 0.22) 100%
+    ),
+    linear-gradient(180deg, rgba(3, 5, 10, 0.25), transparent 55%, #03050a 100%);
 }
 
 .hero-scanline {
-  background: linear-gradient(180deg, transparent, rgba(112,231,255,.16), transparent);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(112, 231, 255, 0.16),
+    transparent
+  );
   animation: hero-scan 9s linear infinite;
 }
 
@@ -379,24 +507,45 @@ body::before {
 }
 
 @keyframes hero-scan {
-  0% { transform: translateY(-20vh); opacity: 0; }
-  12% { opacity: .7; }
-  70% { opacity: .2; }
-  100% { transform: translateY(110vh); opacity: 0; }
+  0% {
+    transform: translateY(-20vh);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.7;
+  }
+  70% {
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateY(110vh);
+    opacity: 0;
+  }
 }
 
 @keyframes telemetry-slide {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 @keyframes module-float {
-  0%, 100% { transform: translate3d(0, 0, 0); }
-  50% { transform: translate3d(0, -8px, 0); }
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
 }
 
 @keyframes scanner-rotate {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .platform-data-path {
@@ -424,10 +573,17 @@ body::before {
 
 .analysis-field {
   background:
-    radial-gradient(circle at center, rgba(41, 182, 246, 0.08), transparent 48%),
+    radial-gradient(
+      circle at center,
+      rgba(41, 182, 246, 0.08),
+      transparent 48%
+    ),
     linear-gradient(rgba(112, 231, 255, 0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(112, 231, 255, 0.025) 1px, transparent 1px);
-  background-size: 100% 100%, 30px 30px, 30px 30px;
+  background-size:
+    100% 100%,
+    30px 30px,
+    30px 30px;
 }
 
 .analysis-scan-line {
@@ -542,22 +698,40 @@ body::before {
 }
 
 @keyframes globe-panel-float {
-  0%, 100% { transform: translate3d(0, 0, 0); }
-  50% { transform: translate3d(0, -6px, 0); }
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
 }
 
 @keyframes globe-panel-signal {
-  0%, 58% { left: -70%; opacity: 0; }
-  67% { opacity: 1; }
-  90%, 100% { left: 125%; opacity: 0; }
+  0%,
+  58% {
+    left: -70%;
+    opacity: 0;
+  }
+  67% {
+    opacity: 1;
+  }
+  90%,
+  100% {
+    left: 125%;
+    opacity: 0;
+  }
 }
 
 @keyframes platform-data-flow {
-  to { stroke-dashoffset: -128; }
+  to {
+    stroke-dashoffset: -128;
+  }
 }
 
 @keyframes platform-particle-float {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.18;
     transform: translate3d(0, 0, 0);
   }
@@ -568,17 +742,31 @@ body::before {
 }
 
 @keyframes analysis-field-scan {
-  from { transform: translateY(0); opacity: 0; }
-  12% { opacity: 1; }
-  82% { opacity: 0.55; }
-  to { transform: translateY(460px); opacity: 0; }
+  from {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 0.55;
+  }
+  to {
+    transform: translateY(460px);
+    opacity: 0;
+  }
 }
 
 @media (max-width: 767px) {
   .hero-atmosphere {
     background:
-      radial-gradient(ellipse at 70% 30%, rgba(31, 174, 231, .11), transparent 44%),
-      linear-gradient(180deg, rgba(3,5,10,.35), #03050a 96%);
+      radial-gradient(
+        ellipse at 70% 30%,
+        rgba(31, 174, 231, 0.11),
+        transparent 44%
+      ),
+      linear-gradient(180deg, rgba(3, 5, 10, 0.35), #03050a 96%);
   }
 
   .glass,

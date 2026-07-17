@@ -31,6 +31,13 @@ export function resetInMemoryStores(): void {
     __synsightPromotionRewardId?: number;
     __synsightPromotionLogs?: unknown[];
     __synsightPromotionLogId?: number;
+    __synsightCommunicationSettings?: unknown;
+    __synsightContactRequests?: unknown[];
+    __synsightContactRequestId?: number;
+    __synsightPartnerRequests?: unknown[];
+    __synsightPartnerRequestId?: number;
+    __synsightPressRequests?: unknown[];
+    __synsightPressRequestId?: number;
   };
 
   g.__synsightUsers?.clear();
@@ -68,4 +75,11 @@ export function resetInMemoryStores(): void {
   delete g.__synsightPromotionRewardId;
   delete g.__synsightPromotionLogs;
   delete g.__synsightPromotionLogId;
+  delete g.__synsightCommunicationSettings;
+  delete g.__synsightContactRequests;
+  delete g.__synsightContactRequestId;
+  delete g.__synsightPartnerRequests;
+  delete g.__synsightPartnerRequestId;
+  delete g.__synsightPressRequests;
+  delete g.__synsightPressRequestId;
 }
