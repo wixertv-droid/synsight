@@ -1,12 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import LaunchScreen from "@/components/loading/LaunchScreen";
 import HeroSection from "@/components/hero/HeroSection";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
 import SystemRail from "@/components/layout/SystemRail";
+
+const LAUNCH_SEEN_KEY = "synsight.launch.seen";
 
 const IntelligenceConsole = dynamic(
   () => import("@/components/sections/IntelligenceConsole"),
@@ -32,25 +34,53 @@ const SynCreditsSection = dynamic(
   { ssr: false }
 );
 
+type BootState = "checking" | "launch" | "ready";
+
+function hasSeenLaunchThisSession(): boolean {
+  try {
+    return sessionStorage.getItem(LAUNCH_SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markLaunchSeen(): void {
+  try {
+    sessionStorage.setItem(LAUNCH_SEEN_KEY, "1");
+  } catch {
+    // Private mode / blocked storage — ignore.
+  }
+}
+
 export default function Home() {
-  const [loading, setLoading] = useState(true);
+  const [bootState, setBootState] = useState<BootState>("checking");
+
+  useEffect(() => {
+    // Only show the launch bar on a fresh browser session / first open.
+    // Client-side navigations back to "/" skip it until the tab/session ends.
+    setBootState(hasSeenLaunchThisSession() ? "ready" : "launch");
+  }, []);
 
   const handleLoadingComplete = useCallback(() => {
-    setLoading(false);
+    markLaunchSeen();
+    setBootState("ready");
   }, []);
+
+  const ready = bootState === "ready";
+  const showLaunch = bootState === "launch";
 
   return (
     <>
-      {loading && <LaunchScreen onComplete={handleLoadingComplete} />}
+      {showLaunch ? <LaunchScreen onComplete={handleLoadingComplete} /> : null}
       <main
         className={`transition-opacity duration-700 ${
-          loading ? "opacity-0" : "opacity-100"
+          ready ? "opacity-100" : "opacity-0"
         }`}
       >
         <Navbar />
-        <SystemRail sectionsReady={!loading} />
+        <SystemRail sectionsReady={ready} />
         <HeroSection />
-        {!loading && (
+        {ready ? (
           <>
             <IntelligenceConsole />
             <DemoScanner />
@@ -60,7 +90,7 @@ export default function Home() {
             <TrustSection />
             <Footer />
           </>
-        )}
+        ) : null}
       </main>
     </>
   );
