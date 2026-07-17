@@ -255,11 +255,41 @@ Die Admin-Preisverwaltung ermöglicht diese Korrektur ohne Deployment.
 
 ### Tests
 
-- Pricing-Service/Admin-API/Migrationstests
-- Bildpipeline- und Persistenztests
-- Duplicate-Type-Validation
-- PM2-Env-Priorität
-- nicht-blockierender SMTP-Regressionstest
+- `tests/unit/services/pricing-service.test.ts`
+- `tests/unit/api/admin-routes.test.ts`
+- `tests/unit/database/migrations.test.ts`
+- `tests/unit/media/image-pipeline.test.ts`
+- `tests/unit/services/identity-service.test.ts`
+- `tests/unit/validation/identity-images.test.ts`
+- `tests/unit/deploy/env-file.test.ts`
+- `tests/unit/services/verification-nonblocking.test.ts`
+- `tests/helpers/memory-reset.ts`
+
+Weitere geänderte Integrationsdateien:
+
+- `src/lib/repositories/index.ts`
+- `src/lib/repositories/credits-repository.ts`
+- `src/lib/repositories/mysql/credits-repository.ts`
+- `src/lib/services/auth-service.ts`
+- `src/lib/security/rate-limit.ts`
+- `tests/unit/api/admin-routes.test.ts`
+- `tests/unit/database/migrations.test.ts`
+- `tests/unit/services/identity-service.test.ts`
+
+## Quality Gates
+
+| Prüfung                         | Ergebnis          |
+| ------------------------------- | ----------------- |
+| `npm run typecheck`             | ✅                |
+| `npm run lint`                  | ✅ ohne Warnungen |
+| `npm run test`                  | ✅ 92 Tests       |
+| `npm run build`                 | ✅ 39 Routen      |
+| `npm run test:e2e`              | ✅ 6 Tests        |
+| MariaDB 10.11 Migration 001–009 | ✅                |
+| MariaDB Seed + `db:status`      | ✅ UP TO DATE     |
+
+Die Migration wurde zusätzlich auf einer leeren MariaDB 10.11.14 ausgeführt.
+Alle neun Migrationen, Admin-Seed und zweiter Statuslauf waren erfolgreich.
 
 ## Server-Update
 
