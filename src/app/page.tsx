@@ -48,7 +48,7 @@ export default function Home() {
         }`}
       >
         <Navbar />
-        <SystemRail />
+        <SystemRail sectionsReady={!loading} />
         <HeroSection />
         {!loading && (
           <>

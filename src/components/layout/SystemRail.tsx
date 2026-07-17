@@ -8,29 +8,67 @@ const sections = [
   { id: "demo-scanner", label: "CHECK" },
   { id: "traces", label: "SPUREN" },
   { id: "technology", label: "ERKENNUNG" },
+  { id: "syncredits", label: "CREDITS" },
   { id: "trust", label: "VERTRAUEN" },
 ];
 
-export default function SystemRail() {
+interface SystemRailProps {
+  sectionsReady?: boolean;
+}
+
+function resolveActiveSection(): string {
+  const scrollY = window.scrollY;
+  const anchor = scrollY + window.innerHeight * 0.35;
+  let activeId = sections[0]?.id ?? "hero";
+
+  for (const { id } of sections) {
+    const element = document.getElementById(id);
+    if (!element) continue;
+    if (element.offsetTop <= anchor) activeId = id;
+  }
+
+  return activeId;
+}
+
+export default function SystemRail({ sectionsReady = true }: SystemRailProps) {
   const [active, setActive] = useState("hero");
 
   useEffect(() => {
+    if (!sectionsReady) return;
+
+    const syncActiveSection = () => {
+      setActive(resolveActiveSection());
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
           .filter((entry) => entry.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setActive(visible.target.id);
+        if (visible) {
+          setActive(visible.target.id);
+          return;
+        }
+        syncActiveSection();
       },
-      { rootMargin: "-30% 0px -45% 0px", threshold: [0, 0.2, 0.6] }
+      { rootMargin: "-30% 0px -45% 0px", threshold: [0, 0.15, 0.35, 0.6] }
     );
 
-    sections.forEach(({ id }) => {
+    for (const { id } of sections) {
       const element = document.getElementById(id);
       if (element) observer.observe(element);
-    });
-    return () => observer.disconnect();
-  }, []);
+    }
+
+    syncActiveSection();
+    window.addEventListener("scroll", syncActiveSection, { passive: true });
+    window.addEventListener("resize", syncActiveSection);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", syncActiveSection);
+      window.removeEventListener("resize", syncActiveSection);
+    };
+  }, [sectionsReady]);
 
   return (
     <aside
