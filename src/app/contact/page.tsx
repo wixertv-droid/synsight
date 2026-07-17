@@ -32,10 +32,10 @@ export default function ContactPage() {
         <ContactForm />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2">
+      <section className="grid gap-4 sm:grid-cols-3">
         <article className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
           <p className="font-mono text-[9px] tracking-[.14em] text-white/30">
-            DIREKT
+            ALLGEMEIN
           </p>
           <p className="mt-3 text-sm text-white/55">
             <a
@@ -44,6 +44,25 @@ export default function ContactPage() {
             >
               contact@synsight.de
             </a>
+          </p>
+          <p className="mt-2 text-xs text-white/30">
+            Allgemeine und organisatorische Anfragen
+          </p>
+        </article>
+        <article className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
+          <p className="font-mono text-[9px] tracking-[.14em] text-white/30">
+            SUPPORT
+          </p>
+          <p className="mt-3 text-sm text-white/55">
+            <a
+              href="mailto:support@synsight.de"
+              className="text-cyber-cyan/80 transition hover:text-cyber-cyan"
+            >
+              support@synsight.de
+            </a>
+          </p>
+          <p className="mt-2 text-xs text-white/30">
+            Technische Probleme und Plattformfragen
           </p>
         </article>
         <article className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">

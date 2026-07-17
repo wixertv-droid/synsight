@@ -34,16 +34,11 @@ Vollständiges rechtliches Fundament für SynSight im bestehenden Premium-Design
 - Unit-Tests für Routen, Footer-Links und Schlüsselinhalte
 - TypeScript / ESLint / Vitest / Production Build — grün
 
-## Server-Update
+## Erweiterung: Systemstatus & Changelog
 
-```bash
-cd /opt/synsight
-git fetch origin
-git checkout cursor/sprint-7-legal-compliance-7c12
-git pull origin cursor/sprint-7-legal-compliance-7c12
-npm ci
-DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run build
-pm2 restart ecosystem.config.cjs --update-env
-```
+| Route        | Zweck                                                          |
+| ------------ | -------------------------------------------------------------- |
+| `/status`    | Öffentlicher Systemstatus (statische Config, Monitoring-ready) |
+| `/changelog` | Release Notes Timeline (Admin-CRUD vorbereitet)                |
 
-Hard-Refresh: **Strg + F5**
+Support: `support@synsight.de` für Support/Technik; `contact@synsight.de` bleibt für allgemeine Anfragen.

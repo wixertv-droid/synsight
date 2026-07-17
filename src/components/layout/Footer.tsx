@@ -12,6 +12,8 @@ const footerLinks = {
     { label: "Kontakt", href: "/contact" },
     { label: "Partnerschaften", href: "/partners" },
     { label: "Presse", href: "/press" },
+    { label: "Systemstatus", href: "/status" },
+    { label: "Release Notes", href: "/changelog" },
   ],
   Rechtliches: [
     { label: "Impressum", href: "/impressum" },
@@ -26,12 +28,16 @@ const footerLinks = {
     { label: "Login", href: "/login" },
     { label: "Konto erstellen", href: "/register" },
     {
+      label: "Support",
+      href: "mailto:support@synsight.de?subject=Supportanfrage%20SynSight",
+    },
+    {
       label: "Datenschutzanfrage",
       href: "mailto:datenschutz@synsight.de?subject=Datenschutzanfrage%20SynSight",
     },
     {
       label: "Technischer Kontakt",
-      href: "mailto:contact@synsight.de?subject=Technische%20Anfrage%20SynSight",
+      href: "mailto:support@synsight.de?subject=Technische%20Anfrage%20SynSight",
     },
   ],
 };
