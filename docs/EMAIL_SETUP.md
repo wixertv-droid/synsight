@@ -77,7 +77,15 @@ cd /opt/synsight
 npm run email:test -- deine@email.de
 ```
 
-Erfolg: `verify ok` + `sent` mit `messageId`.
+Das Skript lädt automatisch `.env.production` (wie PM2). Du musst SMTP_* nicht manuell exportieren.
+
+Erfolg: `loaded env from: .env.production` → `verify ok` → `sent` mit `messageId`.
+
+Wenn `Missing: SMTP_HOST, SMTP_USER, …` erscheint: Werte fehlen in `.env.production` oder Datei liegt nicht in `/opt/synsight/`.
+
+```bash
+grep -E '^SMTP_|^EMAIL_DELIVERY' /opt/synsight/.env.production
+```
 
 ---
 
