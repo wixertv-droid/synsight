@@ -5,7 +5,7 @@ import {
   randomBytes,
   randomUUID,
 } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 
@@ -17,7 +17,11 @@ const ALLOWED_MIME = new Set([
   "image/heif",
 ]);
 
-const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+export const ANALYSIS_MAX_PIXELS = 1600;
+export const ANALYSIS_WEBP_QUALITY = 80;
+export const THUMBNAIL_MAX_PIXELS = 300;
+export const THUMBNAIL_WEBP_QUALITY = 75;
 
 const MAGIC_MIME: Array<{ mime: string; test: (bytes: Buffer) => boolean }> = [
   {
@@ -54,6 +58,12 @@ export interface ProcessedProfileImage {
 }
 
 function getEncryptionKey(): Buffer {
+  if (
+    process.env.NODE_ENV === "production" &&
+    !process.env.IMAGE_ENCRYPTION_KEY
+  ) {
+    throw new Error("IMAGE_ENCRYPTION_KEY is required in production.");
+  }
   const secret =
     process.env.IMAGE_ENCRYPTION_KEY ||
     process.env.SESSION_SECRET ||
@@ -83,6 +93,29 @@ function privateStorageRoot(): string {
     process.env.PRIVATE_STORAGE_ROOT ||
     path.join(process.cwd(), "storage", "private")
   );
+}
+
+export function resolvePrivateImagePath(
+  userId: number,
+  relativePath: string
+): string {
+  assertOwnedImagePath(userId, relativePath);
+  return path.join(privateStorageRoot(), "images", relativePath);
+}
+
+export async function readStoredProfileImage(
+  userId: number,
+  relativePath: string
+): Promise<Buffer> {
+  return readFile(resolvePrivateImagePath(userId, relativePath));
+}
+
+export async function removeStoredProfileImage(
+  userId: number,
+  storagePath: string
+): Promise<void> {
+  const absolute = resolvePrivateImagePath(userId, storagePath);
+  await rm(path.dirname(absolute), { recursive: true, force: true });
 }
 
 function sniffMime(bytes: Buffer, declared: string): string {
@@ -163,23 +196,23 @@ export async function processAndStoreProfileImage(input: {
   const analysisBuffer = await normalized
     .clone()
     .resize({
-      width: 1600,
-      height: 1600,
+      width: ANALYSIS_MAX_PIXELS,
+      height: ANALYSIS_MAX_PIXELS,
       fit: "inside",
       withoutEnlargement: true,
     })
-    .webp({ quality: 80 })
+    .webp({ quality: ANALYSIS_WEBP_QUALITY })
     .toBuffer();
 
   const thumbnailBuffer = await normalized
     .clone()
     .resize({
-      width: 300,
-      height: 300,
+      width: THUMBNAIL_MAX_PIXELS,
+      height: THUMBNAIL_MAX_PIXELS,
       fit: "inside",
       withoutEnlargement: true,
     })
-    .webp({ quality: 75 })
+    .webp({ quality: THUMBNAIL_WEBP_QUALITY })
     .toBuffer();
 
   const originalName = "original.bin";

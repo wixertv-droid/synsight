@@ -78,6 +78,11 @@ export const onboardingImageStepSchema = z.object({
       })
     )
     .max(4)
+    .refine(
+      (images) =>
+        new Set(images.map((image) => image.imageType)).size === images.length,
+      "Jeder Bildtyp darf nur einmal verwendet werden."
+    )
     .default([]),
 });
 

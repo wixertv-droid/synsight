@@ -42,6 +42,12 @@ export const VERIFICATION_RATE_LIMIT: RateLimitPolicy = {
   blockMs: 15 * 60_000,
 };
 
+export const IMAGE_UPLOAD_RATE_LIMIT: RateLimitPolicy = {
+  limit: 12,
+  windowMs: 60 * 60_000,
+  blockMs: 60 * 60_000,
+};
+
 export function checkRateLimit(
   key: string,
   policy: RateLimitPolicy,

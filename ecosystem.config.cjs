@@ -10,36 +10,15 @@
  *   pm2 start ecosystem.config.cjs --update-env
  *   pm2 save
  */
-const fs = require("node:fs");
 const path = require("node:path");
-
-function loadEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) return {};
-
-  const env = {};
-  for (const rawLine of fs.readFileSync(filePath, "utf8").split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-
-    const separator = line.indexOf("=");
-    if (separator <= 0) continue;
-
-    const key = line.slice(0, separator).trim();
-    let value = line.slice(separator + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    env[key] = value;
-  }
-  return env;
-}
+const {
+  loadEnvFile,
+  mergeDeploymentEnv,
+} = require("./deployment/env-file.cjs");
 
 const fileEnv = loadEnvFile(path.join(__dirname, ".env.production"));
 // .env.production MUST win over stale shell/PM2 dump values.
-const merged = { ...process.env, ...fileEnv };
+const merged = mergeDeploymentEnv(process.env, fileEnv);
 
 if (!merged.DATABASE_URL) {
   console.error(

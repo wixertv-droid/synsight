@@ -1,20 +1,45 @@
 "use client";
 
-import {
-  CREDIT_PACKAGE_DEFINITIONS,
-  formatEuroFromCents,
-  totalCredits,
-} from "@/lib/credits/pricing";
+import { useEffect, useState } from "react";
 
 const reasons = [
-  "Keine Abonnements",
+  "Keine monatlichen Kosten",
   "Jederzeit aufladbar",
-  "Nur tatsächliche Nutzung wird berechnet",
-  "Transparente Kosten",
-  "Jede Analyse wird protokolliert",
+  "Transparente Preise",
+  "Jede Analyse einzeln berechnet",
+  "Volle Kostenkontrolle",
+  "Keine versteckten Gebühren",
 ];
 
 export default function SynCreditsSection() {
+  const [packages, setPackages] = useState<
+    Array<{
+      code: string;
+      name: string;
+      credits: number;
+      bonusCredits: number;
+      totalCredits: number;
+      priceLabel: string;
+      badge: string | null;
+      isPopular: boolean;
+    }>
+  >([]);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/pricing")
+      .then((response) => response.json())
+      .then((body) => {
+        if (active && body.success) setPackages(body.data.packages);
+      })
+      .catch(() => {
+        // Never show stale code prices when the DB catalog is unavailable.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <section
       id="syncredits"
@@ -30,19 +55,17 @@ export default function SynCreditsSection() {
             id="syncredits-heading"
             className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white md:text-5xl"
           >
-            Bezahle nur für Analysen,{" "}
-            <span className="cyber-gradient">die du wirklich nutzt.</span>
+            Bezahle nur für das,{" "}
+            <span className="cyber-gradient">was du wirklich nutzt.</span>
           </h2>
           <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/40 md:text-base">
-            Keine monatlichen Gebühren. Keine versteckten Kosten. Volle
-            Kostenkontrolle — SynCredits ersetzen das klassische Abo
-            vollständig.
+            Keine Abonnements. Keine versteckten Kosten. Volle Kostenkontrolle.
           </p>
         </div>
 
         <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {CREDIT_PACKAGE_DEFINITIONS.map((pack, index) => {
-            const featured = index === 2;
+          {packages.map((pack) => {
+            const featured = pack.isPopular;
             return (
               <article
                 key={pack.code}
@@ -61,11 +84,11 @@ export default function SynCreditsSection() {
                   {pack.name.toUpperCase()}
                 </p>
                 <p className="mt-5 text-4xl font-semibold tracking-[-.04em] text-white">
-                  {totalCredits(pack).toLocaleString("de-DE")}
+                  {pack.totalCredits.toLocaleString("de-DE")}
                 </p>
                 <p className="mt-1 text-sm text-white/35">SynCredits</p>
                 <p className="mt-6 text-2xl font-medium text-cyber-cyan/90">
-                  {formatEuroFromCents(pack.priceCents)}
+                  {pack.priceLabel}
                 </p>
                 <p className="mt-2 text-xs text-white/28">
                   {pack.credits.toLocaleString("de-DE")} Basis
@@ -86,6 +109,11 @@ export default function SynCreditsSection() {
               </article>
             );
           })}
+          {packages.length === 0 ? (
+            <p className="col-span-full rounded-xl border border-white/[0.07] bg-white/[0.02] p-6 text-center text-sm text-white/35">
+              Preisübersicht wird geladen…
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-16 grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">

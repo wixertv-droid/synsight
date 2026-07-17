@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { SynSightDatabase } from "@/lib/database/client";
 import {
   digitalTraces,
@@ -312,6 +312,114 @@ export function createMysqlIdentityRepository(
         throw new Error("Identity snapshot missing after save.");
       }
       return snapshot;
+    },
+
+    async upsertImage(userId, image) {
+      assertOwnedImagePath(userId, image.storagePath);
+      if (image.originalPath) assertOwnedImagePath(userId, image.originalPath);
+      if (image.analysisPath) assertOwnedImagePath(userId, image.analysisPath);
+      if (image.thumbnailPath)
+        assertOwnedImagePath(userId, image.thumbnailPath);
+
+      const previousRows = await db
+        .select()
+        .from(profileImages)
+        .where(
+          sql`${profileImages.userId} = ${userId} AND ${profileImages.imageType} = ${image.imageType}`
+        )
+        .limit(1);
+      const previous = previousRows[0] ?? null;
+
+      await db
+        .insert(profileImages)
+        .values({
+          userId,
+          imageType: image.imageType,
+          storagePath: image.storagePath,
+          originalPath: image.originalPath ?? null,
+          analysisPath: image.analysisPath ?? null,
+          thumbnailPath: image.thumbnailPath ?? null,
+          contentHash: image.contentHash ?? null,
+          mimeType: image.mimeType ?? null,
+          byteSize: image.byteSize ?? null,
+        })
+        .onDuplicateKeyUpdate({
+          set: {
+            storagePath: image.storagePath,
+            originalPath: image.originalPath ?? null,
+            analysisPath: image.analysisPath ?? null,
+            thumbnailPath: image.thumbnailPath ?? null,
+            contentHash: image.contentHash ?? null,
+            mimeType: image.mimeType ?? null,
+            byteSize: image.byteSize ?? null,
+          },
+        });
+
+      const currentRows = await db
+        .select()
+        .from(profileImages)
+        .where(
+          sql`${profileImages.userId} = ${userId} AND ${profileImages.imageType} = ${image.imageType}`
+        )
+        .limit(1);
+      const current = currentRows[0];
+      if (!current) throw new Error("Image persistence failed.");
+      return {
+        image: {
+          id: current.id,
+          userId: current.userId,
+          imageType: current.imageType,
+          storagePath: current.storagePath,
+          originalPath: current.originalPath,
+          analysisPath: current.analysisPath,
+          thumbnailPath: current.thumbnailPath,
+          contentHash: current.contentHash,
+          mimeType: current.mimeType,
+          byteSize: current.byteSize,
+          uploadedAt: current.uploadedAt,
+        },
+        replaced: previous
+          ? {
+              id: previous.id,
+              userId: previous.userId,
+              imageType: previous.imageType,
+              storagePath: previous.storagePath,
+              originalPath: previous.originalPath,
+              analysisPath: previous.analysisPath,
+              thumbnailPath: previous.thumbnailPath,
+              contentHash: previous.contentHash,
+              mimeType: previous.mimeType,
+              byteSize: previous.byteSize,
+              uploadedAt: previous.uploadedAt,
+            }
+          : null,
+      };
+    },
+
+    async deleteImage(userId, imageType) {
+      const rows = await db
+        .select()
+        .from(profileImages)
+        .where(
+          sql`${profileImages.userId} = ${userId} AND ${profileImages.imageType} = ${imageType}`
+        )
+        .limit(1);
+      const row = rows[0];
+      if (!row) return null;
+      await db.delete(profileImages).where(eq(profileImages.id, row.id));
+      return {
+        id: row.id,
+        userId: row.userId,
+        imageType: row.imageType,
+        storagePath: row.storagePath,
+        originalPath: row.originalPath,
+        analysisPath: row.analysisPath,
+        thumbnailPath: row.thumbnailPath,
+        contentHash: row.contentHash,
+        mimeType: row.mimeType,
+        byteSize: row.byteSize,
+        uploadedAt: row.uploadedAt,
+      };
     },
   };
 }

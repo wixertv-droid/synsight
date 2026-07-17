@@ -389,7 +389,9 @@ export default function DemoScanner() {
                   SYNCREDITS
                 </p>
                 <div className="mt-4 flex items-end gap-2">
-                  <span className="text-4xl font-bold text-white">ab 5 €</span>
+                  <span className="text-3xl font-bold text-white">
+                    Flexibel aufladen
+                  </span>
                 </div>
                 <p className="mt-2 text-xs text-gray-500">
                   Kein Abo — zahlen Sie nur für Analysen, die Sie wirklich

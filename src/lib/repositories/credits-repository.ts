@@ -1,7 +1,4 @@
-import {
-  CREDIT_PACKAGE_DEFINITIONS,
-  totalCredits,
-} from "@/lib/credits/pricing";
+import { DEFAULT_CREDIT_PACKAGES, totalCredits } from "@/lib/credits/pricing";
 
 export type CreditTransactionType =
   | "purchase"
@@ -156,7 +153,7 @@ const memory = globalThis as typeof globalThis & {
 
 function packages(): CreditPackageRecord[] {
   if (!memory.__synsightCreditPackages) {
-    memory.__synsightCreditPackages = CREDIT_PACKAGE_DEFINITIONS.map(
+    memory.__synsightCreditPackages = DEFAULT_CREDIT_PACKAGES.map(
       (pack, index) => ({
         id: index + 1,
         code: pack.code,
@@ -168,6 +165,11 @@ function packages(): CreditPackageRecord[] {
         badge: pack.badge,
         sortOrder: pack.sortOrder,
         isActive: true,
+        defaultCredits: pack.credits,
+        defaultBonusCredits: pack.bonusCredits,
+        defaultPriceCents: pack.priceCents,
+        isPopular: pack.code === "pack_3600",
+        updatedByAdminId: null,
       })
     );
   }

@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { getCreditsOverview } from "@/lib/services/credits-service";
-import { listAnalysisPrices } from "@/lib/credits/pricing";
+import { getPublicPricingCatalog } from "@/lib/services/pricing-service";
 
 interface CreditsPanelProps {
   userId: number;
 }
 
 export default async function CreditsPanel({ userId }: CreditsPanelProps) {
-  const overview = await getCreditsOverview(userId);
+  const [overview, catalog] = await Promise.all([
+    getCreditsOverview(userId),
+    getPublicPricingCatalog(),
+  ]);
   const monthBudgetHint = Math.max(
     overview.balance + overview.spentThisMonth,
     1
@@ -16,7 +19,9 @@ export default async function CreditsPanel({ userId }: CreditsPanelProps) {
     100,
     Math.round((overview.spentThisMonth / monthBudgetHint) * 100)
   );
-  const samplePrices = listAnalysisPrices().slice(0, 4);
+  const recentCharges = overview.recentTransactions
+    .filter((transaction) => transaction.amount < 0)
+    .slice(0, 5);
 
   return (
     <section
@@ -55,7 +60,7 @@ export default async function CreditsPanel({ userId }: CreditsPanelProps) {
 
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
-              href="/#syncredits"
+              href="#analysis-pricing"
               className="inline-flex rounded-lg bg-gradient-to-r from-cyber-blue to-cyber-cyan px-4 py-2.5 text-xs font-semibold text-space-black transition hover:brightness-110"
             >
               SynCredits aufladen
@@ -72,16 +77,16 @@ export default async function CreditsPanel({ userId }: CreditsPanelProps) {
         <div className="grid flex-1 gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-white/[0.07] bg-space-black/40 p-4">
             <p className="font-mono text-[8px] tracking-[.14em] text-white/28">
-              LETZTE TRANSAKTIONEN
+              LETZTE ABBUCHUNGEN
             </p>
             <ul className="mt-3 space-y-2">
-              {overview.recentTransactions.length === 0 ? (
+              {recentCharges.length === 0 ? (
                 <li className="text-xs text-white/30">
                   Noch keine Bewegungen. Laden Sie SynCredits, um Analysen zu
                   starten.
                 </li>
               ) : (
-                overview.recentTransactions.slice(0, 5).map((tx) => (
+                recentCharges.map((tx) => (
                   <li
                     key={tx.id}
                     className="flex items-center justify-between gap-3 border-b border-white/[0.04] pb-2 text-xs last:border-0"
@@ -105,12 +110,15 @@ export default async function CreditsPanel({ userId }: CreditsPanelProps) {
             </ul>
           </div>
 
-          <div className="rounded-xl border border-white/[0.07] bg-space-black/40 p-4">
+          <div
+            id="analysis-pricing"
+            className="rounded-xl border border-white/[0.07] bg-space-black/40 p-4"
+          >
             <p className="font-mono text-[8px] tracking-[.14em] text-white/28">
               ANALYSEPREISE
             </p>
             <ul className="mt-3 space-y-2">
-              {samplePrices.map((price) => (
+              {catalog.analyses.map((price) => (
                 <li
                   key={price.key}
                   className="flex items-center justify-between text-xs text-white/50"

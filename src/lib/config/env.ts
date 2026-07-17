@@ -62,6 +62,14 @@ const environmentSchema = z
       });
     }
 
+    if (env.NODE_ENV === "production" && !env.IMAGE_ENCRYPTION_KEY) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["IMAGE_ENCRYPTION_KEY"],
+        message: "IMAGE_ENCRYPTION_KEY is required in production.",
+      });
+    }
+
     if (env.NODE_ENV === "production" && env.ALLOW_DEV_AUTH === "true") {
       ctx.addIssue({
         code: "custom",

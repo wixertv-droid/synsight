@@ -4,6 +4,7 @@ import { getProfileRepository } from "@/lib/repositories";
 import {
   getIdentityCompleteness,
   getIdentityForUser,
+  persistProcessedProfileImage,
   saveIdentityForUser,
 } from "@/lib/services/identity-service";
 
@@ -61,5 +62,28 @@ describe("identity-service", () => {
     const loaded = await getIdentityForUser(1);
     expect(loaded?.socialAccounts[0]?.platform).toBe("GitHub");
     expect(loaded?.aliases.gamingNames).toContain("am90");
+  });
+
+  it("persists uploaded image metadata immediately across reloads", async () => {
+    await getProfileRepository().ensureDraft(1, {
+      firstName: "Alex",
+      lastName: "Morgan",
+    });
+    await persistProcessedProfileImage(1, {
+      imageType: "front",
+      storagePath: "users/1/images/id/analysis.webp",
+      originalPath: "users/1/images/id/original.bin",
+      analysisPath: "users/1/images/id/analysis.webp",
+      thumbnailPath: "users/1/images/id/thumbnail.webp",
+      contentHash: "a".repeat(64),
+      mimeType: "image/webp",
+      byteSize: 1234,
+    });
+    const loaded = await getIdentityForUser(1);
+    expect(loaded?.images).toHaveLength(1);
+    expect(loaded?.images[0]).toMatchObject({
+      imageType: "front",
+      thumbnailPath: "users/1/images/id/thumbnail.webp",
+    });
   });
 });

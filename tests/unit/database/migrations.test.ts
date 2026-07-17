@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–008 migration files", () => {
+  it("ships ordered 001–009 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -18,6 +18,7 @@ describe("database migrations workflow", () => {
       "006_production_user_role.sql",
       "007_syncredits.sql",
       "008_admin_control_center.sql",
+      "009_pricing_and_image_hardening.sql",
     ]);
   });
 
@@ -104,5 +105,17 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("`transaction_source`");
     expect(sql).toContain("'admin_credit'");
     expect(sql).toContain("'admin_remove'");
+  });
+
+  it("adds DB pricing and image uniqueness in 009", () => {
+    const sql = readFileSync(
+      path.join(dir, "009_pricing_and_image_hardening.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `analysis_pricing`");
+    expect(sql).toContain("'phone_analysis'");
+    expect(sql).toContain("'alias_analysis'");
+    expect(sql).toContain("`default_price_cents`");
+    expect(sql).toContain("profile_images_user_type_unique");
   });
 });

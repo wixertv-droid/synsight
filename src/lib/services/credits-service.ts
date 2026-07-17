@@ -1,11 +1,5 @@
-import {
-  formatEuroFromCents,
-  getAnalysisPrice,
-  listAnalysisPrices,
-  totalCredits,
-  type AnalysisKey,
-} from "@/lib/credits/pricing";
-import { getCreditsRepository } from "@/lib/repositories";
+import { formatEuroFromCents, totalCredits } from "@/lib/credits/pricing";
+import { getCreditsRepository, getPricingRepository } from "@/lib/repositories";
 
 function startOfMonthIso(): string {
   const now = new Date();
@@ -64,22 +58,6 @@ export async function listCreditPackages() {
     totalCredits: pack.credits + pack.bonusCredits,
     priceLabel: formatEuroFromCents(pack.priceCents),
   }));
-}
-
-export async function getPricingCatalog() {
-  return {
-    analyses: listAnalysisPrices(),
-    packages: await listCreditPackages(),
-    checkoutMode: checkoutMode(),
-    providersPrepared: [
-      "manual",
-      "stripe",
-      "paypal",
-      "apple_pay",
-      "google_pay",
-      "sepa",
-    ],
-  };
 }
 
 export async function purchaseCreditPackage(
@@ -185,8 +163,8 @@ export async function consumeCredits(
   analysisKey: string,
   requestId?: string
 ) {
-  const price = getAnalysisPrice(analysisKey);
-  if (!price) {
+  const price = await getPricingRepository().findAnalysisByKey(analysisKey);
+  if (!price || !price.isActive) {
     return { status: "unknown_analysis" as const };
   }
 
@@ -194,28 +172,27 @@ export async function consumeCredits(
   await repo.ensureAccount(userId);
 
   try {
-    const usage = await repo.createUsageLog({
-      userId,
-      analysisKey: price.key,
-      creditsCharged: price.credits,
-      status: "completed",
-      requestId: requestId ?? null,
-    });
-
     const result = await repo.applyCreditChange({
       userId,
       type: "consume",
       amount: -price.credits,
       description: `${price.label} (${price.credits} SynCredits)`,
-      analysisKey: price.key,
-      usageLogId: usage.id,
+      analysisKey: price.analysisKey,
       metadataJson: { requestId: requestId ?? null },
       transactionSource: "analysis",
+    });
+    const usage = await repo.createUsageLog({
+      userId,
+      analysisKey: price.analysisKey,
+      creditsCharged: price.credits,
+      status: "completed",
+      transactionId: result.transaction.id,
+      requestId: requestId ?? null,
     });
 
     return {
       status: "completed" as const,
-      analysisKey: price.key as AnalysisKey,
+      analysisKey: price.analysisKey,
       label: price.label,
       creditsCharged: price.credits,
       balance: result.account.balance,
@@ -229,7 +206,7 @@ export async function consumeCredits(
         status: "insufficient" as const,
         required: price.credits,
         balance: account.balance,
-        analysisKey: price.key,
+        analysisKey: price.analysisKey,
         label: price.label,
       };
     }

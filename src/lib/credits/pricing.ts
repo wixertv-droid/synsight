@@ -5,8 +5,11 @@
 
 export type AnalysisKey =
   | "google_search"
+  | "phone_analysis"
+  | "website_analysis"
   | "domain_analysis"
   | "email_analysis"
+  | "alias_analysis"
   | "social_media"
   | "person_search"
   | "reverse_image_search"
@@ -22,12 +25,25 @@ export interface AnalysisPrice {
   description: string;
 }
 
-export const ANALYSIS_PRICES: readonly AnalysisPrice[] = [
+/** Factory defaults used only for first seed/reset and local in-memory tests. */
+export const DEFAULT_ANALYSIS_PRICES: readonly AnalysisPrice[] = [
   {
     key: "google_search",
     label: "Google Suche",
     credits: 2,
     description: "Öffentliche Webtreffer zu Identitätssignalen.",
+  },
+  {
+    key: "phone_analysis",
+    label: "Telefonnummer",
+    credits: 6,
+    description: "Telefonnummern- und Expositionsanalyse.",
+  },
+  {
+    key: "website_analysis",
+    label: "Website Analyse",
+    credits: 5,
+    description: "Website-Signale und öffentliche Zuordnungen.",
   },
   {
     key: "domain_analysis",
@@ -42,8 +58,14 @@ export const ANALYSIS_PRICES: readonly AnalysisPrice[] = [
     description: "E-Mail-Exposition und Leak-Signale.",
   },
   {
+    key: "alias_analysis",
+    label: "Alias Analyse",
+    credits: 8,
+    description: "Alias- und Benutzernamen-Korrelation.",
+  },
+  {
     key: "social_media",
-    label: "Social Media",
+    label: "Social Media Analyse",
     credits: 10,
     description: "Profil- und Alias-Korrelation.",
   },
@@ -79,23 +101,11 @@ export const ANALYSIS_PRICES: readonly AnalysisPrice[] = [
   },
   {
     key: "full_identity_analysis",
-    label: "Komplette Identitätsanalyse",
+    label: "Komplette Digitale Identitätsanalyse",
     credits: 100,
     description: "Vollständige Identitätsprüfung.",
   },
 ] as const;
-
-const priceByKey = new Map(
-  ANALYSIS_PRICES.map((entry) => [entry.key, entry] as const)
-);
-
-export function getAnalysisPrice(key: string): AnalysisPrice | null {
-  return priceByKey.get(key as AnalysisKey) ?? null;
-}
-
-export function listAnalysisPrices(): AnalysisPrice[] {
-  return [...ANALYSIS_PRICES];
-}
 
 /** Static package catalog — DB seed mirrors these values. */
 export interface CreditPackageDefinition {
@@ -109,7 +119,7 @@ export interface CreditPackageDefinition {
   sortOrder: number;
 }
 
-export const CREDIT_PACKAGE_DEFINITIONS: readonly CreditPackageDefinition[] = [
+export const DEFAULT_CREDIT_PACKAGES: readonly CreditPackageDefinition[] = [
   {
     code: "pack_500",
     name: "Starter",

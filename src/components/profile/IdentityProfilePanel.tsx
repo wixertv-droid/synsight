@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState, type ReactNode } from "react";
+import Image from "next/image";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
 import InfoTooltip from "@/components/ui/InfoTooltip";
@@ -169,6 +170,10 @@ export default function IdentityProfilePanel({
       setError("Maximal 4 Referenzbilder möglich.");
       return;
     }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("Die Bilddatei darf höchstens 8 MB groß sein.");
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
@@ -200,10 +205,39 @@ export default function IdentityProfilePanel({
         ...current,
         images: [...current.images, body.data].slice(0, 4),
       }));
+      setMessage("Bild verarbeitet und serverseitig gespeichert.");
     } catch {
       setError("Bild konnte nicht hochgeladen werden.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const deleteImage = async (imageType: string) => {
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/identity/images/${encodeURIComponent(imageType)}`,
+        { method: "DELETE" }
+      );
+      const body = (await response.json()) as ApiResponseBody<{
+        deleted: boolean;
+      }>;
+      if (!response.ok || !body.success) {
+        setError(
+          !body.success
+            ? body.error.message
+            : "Bild konnte nicht gelöscht werden."
+        );
+        return;
+      }
+      setForm((current) => ({
+        ...current,
+        images: current.images.filter((image) => image.imageType !== imageType),
+      }));
+      setMessage("Referenzbild gelöscht.");
+    } catch {
+      setError("Bild konnte nicht gelöscht werden.");
     }
   };
 
@@ -597,27 +631,31 @@ export default function IdentityProfilePanel({
           Analyse entstehen WebP-Versionen (max. 1600px) und Thumbnails (300px)
           mit SHA-256-Prüfsumme.
         </p>
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {form.images.map((image) => (
             <div
               key={image.storagePath}
-              className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/55"
+              className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.02] text-[11px] text-white/55"
             >
-              {image.imageType}
-              <button
-                type="button"
-                className="ml-2 text-white/35 hover:text-white/70"
-                onClick={() =>
-                  setForm((current) => ({
-                    ...current,
-                    images: current.images.filter(
-                      (item) => item.storagePath !== image.storagePath
-                    ),
-                  }))
-                }
-              >
-                ×
-              </button>
+              <Image
+                src={`/api/identity/images/${image.imageType}/thumbnail?v=${image.contentHash ?? ""}`}
+                alt={`Referenzbild ${image.imageType}`}
+                width={300}
+                height={300}
+                unoptimized
+                className="aspect-square w-full object-cover"
+              />
+              <div className="flex items-center justify-between px-3 py-2">
+                <span>{image.imageType}</span>
+                <button
+                  type="button"
+                  className="text-white/35 hover:text-white/70"
+                  onClick={() => void deleteImage(image.imageType)}
+                  aria-label={`${image.imageType} löschen`}
+                >
+                  ×
+                </button>
+              </div>
             </div>
           ))}
         </div>

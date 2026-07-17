@@ -22,6 +22,14 @@ export interface IdentitySnapshot {
 export interface IdentityRepository {
   getSnapshot(userId: number): Promise<IdentitySnapshot | null>;
   save(userId: number, input: IdentityProfileInput): Promise<IdentitySnapshot>;
+  upsertImage(
+    userId: number,
+    image: IdentityProfileInput["images"][number]
+  ): Promise<{ image: ProfileImage; replaced: ProfileImage | null }>;
+  deleteImage(
+    userId: number,
+    imageType: ProfileImage["imageType"]
+  ): Promise<ProfileImage | null>;
 }
 
 const memory = globalThis as typeof globalThis & {
@@ -187,6 +195,48 @@ export function createInMemoryIdentityRepository(
 
       store.set(userId, snapshot);
       return snapshot;
+    },
+
+    async upsertImage(userId, image) {
+      let snapshot = await this.getSnapshot(userId);
+      if (!snapshot) {
+        const profile = await ensureDraft(userId);
+        snapshot = emptySnapshot(userId, profile);
+      }
+      const replaced =
+        snapshot.images.find((row) => row.imageType === image.imageType) ??
+        null;
+      const next: ProfileImage = {
+        id: replaced?.id ?? Date.now(),
+        userId,
+        imageType: image.imageType,
+        storagePath: image.storagePath,
+        originalPath: image.originalPath ?? null,
+        analysisPath: image.analysisPath ?? null,
+        thumbnailPath: image.thumbnailPath ?? null,
+        contentHash: image.contentHash ?? null,
+        mimeType: image.mimeType ?? null,
+        byteSize: image.byteSize ?? null,
+        uploadedAt: new Date().toISOString(),
+      };
+      snapshot.images = [
+        ...snapshot.images.filter((row) => row.imageType !== image.imageType),
+        next,
+      ];
+      store.set(userId, snapshot);
+      return { image: next, replaced };
+    },
+
+    async deleteImage(userId, imageType) {
+      const snapshot = await this.getSnapshot(userId);
+      if (!snapshot) return null;
+      const image =
+        snapshot.images.find((row) => row.imageType === imageType) ?? null;
+      snapshot.images = snapshot.images.filter(
+        (row) => row.imageType !== imageType
+      );
+      store.set(userId, snapshot);
+      return image;
     },
   };
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import AnalysisWidget from "@/components/dashboard/AnalysisWidget";
 import RecommendationsPanel from "@/components/dashboard/RecommendationsPanel";
 import RiskCard from "@/components/dashboard/RiskCard";
@@ -8,7 +9,7 @@ import StatusCard from "@/components/dashboard/StatusCard";
 import CreditsPanel from "@/components/dashboard/CreditsPanel";
 import { dashboardMetrics, riskSignals } from "@/lib/platform-data";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getIdentityCompleteness } from "@/lib/services/identity-service";
+import { getIdentityForUser } from "@/lib/services/identity-service";
 import { getProfileRepository } from "@/lib/repositories";
 
 export const metadata: Metadata = {
@@ -28,7 +29,8 @@ export default async function DashboardPage() {
     });
   }
 
-  const completeness = user ? await getIdentityCompleteness(userId) : 0;
+  const identity = user ? await getIdentityForUser(userId) : null;
+  const completeness = identity?.completenessPercent ?? 0;
 
   const now = new Date();
   const formattedDate = new Intl.DateTimeFormat("de-DE", {
@@ -96,6 +98,24 @@ export default async function DashboardPage() {
             >
               Zum Identitätsprofil →
             </Link>
+            <div className="mt-4">
+              <p className="font-mono text-[8px] tracking-[.12em] text-white/25">
+                REFERENZBILDER {identity?.images.length ?? 0}/4
+              </p>
+              <div className="mt-2 flex gap-2">
+                {identity?.images.map((image) => (
+                  <Image
+                    key={image.imageType}
+                    src={`/api/identity/images/${image.imageType}/thumbnail?v=${image.contentHash ?? ""}`}
+                    alt={`Referenzbild ${image.imageType}`}
+                    width={40}
+                    height={40}
+                    unoptimized
+                    className="h-10 w-10 rounded-lg border border-white/10 object-cover"
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>

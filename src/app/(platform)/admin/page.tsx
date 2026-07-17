@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import AdminUserControl from "@/components/admin/AdminUserControl";
+import AdminPricingControl from "@/components/admin/AdminPricingControl";
 import StatusDot from "@/components/ui/StatusDot";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getAdminSystemStatus } from "@/lib/services/admin-service";
@@ -121,6 +122,7 @@ export default async function AdminPage() {
       </section>
 
       <AdminUserControl />
+      <AdminPricingControl />
 
       <section className="mt-6" aria-labelledby="future-admin-heading">
         <div className="mb-4">

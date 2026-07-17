@@ -313,7 +313,13 @@ export const profileImages = mysqlTable(
       .notNull()
       .default(sql`CURRENT_TIMESTAMP(3)`),
   },
-  (table) => [index("profile_images_user_id_idx").on(table.userId)]
+  (table) => [
+    index("profile_images_user_id_idx").on(table.userId),
+    uniqueIndex("profile_images_user_type_unique").on(
+      table.userId,
+      table.imageType
+    ),
+  ]
 );
 
 export const sessions = mysqlTable(
@@ -549,6 +555,14 @@ export const creditPackages = mysqlTable(
     badge: varchar("badge", { length: 64 }),
     sortOrder: int("sort_order", { unsigned: true }).notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
+    defaultCredits: int("default_credits", { unsigned: true }),
+    defaultBonusCredits: int("default_bonus_credits", { unsigned: true }),
+    defaultPriceCents: int("default_price_cents", { unsigned: true }),
+    isPopular: boolean("is_popular").notNull().default(false),
+    updatedByAdminId: bigint("updated_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
       .notNull()
       .default(sql`CURRENT_TIMESTAMP(3)`),
@@ -560,6 +574,41 @@ export const creditPackages = mysqlTable(
   (table) => [
     uniqueIndex("credit_packages_code_unique").on(table.code),
     index("credit_packages_active_idx").on(table.isActive, table.sortOrder),
+  ]
+);
+
+export const analysisPricing = mysqlTable(
+  "analysis_pricing",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    analysisKey: varchar("analysis_key", { length: 64 }).notNull(),
+    label: varchar("label", { length: 150 }).notNull(),
+    description: varchar("description", { length: 500 }),
+    credits: int("credits", { unsigned: true }).notNull(),
+    sortOrder: int("sort_order", { unsigned: true }).notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    isSystemDefault: boolean("is_system_default").notNull().default(false),
+    defaultLabel: varchar("default_label", { length: 150 }),
+    defaultDescription: varchar("default_description", { length: 500 }),
+    defaultCredits: int("default_credits", { unsigned: true }),
+    updatedByAdminId: bigint("updated_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("analysis_pricing_key_unique").on(table.analysisKey),
+    index("analysis_pricing_active_idx").on(table.isActive, table.sortOrder),
+    index("analysis_pricing_updated_by_idx").on(table.updatedByAdminId),
   ]
 );
 

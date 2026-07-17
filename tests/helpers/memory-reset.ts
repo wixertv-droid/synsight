@@ -19,6 +19,7 @@ export function resetInMemoryStores(): void {
     __synsightCreditTx?: unknown[];
     __synsightCreditTxId?: number;
     __synsightCreditPackages?: unknown[];
+    __synsightAnalysisPricing?: unknown[];
     __synsightCreditPayments?: unknown[];
     __synsightCreditPaymentId?: number;
     __synsightUsageLogs?: unknown[];
@@ -49,6 +50,7 @@ export function resetInMemoryStores(): void {
   delete g.__synsightCreditTx;
   delete g.__synsightCreditTxId;
   delete g.__synsightCreditPackages;
+  delete g.__synsightAnalysisPricing;
   delete g.__synsightCreditPayments;
   delete g.__synsightCreditPaymentId;
   delete g.__synsightUsageLogs;

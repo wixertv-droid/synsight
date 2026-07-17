@@ -197,7 +197,16 @@ export async function registerUser(
       ? new Date().toISOString().slice(0, 23).replace("T", " ")
       : null,
   });
-  await getCreditsRepository().ensureAccount(user.id);
+  try {
+    await getCreditsRepository().ensureAccount(user.id);
+  } catch (error) {
+    // Credit accounts are also created lazily on first dashboard/API access.
+    // Never leave the browser with a failed registration after user insert.
+    console.error(
+      "[auth.registration] credit account initialization failed:",
+      error instanceof Error ? error.message : error
+    );
+  }
   const autoVerified = isAutoVerifyEmailEnabled();
   let verificationToken = "";
   if (autoVerified) {

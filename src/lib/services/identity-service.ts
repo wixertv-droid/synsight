@@ -1,6 +1,8 @@
 import { getIdentityRepository } from "@/lib/repositories";
 import type { IdentitySnapshot } from "@/lib/repositories/identity-repository";
 import type { IdentityProfileInput } from "@/lib/validation/identity";
+import type { ProcessedProfileImage } from "@/lib/media/image-pipeline";
+import { removeStoredProfileImage } from "@/lib/media/image-pipeline";
 
 export interface IdentityView {
   personal: {
@@ -136,4 +138,44 @@ export async function saveIdentityForUser(
 export async function getIdentityCompleteness(userId: number): Promise<number> {
   const identity = await getIdentityForUser(userId);
   return identity?.completenessPercent ?? 0;
+}
+
+export async function persistProcessedProfileImage(
+  userId: number,
+  image: ProcessedProfileImage
+) {
+  const repository = getIdentityRepository();
+  const result = await repository.upsertImage(userId, image);
+  if (
+    result.replaced &&
+    result.replaced.storagePath !== result.image.storagePath
+  ) {
+    await removeStoredProfileImage(userId, result.replaced.storagePath).catch(
+      () => {
+        // DB now references the new image; orphan cleanup is best effort.
+      }
+    );
+  }
+  return {
+    imageType: result.image.imageType,
+    storagePath: result.image.storagePath,
+    originalPath: result.image.originalPath ?? undefined,
+    analysisPath: result.image.analysisPath ?? undefined,
+    thumbnailPath: result.image.thumbnailPath ?? undefined,
+    contentHash: result.image.contentHash ?? undefined,
+    mimeType: result.image.mimeType ?? undefined,
+    byteSize: result.image.byteSize ?? undefined,
+  };
+}
+
+export async function deleteProfileImage(
+  userId: number,
+  imageType: "front" | "left_profile" | "right_profile" | "angled"
+): Promise<boolean> {
+  const deleted = await getIdentityRepository().deleteImage(userId, imageType);
+  if (!deleted) return false;
+  await removeStoredProfileImage(userId, deleted.storagePath).catch(() => {
+    // DB deletion is authoritative; cleanup can be retried operationally.
+  });
+  return true;
 }

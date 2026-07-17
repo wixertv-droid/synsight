@@ -28,6 +28,10 @@ vi.mock("@/lib/admin/access", () => ({
 
 import { GET as usersGet } from "@/app/api/admin/users/route";
 import { POST as creditsAddPost } from "@/app/api/admin/credits/add/route";
+import {
+  GET as pricingGet,
+  PUT as pricingPut,
+} from "@/app/api/admin/pricing/route";
 
 describe("admin API role guards", () => {
   beforeEach(async () => {
@@ -95,5 +99,36 @@ describe("admin API role guards", () => {
       balance: 120,
       performedBy: 1,
     });
+  });
+
+  it("forbids pricing access for normal users", async () => {
+    accessState.role = "user";
+    const response = await pricingGet();
+    expect(response.status).toBe(403);
+  });
+
+  it("updates analysis pricing through the admin API", async () => {
+    const response = await pricingPut(
+      new Request("https://synsight.de/api/admin/pricing", {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://synsight.de",
+          "sec-fetch-site": "same-origin",
+        },
+        body: JSON.stringify({
+          action: "upsert",
+          analysisKey: "domain_analysis",
+          label: "Domain Analyse",
+          description: "Admin API Test",
+          credits: 12,
+          sortOrder: 50,
+          isActive: true,
+        }),
+      })
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.data.analysis.credits).toBe(12);
   });
 });
