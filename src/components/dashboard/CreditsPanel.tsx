@@ -1,4 +1,7 @@
 import Link from "next/link";
+import InfoHeading from "@/components/ui/InfoHeading";
+import InfoPanel from "@/components/ui/InfoPanel";
+import { guidance } from "@/lib/content/guidance";
 import { getCreditsOverview } from "@/lib/services/credits-service";
 import { getPublicPricingCatalog } from "@/lib/services/pricing-service";
 
@@ -34,12 +37,13 @@ export default async function CreditsPanel({ userId }: CreditsPanelProps) {
           <p className="font-mono text-[8px] tracking-[.16em] text-cyber-cyan/55">
             SYNCREDITS
           </p>
-          <h2
+          <InfoHeading
+            as="h2"
             id="credits-heading"
+            label="Aktuelles Guthaben"
+            info={guidance.dashboard.syncredits}
             className="mt-2 text-xl font-medium tracking-[-.02em] text-white/90"
-          >
-            Aktuelles Guthaben
-          </h2>
+          />
           <p className="mt-4 text-4xl font-semibold text-cyber-cyan/90">
             {overview.balance.toLocaleString("de-DE")}
           </p>
@@ -81,9 +85,13 @@ export default async function CreditsPanel({ userId }: CreditsPanelProps) {
             </p>
             <ul className="mt-3 space-y-2">
               {recentCharges.length === 0 ? (
-                <li className="text-xs text-white/30">
-                  Noch keine Bewegungen. Laden Sie SynCredits, um Analysen zu
-                  starten.
+                <li>
+                  <InfoPanel
+                    title="Noch keine Abbuchungen"
+                    description={guidance.empty.transactions}
+                    actionLabel="SynCredits aufladen"
+                    actionHref="#analysis-pricing"
+                  />
                 </li>
               ) : (
                 recentCharges.map((tx) => (

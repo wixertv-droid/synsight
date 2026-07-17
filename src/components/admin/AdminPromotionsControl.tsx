@@ -1,6 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import InfoHeading from "@/components/ui/InfoHeading";
+import InfoPanel from "@/components/ui/InfoPanel";
+import { guidance } from "@/lib/content/guidance";
 
 interface PromotionRow {
   id: number;
@@ -243,12 +246,13 @@ export default function AdminPromotionsControl() {
         <p className="font-mono text-[8px] tracking-[.16em] text-white/25">
           ADMIN / PROMOTIONEN
         </p>
-        <h2
+        <InfoHeading
+          as="h2"
           id="promotions-heading"
+          label="Promotionen"
+          info={guidance.admin.promotions}
           className="mt-2 text-xl font-medium text-white/75"
-        >
-          Promotionen
-        </h2>
+        />
       </div>
 
       {message ? (
@@ -391,6 +395,11 @@ export default function AdminPromotionsControl() {
 
       {loading ? (
         <p className="text-sm text-white/35">Promotionen werden geladen …</p>
+      ) : promotions.length === 0 ? (
+        <InfoPanel
+          title="Noch keine Promotionen"
+          description={guidance.empty.promotions}
+        />
       ) : (
         Object.entries(grouped).map(([group, rows]) =>
           rows.length > 0 ? (

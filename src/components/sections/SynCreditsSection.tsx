@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import InfoTooltip from "@/components/ui/InfoTooltip";
+import { guidance } from "@/lib/content/guidance";
 
 const reasons = [
   "Keine monatlichen Kosten",
@@ -50,7 +52,12 @@ export default function SynCreditsSection() {
 
       <div className="relative mx-auto max-w-7xl">
         <div className="max-w-3xl">
-          <p className="hud-label">SynCredits</p>
+          <p className="hud-label inline-flex items-center gap-2">
+            SynCredits
+            <InfoTooltip label="SynCredits">
+              {guidance.landing.syncredits}
+            </InfoTooltip>
+          </p>
           <h2
             id="syncredits-heading"
             className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white md:text-5xl"

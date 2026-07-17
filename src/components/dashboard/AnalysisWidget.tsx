@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { analysisSources } from "@/lib/platform-data";
 import StatusDot from "@/components/ui/StatusDot";
+import InfoTooltip from "@/components/ui/InfoTooltip";
+import ConsumeConfirm from "@/components/credits/ConsumeConfirm";
+import { guidance } from "@/lib/content/guidance";
 
 export default function AnalysisWidget() {
   const [running, setRunning] = useState(true);
@@ -26,8 +29,11 @@ export default function AnalysisWidget() {
     >
       <div className="flex min-h-16 items-center justify-between border-b border-white/[0.07] px-5 md:px-6">
         <div>
-          <p className="font-mono text-[9px] tracking-[.17em] text-cyber-cyan/50">
+          <p className="flex items-center gap-2 font-mono text-[9px] tracking-[.17em] text-cyber-cyan/50">
             KI ANALYSEZENTRUM
+            <InfoTooltip label="Analysezentrum">
+              {guidance.dashboard.analysisCenter}
+            </InfoTooltip>
           </p>
           <p className="mt-1 text-[10px] text-white/22">
             Live-Korrelation digitaler Signale
@@ -46,10 +52,19 @@ export default function AnalysisWidget() {
 
       <div className="grid min-h-[405px] md:grid-cols-[1fr_220px]">
         <div className="relative overflow-hidden border-b border-white/[0.06] p-5 md:border-b-0 md:border-r md:p-6">
-          <div className="analysis-field absolute inset-0 opacity-45" aria-hidden="true">
-            <div className={`analysis-scan-line absolute inset-x-0 h-20 ${running ? "block" : "hidden"}`} />
+          <div
+            className="analysis-field absolute inset-0 opacity-45"
+            aria-hidden="true"
+          >
+            <div
+              className={`analysis-scan-line absolute inset-x-0 h-20 ${running ? "block" : "hidden"}`}
+            />
           </div>
-          <svg viewBox="0 0 600 330" className="relative z-10 h-full min-h-[285px] w-full" aria-label="Visualisierung verbundener Datenquellen">
+          <svg
+            viewBox="0 0 600 330"
+            className="relative z-10 h-full min-h-[285px] w-full"
+            aria-label="Visualisierung verbundener Datenquellen"
+          >
             <g stroke="rgba(112,231,255,.13)" strokeWidth="1" fill="none">
               <path d="M300 165 110 70M300 165 95 245M300 165 485 72M300 165 500 245M300 165 300 38" />
               <circle cx="300" cy="165" r="86" strokeDasharray="3 8" />
@@ -65,18 +80,39 @@ export default function AnalysisWidget() {
               ].map(([x, y], index) => (
                 <g key={index}>
                   <circle cx={x} cy={y} r="4" opacity=".7" />
-                  <circle cx={x} cy={y} r="12" fill="none" stroke="rgba(112,231,255,.16)" />
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r="12"
+                    fill="none"
+                    stroke="rgba(112,231,255,.16)"
+                  />
                 </g>
               ))}
               <circle cx="300" cy="165" r="26" opacity=".12" />
               <circle cx="300" cy="165" r="7" />
             </g>
-            <g fill="rgba(255,255,255,.34)" fontSize="9" fontFamily="monospace" letterSpacing="1.2">
-              <text x="72" y="53">PROFILE</text>
-              <text x="52" y="270">WEBSEITEN</text>
-              <text x="462" y="53">ERWÄHNUNGEN</text>
-              <text x="484" y="270">LEAKS</text>
-              <text x="264" y="18">DATENQUELLEN</text>
+            <g
+              fill="rgba(255,255,255,.34)"
+              fontSize="9"
+              fontFamily="monospace"
+              letterSpacing="1.2"
+            >
+              <text x="72" y="53">
+                PROFILE
+              </text>
+              <text x="52" y="270">
+                WEBSEITEN
+              </text>
+              <text x="462" y="53">
+                ERWÄHNUNGEN
+              </text>
+              <text x="484" y="270">
+                LEAKS
+              </text>
+              <text x="264" y="18">
+                DATENQUELLEN
+              </text>
             </g>
           </svg>
           <div className="absolute bottom-5 left-5 right-5 z-20 flex items-center justify-between font-mono text-[7px] tracking-[.12em] text-white/18 md:left-6 md:right-6">
@@ -94,7 +130,9 @@ export default function AnalysisWidget() {
             {analysisSources.map((source, index) => (
               <div key={source.label}>
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[10px] text-white/42">{source.label}</span>
+                  <span className="text-[10px] text-white/42">
+                    {source.label}
+                  </span>
                   <span className="font-mono text-[8px] tabular-nums text-cyber-cyan/45">
                     {source.value}%
                   </span>
@@ -113,8 +151,12 @@ export default function AnalysisWidget() {
             ))}
           </div>
           <div className="mt-7 border-t border-white/[0.06] pt-5">
-            <p className="font-mono text-[8px] tracking-[.14em] text-white/22">
+            <p className="flex items-center gap-2 font-mono text-[8px] tracking-[.14em] text-white/22">
               AKTUELLER PROZESS
+              <InfoTooltip label="Analyseprozess">
+                SynSight verknüpft gefundene Informationen und zeigt Ihnen,
+                welche Bereiche Aufmerksamkeit benötigen.
+              </InfoTooltip>
             </p>
             <p className="mt-3 text-[10px] leading-relaxed text-white/42">
               {running
@@ -123,6 +165,15 @@ export default function AnalysisWidget() {
             </p>
           </div>
         </div>
+      </div>
+      <div className="border-t border-white/[0.06] p-5 md:p-6">
+        <p className="mb-3 flex items-center gap-2 font-mono text-[8px] tracking-[.14em] text-cyber-cyan/45">
+          ANALYSE STARTEN
+          <InfoTooltip label="Personensuche">
+            {guidance.analysis.what}
+          </InfoTooltip>
+        </p>
+        <ConsumeConfirm analysisKey="person_search" />
       </div>
     </section>
   );

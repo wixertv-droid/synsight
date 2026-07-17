@@ -28,6 +28,7 @@ export const dashboardMetrics: DashboardMetric[] = [
     detail: "Öffentlich auffindbar",
     trend: "−4% in 30 Tagen",
     tone: "amber",
+    info: "Die Online-Sichtbarkeit zeigt, wie leicht persönliche Informationen über Sie im Internet gefunden werden können. Ein niedrigerer Wert bedeutet weniger öffentliche Spuren.",
   },
   {
     label: "Schutzstatus",
@@ -35,6 +36,7 @@ export const dashboardMetrics: DashboardMetric[] = [
     detail: "Monitoring aktiv",
     trend: "3 Maßnahmen offen",
     tone: "green",
+    info: "Der Schutzstatus fasst zusammen, wie gut Ihre digitale Identität derzeit geschützt ist und ob noch Empfehlungen offen sind.",
   },
 ];
 
@@ -45,6 +47,7 @@ export const riskSignals: RiskSignal[] = [
     title: "Öffentliche Profile erkannt",
     description: "Zwei Profile enthalten konsistente, unkritische Basisdaten.",
     source: "Profil-Korrelation",
+    info: "Öffentliche Profile sind Social-Media- oder Webseiten-Konten, die ohne Anmeldung sichtbar sind.",
   },
   {
     id: "risk-account",
@@ -52,7 +55,8 @@ export const riskSignals: RiskSignal[] = [
     title: "Altes Benutzerkonto gefunden",
     description:
       "Ein seit 2019 inaktives Konto ist weiterhin öffentlich sichtbar.",
-    source: "Account Discovery",
+    source: "Konto-Suche",
+    info: "Alte Konten können vergessene Passwörter oder sichtbare persönliche Daten enthalten.",
   },
   {
     id: "risk-leak",
@@ -60,7 +64,8 @@ export const riskSignals: RiskSignal[] = [
     title: "Datenleck erkannt",
     description:
       "Eine E-Mail-Adresse erscheint in einem bekannten Leak-Datensatz.",
-    source: "Leak Intelligence",
+    source: "Leak-Prüfung",
+    info: "Ein Datenleck bedeutet, dass persönliche Informationen durch ein Sicherheitsproblem veröffentlicht wurden.",
   },
 ];
 

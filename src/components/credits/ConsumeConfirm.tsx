@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
+import InfoTooltip from "@/components/ui/InfoTooltip";
+import { getAnalysisGuidance, guidance } from "@/lib/content/guidance";
 
 interface ConsumeConfirmProps {
   analysisKey: string;
@@ -26,6 +28,8 @@ export default function ConsumeConfirm({
     remainingBalance: number;
     sufficient: boolean;
   } | null>(null);
+
+  const analysisHelp = getAnalysisGuidance(analysisKey);
 
   useEffect(() => {
     let active = true;
@@ -73,14 +77,37 @@ export default function ConsumeConfirm({
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+      <div className="mb-4 space-y-2 text-xs leading-relaxed text-white/40">
+        <p className="flex items-start gap-2">
+          <span className="font-mono text-[8px] tracking-[.12em] text-cyber-cyan/45">
+            WAS
+          </span>
+          {analysisHelp.what}
+        </p>
+        <p className="flex items-start gap-2">
+          <span className="font-mono text-[8px] tracking-[.12em] text-cyber-cyan/45">
+            WARUM
+          </span>
+          {analysisHelp.why}
+        </p>
+        <p className="flex items-start gap-2">
+          <span className="font-mono text-[8px] tracking-[.12em] text-cyber-cyan/45">
+            ERGEBNIS
+          </span>
+          {analysisHelp.result}
+        </p>
+      </div>
       {quote ? (
         <>
-          <p className="text-sm text-white/70">
+          <p className="flex items-center gap-2 text-sm text-white/70">
             Diese Analyse kostet{" "}
             <span className="font-semibold text-cyber-cyan">
               {quote.credits} SynCredits
             </span>
             .
+            <InfoTooltip label="SynCredits">
+              {guidance.landing.syncredits}
+            </InfoTooltip>
           </p>
           <p className="mt-1 text-xs text-white/35">{quote.label}</p>
           <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
@@ -121,7 +148,8 @@ export default function ConsumeConfirm({
           </Button>
           {quote && !quote.sufficient ? (
             <p className="mt-2 text-xs text-amber-200/65">
-              Nicht genügend SynCredits.
+              Nicht genügend SynCredits. Laden Sie Ihr Guthaben auf, um die
+              Analyse zu starten.
             </p>
           ) : null}
         </div>

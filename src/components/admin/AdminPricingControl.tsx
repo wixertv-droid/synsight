@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import InfoHeading from "@/components/ui/InfoHeading";
+import { guidance } from "@/lib/content/guidance";
 
 interface AnalysisRow {
   id: number;
@@ -209,12 +211,13 @@ export default function AdminPricingControl() {
           <p className="font-mono text-[8px] tracking-[.16em] text-cyber-cyan/55">
             BILLING CONTROL / LIVE DATABASE
           </p>
-          <h2
+          <InfoHeading
+            as="h2"
             id="pricing-management-heading"
+            label="Preisverwaltung"
+            info={guidance.admin.pricing}
             className="mt-2 text-xl font-medium text-white/90"
-          >
-            Preisverwaltung
-          </h2>
+          />
           <p className="mt-2 text-xs text-white/35">
             Änderungen werden sofort gespeichert und von Landingpage, Dashboard
             und Analyseabrechnung verwendet.

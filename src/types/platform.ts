@@ -17,6 +17,7 @@ export interface RiskSignal {
   title: string;
   description: string;
   source: string;
+  info?: string;
 }
 
 export interface AnalysisSource {

@@ -1,5 +1,6 @@
 import type { RiskSignal } from "@/types/platform";
 import StatusDot from "@/components/ui/StatusDot";
+import InfoTooltip from "@/components/ui/InfoTooltip";
 
 const levels = {
   low: {
@@ -23,7 +24,9 @@ export default function RiskCard({ risk }: { risk: RiskSignal }) {
   const level = levels[risk.level];
 
   return (
-    <article className={`rounded-xl border p-4 transition-all duration-300 hover:translate-x-1 ${level.styles}`}>
+    <article
+      className={`rounded-xl border p-4 transition-all duration-300 hover:translate-x-1 ${level.styles}`}
+    >
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-2 font-mono text-[8px] tracking-[.15em]">
           <StatusDot tone={level.tone} />
@@ -33,7 +36,12 @@ export default function RiskCard({ risk }: { risk: RiskSignal }) {
           {risk.source}
         </span>
       </div>
-      <h3 className="mt-4 text-sm font-medium text-white/78">{risk.title}</h3>
+      <h3 className="mt-4 flex items-center gap-2 text-sm font-medium text-white/78">
+        {risk.title}
+        {risk.info ? (
+          <InfoTooltip label={risk.title}>{risk.info}</InfoTooltip>
+        ) : null}
+      </h3>
       <p className="mt-2 text-[11px] leading-relaxed text-white/32">
         {risk.description}
       </p>

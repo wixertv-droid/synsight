@@ -1,5 +1,6 @@
 import StatusDot from "@/components/ui/StatusDot";
 import InfoTooltip from "@/components/ui/InfoTooltip";
+import { guidance } from "@/lib/content/guidance";
 
 export default function SecurityPanel() {
   return (
@@ -12,10 +13,8 @@ export default function SecurityPanel() {
             <span className="font-mono text-[9px] tracking-[.18em] text-emerald-100/50">
               SYNSIGHT AI SECURITY STATUS
             </span>
-            <InfoTooltip label="Schutzstatus">
-              Der Schutzstatus verdichtet aktuelle Signale, Datenleck-Hinweise
-              und Sichtbarkeit zu einem Gesamtstatus Ihrer digitalen Sicherheit
-              (0–100). Höhere Werte bedeuten einen stärkeren Schutz.
+            <InfoTooltip label="Sicherheitsstatus">
+              {guidance.dashboard.securityStatus}
             </InfoTooltip>
           </div>
           <h2 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white md:text-4xl">
@@ -69,7 +68,7 @@ export default function SecurityPanel() {
             </span>
             <span className="text-sm text-white/25"> / 100</span>
             <p className="mt-2 text-[9px] uppercase tracking-[.16em] text-cyber-cyan/50">
-              Digitale Sicherheit
+              Sicherheitsbewertung
             </p>
           </div>
         </div>

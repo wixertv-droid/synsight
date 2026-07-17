@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { recommendations } from "@/lib/platform-data";
+import InfoTooltip from "@/components/ui/InfoTooltip";
+import { guidance } from "@/lib/content/guidance";
 
 export default function RecommendationsPanel() {
   const [completed, setCompleted] = useState<string[]>([]);
@@ -13,8 +15,11 @@ export default function RecommendationsPanel() {
           <p className="font-mono text-[9px] tracking-[.17em] text-cyber-cyan/50">
             WIR EMPFEHLEN
           </p>
-          <p className="mt-2 text-xs text-white/28">
+          <p className="mt-2 flex items-center gap-2 text-xs text-white/28">
             Priorisiert durch die SynSight KI
+            <InfoTooltip label="Empfehlungen">
+              {guidance.dashboard.recommendations}
+            </InfoTooltip>
           </p>
         </div>
         <span className="font-mono text-[8px] text-white/18">
@@ -41,11 +46,15 @@ export default function RecommendationsPanel() {
                   : "border-white/[0.06] bg-white/[0.015] hover:border-cyber-blue/18 hover:bg-cyber-blue/[0.025]"
               }`}
             >
-              <span className={`flex h-7 w-7 flex-none items-center justify-center rounded-lg border font-mono text-[8px] ${done ? "border-emerald-300/20 text-emerald-200/60" : "border-white/[0.08] text-white/25"}`}>
+              <span
+                className={`flex h-7 w-7 flex-none items-center justify-center rounded-lg border font-mono text-[8px] ${done ? "border-emerald-300/20 text-emerald-200/60" : "border-white/[0.08] text-white/25"}`}
+              >
                 {done ? "✓" : String(index + 1).padStart(2, "0")}
               </span>
               <span className="flex-1">
-                <span className={`block text-xs font-medium ${done ? "text-white/38 line-through" : "text-white/72"}`}>
+                <span
+                  className={`block text-xs font-medium ${done ? "text-white/38 line-through" : "text-white/72"}`}
+                >
                   {item.title}
                 </span>
                 <span className="mt-1.5 block text-[10px] leading-relaxed text-white/25">

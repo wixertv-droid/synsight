@@ -8,6 +8,8 @@ import SecurityPanel from "@/components/dashboard/SecurityPanel";
 import StatusCard from "@/components/dashboard/StatusCard";
 import CreditsPanel from "@/components/dashboard/CreditsPanel";
 import PromotionWelcomeBanner from "@/components/dashboard/PromotionWelcomeBanner";
+import InfoTooltip from "@/components/ui/InfoTooltip";
+import { guidance } from "@/lib/content/guidance";
 import { dashboardMetrics, riskSignals } from "@/lib/platform-data";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getIdentityForUser } from "@/lib/services/identity-service";
@@ -124,12 +126,19 @@ export default async function DashboardPage() {
       </section>
 
       <p
-        className="mb-6 rounded-xl border border-amber-300/15 bg-amber-300/[0.04] px-4 py-3 text-[11px] leading-relaxed text-amber-50/70"
+        className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[0.04] px-4 py-3 text-[11px] leading-relaxed text-amber-50/70"
         role="status"
       >
-        Kennzahlen und Risikosignale auf dieser Übersicht sind derzeit
-        Illustrationsdaten zur Produktvorschau. Ihre Identitätsdaten fließen in
-        späteren Sprints in die Analyse ein.
+        <span className="inline-flex items-center gap-2">
+          Hinweis zu Beispieldaten
+          <InfoTooltip label="Beispieldaten">
+            {guidance.dashboard.demoData}
+          </InfoTooltip>
+        </span>
+        <span>
+          Kennzahlen und Risikosignale auf dieser Übersicht sind derzeit
+          Illustrationsdaten zur Produktvorschau.
+        </span>
       </p>
 
       <SecurityPanel />
@@ -159,8 +168,11 @@ export default async function DashboardPage() {
                 <p className="font-mono text-[9px] tracking-[.17em] text-cyber-cyan/50">
                   RISIKOANALYSE
                 </p>
-                <p className="mt-2 text-xs text-white/28">
+                <p className="mt-2 flex items-center gap-2 text-xs text-white/28">
                   Nach Priorität geordnet
+                  <InfoTooltip label="Risikoanalyse">
+                    {guidance.dashboard.riskAnalysis}
+                  </InfoTooltip>
                 </p>
               </div>
               <span className="rounded border border-rose-300/10 bg-rose-300/[0.02] px-2 py-1 font-mono text-[7px] tracking-[.1em] text-rose-100/55">

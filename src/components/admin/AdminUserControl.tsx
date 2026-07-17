@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import InfoHeading from "@/components/ui/InfoHeading";
+import { guidance } from "@/lib/content/guidance";
 
 interface UserSummary {
   id: number;
@@ -65,7 +67,7 @@ export default function AdminUserControl() {
       }
       setUsers(result.data.users);
       if (result.data.users.length === 0) {
-        setMessage("Keine Benutzer gefunden.");
+        setMessage(guidance.empty.users);
       }
     } catch {
       setMessage("Verbindung zum Admin-API fehlgeschlagen.");
@@ -148,12 +150,13 @@ export default function AdminUserControl() {
         <p className="font-mono text-[8px] tracking-[.16em] text-cyber-cyan/55">
           IDENTITY ACCESS / CREDIT CONTROL
         </p>
-        <h2
+        <InfoHeading
+          as="h2"
           id="admin-credit-heading"
+          label="Benutzerverwaltung"
+          info={guidance.admin.users}
           className="text-xl font-medium tracking-[-.02em] text-white/90"
-        >
-          SynCredits verwalten
-        </h2>
+        />
       </div>
 
       <form onSubmit={search} className="flex flex-col gap-3 sm:flex-row">

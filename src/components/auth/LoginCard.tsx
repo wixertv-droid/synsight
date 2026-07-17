@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
+import { guidance } from "@/lib/content/guidance";
 import FormField from "@/components/ui/FormField";
 import StatusDot from "@/components/ui/StatusDot";
 import { loginSchema, registerSchema } from "@/lib/validation/auth";
@@ -162,6 +163,7 @@ export default function LoginCard({
               name="firstName"
               autoComplete="given-name"
               placeholder="Alex"
+              info={guidance.auth.firstName}
               required
             />
             <FormField
@@ -169,6 +171,7 @@ export default function LoginCard({
               name="lastName"
               autoComplete="family-name"
               placeholder="Morgan"
+              info={guidance.auth.lastName}
               required
             />
           </div>
@@ -181,6 +184,7 @@ export default function LoginCard({
             type="email"
             autoComplete="email"
             placeholder="name@unternehmen.de"
+            info={guidance.auth.email}
             required
           />
         ) : (
@@ -203,6 +207,7 @@ export default function LoginCard({
           autoComplete={isRegister ? "new-password" : "current-password"}
           placeholder="••••••••••••"
           minLength={isRegister ? 12 : undefined}
+          info={isRegister ? guidance.auth.password : undefined}
           value={isRegister ? password : undefined}
           onChange={
             isRegister ? (event) => setPassword(event.target.value) : undefined
