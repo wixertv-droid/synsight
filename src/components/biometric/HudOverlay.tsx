@@ -63,17 +63,20 @@ export default function HudOverlay({
 
       {showLandmarks && (
         <g>
-          <text className="bio-landmark-tag" x="72" y="90">
+          <text className="bio-landmark-tag" x="72" y="92">
             EYE
           </text>
-          <text className="bio-landmark-tag" x="118" y="90">
+          <text className="bio-landmark-tag" x="118" y="92">
             EYE
           </text>
-          <text className="bio-landmark-tag" x="94" y="122">
+          <text className="bio-landmark-tag" x="94" y="126">
             NOSE
           </text>
-          <text className="bio-landmark-tag" x="92" y="148">
+          <text className="bio-landmark-tag" x="90" y="150">
             MOUTH
+          </text>
+          <text className="bio-landmark-tag" x="92" y="170">
+            CHIN
           </text>
         </g>
       )}

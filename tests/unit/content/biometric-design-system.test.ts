@@ -64,4 +64,22 @@ describe("biometric design system 2.0", () => {
     expect(css).toContain("prefers-reduced-motion");
     expect(globals).toContain("biometric.css");
   });
+
+  it("uses explicit human facial anatomy paths", () => {
+    const geometry = readFileSync(
+      path.join(process.cwd(), "src/components/biometric/headGeometry.ts"),
+      "utf8"
+    );
+    const head = readFileSync(
+      path.join(process.cwd(), "src/components/biometric/BiometricHead.tsx"),
+      "utf8"
+    );
+    expect(geometry).toContain("FACIAL_FEATURES");
+    expect(geometry).toContain('kind: "nose"');
+    expect(geometry).toContain('kind: "mouth"');
+    expect(geometry).toContain('kind: "ear"');
+    expect(geometry).toContain('kind: "jaw"');
+    expect(head).toContain("FacialFeatures");
+    expect(head).toContain("HEAD_OUTLINE");
+  });
 });
