@@ -37,6 +37,39 @@
   overflow: visible;
 }
 
+.bio-holo-body {
+  fill: rgba(0, 212, 255, 0.05);
+  stroke: none;
+}
+
+.bio-holo-rim {
+  fill: none;
+  stroke: var(--bio-secondary);
+  stroke-width: 1.1;
+  opacity: 0.55;
+}
+
+.bio-holo-line {
+  stroke: var(--bio-primary);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.bio-mode-idle .bio-holo-lines {
+  animation: bio-holo-breathe 2.8s ease-in-out infinite;
+}
+
+.bio-mode-hover .bio-holo-line,
+.bio-mode-analyzing .bio-holo-line {
+  stroke: var(--bio-accent);
+}
+
+.bio-mode-hover .bio-holo-rim,
+.bio-mode-analyzing .bio-holo-rim {
+  opacity: 0.9;
+  stroke: var(--bio-accent);
+}
+
 .bio-glow-ring {
   fill: none;
   stroke: var(--bio-primary);
@@ -395,6 +428,16 @@
   }
 }
 
+@keyframes bio-holo-breathe {
+  0%,
+  100% {
+    opacity: 0.88;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bio-root,
   .bio-glow-ring,
@@ -407,7 +450,8 @@
   .bio-eye-ring,
   .bio-hud-corner,
   .bio-landmark-tag,
-  .bio-feature {
+  .bio-feature,
+  .bio-holo-lines {
     animation: none !important;
     transition: none !important;
   }

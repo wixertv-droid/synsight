@@ -1,20 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { BiometricMode, BiometricView } from "./BiometricAnimations";
 import {
   BIOMETRIC_VIEW_LABELS,
   biometricModeClass,
   BIOMETRIC_CLASS,
 } from "./BiometricAnimations";
-import BiometricGlow from "./BiometricGlow";
-import BiometricScanner from "./BiometricScanner";
-import FaceMesh from "./FaceMesh";
-import FacialFeatures from "./FacialFeatures";
+import HologramScanlines from "./HologramScanlines";
 import HudOverlay from "./HudOverlay";
 import ScannerLine from "./ScannerLine";
-import EyeTracking from "./EyeTracking";
-import { FACE_PLATE, HEAD_OUTLINE } from "./headGeometry";
+import { buildSilhouettePath } from "./scanlineGeometry";
 
 export interface BiometricHeadProps {
   view: BiometricView;
@@ -34,8 +30,10 @@ export default function BiometricHead({
   label,
 }: BiometricHeadProps) {
   const [hover, setHover] = useState(false);
+  const reactId = useId().replace(/:/g, "");
   const mode: BiometricMode =
     controlledMode ?? (hover && interactive ? "hover" : "idle");
+  const clipId = `bio-holo-clip-${view}-${reactId}`;
 
   return (
     <div
@@ -44,7 +42,7 @@ export default function BiometricHead({
       onMouseLeave={() => interactive && setHover(false)}
       role="img"
       aria-label={
-        label ?? `Biometrischer Humankopf — ${BIOMETRIC_VIEW_LABELS[view]}`
+        label ?? `Biometrisches Hologramm — ${BIOMETRIC_VIEW_LABELS[view]}`
       }
     >
       <svg
@@ -53,43 +51,16 @@ export default function BiometricHead({
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <linearGradient
-            id={`bio-fill-${view}`}
-            x1="0.2"
-            y1="0"
-            x2="0.8"
-            y2="1"
-          >
-            <stop offset="0%" stopColor="#00D4FF" stopOpacity="0.14" />
-            <stop offset="45%" stopColor="#5CE1FF" stopOpacity="0.05" />
-            <stop offset="100%" stopColor="#A7F3FF" stopOpacity="0.02" />
-          </linearGradient>
-          <clipPath id={`bio-clip-${view}`}>
-            <path d={HEAD_OUTLINE[view]} />
+          <clipPath id={clipId}>
+            <path d={buildSilhouettePath(view)} />
           </clipPath>
         </defs>
 
-        <BiometricGlow />
-        <BiometricScanner />
-
         <g className={BIOMETRIC_CLASS.head}>
-          {/* Base anatomy first — human silhouette */}
-          <path
-            className="bio-head-outline"
-            d={HEAD_OUTLINE[view]}
-            fill={`url(#bio-fill-${view})`}
-          />
-          <path className="bio-head-inner" d={FACE_PLATE[view]} />
-
-          {/* Explicit facial anatomy */}
-          <FacialFeatures view={view} />
-
-          {/* Futuristic layers on top of anatomy */}
-          <g clipPath={`url(#bio-clip-${view})`}>
-            <FaceMesh view={view} />
+          <HologramScanlines view={view} />
+          <g clipPath={`url(#${clipId})`}>
             <ScannerLine />
           </g>
-          <EyeTracking view={view} />
         </g>
 
         <HudOverlay view={view} mode={mode} progress={progress} />

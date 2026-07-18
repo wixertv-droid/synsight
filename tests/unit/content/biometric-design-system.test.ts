@@ -14,6 +14,8 @@ describe("biometric design system 2.0", () => {
     const files = readdirSync(bioDir).sort();
     for (const required of [
       "BiometricHead.tsx",
+      "HologramScanlines.tsx",
+      "scanlineGeometry.ts",
       "BiometricScanner.tsx",
       "FaceMesh.tsx",
       "HudOverlay.tsx",
@@ -65,21 +67,18 @@ describe("biometric design system 2.0", () => {
     expect(globals).toContain("biometric.css");
   });
 
-  it("uses explicit human facial anatomy paths", () => {
-    const geometry = readFileSync(
-      path.join(process.cwd(), "src/components/biometric/headGeometry.ts"),
-      "utf8"
-    );
+  it("renders hologram scanline heads instead of outline cartoons", () => {
     const head = readFileSync(
       path.join(process.cwd(), "src/components/biometric/BiometricHead.tsx"),
       "utf8"
     );
-    expect(geometry).toContain("FACIAL_FEATURES");
-    expect(geometry).toContain('kind: "nose"');
-    expect(geometry).toContain('kind: "mouth"');
-    expect(geometry).toContain('kind: "ear"');
-    expect(geometry).toContain('kind: "jaw"');
-    expect(head).toContain("FacialFeatures");
-    expect(head).toContain("HEAD_OUTLINE");
+    const scan = readFileSync(
+      path.join(process.cwd(), "src/components/biometric/scanlineGeometry.ts"),
+      "utf8"
+    );
+    expect(head).toContain("HologramScanlines");
+    expect(head).not.toContain("FacialFeatures");
+    expect(scan).toContain("buildHologramScanlines");
+    expect(scan).toContain("left_profile");
   });
 });
