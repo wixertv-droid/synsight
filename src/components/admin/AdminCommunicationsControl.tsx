@@ -67,6 +67,7 @@ export default function AdminCommunicationsControl() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [forwardingId, setForwardingId] = useState<number | null>(null);
 
   async function load() {
     setLoading(true);
@@ -159,11 +160,53 @@ export default function AdminCommunicationsControl() {
     }
   }
 
+  async function forwardRequest(
+    id: number,
+    targets: Array<"contact" | "press" | "partner">
+  ) {
+    setForwardingId(id);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/communications/forward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel, id, targets }),
+      });
+      const result = (await response.json()) as ApiResult<{
+        deliveries: Array<{ to: string; queued: boolean; delivered: boolean }>;
+      }>;
+      if (!response.ok || !result.success) {
+        setMessage(
+          result.success
+            ? "Weiterleitung fehlgeschlagen."
+            : result.error.message
+        );
+        return;
+      }
+      const destinations = result.data.deliveries
+        .map((entry) => entry.to)
+        .join(", ");
+      setMessage(`Nachricht #${id} weitergeleitet an: ${destinations}`);
+      await load();
+    } catch {
+      setMessage("Weiterleitung fehlgeschlagen.");
+    } finally {
+      setForwardingId(null);
+    }
+  }
+
   const rows = requests[channel];
+  const newCount =
+    requests.contact.filter((row) => row.status === "new").length +
+    requests.partner.filter((row) => row.status === "new").length +
+    requests.press.filter((row) => row.status === "new").length;
+  const totalCount =
+    requests.contact.length + requests.partner.length + requests.press.length;
 
   return (
     <section
-      className="mt-6 rounded-[1.4rem] border border-white/[0.07] bg-white/[0.015] p-5 md:p-6"
+      id="admin-communications"
+      className="mt-6 scroll-mt-24 rounded-[1.4rem] border border-white/[0.07] bg-white/[0.015] p-5 md:p-6"
       aria-labelledby="admin-comms-heading"
     >
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -176,8 +219,11 @@ export default function AdminCommunicationsControl() {
             as="h2"
             className="mt-2 text-xl font-medium text-white/75"
             label="Kontakt & Kommunikation"
-            info="Verwalten Sie Ziel-E-Mails für Kontakt, Presse und Partnerschaften sowie eingehende Anfragen. Der eigentliche SMTP-Versand folgt später."
+            info="Verwalten Sie Ziel-E-Mails für Kontakt, Presse und Partnerschaften. Wichtige Nachrichten können Sie an die konfigurierten Postfächer weiterleiten."
           />
+          <p className="mt-2 font-mono text-[9px] tracking-[.12em] text-white/30">
+            {totalCount} NACHRICHTEN · {newCount} NEU
+          </p>
         </div>
         <button
           type="button"
@@ -288,28 +334,73 @@ export default function AdminCommunicationsControl() {
                     {row.message}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      "new",
-                      "processing",
-                      "answered",
-                      "archived",
-                    ] as RequestStatus[]
-                  ).map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => void updateStatus(row.id, status)}
-                      className={`rounded border px-2 py-1 font-mono text-[8px] tracking-[.1em] ${
-                        row.status === status
-                          ? "border-cyber-cyan/30 text-cyber-cyan"
-                          : "border-white/10 text-white/30 hover:border-white/20"
-                      }`}
-                    >
-                      {statusLabel[status]}
-                    </button>
-                  ))}
+                <div className="flex min-w-[220px] flex-col gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        "new",
+                        "processing",
+                        "answered",
+                        "archived",
+                      ] as RequestStatus[]
+                    ).map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => void updateStatus(row.id, status)}
+                        className={`rounded border px-2 py-1 font-mono text-[8px] tracking-[.1em] ${
+                          row.status === status
+                            ? "border-cyber-cyan/30 text-cyber-cyan"
+                            : "border-white/10 text-white/30 hover:border-white/20"
+                        }`}
+                      >
+                        {statusLabel[status]}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3">
+                    <p className="font-mono text-[8px] tracking-[.12em] text-white/28">
+                      WEITERLEITEN AN
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(
+                        [
+                          ["contact", "Kontakt"],
+                          ["press", "Presse"],
+                          ["partner", "Partner"],
+                        ] as const
+                      ).map(([target, label]) => (
+                        <button
+                          key={target}
+                          type="button"
+                          disabled={forwardingId === row.id}
+                          onClick={() => void forwardRequest(row.id, [target])}
+                          className="rounded border border-amber-300/20 px-2 py-1 font-mono text-[8px] tracking-[.1em] text-amber-100/65 transition hover:border-amber-300/40 hover:text-amber-100 disabled:opacity-50"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        disabled={forwardingId === row.id}
+                        onClick={() =>
+                          void forwardRequest(row.id, [
+                            "contact",
+                            "press",
+                            "partner",
+                          ])
+                        }
+                        className="rounded border border-cyber-cyan/25 px-2 py-1 font-mono text-[8px] tracking-[.1em] text-cyber-cyan/75 transition hover:border-cyber-cyan/45 disabled:opacity-50"
+                      >
+                        {forwardingId === row.id ? "SEND…" : "ALLE 3"}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[10px] leading-relaxed text-white/28">
+                      Nutzt die oben gespeicherten Ziele (
+                      {settings.contactEmail}, {settings.pressEmail},{" "}
+                      {settings.partnersEmail}).
+                    </p>
+                  </div>
                 </div>
               </div>
             </article>

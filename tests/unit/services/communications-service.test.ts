@@ -3,6 +3,8 @@ import { resetInMemoryStores } from "../../helpers/memory-reset";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 import {
   AdminForbiddenError,
+  forwardCommunicationRequest,
+  getCommunicationInboxSummary,
   getCommunicationSettings,
   listCommunicationRequests,
   submitContactRequest,
@@ -115,6 +117,64 @@ describe("communications-service", () => {
       status: "answered",
     });
     expect(updated.status).toBe("answered");
+  });
+
+  it("summarizes total and new inbox messages for admins", async () => {
+    await submitContactRequest({
+      data: {
+        name: "Inbox A",
+        email: "a@example.com",
+        subject: "Hallo",
+        message: "Eine Nachricht für die Inbox-Zusammenfassung.",
+        website: "",
+      },
+    });
+    await submitPartnerRequest({
+      data: {
+        name: "Inbox B",
+        company: "Partner GmbH",
+        email: "b@example.com",
+        partnershipType: "Reseller",
+        message: "Partneranfrage für die Inbox-Zusammenfassung.",
+        website: "",
+      },
+    });
+
+    const summary = await getCommunicationInboxSummary(admin);
+    expect(summary.total).toBe(2);
+    expect(summary.newCount).toBe(2);
+    expect(summary.byChannel.contact.newCount).toBe(1);
+    expect(summary.byChannel.partner.newCount).toBe(1);
+  });
+
+  it("forwards important messages to configured mailboxes", async () => {
+    const created = await submitContactRequest({
+      data: {
+        name: "Wichtig",
+        email: "wichtig@example.com",
+        subject: "Dringend",
+        message: "Bitte an Kontakt und Presse weiterleiten.",
+        website: "",
+      },
+    });
+
+    const forwarded = await forwardCommunicationRequest({
+      actor: admin,
+      channel: "contact",
+      id: created.request.id,
+      targets: ["contact", "press"],
+    });
+
+    expect(forwarded.deliveries).toHaveLength(2);
+    expect(forwarded.deliveries.map((entry) => entry.to)).toEqual([
+      "contact@synsight.de",
+      "press@synsight.de",
+    ]);
+
+    const listed = await listCommunicationRequests(admin);
+    const row = listed.contact.find((entry) => entry.id === created.request.id);
+    expect(row?.status).toBe("processing");
+    expect(row?.adminNotes).toMatch(/Weitergeleitet an/);
   });
 });
 

@@ -180,3 +180,136 @@ export async function updateCommunicationRequestStatus(input: {
   }
   return updated;
 }
+
+export type ForwardTarget = "contact" | "press" | "partner";
+
+export async function getCommunicationInboxSummary(actor: AuthenticatedUser) {
+  assertAdmin(actor);
+  const requests = await listCommunicationRequests(actor);
+
+  const summarize = (
+    rows: Array<{ status: RequestStatus }>
+  ): { total: number; newCount: number } => ({
+    total: rows.length,
+    newCount: rows.filter((row) => row.status === "new").length,
+  });
+
+  const contact = summarize(requests.contact);
+  const partner = summarize(requests.partner);
+  const press = summarize(requests.press);
+
+  return {
+    total: contact.total + partner.total + press.total,
+    newCount: contact.newCount + partner.newCount + press.newCount,
+    byChannel: { contact, partner, press },
+  };
+}
+
+async function findCommunicationRequest(
+  channel: CommunicationChannel,
+  id: number
+) {
+  const repo = getCommunicationsRepository();
+  const rows =
+    channel === "contact"
+      ? await repo.listContactRequests()
+      : channel === "partner"
+        ? await repo.listPartnerRequests()
+        : await repo.listPressRequests();
+  return rows.find((row) => row.id === id) ?? null;
+}
+
+/**
+ * Forward an important inbox message to one or more configured mailboxes
+ * (contact / press / partners) using the existing SMTP notification pipeline.
+ */
+export async function forwardCommunicationRequest(input: {
+  actor: AuthenticatedUser;
+  channel: CommunicationChannel;
+  id: number;
+  targets: ForwardTarget[];
+}) {
+  assertAdmin(input.actor);
+  const repo = getCommunicationsRepository();
+  const settings = await repo.getSettings();
+  const request = await findCommunicationRequest(input.channel, input.id);
+  if (!request) {
+    throw new Error("REQUEST_NOT_FOUND");
+  }
+
+  const uniqueTargets = [...new Set(input.targets)];
+  const deliveries: Array<{
+    target: ForwardTarget;
+    to: string;
+    delivered: boolean;
+    queued: boolean;
+    message: string;
+  }> = [];
+
+  for (const target of uniqueTargets) {
+    const to =
+      target === "contact"
+        ? settings.contactEmail
+        : target === "press"
+          ? settings.pressEmail
+          : settings.partnersEmail;
+
+    let notification;
+    if (input.channel === "contact" && "subject" in request) {
+      notification = await sendContactNotification({
+        to,
+        requestId: request.id,
+        name: request.name,
+        email: request.email,
+        subject: `[Weiterleitung] ${request.subject}`,
+        company: request.company,
+        message: request.message,
+      });
+    } else if (input.channel === "partner" && "partnershipType" in request) {
+      notification = await sendPartnerNotification({
+        to,
+        requestId: request.id,
+        name: request.name,
+        email: request.email,
+        company: request.company,
+        partnershipType: `[Weiterleitung] ${request.partnershipType}`,
+        message: request.message,
+      });
+    } else if (input.channel === "press" && "topic" in request) {
+      notification = await sendPressNotification({
+        to,
+        requestId: request.id,
+        name: request.name,
+        email: request.email,
+        medium: request.medium,
+        topic: `[Weiterleitung] ${request.topic}`,
+        message: request.message,
+      });
+    } else {
+      throw new Error("REQUEST_NOT_FOUND");
+    }
+
+    deliveries.push({
+      target,
+      to: notification.payload.to,
+      delivered: notification.delivered,
+      queued: notification.queued,
+      message: notification.message,
+    });
+  }
+
+  if (request.status === "new") {
+    await repo.updateRequestStatus({
+      channel: input.channel,
+      id: input.id,
+      status: "processing",
+      adminNotes: `Weitergeleitet an: ${deliveries.map((entry) => entry.to).join(", ")}`,
+    });
+  }
+
+  return {
+    id: input.id,
+    channel: input.channel,
+    deliveries,
+  };
+}

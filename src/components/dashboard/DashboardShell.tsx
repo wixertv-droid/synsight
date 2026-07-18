@@ -5,6 +5,7 @@ import { useState } from "react";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import PlatformBackground from "@/components/platform/PlatformBackground";
 import LogoutButton from "@/components/dashboard/LogoutButton";
+import AdminInboxBadge from "@/components/admin/AdminInboxBadge";
 import StatusDot from "@/components/ui/StatusDot";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 
@@ -70,23 +71,25 @@ export default function DashboardShell({
                 {creditBalance.toLocaleString("de-DE")}
               </p>
             </a>
-            <button
-              type="button"
-              className="relative rounded-lg border border-white/[0.06] bg-white/[0.018] p-2.5 text-white/35 transition-colors hover:text-white/70"
-              aria-label="Benachrichtigungen"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
+            {user.role === "admin" ? <AdminInboxBadge /> : null}
+            {user.role !== "admin" ? (
+              <button
+                type="button"
+                className="relative rounded-lg border border-white/[0.06] bg-white/[0.018] p-2.5 text-white/35 transition-colors hover:text-white/70"
+                aria-label="Benachrichtigungen"
               >
-                <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
-              </svg>
-              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-300" />
-            </button>
-            <div className="hidden rounded-lg border border-white/[0.06] bg-white/[0.018] px-3 py-2 sm:block">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                >
+                  <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+                </svg>
+              </button>
+            ) : null}
+            <div className="hidden rounded-lg border border-white/[0.06] bg-white/[0.018] px-3 py-2 lg:block">
               <p className="font-mono text-[8px] tracking-[.12em] text-white/32">
                 LAST SYNC
               </p>

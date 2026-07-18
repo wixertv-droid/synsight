@@ -145,6 +145,15 @@ export const adminRequestStatusUpdateSchema = z.object({
     .nullable(),
 });
 
+export const adminRequestForwardSchema = z.object({
+  channel: z.enum(["contact", "partner", "press"]),
+  id: z.number().int().positive(),
+  targets: z
+    .array(z.enum(["contact", "press", "partner"]))
+    .min(1, "Bitte mindestens ein E-Mail-Ziel wählen.")
+    .max(3),
+});
+
 export type ContactRequestInput = z.input<typeof contactRequestSchema>;
 export type PartnerRequestInput = z.input<typeof partnerRequestSchema>;
 export type PressRequestInput = z.input<typeof pressRequestSchema>;
