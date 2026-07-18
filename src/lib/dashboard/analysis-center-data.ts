@@ -6,7 +6,8 @@ import {
 export type AnalysisTier = "quick" | "advanced" | "premium";
 
 export interface AnalysisModule {
-  id: AnalysisKey;
+  /** Matches `analysis_pricing.analysis_key` from admin catalog. */
+  id: AnalysisKey | string;
   title: string;
   /** One-line pitch for busy scanning */
   tagline: string;

@@ -7,7 +7,6 @@ import RiskCard from "@/components/dashboard/RiskCard";
 import SecurityPanel from "@/components/dashboard/SecurityPanel";
 import StatusCard from "@/components/dashboard/StatusCard";
 import CreditsPanel from "@/components/dashboard/CreditsPanel";
-import AnalysisOfferBoard from "@/components/dashboard/analysis/AnalysisOfferBoard";
 import PromotionWelcomeBanner from "@/components/dashboard/PromotionWelcomeBanner";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import { guidance } from "@/lib/content/guidance";
@@ -143,8 +142,6 @@ export default async function DashboardPage() {
       </p>
 
       <SecurityPanel />
-
-      <AnalysisOfferBoard />
 
       {user ? <CreditsPanel userId={userId} /> : null}
 

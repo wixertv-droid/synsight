@@ -163,8 +163,8 @@ export default async function CreditsPanel({ userId }: CreditsPanelProps) {
                 })}
             </ul>
             <p className="mt-4 text-[11px] leading-relaxed text-white/30">
-              Preise aufsteigend sortiert. Pakete sind hervorgehoben — dort
-              erhalten Sie den größten Überblick pro Start.
+              Nur aktive Analysen aus der Admin-Preisverwaltung. Deaktivierte
+              Einträge erscheinen weder hier noch im Analyse Center.
             </p>
           </div>
         </div>
