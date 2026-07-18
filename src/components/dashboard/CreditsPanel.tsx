@@ -123,25 +123,48 @@ export default async function CreditsPanel({ userId }: CreditsPanelProps) {
             id="analysis-pricing"
             className="rounded-xl border border-white/[0.07] bg-space-black/40 p-4"
           >
-            <p className="font-mono text-[8px] tracking-[.14em] text-white/28">
-              ANALYSEPREISE
-            </p>
-            <ul className="mt-3 space-y-2">
-              {catalog.analyses.map((price) => (
-                <li
-                  key={price.key}
-                  className="flex items-center justify-between text-xs text-white/50"
-                >
-                  <span>{price.label}</span>
-                  <span className="font-mono text-white/70">
-                    {price.credits} Cr
-                  </span>
-                </li>
-              ))}
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-mono text-[8px] tracking-[.14em] text-white/28">
+                ANALYSEPREISE
+              </p>
+              <Link
+                href="/dashboard/analysis"
+                className="font-mono text-[8px] tracking-[.12em] text-cyber-cyan/60 transition hover:text-cyber-cyan"
+              >
+                ALLE ANGEBOTE →
+              </Link>
+            </div>
+            <ul className="mt-3 max-h-56 space-y-1.5 overflow-y-auto pr-1">
+              {[...catalog.analyses]
+                .sort((a, b) => a.credits - b.credits)
+                .map((price) => {
+                  const isPremium =
+                    price.key === "full_identity_analysis" ||
+                    price.key === "deep_intelligence";
+                  return (
+                    <li
+                      key={price.key}
+                      className={`flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-xs ${
+                        isPremium
+                          ? "border border-cyber-cyan/20 bg-cyber-cyan/[0.05] text-white/75"
+                          : "text-white/50"
+                      }`}
+                    >
+                      <span className="truncate">{price.label}</span>
+                      <span
+                        className={`shrink-0 font-mono ${
+                          isPremium ? "text-cyber-cyan" : "text-white/70"
+                        }`}
+                      >
+                        {price.credits} Cr
+                      </span>
+                    </li>
+                  );
+                })}
             </ul>
             <p className="mt-4 text-[11px] leading-relaxed text-white/30">
-              Vor jeder Analyse: „Diese Analyse kostet XX SynCredits.“ Nach
-              Bestätigung erfolgt die Abbuchung.
+              Preise aufsteigend sortiert. Pakete sind hervorgehoben — dort
+              erhalten Sie den größten Überblick pro Start.
             </p>
           </div>
         </div>

@@ -33,7 +33,7 @@
 
 | Datei                                       | Inhalt                             |
 | ------------------------------------------- | ---------------------------------- |
-| `src/lib/dashboard/analysis-center-data.ts` | 4 Analyse-Module                   |
+| `src/lib/dashboard/analysis-center-data.ts` | 13 Analyse-Module (Preis-Katalog)  |
 | `src/lib/dashboard/results-demo-data.ts`    | Google / Social / Bild / Leak Demo |
 | `src/lib/dashboard/threats-demo-data.ts`    | Niedrig / Mittel / Hoch            |
 

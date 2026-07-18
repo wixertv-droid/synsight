@@ -93,27 +93,75 @@ export const analysisGuidance: Record<
   string,
   { what: string; why: string; result: string }
 > = {
+  google_search: {
+    what: "Prüft, welche öffentlichen Suchergebnisse zu Ihnen passen könnten.",
+    why: "Viele Menschen finden über Suchmaschinen schnell persönliche Informationen – auch über Sie.",
+    result: "Die wichtigsten Treffer in verständlicher Form.",
+  },
+  phone_analysis: {
+    what: "Prüft, ob Ihre Telefonnummer in öffentlichen Quellen auffindbar ist.",
+    why: "Sichtbare Nummern erleichtern Spam, Betrug und unerwünschte Kontakte.",
+    result: "Treffer plus Tipps, wie Sie die Sichtbarkeit reduzieren.",
+  },
+  email_analysis: {
+    what: "Prüft öffentliche Sichtbarkeit und mögliche Leak-Hinweise zu Ihrer E-Mail.",
+    why: "E-Mails sind oft der Schlüssel zu weiteren Konten und Identitätsdiebstahl.",
+    result: "Expositionshinweise und konkrete Schutzmaßnahmen.",
+  },
+  website_analysis: {
+    what: "Sucht öffentliche Webseiten und Impressen mit Bezug zu Ihrer Identität.",
+    why: "Alte Projekt- oder Firmenseiten können Kontaktdaten unnötig offenlegen.",
+    result: "Gefundene Seiten mit priorisierten Prüfpunkten.",
+  },
+  domain_analysis: {
+    what: "Untersucht öffentlich erkennbare Risiken und Zuordnungen Ihrer Domains.",
+    why: "Domains können Eigentümer- und Kontaktspuren sichtbar machen.",
+    result: "Domain-Exposition und Schutzempfehlungen.",
+  },
+  alias_analysis: {
+    what: "Prüft Benutzernamen und Spitznamen auf öffentliche Verknüpfungen.",
+    why: "Alte Nicknames verbinden oft Profile, die Sie längst vergessen haben.",
+    result: "Erkannte Aliase und Hinweise auf alte Konten.",
+  },
+  social_media: {
+    what: "Prüft öffentliche Social-Media-Profile und sichtbare Verbindungen.",
+    why: "Bios, Fotos und Links sind oft ohne Login für jeden sichtbar.",
+    result: "Profilhinweise und Privatsphäre-Empfehlungen.",
+  },
   person_search: {
-    what: "Diese Analyse durchsucht öffentliche Informationen nach möglichen Verbindungen zu Ihrer digitalen Identität.",
-    why: "So finden Sie heraus, welche Spuren Ihr Name oder Ihre Angaben im Internet hinterlassen haben könnten.",
-    result:
-      "Sie erhalten eine übersichtliche Liste relevanter Funde mit Risikohinweisen.",
+    what: "Durchsucht öffentliche Informationen nach Verbindungen zu Ihrer Identität.",
+    why: "So finden Sie heraus, welche Spuren Ihr Name online hinterlassen hat.",
+    result: "Übersichtliche Fundliste mit Risikohinweisen.",
   },
   reverse_image_search: {
-    what: "Mit einer Bildanalyse können mögliche öffentliche Verwendungen eines Bildes erkannt werden.",
-    why: "Fotos können ohne Ihr Wissen auf anderen Webseiten oder Profilen erscheinen.",
-    result:
-      "Sie sehen, wo ähnliche Bilder gefunden wurden und wie Sie reagieren können.",
+    what: "Erkennt mögliche öffentliche Verwendungen Ihrer Bilder.",
+    why: "Fotos können ohne Ihr Wissen auf anderen Seiten oder Profilen erscheinen.",
+    result: "Bildtreffer und Handlungsempfehlungen.",
   },
-  google_search: {
-    what: "Diese Analyse prüft, welche öffentlichen Suchergebnisse zu Ihnen passen könnten.",
-    why: "Viele Menschen finden über Suchmaschinen schnell persönliche Informationen – auch über Sie.",
-    result: "Sie erhalten die wichtigsten Treffer in verständlicher Form.",
+  ai_summary: {
+    what: "Fasst Analyseergebnisse in verständlicher Sprache zusammen.",
+    why: "Sie müssen keine Rohdaten lesen — die KI priorisiert das Wichtige.",
+    result: "Kurzbericht mit Top-Risiken und nächsten Schritten.",
+  },
+  pdf_report: {
+    what: "Erstellt einen exportierbaren PDF-Bericht Ihrer Ergebnisse.",
+    why: "Praktisch für Unterlagen, Beratung oder interne Dokumentation.",
+    result: "PDF mit Zusammenfassung und Empfehlungen.",
+  },
+  deep_intelligence: {
+    what: "Verknüpft mehrere Quellen zu einer tiefen Identitätsbewertung.",
+    why: "Einzelne Treffer allein zeigen selten das volle Risiko.",
+    result: "Korrelierte Funde und priorisierte Schutzmaßnahmen.",
+  },
+  full_identity_analysis: {
+    what: "Führt die wichtigsten Prüfungen zu einem Gesamtbild Ihrer digitalen Sichtbarkeit zusammen.",
+    why: "Ideal, wenn Sie unsicher sind, welche Einzelanalyse zuerst sinnvoll ist.",
+    result: "Komplettüberblick mit klarem Maßnahmenplan.",
   },
   default: {
-    what: "Diese Analyse prüft öffentlich zugängliche Informationen zu Ihrer digitalen Identität.",
+    what: "Prüft öffentlich zugängliche Informationen zu Ihrer digitalen Identität.",
     why: "So erkennen Sie frühzeitig, welche Informationen sichtbar sind.",
-    result: "Sie erhalten eine verständliche Zusammenfassung mit Empfehlungen.",
+    result: "Verständliche Zusammenfassung mit Empfehlungen.",
   },
 };
 
