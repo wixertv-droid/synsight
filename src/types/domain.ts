@@ -229,7 +229,8 @@ export interface AuditEvent {
   createdAt: string;
 }
 
-export type UserTokenType = "password_reset" | "email_verification" | "api_key";
+export type UserTokenType =
+  "password_reset" | "email_verification" | "api_key" | "mobile_upload";
 
 export interface UserToken {
   id: number;

@@ -22,7 +22,7 @@ export default function EmailVerificationCard({
   const [message, setMessage] = useState(
     token
       ? "Bestätigungslink wird geprüft …"
-      : "Vielen Dank für Ihre Registrierung. Wir haben Ihnen eine E-Mail mit einem Bestätigungslink gesendet. Bitte bestätigen Sie Ihre E-Mail-Adresse, bevor Sie sich anmelden."
+      : "Vielen Dank für Ihre Registrierung. Wir haben Ihnen eine E-Mail mit einem Bestätigungslink gesendet. Bitte bestätigen Sie Ihre E-Mail-Adresse, bevor Sie sich anmelden. Falls Sie die Nachricht nicht finden, schauen Sie bitte auch im Spam- oder Junk-Ordner nach."
   );
   const [errorKind, setErrorKind] = useState<
     "invalid" | "expired" | "already" | "generic" | null

@@ -36,6 +36,7 @@ const tokenTypeEnum = mysqlEnum("token_type", [
   "password_reset",
   "email_verification",
   "api_key",
+  "mobile_upload",
 ]);
 
 const reportTypeEnum = mysqlEnum("report_type", [

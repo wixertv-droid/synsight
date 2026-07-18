@@ -1,16 +1,24 @@
 "use client";
 
-import { FormEvent, useMemo, useState, type ReactNode } from "react";
-import Image from "next/image";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
 import InfoTooltip from "@/components/ui/InfoTooltip";
+import ReferenceImageSlots from "@/components/profile/ReferenceImageSlots";
 import type { ApiResponseBody } from "@/lib/api/response";
 import type { IdentityView } from "@/lib/services/identity-service";
 import {
   socialPlatformSchema,
   type SocialPlatform,
 } from "@/lib/validation/identity";
+import type { ProfileImageType } from "@/types/domain";
 
 const PLATFORMS = socialPlatformSchema.options;
 
@@ -120,7 +128,40 @@ export default function IdentityProfilePanel({
     profileUrl: "",
     accountStatus: "active" as "active" | "former" | "unknown",
   });
-  const [uploading, setUploading] = useState(false);
+  const [uploadingType, setUploadingType] = useState<ProfileImageType | null>(
+    null
+  );
+  const [mobileSession, setMobileSession] = useState<{
+    qrDataUrl: string;
+    uploadUrl: string;
+    expiresAt: string;
+  } | null>(null);
+  const [mobileLoading, setMobileLoading] = useState(false);
+
+  const refreshImages = useCallback(async () => {
+    try {
+      const response = await fetch("/api/identity", {
+        credentials: "same-origin",
+      });
+      const body = (await response.json()) as ApiResponseBody<IdentityView>;
+      if (!response.ok || !body.success) return;
+      setForm((current) => ({
+        ...current,
+        images: body.data.images,
+        completenessPercent: body.data.completenessPercent,
+      }));
+    } catch {
+      // polling is best-effort
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!mobileSession) return;
+    const timer = window.setInterval(() => {
+      void refreshImages();
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [mobileSession, refreshImages]);
 
   const progressTone = useMemo(() => {
     if (form.completenessPercent >= 85) return "text-emerald-200/70";
@@ -165,26 +206,14 @@ export default function IdentityProfilePanel({
     }
   };
 
-  const uploadImage = async (file: File) => {
-    if (form.images.length >= 4) {
-      setError("Maximal 4 Referenzbilder möglich.");
-      return;
-    }
+  const uploadImage = async (imageType: ProfileImageType, file: File) => {
     if (file.size > 8 * 1024 * 1024) {
       setError("Die Bilddatei darf höchstens 8 MB groß sein.");
       return;
     }
-    setUploading(true);
+    setUploadingType(imageType);
     setError(null);
     try {
-      const slots = [
-        "front",
-        "left_profile",
-        "right_profile",
-        "angled",
-      ] as const;
-      const used = new Set(form.images.map((image) => image.imageType));
-      const imageType = slots.find((slot) => !used.has(slot)) ?? "front";
       const data = new FormData();
       data.set("imageType", imageType);
       data.set("file", file);
@@ -203,13 +232,49 @@ export default function IdentityProfilePanel({
       }
       setForm((current) => ({
         ...current,
-        images: [...current.images, body.data].slice(0, 4),
+        images: [
+          ...current.images.filter(
+            (image) => image.imageType !== body.data.imageType
+          ),
+          body.data,
+        ],
       }));
       setMessage("Bild verarbeitet und serverseitig gespeichert.");
     } catch {
       setError("Bild konnte nicht hochgeladen werden.");
     } finally {
-      setUploading(false);
+      setUploadingType(null);
+    }
+  };
+
+  const startMobileUpload = async () => {
+    setMobileLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/identity/images/mobile-session", {
+        method: "POST",
+      });
+      const body = (await response.json()) as ApiResponseBody<{
+        qrDataUrl: string;
+        uploadUrl: string;
+        expiresAt: string;
+      }>;
+      if (!response.ok || !body.success) {
+        setError(
+          !body.success
+            ? body.error.message
+            : "QR-Code konnte nicht erzeugt werden."
+        );
+        return;
+      }
+      setMobileSession(body.data);
+      setMessage(
+        "QR-Code bereit. Mit dem Handy scannen und Bilder direkt aufnehmen."
+      );
+    } catch {
+      setError("QR-Code konnte nicht erzeugt werden.");
+    } finally {
+      setMobileLoading(false);
     }
   };
 
@@ -627,52 +692,72 @@ export default function IdentityProfilePanel({
 
       <Panel title="Referenzbilder" info={HELP.images}>
         <p className="mb-4 text-xs leading-relaxed text-white/35">
-          Bis zu 4 Bilder. Originale werden verschlüsselt gespeichert; für die
-          Analyse entstehen WebP-Versionen (max. 1600px) und Thumbnails (300px)
-          mit SHA-256-Prüfsumme.
+          Vier Blickwinkel mit Silhouetten-Vorlage. Tippen Sie auf ein Kästchen,
+          um das Bild zu wählen. Originale werden verschlüsselt gespeichert; für
+          die Analyse entstehen WebP-Versionen und Thumbnails.
         </p>
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {form.images.map((image) => (
-            <div
-              key={image.storagePath}
-              className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.02] text-[11px] text-white/55"
+        <ReferenceImageSlots
+          images={form.images}
+          uploadingType={uploadingType}
+          onSelect={(type, file) => void uploadImage(type, file)}
+          onDelete={(type) => void deleteImage(type)}
+        />
+
+        <div className="mt-5 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 md:p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="font-mono text-[9px] tracking-[.14em] text-cyber-cyan/55">
+                HANDY-UPLOAD
+              </p>
+              <p className="mt-2 text-sm text-white/55">
+                QR-Code scannen und die vier Referenzbilder direkt mit dem Handy
+                aufnehmen. Die Bilder erscheinen hier automatisch.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={mobileLoading}
+              onClick={() => void startMobileUpload()}
             >
-              <Image
-                src={`/api/identity/images/${image.imageType}/thumbnail?v=${image.contentHash ?? ""}`}
-                alt={`Referenzbild ${image.imageType}`}
-                width={300}
-                height={300}
-                unoptimized
-                className="aspect-square w-full object-cover"
+              {mobileLoading
+                ? "QR wird erzeugt…"
+                : mobileSession
+                  ? "Neuen QR-Code erzeugen"
+                  : "QR-Code für Handy"}
+            </Button>
+          </div>
+          {mobileSession && (
+            <div className="mt-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mobileSession.qrDataUrl}
+                alt="QR-Code für Handy-Upload"
+                width={168}
+                height={168}
+                className="rounded-xl border border-white/10 bg-white p-2"
               />
-              <div className="flex items-center justify-between px-3 py-2">
-                <span>{image.imageType}</span>
+              <div className="space-y-2 text-xs text-white/40">
+                <p>
+                  Gültig bis{" "}
+                  <span className="text-white/60">
+                    {mobileSession.expiresAt}
+                  </span>
+                </p>
+                <p className="break-all font-mono text-[10px] text-white/30">
+                  {mobileSession.uploadUrl}
+                </p>
                 <button
                   type="button"
-                  className="text-white/35 hover:text-white/70"
-                  onClick={() => void deleteImage(image.imageType)}
-                  aria-label={`${image.imageType} löschen`}
+                  className="text-cyber-cyan/70 hover:text-cyber-cyan"
+                  onClick={() => void refreshImages()}
                 >
-                  ×
+                  Jetzt aktualisieren
                 </button>
               </div>
             </div>
-          ))}
+          )}
         </div>
-        <label className="inline-flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-white/[0.12] px-4 py-3 text-xs text-white/45 hover:border-cyber-cyan/30 hover:text-white/70">
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-            className="hidden"
-            disabled={uploading || form.images.length >= 4}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void uploadImage(file);
-              event.currentTarget.value = "";
-            }}
-          />
-          {uploading ? "Bild wird verarbeitet…" : "Bild hochladen"}
-        </label>
       </Panel>
 
       {error && (
