@@ -143,6 +143,54 @@ export default async function DashboardPage() {
 
       <SecurityPanel />
 
+      <section
+        aria-label="Schnellzugriff Analyse Bereiche"
+        className="mt-6 grid gap-3 md:grid-cols-3"
+      >
+        {[
+          {
+            href: "/dashboard/analysis",
+            code: "02",
+            title: "Analyse Center",
+            detail: "Module starten · UI-Vorbereitung",
+            help: "Vier Analyse-Karten mit Dauer- und SynCredits-Platzhaltern. Noch keine Live-Pipeline.",
+          },
+          {
+            href: "/dashboard/results",
+            code: "03",
+            title: "Ergebnisse",
+            detail: "Status · Funde · Empfehlungen",
+            help: "Demo-Ergebnisse mit Risiko Bewertung. Später echte Reports.",
+          },
+          {
+            href: "/dashboard/threats",
+            code: "04",
+            title: "Bedrohungen",
+            detail: "Risiko-Level · Schutzmaßnahmen",
+            help: "Niedrig / Mittel / Hoch mit konkreten Handlungsschritten.",
+          },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="glass hardware-panel group rounded-[1.4rem] border border-white/[0.07] p-5 transition duration-300 hover:border-cyber-blue/25 hover:bg-cyber-blue/[0.03]"
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[8px] tracking-[.16em] text-cyber-cyan/45">
+                {item.code}
+              </span>
+              <InfoTooltip label={`Hinweis ${item.title}`}>
+                {item.help}
+              </InfoTooltip>
+            </div>
+            <h2 className="mt-3 text-base font-medium text-white/85 transition group-hover:text-white">
+              {item.title}
+            </h2>
+            <p className="mt-2 text-[11px] text-white/32">{item.detail}</p>
+          </Link>
+        ))}
+      </section>
+
       {user ? <CreditsPanel userId={userId} /> : null}
 
       <section

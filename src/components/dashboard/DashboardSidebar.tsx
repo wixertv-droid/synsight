@@ -22,36 +22,54 @@ const navigation = [
     icon: "M4 13h6V4H4v9zm0 7h6v-5H4v5zm10 0h6v-9h-6v9zm0-16v5h6V4h-6z",
   },
   {
-    label: "Analyse starten",
-    href: "/dashboard#analysis-center",
+    label: "Analyse Center",
+    href: "/dashboard/analysis",
     code: "02",
     icon: "M12 3v18m9-9H3",
   },
   {
+    label: "Ergebnisse",
+    href: "/dashboard/results",
+    code: "03",
+    icon: "M9 17v-6h6v6M5 21h14a2 2 0 002-2V8l-5-5H5a2 2 0 00-2 2v14a2 2 0 002 2z",
+  },
+  {
+    label: "Bedrohungen",
+    href: "/dashboard/threats",
+    code: "04",
+    icon: "M12 9v4m0 4h.01M10.3 3.7 2.6 17a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 3.7a2 2 0 00-3.4 0z",
+  },
+  {
     label: "Digitale Spuren",
     href: "/dashboard#digital-traces",
-    code: "03",
+    code: "05",
     icon: "M12 21a9 9 0 100-18 9 9 0 000 18zm0 0c2 0 3.5-4 3.5-9S14 3 12 3 8.5 7 8.5 12 10 21 12 21zM3 12h18",
   },
   {
     label: "Risikoanalyse",
     href: "/dashboard#risk-analysis",
-    code: "04",
-    icon: "M12 9v4m0 4h.01M10.3 3.7 2.6 17a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 3.7a2 2 0 00-3.4 0z",
+    code: "06",
+    icon: "M3 3v18h18M7 15l3-3 3 2 4-5",
   },
   {
     label: "Überwachung",
     href: "/dashboard#monitoring",
-    code: "05",
+    code: "07",
     icon: "M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zm9 3a3 3 0 100-6 3 3 0 000 6z",
   },
   {
     label: "Berichte",
     href: "/dashboard#reports",
-    code: "06",
+    code: "08",
     icon: "M6 3h9l3 3v15H6V3zm3 6h6m-6 4h6m-6 4h4",
   },
 ];
+
+function isNavActive(href: string, pathname: string): boolean {
+  if (href.includes("#")) return false;
+  if (href === "/dashboard") return pathname === "/dashboard";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export default function DashboardSidebar({
   open,
@@ -107,8 +125,7 @@ export default function DashboardSidebar({
           aria-label="Dashboard Navigation"
         >
           {navigation.map((item) => {
-            const active =
-              item.href === "/dashboard" && pathname === "/dashboard";
+            const active = isNavActive(item.href, pathname);
             return (
               <Link
                 key={item.label}
@@ -191,7 +208,7 @@ export default function DashboardSidebar({
             onClick={onClose}
             className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs transition-colors ${pathname === "/profile" ? "bg-white/[0.04] text-white/80" : "text-white/35 hover:text-white/70"}`}
           >
-            <span className="font-mono text-[8px] text-white/18">07</span>
+            <span className="font-mono text-[8px] text-white/18">09</span>
             Identitätsprofil
           </Link>
           <Link
@@ -199,7 +216,7 @@ export default function DashboardSidebar({
             onClick={onClose}
             className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs transition-colors ${pathname === "/settings" ? "bg-white/[0.04] text-white/80" : "text-white/35 hover:text-white/70"}`}
           >
-            <span className="font-mono text-[8px] text-white/18">08</span>
+            <span className="font-mono text-[8px] text-white/18">10</span>
             Einstellungen
           </Link>
         </div>
