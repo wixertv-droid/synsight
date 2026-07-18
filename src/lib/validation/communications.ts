@@ -145,13 +145,15 @@ export const adminRequestStatusUpdateSchema = z.object({
     .nullable(),
 });
 
+/** Forward always goes to the mailbox of the request's own channel/tab. */
 export const adminRequestForwardSchema = z.object({
   channel: z.enum(["contact", "partner", "press"]),
   id: z.number().int().positive(),
-  targets: z
-    .array(z.enum(["contact", "press", "partner"]))
-    .min(1, "Bitte mindestens ein E-Mail-Ziel wählen.")
-    .max(3),
+});
+
+export const adminRequestDeleteSchema = z.object({
+  channel: z.enum(["contact", "partner", "press"]),
+  id: z.number().int().positive(),
 });
 
 export type ContactRequestInput = z.input<typeof contactRequestSchema>;

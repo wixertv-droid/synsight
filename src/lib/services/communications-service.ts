@@ -181,8 +181,6 @@ export async function updateCommunicationRequestStatus(input: {
   return updated;
 }
 
-export type ForwardTarget = "contact" | "press" | "partner";
-
 export async function getCommunicationInboxSummary(actor: AuthenticatedUser) {
   assertAdmin(actor);
   const requests = await listCommunicationRequests(actor);
@@ -219,15 +217,25 @@ async function findCommunicationRequest(
   return rows.find((row) => row.id === id) ?? null;
 }
 
+function mailboxForChannel(
+  channel: CommunicationChannel,
+  settings: Awaited<
+    ReturnType<ReturnType<typeof getCommunicationsRepository>["getSettings"]>
+  >
+): string {
+  if (channel === "contact") return settings.contactEmail;
+  if (channel === "press") return settings.pressEmail;
+  return settings.partnersEmail;
+}
+
 /**
- * Forward an important inbox message to one or more configured mailboxes
- * (contact / press / partners) using the existing SMTP notification pipeline.
+ * Forward a message to the mailbox of its own tab:
+ * Kontakt → contactEmail, Presse → pressEmail, Partnerschaft → partnersEmail.
  */
 export async function forwardCommunicationRequest(input: {
   actor: AuthenticatedUser;
   channel: CommunicationChannel;
   id: number;
-  targets: ForwardTarget[];
 }) {
   assertAdmin(input.actor);
   const repo = getCommunicationsRepository();
@@ -237,65 +245,41 @@ export async function forwardCommunicationRequest(input: {
     throw new Error("REQUEST_NOT_FOUND");
   }
 
-  const uniqueTargets = [...new Set(input.targets)];
-  const deliveries: Array<{
-    target: ForwardTarget;
-    to: string;
-    delivered: boolean;
-    queued: boolean;
-    message: string;
-  }> = [];
+  const to = mailboxForChannel(input.channel, settings);
+  let notification;
 
-  for (const target of uniqueTargets) {
-    const to =
-      target === "contact"
-        ? settings.contactEmail
-        : target === "press"
-          ? settings.pressEmail
-          : settings.partnersEmail;
-
-    let notification;
-    if (input.channel === "contact" && "subject" in request) {
-      notification = await sendContactNotification({
-        to,
-        requestId: request.id,
-        name: request.name,
-        email: request.email,
-        subject: `[Weiterleitung] ${request.subject}`,
-        company: request.company,
-        message: request.message,
-      });
-    } else if (input.channel === "partner" && "partnershipType" in request) {
-      notification = await sendPartnerNotification({
-        to,
-        requestId: request.id,
-        name: request.name,
-        email: request.email,
-        company: request.company,
-        partnershipType: `[Weiterleitung] ${request.partnershipType}`,
-        message: request.message,
-      });
-    } else if (input.channel === "press" && "topic" in request) {
-      notification = await sendPressNotification({
-        to,
-        requestId: request.id,
-        name: request.name,
-        email: request.email,
-        medium: request.medium,
-        topic: `[Weiterleitung] ${request.topic}`,
-        message: request.message,
-      });
-    } else {
-      throw new Error("REQUEST_NOT_FOUND");
-    }
-
-    deliveries.push({
-      target,
-      to: notification.payload.to,
-      delivered: notification.delivered,
-      queued: notification.queued,
-      message: notification.message,
+  if (input.channel === "contact" && "subject" in request) {
+    notification = await sendContactNotification({
+      to,
+      requestId: request.id,
+      name: request.name,
+      email: request.email,
+      subject: `[Weiterleitung] ${request.subject}`,
+      company: request.company,
+      message: request.message,
     });
+  } else if (input.channel === "partner" && "partnershipType" in request) {
+    notification = await sendPartnerNotification({
+      to,
+      requestId: request.id,
+      name: request.name,
+      email: request.email,
+      company: request.company,
+      partnershipType: `[Weiterleitung] ${request.partnershipType}`,
+      message: request.message,
+    });
+  } else if (input.channel === "press" && "topic" in request) {
+    notification = await sendPressNotification({
+      to,
+      requestId: request.id,
+      name: request.name,
+      email: request.email,
+      medium: request.medium,
+      topic: `[Weiterleitung] ${request.topic}`,
+      message: request.message,
+    });
+  } else {
+    throw new Error("REQUEST_NOT_FOUND");
   }
 
   if (request.status === "new") {
@@ -303,13 +287,32 @@ export async function forwardCommunicationRequest(input: {
       channel: input.channel,
       id: input.id,
       status: "processing",
-      adminNotes: `Weitergeleitet an: ${deliveries.map((entry) => entry.to).join(", ")}`,
+      adminNotes: `Weitergeleitet an: ${notification.payload.to}`,
     });
   }
 
   return {
     id: input.id,
     channel: input.channel,
-    deliveries,
+    to: notification.payload.to,
+    delivered: notification.delivered,
+    queued: notification.queued,
+    message: notification.message,
   };
+}
+
+export async function deleteCommunicationRequest(input: {
+  actor: AuthenticatedUser;
+  channel: CommunicationChannel;
+  id: number;
+}) {
+  assertAdmin(input.actor);
+  const deleted = await getCommunicationsRepository().deleteRequest({
+    channel: input.channel,
+    id: input.id,
+  });
+  if (!deleted) {
+    throw new Error("REQUEST_NOT_FOUND");
+  }
+  return { deleted: true, channel: input.channel, id: input.id };
 }

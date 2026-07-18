@@ -263,6 +263,24 @@ export function createMysqlCommunicationsRepository(
         .limit(1);
       return rows[0] ? mapPress(rows[0]) : null;
     },
+    async deleteRequest(input) {
+      if (input.channel === "contact") {
+        const result = await db
+          .delete(contactRequests)
+          .where(eq(contactRequests.id, input.id));
+        return Number(result[0].affectedRows ?? 0) > 0;
+      }
+      if (input.channel === "partner") {
+        const result = await db
+          .delete(partnerRequests)
+          .where(eq(partnerRequests.id, input.id));
+        return Number(result[0].affectedRows ?? 0) > 0;
+      }
+      const result = await db
+        .delete(pressRequests)
+        .where(eq(pressRequests.id, input.id));
+      return Number(result[0].affectedRows ?? 0) > 0;
+    },
   };
 }
 

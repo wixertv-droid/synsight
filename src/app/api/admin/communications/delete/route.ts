@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getAdminAccess } from "@/lib/admin/access";
-import { forwardCommunicationRequest } from "@/lib/services/communications-service";
-import { adminRequestForwardSchema } from "@/lib/validation/communications";
+import { deleteCommunicationRequest } from "@/lib/services/communications-service";
+import { adminRequestDeleteSchema } from "@/lib/validation/communications";
 import { validateMutationOrigin } from "@/lib/security/request";
 
 export async function POST(request: Request) {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   if (csrfError) return csrfError;
 
   const json = await request.json().catch(() => null);
-  const parsed = adminRequestForwardSchema.safeParse(json);
+  const parsed = adminRequestDeleteSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json(
       apiError(
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await forwardCommunicationRequest({
+    const result = await deleteCommunicationRequest({
       actor: access.user,
       channel: parsed.data.channel,
       id: parsed.data.id,
@@ -48,12 +48,9 @@ export async function POST(request: Request) {
         { status: 404 }
       );
     }
-    console.error("[admin.communications] forward failed:", error);
+    console.error("[admin.communications] delete failed:", error);
     return NextResponse.json(
-      apiError(
-        "FORWARD_FAILED",
-        "Die Nachricht konnte nicht weitergeleitet werden."
-      ),
+      apiError("DELETE_FAILED", "Die Nachricht konnte nicht gelöscht werden."),
       { status: 500 }
     );
   }

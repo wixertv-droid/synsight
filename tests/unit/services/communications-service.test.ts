@@ -147,13 +147,13 @@ describe("communications-service", () => {
     expect(summary.byChannel.partner.newCount).toBe(1);
   });
 
-  it("forwards important messages to configured mailboxes", async () => {
+  it("forwards messages to the mailbox of their own channel tab", async () => {
     const created = await submitContactRequest({
       data: {
         name: "Wichtig",
         email: "wichtig@example.com",
         subject: "Dringend",
-        message: "Bitte an Kontakt und Presse weiterleiten.",
+        message: "Bitte an das Kontakt-Postfach weiterleiten.",
         website: "",
       },
     });
@@ -162,19 +162,37 @@ describe("communications-service", () => {
       actor: admin,
       channel: "contact",
       id: created.request.id,
-      targets: ["contact", "press"],
     });
 
-    expect(forwarded.deliveries).toHaveLength(2);
-    expect(forwarded.deliveries.map((entry) => entry.to)).toEqual([
-      "contact@synsight.de",
-      "press@synsight.de",
-    ]);
+    expect(forwarded.to).toBe("contact@synsight.de");
 
     const listed = await listCommunicationRequests(admin);
     const row = listed.contact.find((entry) => entry.id === created.request.id);
     expect(row?.status).toBe("processing");
     expect(row?.adminNotes).toMatch(/Weitergeleitet an/);
+  });
+
+  it("deletes communication requests", async () => {
+    const created = await submitContactRequest({
+      data: {
+        name: "Löschen",
+        email: "delete@example.com",
+        subject: "Weg damit",
+        message: "Diese Nachricht soll gelöscht werden können.",
+        website: "",
+      },
+    });
+
+    await deleteCommunicationRequest({
+      actor: admin,
+      channel: "contact",
+      id: created.request.id,
+    });
+
+    const listed = await listCommunicationRequests(admin);
+    expect(
+      listed.contact.find((entry) => entry.id === created.request.id)
+    ).toBeUndefined();
   });
 });
 

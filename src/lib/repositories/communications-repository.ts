@@ -118,6 +118,10 @@ export interface CommunicationsRepository {
   }): Promise<
     ContactRequestRecord | PartnerRequestRecord | PressRequestRecord | null
   >;
+  deleteRequest(input: {
+    channel: CommunicationChannel;
+    id: number;
+  }): Promise<boolean>;
 }
 
 function nowStamp(): string {
@@ -291,6 +295,27 @@ export function createInMemoryCommunicationsRepository(): CommunicationsReposito
       if (input.adminNotes !== undefined) row.adminNotes = input.adminNotes;
       row.updatedAt = stamp;
       return { ...row };
+    },
+    async deleteRequest(input) {
+      if (input.channel === "contact") {
+        const store = contactStore();
+        const index = store.findIndex((entry) => entry.id === input.id);
+        if (index < 0) return false;
+        store.splice(index, 1);
+        return true;
+      }
+      if (input.channel === "partner") {
+        const store = partnerStore();
+        const index = store.findIndex((entry) => entry.id === input.id);
+        if (index < 0) return false;
+        store.splice(index, 1);
+        return true;
+      }
+      const store = pressStore();
+      const index = store.findIndex((entry) => entry.id === input.id);
+      if (index < 0) return false;
+      store.splice(index, 1);
+      return true;
     },
   };
 }
