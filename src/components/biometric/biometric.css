@@ -15,11 +15,42 @@
   display: grid;
   place-items: center;
   overflow: hidden;
+  width: 100%;
+  height: 100%;
   transform: scale(var(--bio-scale));
   transition:
     transform 0.45s var(--ease-premium, cubic-bezier(0.16, 1, 0.3, 1)),
     opacity 0.5s var(--ease-premium, cubic-bezier(0.16, 1, 0.3, 1));
   will-change: transform;
+}
+
+.bio-photo-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+}
+
+.bio-photo-asset {
+  object-fit: contain;
+  object-position: center 55%;
+  filter: drop-shadow(0 0 14px rgba(0, 212, 255, 0.35));
+  transition:
+    filter 0.35s ease,
+    opacity 0.45s ease;
+}
+
+.bio-mode-hover .bio-photo-asset,
+.bio-mode-analyzing .bio-photo-asset {
+  filter: drop-shadow(0 0 22px rgba(0, 212, 255, 0.55));
+}
+
+.bio-photo-hud {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .bio-root.bio-mode-hover {

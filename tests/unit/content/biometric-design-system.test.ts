@@ -67,18 +67,24 @@ describe("biometric design system 2.0", () => {
     expect(globals).toContain("biometric.css");
   });
 
-  it("renders hologram scanline heads instead of outline cartoons", () => {
+  it("embeds photographic hologram assets for all four views", () => {
     const head = readFileSync(
       path.join(process.cwd(), "src/components/biometric/BiometricHead.tsx"),
       "utf8"
     );
-    const scan = readFileSync(
-      path.join(process.cwd(), "src/components/biometric/scanlineGeometry.ts"),
-      "utf8"
-    );
-    expect(head).toContain("HologramScanlines");
-    expect(head).not.toContain("FacialFeatures");
-    expect(scan).toContain("buildHologramScanlines");
-    expect(scan).toContain("left_profile");
+    expect(head).toContain("/biometric/front.png");
+    expect(head).toContain("/biometric/left_profile.png");
+    expect(head).toContain("/biometric/right_profile.png");
+    expect(head).toContain("/biometric/angled.png");
+    for (const file of [
+      "front.png",
+      "left_profile.png",
+      "right_profile.png",
+      "angled.png",
+    ]) {
+      expect(
+        existsSync(path.join(process.cwd(), "public/biometric", file))
+      ).toBe(true);
+    }
   });
 });
