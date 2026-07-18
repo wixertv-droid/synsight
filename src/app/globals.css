@@ -2,10 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@import "../components/biometric/biometric.css";
+
 :root {
   --space-black: #03050a;
   --cyber-blue: #29b6f6;
   --neon-cyan: #70e7ff;
+  --bio-primary: #00d4ff;
+  --bio-secondary: #5ce1ff;
+  --bio-accent: #a7f3ff;
+  --bio-glow: rgba(0, 212, 255, 0.25);
   --glass-bg: linear-gradient(
     145deg,
     rgba(18, 27, 43, 0.72),

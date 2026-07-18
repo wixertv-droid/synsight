@@ -1,6 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import {
+  BiometricHead,
+  BIOMETRIC_VIEW_LABELS,
+  type BiometricView,
+} from "@/components/biometric";
 import type { ProfileImageType } from "@/types/domain";
 
 export const REFERENCE_IMAGE_SLOTS: {
@@ -10,118 +15,25 @@ export const REFERENCE_IMAGE_SLOTS: {
 }[] = [
   {
     type: "front",
-    label: "Von vorn",
+    label: BIOMETRIC_VIEW_LABELS.front,
     hint: "Gesicht frontal, gut beleuchtet",
   },
   {
     type: "left_profile",
-    label: "Linke Seite",
+    label: BIOMETRIC_VIEW_LABELS.left_profile,
     hint: "Profilansicht von links",
   },
   {
     type: "right_profile",
-    label: "Rechte Seite",
+    label: BIOMETRIC_VIEW_LABELS.right_profile,
     hint: "Profilansicht von rechts",
   },
   {
     type: "angled",
-    label: "Schräg",
-    hint: "Leicht gedrehter Winkel",
+    label: BIOMETRIC_VIEW_LABELS.angled,
+    hint: "45°-Ansicht, leicht gedreht",
   },
 ];
-
-function Silhouette({ type }: { type: ProfileImageType }) {
-  if (type === "front") {
-    return (
-      <svg
-        viewBox="0 0 80 96"
-        className="h-16 w-14 text-cyber-cyan/35"
-        aria-hidden
-      >
-        <ellipse
-          cx="40"
-          cy="28"
-          rx="16"
-          ry="18"
-          fill="currentColor"
-          opacity="0.55"
-        />
-        <path
-          d="M22 92c2-22 12-34 18-34s16 12 18 34"
-          fill="currentColor"
-          opacity="0.4"
-        />
-        <circle cx="34" cy="26" r="1.6" fill="#04070c" />
-        <circle cx="46" cy="26" r="1.6" fill="#04070c" />
-      </svg>
-    );
-  }
-
-  if (type === "left_profile") {
-    return (
-      <svg
-        viewBox="0 0 80 96"
-        className="h-16 w-14 text-cyber-cyan/35"
-        aria-hidden
-      >
-        <path
-          d="M48 14c-12 0-20 10-20 22 0 8 3 14 8 18l-6 8c8 2 14 4 18 4 10 0 18-10 18-24S60 14 48 14z"
-          fill="currentColor"
-          opacity="0.5"
-        />
-        <path
-          d="M36 92c1-20 8-30 14-30s12 10 14 30"
-          fill="currentColor"
-          opacity="0.35"
-        />
-      </svg>
-    );
-  }
-
-  if (type === "right_profile") {
-    return (
-      <svg
-        viewBox="0 0 80 96"
-        className="h-16 w-14 text-cyber-cyan/35"
-        aria-hidden
-      >
-        <path
-          d="M32 14c12 0 20 10 20 22 0 8-3 14-8 18l6 8c-8 2-14 4-18 4-10 0-18-10-18-24S20 14 32 14z"
-          fill="currentColor"
-          opacity="0.5"
-        />
-        <path
-          d="M44 92c-1-20-8-30-14-30s-12 10-14 30"
-          fill="currentColor"
-          opacity="0.35"
-        />
-      </svg>
-    );
-  }
-
-  return (
-    <svg
-      viewBox="0 0 80 96"
-      className="h-16 w-14 text-cyber-cyan/35"
-      aria-hidden
-    >
-      <ellipse
-        cx="42"
-        cy="28"
-        rx="15"
-        ry="17"
-        fill="currentColor"
-        opacity="0.5"
-        transform="rotate(18 42 28)"
-      />
-      <path
-        d="M26 92c3-20 14-32 20-32s14 12 16 32"
-        fill="currentColor"
-        opacity="0.35"
-      />
-    </svg>
-  );
-}
 
 export interface ReferenceSlotImage {
   imageType: ProfileImageType;
@@ -140,7 +52,6 @@ export default function ReferenceImageSlots({
   uploadingType: ProfileImageType | null;
   onSelect: (type: ProfileImageType, file: File) => void;
   onDelete?: (type: ProfileImageType) => void;
-  /** Prefer rear camera on phones */
   capture?: boolean;
 }) {
   return (
@@ -148,29 +59,42 @@ export default function ReferenceImageSlots({
       {REFERENCE_IMAGE_SLOTS.map((slot) => {
         const image = images.find((item) => item.imageType === slot.type);
         const busy = uploadingType === slot.type;
+        const view = slot.type as BiometricView;
+
         return (
           <div
             key={slot.type}
-            className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.02]"
+            className="overflow-hidden rounded-xl border border-[rgba(0,212,255,0.18)] bg-[rgba(0,212,255,0.03)] shadow-[inset_0_0_24px_rgba(0,212,255,0.06)]"
           >
             <label className="group relative flex aspect-square cursor-pointer flex-col items-center justify-center overflow-hidden">
-              {image ? (
-                <Image
-                  src={`/api/identity/images/${image.imageType}/thumbnail?v=${image.contentHash ?? ""}`}
-                  alt={`Referenzbild ${slot.label}`}
-                  width={300}
-                  height={300}
-                  unoptimized
-                  className="h-full w-full object-cover"
+              <div
+                className={`bio-slot-fade absolute inset-0 flex items-center justify-center p-3 transition-opacity duration-500 ${
+                  image ? "pointer-events-none opacity-0" : "opacity-100"
+                }`}
+              >
+                <BiometricHead
+                  view={view}
+                  mode={busy ? "analyzing" : undefined}
+                  interactive={!busy && !image}
+                  progress={busy ? 42 : 0}
+                  className="h-full w-full max-w-[200px]"
                 />
-              ) : (
-                <div className="flex flex-col items-center gap-2 px-3 text-center">
-                  <Silhouette type={slot.type} />
-                  <span className="font-mono text-[8px] tracking-[.14em] text-white/30">
-                    {busy ? "WIRD OPTIMIERT…" : "SILHOUETTE"}
-                  </span>
+              </div>
+
+              {image && (
+                <div className="bio-slot-fade bio-slot-fade-in absolute inset-0">
+                  <Image
+                    src={`/api/identity/images/${image.imageType}/thumbnail?v=${image.contentHash ?? ""}`}
+                    alt={`Referenzbild ${slot.label}`}
+                    width={300}
+                    height={300}
+                    unoptimized
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="pointer-events-none absolute inset-0 border border-[rgba(0,212,255,0.25)] shadow-[inset_0_0_30px_rgba(0,212,255,0.15)]" />
                 </div>
               )}
+
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic"
@@ -183,20 +107,26 @@ export default function ReferenceImageSlots({
                   event.currentTarget.value = "";
                 }}
               />
-              <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2.5 pt-8 text-center opacity-90 transition group-hover:opacity-100">
-                <span className="block text-[11px] font-medium text-white/80">
+
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-[#04070c]/85 to-transparent px-3 pb-2.5 pt-10 text-center">
+                <span className="block text-[11px] font-medium text-[var(--bio-accent,#A7F3FF)]/85">
                   {slot.label}
                 </span>
-                <span className="mt-0.5 block text-[10px] text-white/40">
-                  {busy ? "Upload…" : image ? "Tippen zum Ersetzen" : slot.hint}
+                <span className="mt-0.5 block font-mono text-[8px] tracking-[.12em] text-white/35">
+                  {busy
+                    ? "SCAN / OPTIMIERUNG…"
+                    : image
+                      ? "TIPPEN ZUM ERSETZEN"
+                      : slot.hint.toUpperCase()}
                 </span>
               </span>
             </label>
+
             {image && onDelete && (
-              <div className="flex justify-end border-t border-white/[0.06] px-2 py-1.5">
+              <div className="flex justify-end border-t border-[rgba(0,212,255,0.1)] px-2 py-1.5">
                 <button
                   type="button"
-                  className="font-mono text-[9px] tracking-[.12em] text-white/35 hover:text-rose-200/70"
+                  className="font-mono text-[9px] tracking-[.12em] text-white/35 hover:text-[var(--bio-secondary,#5CE1FF)]"
                   onClick={() => onDelete(slot.type)}
                 >
                   LÖSCHEN

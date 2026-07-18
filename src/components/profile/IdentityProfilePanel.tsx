@@ -692,9 +692,9 @@ export default function IdentityProfilePanel({
 
       <Panel title="Referenzbilder" info={HELP.images}>
         <p className="mb-4 text-xs leading-relaxed text-white/35">
-          Vier Blickwinkel mit Silhouetten-Vorlage. Tippen Sie auf ein Kästchen,
-          um das Bild zu wählen. Originale werden verschlüsselt gespeichert; für
-          die Analyse entstehen WebP-Versionen und Thumbnails.
+          Vier biometrische Hologramm-Ansichten. Tippen Sie auf ein Kästchen, um
+          das Bild zu wählen — oder nutzen Sie den QR-Handy-Upload. Originale
+          werden verschlüsselt gespeichert.
         </p>
         <ReferenceImageSlots
           images={form.images}

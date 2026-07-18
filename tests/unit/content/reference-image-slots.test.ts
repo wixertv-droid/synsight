@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 describe("reference image slots", () => {
-  it("defines the four silhouette angles", () => {
+  it("uses biometric hologram heads for the four angles", () => {
     const source = readFileSync(
       path.join(
         process.cwd(),
@@ -15,8 +15,8 @@ describe("reference image slots", () => {
     expect(source).toContain('type: "left_profile"');
     expect(source).toContain('type: "right_profile"');
     expect(source).toContain('type: "angled"');
-    expect(source).toContain("Von vorn");
-    expect(source).toContain("Silhouette");
+    expect(source).toContain("BiometricHead");
+    expect(source).not.toContain("function Silhouette");
   });
 
   it("wires slots and mobile upload into the profile panel", () => {

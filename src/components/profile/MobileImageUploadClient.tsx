@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { BiometricHead, type BiometricView } from "@/components/biometric";
+import { REFERENCE_IMAGE_SLOTS } from "@/components/profile/ReferenceImageSlots";
 import type { ApiResponseBody } from "@/lib/api/response";
 import type { ProfileImageType } from "@/types/domain";
-import { REFERENCE_IMAGE_SLOTS } from "@/components/profile/ReferenceImageSlots";
 
 type Slots = Record<ProfileImageType, boolean>;
 
@@ -129,20 +130,29 @@ export default function MobileImageUploadClient({ token }: { token: string }) {
               return (
                 <label
                   key={slot.type}
-                  className={`relative flex aspect-[3/4] cursor-pointer flex-col items-center justify-center rounded-2xl border px-3 text-center transition ${
+                  className={`relative flex aspect-[3/4] cursor-pointer flex-col items-center justify-end overflow-hidden rounded-2xl border px-2 pb-3 text-center transition ${
                     filled
-                      ? "border-emerald-300/25 bg-emerald-300/[0.06]"
-                      : "border-dashed border-white/15 bg-white/[0.03] hover:border-cyber-cyan/35"
+                      ? "border-[rgba(0,212,255,0.35)] bg-[rgba(0,212,255,0.06)]"
+                      : "border-[rgba(0,212,255,0.18)] bg-[rgba(0,212,255,0.03)]"
                   }`}
                 >
-                  <span className="text-sm font-medium text-white/80">
+                  <div className="absolute inset-x-2 top-2 bottom-10">
+                    <BiometricHead
+                      view={slot.type as BiometricView}
+                      mode={busy ? "analyzing" : filled ? "captured" : "idle"}
+                      interactive={false}
+                      progress={busy ? 55 : filled ? 100 : 0}
+                      className="h-full w-full"
+                    />
+                  </div>
+                  <span className="relative z-[1] text-sm font-medium text-white/80">
                     {slot.label}
                   </span>
-                  <span className="mt-2 font-mono text-[8px] tracking-[.14em] text-white/35">
+                  <span className="relative z-[1] mt-1 font-mono text-[8px] tracking-[.14em] text-white/35">
                     {busy
                       ? "UPLOAD…"
                       : filled
-                        ? "GESPEICHERT · TIPPEN ZUM ERSETZEN"
+                        ? "GESPEICHERT · ERSETZEN"
                         : "KAMERA / GALERIE"}
                   </span>
                   <input
