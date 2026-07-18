@@ -29,7 +29,7 @@ describe("profile image pipeline", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it("encrypts original and creates bounded WebP variants", async () => {
+  it("stores encrypted analysis master and bounded WebP variants", async () => {
     const source = await sharp({
       create: {
         width: 2200,
@@ -49,15 +49,20 @@ describe("profile image pipeline", () => {
       bytes: source,
     });
 
+    const analysisBytes = await readFile(
+      resolvePrivateImagePath(42, result.analysisPath)
+    );
     const encrypted = await readFile(
       resolvePrivateImagePath(42, result.originalPath)
     );
     expect(encrypted.equals(source)).toBe(false);
-    expect(decryptImageBuffer(encrypted).equals(source)).toBe(true);
+    expect(encrypted.equals(analysisBytes)).toBe(false);
+    expect(decryptImageBuffer(encrypted).equals(analysisBytes)).toBe(true);
+    // Analysis master stays far smaller than a phone JPEG original.
+    expect(analysisBytes.byteLength).toBeLessThan(source.byteLength);
+    expect(result.byteSize).toBe(analysisBytes.byteLength);
 
-    const analysis = await sharp(
-      resolvePrivateImagePath(42, result.analysisPath)
-    ).metadata();
+    const analysis = await sharp(analysisBytes).metadata();
     const thumbnail = await sharp(
       resolvePrivateImagePath(42, result.thumbnailPath)
     ).metadata();

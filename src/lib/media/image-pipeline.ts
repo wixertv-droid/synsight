@@ -8,6 +8,21 @@ import {
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import {
+  ANALYSIS_MAX_PIXELS,
+  ANALYSIS_WEBP_QUALITY,
+  MAX_UPLOAD_BYTES,
+  THUMBNAIL_MAX_PIXELS,
+  THUMBNAIL_WEBP_QUALITY,
+} from "@/lib/media/image-limits";
+
+export {
+  ANALYSIS_MAX_PIXELS,
+  ANALYSIS_WEBP_QUALITY,
+  MAX_UPLOAD_BYTES,
+  THUMBNAIL_MAX_PIXELS,
+  THUMBNAIL_WEBP_QUALITY,
+} from "@/lib/media/image-limits";
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -16,12 +31,6 @@ const ALLOWED_MIME = new Set([
   "image/heic",
   "image/heif",
 ]);
-
-export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
-export const ANALYSIS_MAX_PIXELS = 1600;
-export const ANALYSIS_WEBP_QUALITY = 80;
-export const THUMBNAIL_MAX_PIXELS = 300;
-export const THUMBNAIL_WEBP_QUALITY = 75;
 
 const MAGIC_MIME: Array<{ mime: string; test: (bytes: Buffer) => boolean }> = [
   {
@@ -189,9 +198,6 @@ export async function processAndStoreProfileImage(input: {
   const absoluteDir = path.join(privateStorageRoot(), "images", relativeDir);
   await mkdir(absoluteDir, { recursive: true });
 
-  const contentHash = createHash("sha256").update(input.bytes).digest("hex");
-  const encryptedOriginal = encryptBuffer(input.bytes);
-
   const normalized = sharp(input.bytes, { failOn: "error" }).rotate();
   const analysisBuffer = await normalized
     .clone()
@@ -201,7 +207,7 @@ export async function processAndStoreProfileImage(input: {
       fit: "inside",
       withoutEnlargement: true,
     })
-    .webp({ quality: ANALYSIS_WEBP_QUALITY })
+    .webp({ quality: ANALYSIS_WEBP_QUALITY, effort: 4 })
     .toBuffer();
 
   const thumbnailBuffer = await normalized
@@ -212,8 +218,12 @@ export async function processAndStoreProfileImage(input: {
       fit: "inside",
       withoutEnlargement: true,
     })
-    .webp({ quality: THUMBNAIL_WEBP_QUALITY })
+    .webp({ quality: THUMBNAIL_WEBP_QUALITY, effort: 4 })
     .toBuffer();
+
+  // Archive only the analysis-ready master (encrypted) — not multi‑MB phone originals.
+  const contentHash = createHash("sha256").update(analysisBuffer).digest("hex");
+  const encryptedOriginal = encryptBuffer(analysisBuffer);
 
   const originalName = "original.bin";
   const analysisName = "analysis.webp";

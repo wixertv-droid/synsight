@@ -5,6 +5,10 @@ import { BiometricHead, type BiometricView } from "@/components/biometric";
 import { REFERENCE_IMAGE_SLOTS } from "@/components/profile/ReferenceImageSlots";
 import type { ApiResponseBody } from "@/lib/api/response";
 import type { ProfileImageType } from "@/types/domain";
+import {
+  prepareProfileImageForUpload,
+  readImageUploadError,
+} from "@/lib/media/prepare-upload-image";
 
 type Slots = Record<ProfileImageType, boolean>;
 
@@ -50,35 +54,38 @@ export default function MobileImageUploadClient({ token }: { token: string }) {
   }, [load]);
 
   const upload = async (imageType: ProfileImageType, file: File) => {
-    if (file.size > 8 * 1024 * 1024) {
-      setError("Die Bilddatei darf höchstens 8 MB groß sein.");
-      return;
-    }
     setUploadingType(imageType);
     setError(null);
     setMessage(null);
     try {
+      const prepared = await prepareProfileImageForUpload(file);
       const data = new FormData();
       data.set("token", token);
       data.set("imageType", imageType);
-      data.set("file", file);
+      data.set("file", prepared);
       const response = await fetch("/api/identity/images/mobile", {
         method: "POST",
         body: data,
       });
+      if (!response.ok) {
+        setError(await readImageUploadError(response));
+        return;
+      }
       const body = (await response.json()) as ApiResponseBody<{
         slots: Slots;
       }>;
-      if (!response.ok || !body.success) {
-        setError(
-          !body.success ? body.error.message : "Bild-Upload fehlgeschlagen."
-        );
+      if (!body.success) {
+        setError(body.error.message || "Bild-Upload fehlgeschlagen.");
         return;
       }
       setSlots(body.data.slots);
       setMessage("Bild gespeichert. Sie können weitere Winkel hochladen.");
-    } catch {
-      setError("Bild konnte nicht hochgeladen werden.");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Bild konnte nicht hochgeladen werden."
+      );
     } finally {
       setUploadingType(null);
     }

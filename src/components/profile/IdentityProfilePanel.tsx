@@ -19,6 +19,10 @@ import {
   type SocialPlatform,
 } from "@/lib/validation/identity";
 import type { ProfileImageType } from "@/types/domain";
+import {
+  prepareProfileImageForUpload,
+  readImageUploadError,
+} from "@/lib/media/prepare-upload-image";
 
 const PLATFORMS = socialPlatformSchema.options;
 
@@ -35,7 +39,7 @@ const HELP = {
     "Verknüpfen Sie Profile aus sozialen Netzwerken. Mehrere Konten pro Netzwerk sind möglich.",
   web: "Webseiten, Domains und Unternehmen helfen bei der späteren Einordnung digitaler Spuren. Freiwillig.",
   images:
-    "Diese Bilder dienen ausschließlich späteren Such- und Vergleichsfunktionen. Originale werden verschlüsselt gespeichert. Noch keine automatische Bildsuche.",
+    "Diese Bilder dienen späteren Such- und Vergleichsfunktionen. Vor dem Upload werden sie platzsparend komprimiert (analyse-tauglich); auf dem Server liegen verschlüsselte WebP-Master. Noch keine automatische Bildsuche.",
 };
 
 interface IdentityProfilePanelProps {
@@ -207,27 +211,26 @@ export default function IdentityProfilePanel({
   };
 
   const uploadImage = async (imageType: ProfileImageType, file: File) => {
-    if (file.size > 8 * 1024 * 1024) {
-      setError("Die Bilddatei darf höchstens 8 MB groß sein.");
-      return;
-    }
     setUploadingType(imageType);
     setError(null);
     try {
+      const prepared = await prepareProfileImageForUpload(file);
       const data = new FormData();
       data.set("imageType", imageType);
-      data.set("file", file);
+      data.set("file", prepared);
       const response = await fetch("/api/identity/images", {
         method: "POST",
         body: data,
       });
+      if (!response.ok) {
+        setError(await readImageUploadError(response));
+        return;
+      }
       const body = (await response.json()) as ApiResponseBody<
         IdentityView["images"][number]
       >;
-      if (!response.ok || !body.success) {
-        setError(
-          !body.success ? body.error.message : "Bild-Upload fehlgeschlagen."
-        );
+      if (!body.success) {
+        setError(body.error.message || "Bild-Upload fehlgeschlagen.");
         return;
       }
       setForm((current) => ({
@@ -239,9 +242,13 @@ export default function IdentityProfilePanel({
           body.data,
         ],
       }));
-      setMessage("Bild verarbeitet und serverseitig gespeichert.");
-    } catch {
-      setError("Bild konnte nicht hochgeladen werden.");
+      setMessage("Bild komprimiert, verschlüsselt und gespeichert.");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Bild konnte nicht hochgeladen werden."
+      );
     } finally {
       setUploadingType(null);
     }
