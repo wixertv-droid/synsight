@@ -4,7 +4,7 @@ import ResultsCenter from "@/components/dashboard/results/ResultsCenter";
 export const metadata: Metadata = {
   title: "Ergebnis Center — SynSight Command Center",
   description:
-    "Analyse-Ergebnisse, Risiko Bewertung und Empfehlungen in der SynSight Zentrale.",
+    "Vollständige Beispiel-Reports zu allen SynSight Analysen: Funde, Risiko und Empfehlungen — verständlich erklärt.",
 };
 
 export default function DashboardResultsPage() {

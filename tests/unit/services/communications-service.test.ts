@@ -3,6 +3,7 @@ import { resetInMemoryStores } from "../../helpers/memory-reset";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 import {
   AdminForbiddenError,
+  deleteCommunicationRequest,
   forwardCommunicationRequest,
   getCommunicationInboxSummary,
   getCommunicationSettings,
