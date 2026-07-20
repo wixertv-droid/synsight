@@ -2,20 +2,15 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-const HASH_REDIRECTS: Record<string, string> = {
-  "pricing-management": "/admin/marketing/preise",
-  "promotions-management": "/admin/marketing/promotionen",
-  "admin-communications": "/admin/support/nachrichten",
-};
+import { ADMIN_LEGACY_HASH_REDIRECTS } from "@/lib/admin/navigation";
 
 export default function AdminLegacyHashRedirect() {
   const router = useRouter();
 
   useEffect(() => {
     const hash = window.location.hash.replace(/^#/, "");
-    if (hash && HASH_REDIRECTS[hash]) {
-      router.replace(HASH_REDIRECTS[hash]);
+    if (hash && ADMIN_LEGACY_HASH_REDIRECTS[hash]) {
+      router.replace(ADMIN_LEGACY_HASH_REDIRECTS[hash]);
     }
   }, [router]);
 

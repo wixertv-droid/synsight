@@ -1,0 +1,67 @@
+import { NextResponse } from "next/server";
+import { apiError, apiSuccess } from "@/lib/api/response";
+import { getAdminAccess } from "@/lib/admin/access";
+import {
+  listAdminApiCredentials,
+  setAdminApiCredentialActive,
+  upsertAdminApiCredential,
+} from "@/lib/services/admin-platform-service";
+import { adminApiCredentialSchema } from "@/lib/validation/admin-platform";
+import { validateMutationOrigin } from "@/lib/security/request";
+
+function denied(status: 401 | 403) {
+  return NextResponse.json(
+    apiError(
+      status === 401 ? "UNAUTHORIZED" : "FORBIDDEN",
+      status === 401
+        ? "Sie müssen angemeldet sein."
+        : "Administratorrechte erforderlich."
+    ),
+    { status }
+  );
+}
+
+export async function GET() {
+  const access = await getAdminAccess();
+  if (!access.granted) return denied(access.status);
+  const credentials = await listAdminApiCredentials(access.user);
+  return NextResponse.json(apiSuccess({ credentials }));
+}
+
+export async function PUT(request: Request) {
+  const csrfError = validateMutationOrigin(request);
+  if (csrfError) return csrfError;
+  const access = await getAdminAccess();
+  if (!access.granted) return denied(access.status);
+
+  const parsed = adminApiCredentialSchema.safeParse(
+    await request.json().catch(() => null)
+  );
+  if (!parsed.success) {
+    return NextResponse.json(
+      apiError(
+        "VALIDATION_ERROR",
+        parsed.error.issues[0]?.message ?? "Ungültige API-Konfiguration."
+      ),
+      { status: 400 }
+    );
+  }
+
+  if (parsed.data.action === "toggle") {
+    const credential = await setAdminApiCredentialActive(
+      access.user,
+      parsed.data.provider,
+      parsed.data.isActive
+    );
+    if (!credential) {
+      return NextResponse.json(
+        apiError("NOT_FOUND", "API-Anbieter ist noch nicht konfiguriert."),
+        { status: 404 }
+      );
+    }
+    return NextResponse.json(apiSuccess({ credential }));
+  }
+
+  const credential = await upsertAdminApiCredential(access.user, parsed.data);
+  return NextResponse.json(apiSuccess({ credential }));
+}

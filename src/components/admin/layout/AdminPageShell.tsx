@@ -26,11 +26,6 @@ export default function AdminPageShell({
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/38">
           {description}
         </p>
-        {item?.badge === "soon" ? (
-          <p className="mt-3 inline-flex rounded-lg border border-white/10 px-3 py-1.5 font-mono text-[8px] tracking-[.12em] text-white/35">
-            MODUL IN VORBEREITUNG — BESTEHENDE APIS BLEIBEN UNVERÄNDERT
-          </p>
-        ) : null}
       </header>
       {children}
     </div>

@@ -85,7 +85,7 @@ export default function AdminUserOverviewView({
   );
 }
 
-export function AdminUserTable() {
+export function AdminUserTable({ statusFilter }: { statusFilter?: string }) {
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<
     Array<{
@@ -104,18 +104,26 @@ export function AdminUserTable() {
   >([]);
   const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async (search: string) => {
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `/api/admin/users/list?q=${encodeURIComponent(search)}&limit=50`
-      );
-      const body = await response.json();
-      if (body.success) setUsers(body.data.users);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (search: string) => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          q: search,
+          limit: "50",
+        });
+        if (statusFilter) params.set("status", statusFilter);
+        const response = await fetch(
+          `/api/admin/users/list?${params.toString()}`
+        );
+        const body = await response.json();
+        if (body.success) setUsers(body.data.users);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [statusFilter]
+  );
 
   useEffect(() => {
     void load("");

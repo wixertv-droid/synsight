@@ -51,7 +51,7 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
     sections: {
       benutzer: {
         label: "Benutzer",
-        href: "/admin/benutzer",
+        href: "/admin/benutzer/uebersicht",
         metrics: [
           {
             label: "Neue Registrierungen heute",
@@ -63,7 +63,7 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
       },
       marketing: {
         label: "Marketing",
-        href: "/admin/marketing",
+        href: "/admin/marketing/preise",
         metrics: [
           { label: "Aktive Promotionen", value: activePromotions },
           { label: "Analyseprodukte aktiv", value: activeAnalyses },
@@ -75,7 +75,7 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
       },
       website: {
         label: "Website",
-        href: "/admin/website",
+        href: "/admin/website/systemstatus",
         metrics: [
           {
             label: "Systemstatus",
@@ -93,7 +93,7 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
       },
       support: {
         label: "Support",
-        href: "/admin/support",
+        href: "/admin/support/nachrichten",
         metrics: [
           { label: "Offene Nachrichten", value: inbox.newCount },
           { label: "Gesamt Inbox", value: inbox.total },

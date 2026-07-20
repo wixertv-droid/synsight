@@ -30,9 +30,10 @@ export default function AdminAnalysisModulesView() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "upsert_analysis",
+          action: "upsert",
           analysisKey: row.analysisKey,
           label: row.label,
+          description: null,
           credits: row.credits,
           isActive: !row.isActive,
           sortOrder: row.id,

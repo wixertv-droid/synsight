@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ADMIN_SECTIONS,
+  ADMIN_SIDEBAR_LINKS,
   adminPageHref,
   getAdminNavItem,
   getAdminSection,
@@ -13,6 +14,16 @@ describe("admin navigation", () => {
       "marketing",
       "website",
       "support",
+    ]);
+  });
+
+  it("exposes five sidebar links (overview + four areas)", () => {
+    expect(ADMIN_SIDEBAR_LINKS.map((link) => link.code)).toEqual([
+      "A0",
+      "A1",
+      "A2",
+      "A3",
+      "A4",
     ]);
   });
 

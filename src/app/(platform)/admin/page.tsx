@@ -21,7 +21,7 @@ export default async function AdminDashboardPage() {
       <AdminDashboardTiles />
       <section className="mt-10">
         <p className="font-mono text-[8px] tracking-[.16em] text-white/25">
-          BEREICHE
+          BEREICHE — WÄHLEN SIE IN DER SIDEBAR ODER HIER
         </p>
         <div className="mt-4">
           <AdminSectionTiles />
