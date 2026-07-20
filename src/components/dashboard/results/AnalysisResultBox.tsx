@@ -131,6 +131,8 @@ export default function AnalysisResultBox({
           <div className="border-t border-white/[0.07] px-5 py-5 md:px-6 md:py-6">
             {status === "completed" && children ? (
               children
+            ) : status === "ready" && children ? (
+              children
             ) : (
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
                 <p className="font-mono text-[8px] tracking-[.14em] text-white/28">

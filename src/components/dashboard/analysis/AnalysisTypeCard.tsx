@@ -11,7 +11,10 @@ export default function AnalysisTypeCard({
   credits: number;
   featured?: boolean;
 }) {
-  const resultsHref = `/dashboard/results#${module.id}`;
+  const resultsHref =
+    module.id === "google_search"
+      ? "/dashboard/analysis/google?start=1"
+      : `/dashboard/results#${module.id}`;
 
   return (
     <article
@@ -113,10 +116,14 @@ export default function AnalysisTypeCard({
             : "border border-cyber-cyan/35 bg-[linear-gradient(110deg,rgba(114,231,255,.16),rgba(41,182,246,.1))] text-cyber-cyan hover:border-cyber-cyan/55 hover:text-white"
         }`}
       >
-        Analyse starten
+        {module.id === "google_search"
+          ? "Google Analyse starten"
+          : "Analyse starten"}
       </Link>
       <p className="relative mt-2 text-center font-mono text-[8px] tracking-[.12em] text-white/20">
-        UI-VORSCHAU · DEMO-ERGEBNIS · KEINE LIVE-API
+        {module.id === "google_search"
+          ? "SCAN · API-VERIFIZIERT · SOC-REPORT"
+          : "START IM ANALYSE CENTER"}
       </p>
     </article>
   );
