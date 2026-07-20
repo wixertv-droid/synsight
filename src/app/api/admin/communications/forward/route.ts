@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { getAdminAccess } from "@/lib/admin/access";
+import { getSupportStaffAccess } from "@/lib/admin/access";
 import { forwardCommunicationRequest } from "@/lib/services/communications-service";
 import { adminRequestForwardSchema } from "@/lib/validation/communications";
 import { validateMutationOrigin } from "@/lib/security/request";
 
 export async function POST(request: Request) {
-  const access = await getAdminAccess();
+  const access = await getSupportStaffAccess();
   if (!access.granted) {
     return NextResponse.json(
       apiError(

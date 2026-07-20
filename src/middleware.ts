@@ -36,9 +36,21 @@ export async function middleware(request: NextRequest) {
 
   if (
     (pathname === "/admin" || pathname.startsWith("/admin/")) &&
-    session.role !== "admin"
+    session.role !== "admin" &&
+    session.role !== "support"
   ) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  if (
+    pathname.startsWith("/admin/") &&
+    session.role === "support" &&
+    !pathname.startsWith("/admin/support") &&
+    !pathname.startsWith("/admin/benutzer/profil/")
+  ) {
+    return NextResponse.redirect(
+      new URL("/admin/support/tickets", request.url)
+    );
   }
 
   return NextResponse.next();

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { PlatformSettings } from "@/lib/services/admin-platform-service";
 
-const FIELD_LABELS: Record<keyof PlatformSettings, string> = {
+const FIELD_LABELS: Partial<Record<keyof PlatformSettings, string>> = {
   imageMaxUploadMb: "Maximale Dateigröße (MB)",
   imageCompressionQuality: "Kompressionsqualität",
   imageWebpQuality: "WebP Qualität",

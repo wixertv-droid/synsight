@@ -4,26 +4,36 @@ import { getUserRepository } from "@/lib/repositories";
 
 const { accessState } = vi.hoisted(() => ({
   accessState: {
-    role: "admin" as "admin" | "user",
+    role: "admin" as "admin" | "support" | "user",
     authenticated: true,
   },
 }));
 
+function buildAccess() {
+  if (!accessState.authenticated) {
+    return { granted: false, status: 401, user: null };
+  }
+  const user = {
+    id: "1",
+    displayName: "Test Actor",
+    email: "actor@example.com",
+    role: accessState.role,
+  };
+  if (accessState.role === "admin" || accessState.role === "support") {
+    return { granted: true, status: 200, user, staffRole: accessState.role };
+  }
+  return { granted: false, status: 403, user };
+}
+
 vi.mock("@/lib/admin/access", () => ({
   getAdminAccess: async () => {
-    if (!accessState.authenticated) {
-      return { granted: false, status: 401, user: null };
+    const access = buildAccess();
+    if (!access.granted || access.user?.role !== "admin") {
+      return { granted: false, status: access.status, user: access.user };
     }
-    const user = {
-      id: "1",
-      displayName: "Test Actor",
-      email: "actor@example.com",
-      role: accessState.role,
-    };
-    return accessState.role === "admin"
-      ? { granted: true, status: 200, user }
-      : { granted: false, status: 403, user };
+    return { granted: true, status: 200, user: access.user };
   },
+  getSupportStaffAccess: async () => buildAccess(),
 }));
 
 import { GET as usersGet } from "@/app/api/admin/users/route";

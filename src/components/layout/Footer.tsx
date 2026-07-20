@@ -21,9 +21,12 @@ const footerLinks = {
     { label: "AGB", href: "/agb" },
     { label: "Cookies", href: "/cookies" },
     { label: "Nutzungsbedingungen", href: "/nutzungsbedingungen" },
+    { label: "Support-Richtlinien", href: "/support-richtlinien" },
     { label: "Security", href: "/security" },
   ],
   Support: [
+    { label: "Support-Ticket", href: "/#support" },
+    { label: "Support-Richtlinien", href: "/support-richtlinien" },
     { label: "Kontakt", href: "/contact" },
     { label: "Login", href: "/login" },
     { label: "Konto erstellen", href: "/register" },

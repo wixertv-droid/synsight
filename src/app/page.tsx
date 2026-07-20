@@ -33,6 +33,10 @@ const SynCreditsSection = dynamic(
   () => import("@/components/sections/SynCreditsSection"),
   { ssr: false }
 );
+const SupportSection = dynamic(
+  () => import("@/components/sections/SupportSection"),
+  { ssr: false }
+);
 
 type BootState = "checking" | "launch" | "ready";
 
@@ -87,6 +91,7 @@ export default function Home() {
             <DigitalTraces />
             <WhatSynSightRecognizes />
             <SynCreditsSection />
+            <SupportSection />
             <TrustSection />
             <Footer />
           </>

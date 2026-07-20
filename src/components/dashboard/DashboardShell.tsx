@@ -71,8 +71,10 @@ export default function DashboardShell({
                 {creditBalance.toLocaleString("de-DE")}
               </p>
             </a>
-            {user.role === "admin" ? <AdminInboxBadge /> : null}
-            {user.role !== "admin" ? (
+            {user.role === "admin" || user.role === "support" ? (
+              <AdminInboxBadge />
+            ) : null}
+            {user.role !== "admin" && user.role !== "support" ? (
               <button
                 type="button"
                 className="relative rounded-lg border border-white/[0.06] bg-white/[0.018] p-2.5 text-white/35 transition-colors hover:text-white/70"

@@ -19,6 +19,7 @@ import { createAdminRepository } from "./mysql/admin-repository";
 import { createPricingRepository } from "./mysql/pricing-repository";
 import { createPromotionsRepository } from "./mysql/promotions-repository";
 import { createCommunicationsRepository } from "./mysql/communications-repository";
+import { createSupportTicketRepository } from "./mysql/support-repository";
 import type { AuditRepository } from "./audit-repository";
 import type { ProfileRepository } from "./profile-repository";
 import type { SecurityRepository } from "./security-repository";
@@ -32,6 +33,7 @@ import type { AdminRepository } from "./admin-repository";
 import type { PricingRepository } from "./pricing-repository";
 import type { PromotionsRepository } from "./promotions-repository";
 import type { CommunicationsRepository } from "./communications-repository";
+import type { SupportTicketRepository } from "./support-repository";
 
 export function getUserRepository(): UserRepository {
   return createUserRepository(getDatabase());
@@ -83,4 +85,8 @@ export function getPromotionsRepository(): PromotionsRepository {
 
 export function getCommunicationsRepository(): CommunicationsRepository {
   return createCommunicationsRepository(getDatabase());
+}
+
+export function getSupportTicketRepository(): SupportTicketRepository {
+  return createSupportTicketRepository(getDatabase());
 }

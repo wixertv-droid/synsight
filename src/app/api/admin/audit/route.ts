@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { getAdminAccess } from "@/lib/admin/access";
+import { getSupportStaffAccess } from "@/lib/admin/access";
 import { listAdminAuditEvents } from "@/lib/services/admin-user-profile-service";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const access = await getAdminAccess();
+  const access = await getSupportStaffAccess();
   if (!access.granted) {
     return NextResponse.json(
       apiError(

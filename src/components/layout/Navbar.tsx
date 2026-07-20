@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 interface SessionUser {
   displayName: string;
   email: string;
-  role: "admin" | "user";
+  role: "admin" | "support" | "user";
 }
 
 type SessionState =
@@ -112,9 +112,13 @@ export default function Navbar() {
           >
             Dashboard
           </Link>
-          {session.user.role === "admin" ? (
+          {session.user.role === "admin" || session.user.role === "support" ? (
             <Link
-              href="/admin"
+              href={
+                session.user.role === "support"
+                  ? "/admin/support/tickets"
+                  : "/admin"
+              }
               className={
                 mobile
                   ? "block py-2 text-sm text-cyber-cyan/70"
@@ -122,7 +126,9 @@ export default function Navbar() {
               }
               onClick={() => setMenuOpen(false)}
             >
-              Admin Center
+              {session.user.role === "support"
+                ? "Support Center"
+                : "Admin Center"}
             </Link>
           ) : null}
           <button

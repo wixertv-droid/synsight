@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { getAdminAccess } from "@/lib/admin/access";
+import { getSupportStaffAccess } from "@/lib/admin/access";
 import { searchAdminUsers } from "@/lib/services/admin-service";
 
 export async function GET(request: Request) {
-  const access = await getAdminAccess();
+  const access = await getSupportStaffAccess();
   if (!access.granted) {
     return NextResponse.json(
       apiError(

@@ -3,15 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getAdminSection, type AdminSectionId } from "@/lib/admin/navigation";
+import type { UserRole } from "@/lib/auth/types";
 
 export default function AdminSectionSidebar({
   sectionId,
+  role,
 }: {
   sectionId: AdminSectionId;
+  role: UserRole;
 }) {
   const pathname = usePathname();
   const section = getAdminSection(sectionId);
   if (!section) return null;
+
+  const items = section.items.filter((item) => {
+    if (role === "support") {
+      return !["support-settings", "support-roles"].includes(item.view);
+    }
+    return true;
+  });
 
   return (
     <nav
@@ -22,7 +32,7 @@ export default function AdminSectionSidebar({
         {section.title.toUpperCase()}
       </p>
       <ul className="mt-3 space-y-1">
-        {section.items.map((item) => {
+        {items.map((item) => {
           const href = `${section.href}/${item.slug}`;
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (

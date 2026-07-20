@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { getAdminAccess } from "@/lib/admin/access";
+import { getSupportStaffAccess } from "@/lib/admin/access";
 import {
   getCommunicationSettings,
   listCommunicationRequests,
@@ -12,6 +12,7 @@ import {
   communicationSettingsSchema,
 } from "@/lib/validation/communications";
 import { validateMutationOrigin } from "@/lib/security/request";
+import { getAdminAccess } from "@/lib/admin/access";
 
 function denied(status: 401 | 403) {
   return NextResponse.json(
@@ -19,22 +20,23 @@ function denied(status: 401 | 403) {
       status === 401 ? "UNAUTHORIZED" : "FORBIDDEN",
       status === 401
         ? "Sie müssen angemeldet sein."
-        : "Administratorrechte erforderlich."
+        : "Support- oder Adminrechte erforderlich."
     ),
     { status }
   );
 }
 
 export async function GET() {
-  const access = await getAdminAccess();
+  const access = await getSupportStaffAccess();
   if (!access.granted) return denied(access.status);
 
-  const [settings, requests] = await Promise.all([
-    getCommunicationSettings(access.user),
-    listCommunicationRequests(access.user),
-  ]);
+  const requests = await listCommunicationRequests(access.user);
+  if (access.user.role === "admin") {
+    const settings = await getCommunicationSettings(access.user);
+    return NextResponse.json(apiSuccess({ settings, requests }));
+  }
 
-  return NextResponse.json(apiSuccess({ settings, requests }));
+  return NextResponse.json(apiSuccess({ requests }));
 }
 
 export async function PUT(request: Request) {
@@ -64,7 +66,7 @@ export async function PUT(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const access = await getAdminAccess();
+  const access = await getSupportStaffAccess();
   if (!access.granted) return denied(access.status);
 
   const csrfError = validateMutationOrigin(request);

@@ -10,6 +10,12 @@ import {
 } from "@/lib/services/credits-service";
 import { getIdentityForUser } from "@/lib/services/identity-service";
 
+import { canAccessAdminArea } from "@/lib/admin/permissions";
+
+function assertStaff(actor: AuthenticatedUser): void {
+  if (!canAccessAdminArea(actor.role)) throw new Error("STAFF_FORBIDDEN");
+}
+
 function assertAdmin(actor: AuthenticatedUser): void {
   if (actor.role !== "admin") throw new Error("ADMIN_FORBIDDEN");
 }
@@ -18,7 +24,7 @@ export async function getAdminUserFullProfile(
   actor: AuthenticatedUser,
   userId: number
 ) {
-  assertAdmin(actor);
+  assertStaff(actor);
 
   const user = await getAdminRepository().findUserById(userId);
   if (!user) return null;
@@ -108,7 +114,7 @@ export async function listAdminUsers(
   actor: AuthenticatedUser,
   params: Parameters<ReturnType<typeof getAdminRepository>["listUsers"]>[0]
 ) {
-  assertAdmin(actor);
+  assertStaff(actor);
   return getAdminRepository().listUsers(params);
 }
 
@@ -116,7 +122,7 @@ export async function listAdminAuditEvents(
   actor: AuthenticatedUser,
   params: { userId?: number; limit?: number }
 ) {
-  assertAdmin(actor);
+  assertStaff(actor);
   return getAdminRepository().listAuditEvents(params);
 }
 
@@ -125,6 +131,6 @@ export async function listAdminUserSessions(
   userId: number,
   limit?: number
 ) {
-  assertAdmin(actor);
+  assertStaff(actor);
   return getAdminRepository().listUserSessions(userId, limit);
 }

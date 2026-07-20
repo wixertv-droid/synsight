@@ -1,3 +1,6 @@
+import type { UserRole } from "@/lib/auth/types";
+import { canAccessAdminSection } from "@/lib/admin/permissions";
+
 export type AdminSectionId = "benutzer" | "marketing" | "website" | "support";
 
 export interface AdminNavItem {
@@ -141,9 +144,16 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
     sidebarCode: "A4",
     description: "Nachrichten, Benutzersuche und Aktivitäten.",
     href: "/admin/support",
-    defaultSlug: "nachrichten",
+    defaultSlug: "tickets",
     icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z",
     items: [
+      {
+        slug: "tickets",
+        label: "Support-Tickets",
+        description: "Eingehende Tickets von Startseite und Dashboard.",
+        help: "Status, Priorität und Zuweisung verwalten.",
+        view: "support-tickets",
+      },
       {
         slug: "nachrichten",
         label: "Nachrichten",
@@ -165,6 +175,20 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
         help: "Chronologischer Feed aus audit_events.",
         view: "support-activity",
       },
+      {
+        slug: "einstellungen",
+        label: "Support-Zeiten",
+        description: "Erreichbarkeit und Statusanzeige konfigurieren.",
+        help: "Öffnungszeiten für grün/orange/rot Status im Dashboard.",
+        view: "support-settings",
+      },
+      {
+        slug: "rechte",
+        label: "Support-Rechte",
+        description: "Support-Rolle an Benutzer vergeben.",
+        help: "Nur Administratoren können Rollen zuweisen.",
+        view: "support-roles",
+      },
     ],
   },
 ];
@@ -175,6 +199,7 @@ export const ADMIN_SIDEBAR_LINKS = [
     label: "Übersicht",
     href: "/admin",
     match: (pathname: string) => pathname === "/admin",
+    section: "overview" as const,
   },
   ...ADMIN_SECTIONS.map((section) => ({
     code: section.sidebarCode,
@@ -182,8 +207,38 @@ export const ADMIN_SIDEBAR_LINKS = [
     href: `${section.href}/${section.defaultSlug}`,
     match: (pathname: string) =>
       pathname === section.href || pathname.startsWith(`${section.href}/`),
+    section: section.id,
   })),
 ];
+
+export function getAdminSidebarLinksForRole(role: UserRole) {
+  return ADMIN_SIDEBAR_LINKS.filter((link) =>
+    canAccessAdminSection(role, link.section)
+  );
+}
+
+export function getAdminSectionsForRole(role: UserRole) {
+  return ADMIN_SECTIONS.filter((section) =>
+    canAccessAdminSection(role, section.id)
+  );
+}
+
+export function getAdminNavItemForRole(
+  role: UserRole,
+  sectionId: string,
+  pageSlug: string
+) {
+  const item = getAdminNavItem(sectionId, pageSlug);
+  if (!item) return null;
+  if (!canAccessAdminSection(role, item.section.id)) return null;
+  if (
+    role === "support" &&
+    (item.view === "support-settings" || item.view === "support-roles")
+  ) {
+    return null;
+  }
+  return item;
+}
 
 export function getAdminSection(sectionId: string): AdminSectionConfig | null {
   return ADMIN_SECTIONS.find((section) => section.id === sectionId) ?? null;

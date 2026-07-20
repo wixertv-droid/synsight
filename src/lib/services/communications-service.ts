@@ -27,6 +27,12 @@ export class SpamRejectedError extends Error {
   }
 }
 
+import { canAccessAdminArea } from "@/lib/admin/permissions";
+
+function assertStaff(actor: AuthenticatedUser) {
+  if (!canAccessAdminArea(actor.role)) throw new AdminForbiddenError();
+}
+
 function assertAdmin(actor: AuthenticatedUser) {
   if (actor.role !== "admin") throw new AdminForbiddenError();
 }
@@ -151,7 +157,7 @@ export async function updateCommunicationSettings(input: {
 }
 
 export async function listCommunicationRequests(actor: AuthenticatedUser) {
-  assertAdmin(actor);
+  assertStaff(actor);
   const repo = getCommunicationsRepository();
   const [contact, partner, press] = await Promise.all([
     repo.listContactRequests(),
@@ -168,7 +174,7 @@ export async function updateCommunicationRequestStatus(input: {
   status: RequestStatus;
   adminNotes?: string | null;
 }) {
-  assertAdmin(input.actor);
+  assertStaff(input.actor);
   const updated = await getCommunicationsRepository().updateRequestStatus({
     channel: input.channel,
     id: input.id,
@@ -182,7 +188,7 @@ export async function updateCommunicationRequestStatus(input: {
 }
 
 export async function getCommunicationInboxSummary(actor: AuthenticatedUser) {
-  assertAdmin(actor);
+  assertStaff(actor);
   const requests = await listCommunicationRequests(actor);
 
   const summarize = (
@@ -237,7 +243,7 @@ export async function forwardCommunicationRequest(input: {
   channel: CommunicationChannel;
   id: number;
 }) {
-  assertAdmin(input.actor);
+  assertStaff(input.actor);
   const repo = getCommunicationsRepository();
   const settings = await repo.getSettings();
   const request = await findCommunicationRequest(input.channel, input.id);
@@ -306,7 +312,7 @@ export async function deleteCommunicationRequest(input: {
   channel: CommunicationChannel;
   id: number;
 }) {
-  assertAdmin(input.actor);
+  assertStaff(input.actor);
   const deleted = await getCommunicationsRepository().deleteRequest({
     channel: input.channel,
     id: input.id,

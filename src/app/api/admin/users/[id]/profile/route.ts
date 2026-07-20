@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { getAdminAccess } from "@/lib/admin/access";
+import { getSupportStaffAccess } from "@/lib/admin/access";
 import { getAdminUserFullProfile } from "@/lib/services/admin-user-profile-service";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const access = await getAdminAccess();
+  const access = await getSupportStaffAccess();
   if (!access.granted) {
     return NextResponse.json(
       apiError(

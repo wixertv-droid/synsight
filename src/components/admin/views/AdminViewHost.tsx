@@ -11,6 +11,9 @@ import AdminUserProfilePanel from "@/components/admin/views/AdminUserProfilePane
 import AdminUserOverviewView, {
   AdminUserTable,
 } from "@/components/admin/views/AdminUserViews";
+import AdminSupportTicketsView from "@/components/admin/views/AdminSupportTicketsView";
+import AdminSupportSettingsView from "@/components/admin/views/AdminSupportSettingsView";
+import AdminUserRolesView from "@/components/admin/views/AdminUserRolesView";
 import type { AdminUserOverviewStats } from "@/lib/repositories/admin-repository";
 
 export default function AdminViewHost({
@@ -48,6 +51,12 @@ export default function AdminViewHost({
       return <AdminImageSettingsView />;
     case "support-messages":
       return <AdminCommunicationsControl />;
+    case "support-tickets":
+      return <AdminSupportTicketsView />;
+    case "support-settings":
+      return <AdminSupportSettingsView />;
+    case "support-roles":
+      return <AdminUserRolesView />;
     case "support-activity":
       return <AdminAuditView title="Support-Aktivitäten" />;
     case "user-profile":

@@ -9,6 +9,7 @@ const sections = [
   { id: "traces", label: "SPUREN" },
   { id: "technology", label: "ERKENNUNG" },
   { id: "syncredits", label: "CREDITS" },
+  { id: "support", label: "SUPPORT" },
   { id: "trust", label: "VERTRAUEN" },
 ];
 

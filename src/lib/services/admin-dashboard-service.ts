@@ -93,7 +93,7 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
       },
       support: {
         label: "Support",
-        href: "/admin/support/nachrichten",
+        href: "/admin/support/tickets",
         metrics: [
           { label: "Offene Nachrichten", value: inbox.newCount },
           { label: "Gesamt Inbox", value: inbox.total },

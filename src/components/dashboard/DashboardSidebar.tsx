@@ -64,6 +64,12 @@ const navigation = [
     code: "08",
     icon: "M6 3h9l3 3v15H6V3zm3 6h6m-6 4h6m-6 4h4",
   },
+  {
+    label: "Support",
+    href: "/dashboard/support",
+    code: "11",
+    icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z",
+  },
 ];
 
 function isNavActive(href: string, pathname: string): boolean {
@@ -157,8 +163,8 @@ export default function DashboardSidebar({
               </Link>
             );
           })}
-          {user.role === "admin" ? (
-            <AdminMainSidebarLinks onNavigate={onClose} />
+          {user.role === "admin" || user.role === "support" ? (
+            <AdminMainSidebarLinks role={user.role} onNavigate={onClose} />
           ) : null}
         </nav>
 
@@ -188,7 +194,11 @@ export default function DashboardSidebar({
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs text-white/70">{user.displayName}</p>
             <p className="mt-1 truncate font-mono text-[7px] tracking-wider text-white/20">
-              {user.role === "admin" ? "ADMIN ACCOUNT" : "USER ACCOUNT"}
+              {user.role === "admin"
+                ? "ADMIN ACCOUNT"
+                : user.role === "support"
+                  ? "SUPPORT ACCOUNT"
+                  : "USER ACCOUNT"}
             </p>
           </div>
           <LogoutButton />

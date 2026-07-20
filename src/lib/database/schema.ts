@@ -30,7 +30,7 @@ const userStatusEnum = mysqlEnum("status", [
   "deleted",
 ]);
 
-const userRoleEnum = mysqlEnum("role", ["admin", "user"]);
+const userRoleEnum = mysqlEnum("role", ["admin", "support", "user"]);
 
 const tokenTypeEnum = mysqlEnum("token_type", [
   "password_reset",
@@ -1073,6 +1073,56 @@ export const pressRequests = mysqlTable(
     index("press_requests_status_idx").on(table.status),
     index("press_requests_created_at_idx").on(table.createdAt),
     index("press_requests_email_idx").on(table.email),
+  ]
+);
+
+const supportTicketStatusEnum = mysqlEnum("status", [
+  "new",
+  "open",
+  "waiting",
+  "resolved",
+  "closed",
+]);
+
+const supportTicketPriorityEnum = mysqlEnum("priority", [
+  "low",
+  "normal",
+  "high",
+  "urgent",
+]);
+
+const supportTicketSourceEnum = mysqlEnum("source", ["public", "dashboard"]);
+
+export const supportTickets = mysqlTable(
+  "support_tickets",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    ticketNumber: varchar("ticket_number", { length: 24 }).notNull(),
+    userId: bigint("user_id", { mode: "number", unsigned: true }),
+    name: varchar("name", { length: 150 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    subject: varchar("subject", { length: 255 }).notNull(),
+    message: text("message").notNull(),
+    status: supportTicketStatusEnum.notNull().default("new"),
+    priority: supportTicketPriorityEnum.notNull().default("normal"),
+    assignedTo: bigint("assigned_to", { mode: "number", unsigned: true }),
+    source: supportTicketSourceEnum.notNull().default("public"),
+    adminNotes: text("admin_notes"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("support_tickets_number_unique").on(table.ticketNumber),
+    index("support_tickets_user_id_idx").on(table.userId),
+    index("support_tickets_status_idx").on(table.status),
+    index("support_tickets_email_idx").on(table.email),
   ]
 );
 
