@@ -47,9 +47,10 @@ export async function getAdminUserDetail(
 
 export async function getAdminSystemStatus(actor: AuthenticatedUser) {
   assertAdmin(actor);
-  const [stats, database] = await Promise.all([
+  const [stats, database, overview] = await Promise.all([
     getAdminRepository().getSystemStats(),
     getDatabaseHealth(),
+    getAdminRepository().getUserOverviewStats(),
   ]);
 
   return {
@@ -68,6 +69,11 @@ export async function getAdminSystemStatus(actor: AuthenticatedUser) {
     administratorsTotal: stats.administratorsTotal,
     registrationsToday: stats.registrationsToday,
     registrationsTotal: stats.usersTotal,
+    registrationsThisWeek: overview.registrationsThisWeek,
+    registrationsThisMonth: overview.registrationsThisMonth,
+    verifiedUsers: overview.verifiedUsers,
+    activeUsers: overview.activeUsers,
+    averageSynCredits: overview.averageSynCredits,
     checkedAt: new Date().toISOString(),
   };
 }
