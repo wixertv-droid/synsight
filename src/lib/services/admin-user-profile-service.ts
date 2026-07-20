@@ -2,7 +2,6 @@ import type { AuthenticatedUser } from "@/lib/auth/types";
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
 import {
   getAdminRepository,
-  getCreditsRepository,
   getPromotionsRepository,
 } from "@/lib/repositories";
 import {

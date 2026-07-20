@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AdminUserOverviewStats } from "@/lib/repositories/admin-repository";
 
 function StatCard({
@@ -104,7 +104,7 @@ export function AdminUserTable() {
   >([]);
   const [loading, setLoading] = useState(false);
 
-  async function load(search = query) {
+  const load = useCallback(async (search: string) => {
     setLoading(true);
     try {
       const response = await fetch(
@@ -115,11 +115,11 @@ export function AdminUserTable() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void load("");
-  }, []);
+  }, [load]);
 
   return (
     <div className="space-y-4">

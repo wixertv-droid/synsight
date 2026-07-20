@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -100,7 +101,7 @@ export default function Navbar() {
     if (session.status === "authenticated") {
       return (
         <>
-          <a
+          <Link
             href="/dashboard"
             className={
               mobile
@@ -110,9 +111,9 @@ export default function Navbar() {
             onClick={() => setMenuOpen(false)}
           >
             Dashboard
-          </a>
+          </Link>
           {session.user.role === "admin" ? (
-            <a
+            <Link
               href="/admin"
               className={
                 mobile
@@ -122,7 +123,7 @@ export default function Navbar() {
               onClick={() => setMenuOpen(false)}
             >
               Admin Center
-            </a>
+            </Link>
           ) : null}
           <button
             type="button"
