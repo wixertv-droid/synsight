@@ -13,9 +13,10 @@
    Sanitizer kürzt nicht mehr aggressiv; Absätze bleiben erhalten.
 3. **Analyse-Zusammenfassung** — in verständliche Kurzabschnitte umgeschrieben
    (Kurz gesagt → Was betrifft Sie → Risiko → Empfehlung).
-4. **Abschnitts-Rail** — rechts wie auf der Startseite (SystemRail) mit Ebenen
-   für Überblick, Zusammenfassung, Management, Risiko, Anfragen, Treffer,
-   Maßnahmen, Executive.
+4. **Abschnitts-Rail** — rechts wie auf der Startseite, Labels immer sichtbar,
+   präzises Scroll-Tracking (`getBoundingClientRect` + rAF), Klick-Lock gegen
+   Springen, schmalerer Report-Body (`max-w ~880–940px`) und sehr dezenter
+   Matrix-Code nur in den Seiten-Gutters.
 
 ## Deploy
 
@@ -31,5 +32,4 @@ pm2 restart ecosystem.config.cjs --update-env
 ```
 
 Hinweis: Für ein frisches, vollständiges KI-Lagebild die Google-Analyse einmal
-neu starten. Die Analyse-Zusammenfassung und die rechte Abschnitts-Navigation
-gelten sofort nach Deploy.
+neu starten. Rail und Matrix-Hintergrund gelten sofort nach Deploy.

@@ -7,6 +7,7 @@ import ManagementOverviewPanel from "@/components/analysis/intelligence/Manageme
 import CategoryVisualPanel from "@/components/analysis/intelligence/CategoryVisualPanel";
 import RiskOverviewPanel from "@/components/analysis/intelligence/RiskOverviewPanel";
 import SectionReveal from "@/components/analysis/intelligence/SectionReveal";
+import MatrixCodeField from "@/components/analysis/google/MatrixCodeField";
 import SystemRail, {
   type SystemRailSection,
 } from "@/components/layout/SystemRail";
@@ -227,311 +228,315 @@ export default function GoogleIntelligenceReport({
   })();
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative isolate">
+      <MatrixCodeField className="z-0" />
       <SystemRail
         sectionsReady
         sections={REPORT_RAIL_SECTIONS}
-        className="right-3 xl:right-4"
+        alwaysShowLabels
+        activeOffsetPx={128}
+        className="right-3 xl:right-5"
       />
-
-      <SectionReveal delayMs={0} enabled={revealSections}>
-        <header
-          id="report-overview"
-          className="relative scroll-mt-28 overflow-hidden rounded-2xl border border-cyber-cyan/25 bg-gradient-to-br from-cyber-cyan/[0.08] via-[#071018] to-transparent p-5 md:p-7"
-        >
-          <p className="font-mono text-[9px] tracking-[.18em] text-cyber-cyan/70">
-            GOOGLE INTELLIGENCE REPORT · SICHERHEITSBERICHT
-          </p>
-          <h2 className="mt-2 max-w-4xl text-2xl font-semibold tracking-[-.03em] text-white/95 md:text-3xl">
-            Öffentliche Google-Spuren von {report.subjectName}
-          </h2>
-
-          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                label: "Betrifft mich",
-                value: String(scorecard.likelyMeCount),
-              },
-              {
-                label: "Kritisch",
-                value: String(scorecard.criticalCount),
-              },
-              {
-                label: "Gesamt-Score",
-                value: `${scorecard.overallScore}/100`,
-              },
-              {
-                label: "Als Erstes tun",
-                value: firstActionLabel,
-              },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-xl border border-white/[0.08] bg-black/25 px-3 py-3"
-              >
-                <p className="font-mono text-[7px] tracking-[.12em] text-white/30">
-                  {item.label.toUpperCase()}
-                </p>
-                <p
-                  className={`mt-1 font-semibold leading-snug text-cyber-cyan/90 ${
-                    item.label === "Als Erstes tun"
-                      ? "text-[15px] md:text-base"
-                      : "text-lg"
-                  }`}
-                >
-                  {item.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <p className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-white/35">
-            Erstellt: {report.generatedAtLabel}
-            <span className="text-white/15">·</span>
-            Speicherung:{" "}
-            {retentionLabel(report.retentionDays as ReportRetentionDays)}
-            <span className="text-white/15">·</span>
-            Gültig bis: {expiresLabel}
-            <span className="text-white/15">·</span>
-            Live-Treffer {liveHits.length} · Profil-Links {profileHits.length}
-          </p>
-        </header>
-      </SectionReveal>
-
-      <SectionReveal delayMs={180} enabled={revealSections}>
-        <section
-          id="report-summary"
-          className="scroll-mt-28 rounded-2xl border border-cyber-cyan/20 bg-gradient-to-br from-cyber-cyan/[0.06] to-transparent p-5 md:p-6"
-        >
-          <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
-            ANALYSE-ZUSAMMENFASSUNG
-          </p>
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-white/70">
-            {analysisSummary}
-          </p>
-          {report.aiSummary ? (
-            <div className="mt-4 border-t border-white/[0.06] pt-4">
-              <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
-                KI-LAGEBILD
-              </p>
-              <div className="mt-2 max-h-none overflow-visible whitespace-pre-line text-sm leading-relaxed text-white/55">
-                {sanitizeAiSummary(report.aiSummary)}
-              </div>
-            </div>
-          ) : null}
-        </section>
-      </SectionReveal>
-
-      <SectionReveal delayMs={280} enabled={revealSections}>
-        <div id="report-management" className="scroll-mt-28">
-          <ManagementOverviewPanel report={report} />
-        </div>
-      </SectionReveal>
-
-      <SectionReveal delayMs={420} enabled={revealSections}>
-        <div id="report-risk" className="scroll-mt-28">
-          <RiskOverviewPanel report={report} />
-        </div>
-      </SectionReveal>
-
-      <SectionReveal delayMs={560} enabled={revealSections}>
-        <section
-          id="report-queries"
-          className="scroll-mt-28 rounded-xl border border-white/[0.07] bg-white/[0.015]"
-        >
-          <button
-            type="button"
-            onClick={() => setQueriesOpen((open) => !open)}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-            aria-expanded={queriesOpen}
+      <div className="relative z-[1] mx-auto w-full max-w-[920px] space-y-6 xl:max-w-[880px] xl:pr-28 2xl:max-w-[940px]">
+        <SectionReveal delayMs={0} enabled={revealSections}>
+          <header
+            id="report-overview"
+            className="relative scroll-mt-28 overflow-hidden rounded-2xl border border-cyber-cyan/25 bg-gradient-to-br from-cyber-cyan/[0.08] via-[#071018] to-transparent p-5 md:p-7"
           >
-            <div className="flex items-center gap-2">
-              <h3 className="font-mono text-[9px] tracking-[.16em] text-white/35">
-                AUSGEFÜHRTE SUCHANFRAGEN
-              </h3>
-              <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[9px] text-white/40">
-                {queries.length}
-              </span>
-              <InfoTooltip label="Suchanfragen">
-                Nachweis der durchsuchten Profilfelder — für die Bewertung nicht
-                nötig.
-              </InfoTooltip>
-            </div>
-            <span className="font-mono text-[10px] text-cyber-cyan/70">
-              {queriesOpen ? "ZUKLAPPEN" : "AUFKLAPPEN"}
-            </span>
-          </button>
-          {queriesOpen ? (
-            <ul className="space-y-2 border-t border-white/[0.05] px-4 py-3">
-              {queries.map((query) => (
-                <li
-                  key={query.id}
-                  className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3"
-                >
-                  <span className="font-mono text-[8px] tracking-[.12em] text-cyber-cyan/55">
-                    {query.label.toUpperCase()}
-                  </span>
-                  <p className="mt-1.5 font-mono text-[12px] text-white/70">
-                    {query.query}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="border-t border-white/[0.05] px-4 py-2.5 text-[11px] text-white/30">
-              {queries.length} Profil-Suchanfragen · aufklappen bei Bedarf
+            <p className="font-mono text-[9px] tracking-[.18em] text-cyber-cyan/70">
+              GOOGLE INTELLIGENCE REPORT · SICHERHEITSBERICHT
             </p>
-          )}
-        </section>
-      </SectionReveal>
+            <h2 className="mt-2 max-w-4xl text-2xl font-semibold tracking-[-.03em] text-white/95 md:text-3xl">
+              Öffentliche Google-Spuren von {report.subjectName}
+            </h2>
 
-      <SectionReveal delayMs={700} enabled={revealSections}>
-        <div
-          id="report-hits"
-          className="scroll-mt-28 grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(250px,0.55fr)]"
-        >
-          <div className="min-w-0 space-y-4">
-            <section className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-4">
-              <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
-                FILTER · RISIKO
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {SEVERITY_FILTERS.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSeverityFilter(item.id)}
-                    className={`rounded-full border px-3 py-1.5 text-[12px] transition ${
-                      severityFilter === item.id
-                        ? "border-cyber-cyan/40 bg-cyber-cyan/15 text-cyber-cyan"
-                        : "border-white/10 text-white/45 hover:border-white/20 hover:text-white/70"
+            <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  label: "Betrifft mich",
+                  value: String(scorecard.likelyMeCount),
+                },
+                {
+                  label: "Kritisch",
+                  value: String(scorecard.criticalCount),
+                },
+                {
+                  label: "Gesamt-Score",
+                  value: `${scorecard.overallScore}/100`,
+                },
+                {
+                  label: "Als Erstes tun",
+                  value: firstActionLabel,
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-xl border border-white/[0.08] bg-black/25 px-3 py-3"
+                >
+                  <p className="font-mono text-[7px] tracking-[.12em] text-white/30">
+                    {item.label.toUpperCase()}
+                  </p>
+                  <p
+                    className={`mt-1 font-semibold leading-snug text-cyber-cyan/90 ${
+                      item.label === "Als Erstes tun"
+                        ? "text-[15px] md:text-base"
+                        : "text-lg"
                     }`}
                   >
-                    {item.label} ({severityCounts[item.id]})
-                  </button>
-                ))}
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-white/35">
+              Erstellt: {report.generatedAtLabel}
+              <span className="text-white/15">·</span>
+              Speicherung:{" "}
+              {retentionLabel(report.retentionDays as ReportRetentionDays)}
+              <span className="text-white/15">·</span>
+              Gültig bis: {expiresLabel}
+              <span className="text-white/15">·</span>
+              Live-Treffer {liveHits.length} · Profil-Links {profileHits.length}
+            </p>
+          </header>
+        </SectionReveal>
+
+        <SectionReveal delayMs={180} enabled={revealSections}>
+          <section
+            id="report-summary"
+            className="scroll-mt-28 rounded-2xl border border-cyber-cyan/20 bg-gradient-to-br from-cyber-cyan/[0.06] to-transparent p-5 md:p-6"
+          >
+            <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
+              ANALYSE-ZUSAMMENFASSUNG
+            </p>
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-white/70">
+              {analysisSummary}
+            </p>
+            {report.aiSummary ? (
+              <div className="mt-4 border-t border-white/[0.06] pt-4">
+                <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
+                  KI-LAGEBILD
+                </p>
+                <div className="mt-2 max-h-none overflow-visible whitespace-pre-line text-sm leading-relaxed text-white/55">
+                  {sanitizeAiSummary(report.aiSummary)}
+                </div>
               </div>
-              <p className="mt-4 font-mono text-[8px] tracking-[.14em] text-white/30">
-                FILTER · KATEGORIE
+            ) : null}
+          </section>
+        </SectionReveal>
+
+        <SectionReveal delayMs={280} enabled={revealSections}>
+          <div id="report-management" className="scroll-mt-28">
+            <ManagementOverviewPanel report={report} />
+          </div>
+        </SectionReveal>
+
+        <SectionReveal delayMs={420} enabled={revealSections}>
+          <div id="report-risk" className="scroll-mt-28">
+            <RiskOverviewPanel report={report} />
+          </div>
+        </SectionReveal>
+
+        <SectionReveal delayMs={560} enabled={revealSections}>
+          <section
+            id="report-queries"
+            className="scroll-mt-28 rounded-xl border border-white/[0.07] bg-white/[0.015]"
+          >
+            <button
+              type="button"
+              onClick={() => setQueriesOpen((open) => !open)}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+              aria-expanded={queriesOpen}
+            >
+              <div className="flex items-center gap-2">
+                <h3 className="font-mono text-[9px] tracking-[.16em] text-white/35">
+                  AUSGEFÜHRTE SUCHANFRAGEN
+                </h3>
+                <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[9px] text-white/40">
+                  {queries.length}
+                </span>
+                <InfoTooltip label="Suchanfragen">
+                  Nachweis der durchsuchten Profilfelder — für die Bewertung
+                  nicht nötig.
+                </InfoTooltip>
+              </div>
+              <span className="font-mono text-[10px] text-cyber-cyan/70">
+                {queriesOpen ? "ZUKLAPPEN" : "AUFKLAPPEN"}
+              </span>
+            </button>
+            {queriesOpen ? (
+              <ul className="space-y-2 border-t border-white/[0.05] px-4 py-3">
+                {queries.map((query) => (
+                  <li
+                    key={query.id}
+                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3"
+                  >
+                    <span className="font-mono text-[8px] tracking-[.12em] text-cyber-cyan/55">
+                      {query.label.toUpperCase()}
+                    </span>
+                    <p className="mt-1.5 font-mono text-[12px] text-white/70">
+                      {query.query}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="border-t border-white/[0.05] px-4 py-2.5 text-[11px] text-white/30">
+                {queries.length} Profil-Suchanfragen · aufklappen bei Bedarf
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {CATEGORY_FILTERS.map((item) => {
-                  const count = categoryCounts[item.id] ?? 0;
-                  if (item.id !== "all" && count === 0) return null;
-                  return (
+            )}
+          </section>
+        </SectionReveal>
+
+        <SectionReveal delayMs={700} enabled={revealSections}>
+          <div
+            id="report-hits"
+            className="scroll-mt-28 grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(250px,0.55fr)]"
+          >
+            <div className="min-w-0 space-y-4">
+              <section className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-4">
+                <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
+                  FILTER · RISIKO
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {SEVERITY_FILTERS.map((item) => (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setCategoryFilter(item.id)}
+                      onClick={() => setSeverityFilter(item.id)}
                       className={`rounded-full border px-3 py-1.5 text-[12px] transition ${
-                        categoryFilter === item.id
+                        severityFilter === item.id
                           ? "border-cyber-cyan/40 bg-cyber-cyan/15 text-cyber-cyan"
                           : "border-white/10 text-white/45 hover:border-white/20 hover:text-white/70"
                       }`}
                     >
-                      {item.label}
-                      {item.id !== "all" ? ` (${count})` : ""}
+                      {item.label} ({severityCounts[item.id]})
                     </button>
-                  );
-                })}
-              </div>
-            </section>
+                  ))}
+                </div>
+                <p className="mt-4 font-mono text-[8px] tracking-[.14em] text-white/30">
+                  FILTER · KATEGORIE
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {CATEGORY_FILTERS.map((item) => {
+                    const count = categoryCounts[item.id] ?? 0;
+                    if (item.id !== "all" && count === 0) return null;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setCategoryFilter(item.id)}
+                        className={`rounded-full border px-3 py-1.5 text-[12px] transition ${
+                          categoryFilter === item.id
+                            ? "border-cyber-cyan/40 bg-cyber-cyan/15 text-cyber-cyan"
+                            : "border-white/10 text-white/45 hover:border-white/20 hover:text-white/70"
+                        }`}
+                      >
+                        {item.label}
+                        {item.id !== "all" ? ` (${count})` : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
 
-            {channelSections.length === 0 ? (
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
-                <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/50">
-                  CLEAR CHANNEL
-                </p>
-                <p className="mt-3 text-sm text-white/50">
-                  Keine Treffer für diesen Filter. Filter zurücksetzen oder
-                  Analyse erneut starten.
-                </p>
-              </div>
-            ) : (
-              channelSections.map((section) => (
-                <section key={section.id} className="space-y-3">
+              {channelSections.length === 0 ? (
+                <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
+                  <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/50">
+                    CLEAR CHANNEL
+                  </p>
+                  <p className="mt-3 text-sm text-white/50">
+                    Keine Treffer für diesen Filter. Filter zurücksetzen oder
+                    Analyse erneut starten.
+                  </p>
+                </div>
+              ) : (
+                channelSections.map((section) => (
+                  <section key={section.id} className="space-y-3">
+                    <h3 className="font-mono text-[9px] tracking-[.16em] text-white/35">
+                      {section.title.toUpperCase()} · {section.hits.length}
+                    </h3>
+                    <ul className="space-y-3">
+                      {section.hits.map((hit) => (
+                        <li key={hit.id}>
+                          <IntelligenceHitCard hit={hit} />
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))
+              )}
+
+              {profileHits.length > 0 &&
+              severityFilter === "all" &&
+              categoryFilter === "all" ? (
+                <section className="space-y-3">
                   <h3 className="font-mono text-[9px] tracking-[.16em] text-white/35">
-                    {section.title.toUpperCase()} · {section.hits.length}
+                    PROFIL-VERKNÜPFUNGEN · {profileHits.length}
                   </h3>
                   <ul className="space-y-3">
-                    {section.hits.map((hit) => (
+                    {profileHits.map((hit) => (
                       <li key={hit.id}>
                         <IntelligenceHitCard hit={hit} />
                       </li>
                     ))}
                   </ul>
                 </section>
-              ))
-            )}
+              ) : null}
+            </div>
 
-            {profileHits.length > 0 &&
-            severityFilter === "all" &&
-            categoryFilter === "all" ? (
-              <section className="space-y-3">
-                <h3 className="font-mono text-[9px] tracking-[.16em] text-white/35">
-                  PROFIL-VERKNÜPFUNGEN · {profileHits.length}
-                </h3>
-                <ul className="space-y-3">
-                  {profileHits.map((hit) => (
-                    <li key={hit.id}>
-                      <IntelligenceHitCard hit={hit} />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
+            <div className="lg:sticky lg:top-6">
+              <CategoryVisualPanel
+                report={{ ...report, scorecard, hits: derived.enriched }}
+                hits={filtered}
+                categories={channelSections}
+              />
+            </div>
           </div>
+        </SectionReveal>
 
-          <div className="lg:sticky lg:top-6">
-            <CategoryVisualPanel
-              report={{ ...report, scorecard, hits: derived.enriched }}
-              hits={filtered}
-              categories={channelSections}
-            />
-          </div>
-        </div>
-      </SectionReveal>
-
-      <SectionReveal delayMs={900} enabled={revealSections}>
-        <section id="report-actions" className="scroll-mt-28">
-          <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
-            HANDLUNGSEMPFEHLUNGEN · WAS ZUERST?
-          </h3>
-          <ol className="space-y-3">
-            {recommendations.map((item, index) => (
-              <li
-                key={item.title}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[13px] font-medium text-white/80">
-                    <span className="mr-2 font-mono text-[8px] text-cyber-cyan/45">
-                      {String(index + 1).padStart(2, "0")}
+        <SectionReveal delayMs={900} enabled={revealSections}>
+          <section id="report-actions" className="scroll-mt-28">
+            <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
+              HANDLUNGSEMPFEHLUNGEN · WAS ZUERST?
+            </h3>
+            <ol className="space-y-3">
+              {recommendations.map((item, index) => (
+                <li
+                  key={item.title}
+                  className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[13px] font-medium text-white/80">
+                      <span className="mr-2 font-mono text-[8px] text-cyber-cyan/45">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      {item.title}
+                    </p>
+                    <span className="font-mono text-[7px] tracking-[.12em] text-white/30">
+                      {item.priority.toUpperCase()}
                     </span>
-                    {item.title}
+                  </div>
+                  <p className="mt-2 text-[12px] leading-relaxed text-white/45">
+                    {item.detail}
                   </p>
-                  <span className="font-mono text-[7px] tracking-[.12em] text-white/30">
-                    {item.priority.toUpperCase()}
-                  </span>
-                </div>
-                <p className="mt-2 text-[12px] leading-relaxed text-white/45">
-                  {item.detail}
-                </p>
-                <p className="mt-2 text-[12px] text-white/55">
-                  <span className="text-white/30">Nächster Schritt: </span>
-                  {item.howToFix}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </SectionReveal>
+                  <p className="mt-2 text-[12px] text-white/55">
+                    <span className="text-white/30">Nächster Schritt: </span>
+                    {item.howToFix}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </SectionReveal>
 
-      <SectionReveal delayMs={1050} enabled={revealSections}>
-        <div id="report-executive" className="scroll-mt-28">
-          <ExecutiveSummaryPanel report={report} />
-        </div>
-      </SectionReveal>
+        <SectionReveal delayMs={1050} enabled={revealSections}>
+          <div id="report-executive" className="scroll-mt-28">
+            <ExecutiveSummaryPanel report={report} />
+          </div>
+        </SectionReveal>
+      </div>
     </div>
   );
 }
