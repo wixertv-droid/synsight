@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-const sections = [
+export interface SystemRailSection {
+  id: string;
+  label: string;
+}
+
+export const LANDING_SECTIONS: SystemRailSection[] = [
   { id: "hero", label: "START" },
   { id: "platform", label: "PLATTFORM" },
   { id: "demo-scanner", label: "CHECK" },
@@ -14,12 +19,18 @@ const sections = [
 
 interface SystemRailProps {
   sectionsReady?: boolean;
+  sections?: SystemRailSection[];
+  /** Extra classes for positioning (e.g. inside dashboard layouts). */
+  className?: string;
 }
 
-function resolveActiveSection(): string {
+function resolveActiveSection(
+  sections: SystemRailSection[],
+  fallbackId: string
+): string {
   const scrollY = window.scrollY;
   const anchor = scrollY + window.innerHeight * 0.35;
-  let activeId = sections[0]?.id ?? "hero";
+  let activeId = fallbackId;
 
   for (const { id } of sections) {
     const element = document.getElementById(id);
@@ -30,14 +41,19 @@ function resolveActiveSection(): string {
   return activeId;
 }
 
-export default function SystemRail({ sectionsReady = true }: SystemRailProps) {
-  const [active, setActive] = useState("hero");
+export default function SystemRail({
+  sectionsReady = true,
+  sections = LANDING_SECTIONS,
+  className = "",
+}: SystemRailProps) {
+  const fallbackId = sections[0]?.id ?? "hero";
+  const [active, setActive] = useState(fallbackId);
 
   useEffect(() => {
-    if (!sectionsReady) return;
+    if (!sectionsReady || sections.length === 0) return;
 
     const syncActiveSection = () => {
-      setActive(resolveActiveSection());
+      setActive(resolveActiveSection(sections, fallbackId));
     };
 
     const observer = new IntersectionObserver(
@@ -68,11 +84,13 @@ export default function SystemRail({ sectionsReady = true }: SystemRailProps) {
       window.removeEventListener("scroll", syncActiveSection);
       window.removeEventListener("resize", syncActiveSection);
     };
-  }, [sectionsReady]);
+  }, [sectionsReady, sections, fallbackId]);
+
+  if (sections.length === 0) return null;
 
   return (
     <aside
-      className="fixed right-5 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-end gap-3 xl:flex"
+      className={`fixed right-5 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-end gap-3 xl:flex ${className}`}
       aria-label="Seitennavigation"
     >
       {sections.map(({ id, label }, index) => {
@@ -84,6 +102,13 @@ export default function SystemRail({ sectionsReady = true }: SystemRailProps) {
             className="group flex items-center gap-3"
             aria-label={label}
             aria-current={selected ? "location" : undefined}
+            onClick={(event) => {
+              const element = document.getElementById(id);
+              if (!element) return;
+              event.preventDefault();
+              element.scrollIntoView({ behavior: "smooth", block: "start" });
+              setActive(id);
+            }}
           >
             <span
               className={`font-mono text-[8px] tracking-[.16em] transition-all duration-500 ${

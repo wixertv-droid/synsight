@@ -9,23 +9,29 @@ function stripMarkdownNoise(text: string): string {
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/__([^_]+)__/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*/g, "")
     .trim();
 }
 
 /**
- * Drop incomplete trailing fragments (e.g. cut mid-word by token limit).
+ * Clean AI text for display without aggressively shortening it.
+ * Only strips markdown and trims a clearly incomplete last fragment.
  */
 export function sanitizeAiSummary(text: string): string {
-  let cleaned = stripMarkdownNoise(text).replace(/\s+/g, " ").trim();
+  let cleaned = stripMarkdownNoise(text)
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   if (!cleaned) return cleaned;
 
-  const looksTruncated =
-    !/[.!?…]"?$/.test(cleaned) ||
-    /\(\s*[A-Za-zÄÖÜäöüß]{1,12}$/.test(cleaned) ||
-    /\b[A-Za-zÄÖÜäöüß]{1,3}$/.test(cleaned);
+  const endsClean = /[.!?…]"?$/.test(cleaned);
+  const endsMidToken =
+    /\(\s*[A-Za-zÄÖÜäöüß]{1,20}$/.test(cleaned) ||
+    /(?:^|\s)[A-Za-zÄÖÜäöüß-]{1,2}$/.test(cleaned);
 
-  if (looksTruncated) {
-    const lastBreak = Math.max(
+  if (!endsClean && endsMidToken) {
+    const sentenceBreak = Math.max(
       cleaned.lastIndexOf(". "),
       cleaned.lastIndexOf("! "),
       cleaned.lastIndexOf("? "),
@@ -33,10 +39,12 @@ export function sanitizeAiSummary(text: string): string {
       cleaned.lastIndexOf("!\n"),
       cleaned.lastIndexOf("?\n")
     );
-    if (lastBreak >= 20) {
-      cleaned = cleaned.slice(0, lastBreak + 1).trim();
+    if (sentenceBreak >= 12) {
+      cleaned = cleaned.slice(0, sentenceBreak + 1).trim();
     } else {
-      cleaned = `${cleaned.replace(/[\s(]+[A-Za-zÄÖÜäöüß-]{0,20}$/, "").trim()}…`;
+      cleaned = `${cleaned
+        .replace(/[\s(]+[A-Za-zÄÖÜäöüß-]{0,24}$/u, "")
+        .trim()}…`;
     }
   }
 

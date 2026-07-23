@@ -7,7 +7,11 @@ import ManagementOverviewPanel from "@/components/analysis/intelligence/Manageme
 import CategoryVisualPanel from "@/components/analysis/intelligence/CategoryVisualPanel";
 import RiskOverviewPanel from "@/components/analysis/intelligence/RiskOverviewPanel";
 import SectionReveal from "@/components/analysis/intelligence/SectionReveal";
+import SystemRail, {
+  type SystemRailSection,
+} from "@/components/layout/SystemRail";
 import InfoTooltip from "@/components/ui/InfoTooltip";
+import { sanitizeAiSummary } from "@/lib/analysis/ai-summary-text";
 import {
   buildReportScorecard,
   buildStructuredAnalysisSummary,
@@ -16,13 +20,23 @@ import {
   riskToSeverity,
   type HitSeverity,
 } from "@/lib/analysis/hit-intel";
-import { sanitizeAiSummary } from "@/lib/analysis/ai-summary-text";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import {
   retentionLabel,
   type ReportRetentionDays,
 } from "@/lib/analysis/retention";
 import type { IntelligenceHit, IntelligenceReport } from "@/lib/analysis/types";
+
+const REPORT_RAIL_SECTIONS: SystemRailSection[] = [
+  { id: "report-overview", label: "ÜBERBLICK" },
+  { id: "report-summary", label: "ZUSAMMENFASSUNG" },
+  { id: "report-management", label: "MANAGEMENT" },
+  { id: "report-risk", label: "RISIKO" },
+  { id: "report-queries", label: "ANFRAGEN" },
+  { id: "report-hits", label: "TREFFER" },
+  { id: "report-actions", label: "MASSNAHMEN" },
+  { id: "report-executive", label: "EXECUTIVE" },
+];
 
 const SEVERITY_FILTERS: Array<{ id: "all" | HitSeverity; label: string }> = [
   { id: "all", label: "Alle" },
@@ -213,9 +227,18 @@ export default function GoogleIntelligenceReport({
   })();
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <SystemRail
+        sectionsReady
+        sections={REPORT_RAIL_SECTIONS}
+        className="right-3 xl:right-4"
+      />
+
       <SectionReveal delayMs={0} enabled={revealSections}>
-        <header className="relative overflow-hidden rounded-2xl border border-cyber-cyan/25 bg-gradient-to-br from-cyber-cyan/[0.08] via-[#071018] to-transparent p-5 md:p-7">
+        <header
+          id="report-overview"
+          className="relative scroll-mt-28 overflow-hidden rounded-2xl border border-cyber-cyan/25 bg-gradient-to-br from-cyber-cyan/[0.08] via-[#071018] to-transparent p-5 md:p-7"
+        >
           <p className="font-mono text-[9px] tracking-[.18em] text-cyber-cyan/70">
             GOOGLE INTELLIGENCE REPORT · SICHERHEITSBERICHT
           </p>
@@ -276,7 +299,10 @@ export default function GoogleIntelligenceReport({
       </SectionReveal>
 
       <SectionReveal delayMs={180} enabled={revealSections}>
-        <section className="rounded-2xl border border-cyber-cyan/20 bg-gradient-to-br from-cyber-cyan/[0.06] to-transparent p-5 md:p-6">
+        <section
+          id="report-summary"
+          className="scroll-mt-28 rounded-2xl border border-cyber-cyan/20 bg-gradient-to-br from-cyber-cyan/[0.06] to-transparent p-5 md:p-6"
+        >
           <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
             ANALYSE-ZUSAMMENFASSUNG
           </p>
@@ -288,24 +314,31 @@ export default function GoogleIntelligenceReport({
               <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
                 KI-LAGEBILD
               </p>
-              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-white/55">
+              <div className="mt-2 max-h-none overflow-visible whitespace-pre-line text-sm leading-relaxed text-white/55">
                 {sanitizeAiSummary(report.aiSummary)}
-              </p>
+              </div>
             </div>
           ) : null}
         </section>
       </SectionReveal>
 
       <SectionReveal delayMs={280} enabled={revealSections}>
-        <ManagementOverviewPanel report={report} />
+        <div id="report-management" className="scroll-mt-28">
+          <ManagementOverviewPanel report={report} />
+        </div>
       </SectionReveal>
 
       <SectionReveal delayMs={420} enabled={revealSections}>
-        <RiskOverviewPanel report={report} />
+        <div id="report-risk" className="scroll-mt-28">
+          <RiskOverviewPanel report={report} />
+        </div>
       </SectionReveal>
 
       <SectionReveal delayMs={560} enabled={revealSections}>
-        <section className="rounded-xl border border-white/[0.07] bg-white/[0.015]">
+        <section
+          id="report-queries"
+          className="scroll-mt-28 rounded-xl border border-white/[0.07] bg-white/[0.015]"
+        >
           <button
             type="button"
             onClick={() => setQueriesOpen((open) => !open)}
@@ -353,7 +386,10 @@ export default function GoogleIntelligenceReport({
       </SectionReveal>
 
       <SectionReveal delayMs={700} enabled={revealSections}>
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(250px,0.55fr)]">
+        <div
+          id="report-hits"
+          className="scroll-mt-28 grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(250px,0.55fr)]"
+        >
           <div className="min-w-0 space-y-4">
             <section className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-4">
               <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
@@ -457,7 +493,7 @@ export default function GoogleIntelligenceReport({
       </SectionReveal>
 
       <SectionReveal delayMs={900} enabled={revealSections}>
-        <section>
+        <section id="report-actions" className="scroll-mt-28">
           <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
             HANDLUNGSEMPFEHLUNGEN · WAS ZUERST?
           </h3>
@@ -492,7 +528,9 @@ export default function GoogleIntelligenceReport({
       </SectionReveal>
 
       <SectionReveal delayMs={1050} enabled={revealSections}>
-        <ExecutiveSummaryPanel report={report} />
+        <div id="report-executive" className="scroll-mt-28">
+          <ExecutiveSummaryPanel report={report} />
+        </div>
       </SectionReveal>
     </div>
   );

@@ -41,19 +41,19 @@ export async function summarizeWithGemini(
     })),
   };
 
-  const prompt = `Du bist ein Sicherheitsberater für Privatpersonen. Schreibe ein kurzes KI-Lagebild auf Deutsch.
+  const prompt = `Du bist ein Sicherheitsberater für Privatpersonen. Schreibe ein vollständiges KI-Lagebild auf Deutsch.
 
 Regeln:
 - Nutze AUSSCHLIESSLICH die gelieferten Treffer.
 - Erfinde keine URLs, Profile, Telefonnummern oder E-Mails.
-- Kein Markdown, keine Sternchen, keine Aufzählungszeichen mit **.
+- Kein Markdown, keine Sternchen (**), keine Überschriften wie „Management-Zusammenfassung“.
 - Schreibe so, dass Laien sofort verstehen, was gemeint ist.
-- Maximal 120 Wörter, 3 kurze Absätze:
+- 180–280 Wörter, genau 3 Absätze mit Leerzeile dazwischen:
   1) Was wurde gefunden?
   2) Was bedeutet das für die Person?
   3) Was sollte als Nächstes getan werden?
 - Wenn keine Treffer vorhanden sind, sage klar, dass nichts Relevantes gefunden wurde.
-- Beende jeden Absatz mit einem vollständigen Satz.
+- Jeder Absatz muss mit einem vollständigen Satz enden. Niemals mitten im Wort abbrechen.
 
 Daten:
 ${JSON.stringify(payload)}`;
@@ -78,8 +78,8 @@ ${JSON.stringify(payload)}`;
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 2048,
+              temperature: 0.25,
+              maxOutputTokens: 4096,
             },
           }),
         }
