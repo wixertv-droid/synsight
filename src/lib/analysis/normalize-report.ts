@@ -2,6 +2,7 @@ import type {
   IntelligenceCategoryStats,
   IntelligenceExecutiveSummary,
   IntelligenceReport,
+  IntelligenceReportScorecard,
   IntelligenceSummaryBuckets,
 } from "@/lib/analysis/types";
 import type { RiskLevel } from "@/types/platform";
@@ -101,6 +102,23 @@ function normalizeExecutive(
   };
 }
 
+function normalizeScorecard(
+  value: unknown
+): IntelligenceReportScorecard | null {
+  const row = asRecord(value);
+  if (!row) return null;
+  return {
+    overallScore: Number(row.overallScore) || 0,
+    privacyScore: Number(row.privacyScore) || 0,
+    publicVisibility: Number(row.publicVisibility) || 0,
+    identityRisk: Number(row.identityRisk) || 0,
+    likelyMeCount: Number(row.likelyMeCount) || 0,
+    criticalCount: Number(row.criticalCount) || 0,
+    highCount: Number(row.highCount) || 0,
+    totalLive: Number(row.totalLive) || 0,
+  };
+}
+
 /**
  * Ensures a persisted or API report always has the arrays/objects the UI expects.
  * Prevents SYSTEMFEHLER when report_json is partial, stringified, or legacy-shaped.
@@ -175,6 +193,11 @@ export function normalizeIntelligenceReport(
         ? source.summaryText
         : "Kein Report-Text verfügbar.",
     aiSummary: typeof source.aiSummary === "string" ? source.aiSummary : null,
+    analysisSummary:
+      typeof source.analysisSummary === "string"
+        ? source.analysisSummary
+        : null,
+    scorecard: normalizeScorecard(source.scorecard),
     managementOverview: normalizeOverview(source.managementOverview),
     buckets: normalizeBuckets(source.buckets),
     queries,

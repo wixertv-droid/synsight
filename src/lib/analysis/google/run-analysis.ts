@@ -5,6 +5,11 @@ import {
 } from "@/lib/analysis/risk-assessment";
 import { refineSerpHits } from "@/lib/analysis/hit-quality";
 import {
+  buildReportScorecard,
+  buildStructuredAnalysisSummary,
+  enrichHitIntel,
+} from "@/lib/analysis/hit-intel";
+import {
   computeExpiresAt,
   DEFAULT_REPORT_RETENTION_DAYS,
   parseRetentionDays,
@@ -342,12 +347,31 @@ export async function runGoogleIntelligenceAnalysis(
 
   const profileHits = profileLinkedHits(identity, generatedAt, hitSeq);
   const refinedSerp = refineSerpHits(serpHits, subjectName);
-  const hits = [...refinedSerp, ...profileHits];
+  const intelContext = {
+    subjectName,
+    location:
+      identity?.personal.location || identity?.personal.addressLine || "",
+    company: identity?.personal.company || identity?.companies?.[0] || "",
+    emails: identity?.emails ?? [],
+    phones: [
+      identity?.personal.phone ?? "",
+      ...(identity?.phoneNumbers ?? []),
+    ].filter(Boolean),
+  };
+  const hits = [...refinedSerp, ...profileHits].map((hit) =>
+    enrichHitIntel(hit, intelContext)
+  );
   const buckets = summarizeBuckets(
     hits.filter((h) => h.sourceType === "serpapi_google")
   );
   const { riskScore, riskLevel } = computeOverallRisk(hits);
   const managementOverview = buildManagementOverview(hits);
+  const scorecard = buildReportScorecard(hits);
+  const analysisSummary = buildStructuredAnalysisSummary(
+    subjectName,
+    hits,
+    scorecard
+  );
 
   const serpCount = refinedSerp.length;
   const summaryText =
@@ -392,6 +416,8 @@ export async function runGoogleIntelligenceAnalysis(
     riskLevel,
     summaryText,
     aiSummary: null,
+    analysisSummary,
+    scorecard,
     managementOverview,
     buckets,
     queries,

@@ -47,6 +47,36 @@ export interface IntelligenceHit {
   canIgnore: boolean;
   shouldAct: boolean;
   recommendation: string;
+  /** UI enrichment — optional for legacy reports */
+  displayCategory?: string;
+  filterCategory?: string;
+  severity?: "critical" | "high" | "medium" | "low";
+  riskPercent?: number;
+  identityConfidence?: number;
+  identityConfidenceLabel?: string;
+  whyFoundPlain?: string;
+  whyRelevantPlain?: string;
+  belongsToYou?: string;
+  isDangerous?: string;
+  needsAction?: string;
+  aiEvaluation?: {
+    stars: number;
+    headline: string;
+    reasons: string[];
+    dangers: string[];
+    recommendation: string;
+  };
+}
+
+export interface IntelligenceReportScorecard {
+  overallScore: number;
+  privacyScore: number;
+  publicVisibility: number;
+  identityRisk: number;
+  likelyMeCount: number;
+  criticalCount: number;
+  highCount: number;
+  totalLive: number;
 }
 
 export interface IntelligenceRecommendation {
@@ -118,6 +148,9 @@ export interface IntelligenceReport {
   riskLevel: RiskLevel;
   summaryText: string;
   aiSummary: string | null;
+  /** Short structured summary for non-technical users */
+  analysisSummary?: string | null;
+  scorecard?: IntelligenceReportScorecard | null;
   managementOverview: IntelligenceCategoryStats;
   buckets: IntelligenceSummaryBuckets;
   queries: IntelligenceQueryPlan[];

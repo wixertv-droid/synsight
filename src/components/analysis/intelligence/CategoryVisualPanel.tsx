@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { buildReportScorecard, enrichHitIntel } from "@/lib/analysis/hit-intel";
 import type { IntelligenceHit, IntelligenceReport } from "@/lib/analysis/types";
 
 type CategorySlice = {
@@ -29,6 +30,40 @@ function nodePositions(count: number): Array<{ x: number; y: number }> {
   });
 }
 
+function Meter({
+  label,
+  value,
+  tone = "cyan",
+}: {
+  label: string;
+  value: number;
+  tone?: "cyan" | "rose" | "emerald" | "amber";
+}) {
+  const gradient =
+    tone === "rose"
+      ? "from-rose-500 to-rose-300"
+      : tone === "emerald"
+        ? "from-emerald-500 to-emerald-300"
+        : tone === "amber"
+          ? "from-amber-400 to-yellow-200"
+          : "from-cyber-cyan/60 to-cyber-cyan";
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2 font-mono text-[9px]">
+        <span className="text-white/40">{label}</span>
+        <span className="text-white/70">{value} %</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+        <div
+          className={`h-full rounded-full bg-gradient-to-r ${gradient}`}
+          style={{ width: `${Math.max(4, Math.min(100, value))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function CategoryVisualPanel({
   title,
   hits: rawHits,
@@ -50,23 +85,29 @@ export default function CategoryVisualPanel({
     [reportHits]
   );
 
+  const scorecard = useMemo(() => {
+    if (report.scorecard) return report.scorecard;
+    const enriched = reportHits.map((hit) =>
+      hit.identityConfidence != null
+        ? hit
+        : enrichHitIntel(hit, { subjectName: report.subjectName })
+    );
+    return buildReportScorecard(enriched);
+  }, [report.scorecard, report.subjectName, reportHits]);
+
   const riskCounts = useMemo(() => {
     const source = hits.length > 0 ? hits : liveHits;
     return {
-      none: source.filter((hit) => hit.risk === "none").length,
-      watch: source.filter((hit) => hit.risk === "watch").length,
-      review: source.filter((hit) => hit.risk === "review").length,
-      action: source.filter((hit) => hit.risk === "action").length,
+      none: source.filter((hit) => (hit.severity ?? "low") === "low").length,
+      watch: source.filter((hit) => hit.severity === "medium").length,
+      review: source.filter((hit) => hit.severity === "high").length,
+      action: source.filter((hit) => hit.severity === "critical").length,
     };
   }, [hits, liveHits]);
 
   const nodes = useMemo(
     () => nodePositions(hits.length || liveHits.length || 4),
     [hits.length, liveHits.length]
-  );
-
-  const actionRatio = Math.round(
-    (riskCounts.action / Math.max(1, hits.length || liveHits.length)) * 100
   );
 
   const categoryRows =
@@ -90,7 +131,40 @@ export default function CategoryVisualPanel({
           </span>
         </div>
 
-        <div className="relative mx-auto mt-4 h-44 w-full max-w-[220px]">
+        <div className="mt-3 rounded-xl border border-white/[0.07] bg-black/25 p-3">
+          <p className="font-mono text-[8px] tracking-[.12em] text-white/30">
+            GESAMT-SCORE
+          </p>
+          <p className="mt-1 text-2xl font-semibold text-white/90">
+            {scorecard.overallScore}
+            <span className="text-sm text-white/35"> /100</span>
+          </p>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyber-cyan/50 to-cyber-cyan"
+              style={{ width: `${scorecard.overallScore}%` }}
+            />
+          </div>
+          <div className="mt-3 space-y-2">
+            <Meter
+              label="Datenschutz"
+              value={scorecard.privacyScore}
+              tone="emerald"
+            />
+            <Meter
+              label="Öffentliche Sichtbarkeit"
+              value={scorecard.publicVisibility}
+              tone="amber"
+            />
+            <Meter
+              label="Identitätsrisiko"
+              value={scorecard.identityRisk}
+              tone="rose"
+            />
+          </div>
+        </div>
+
+        <div className="relative mx-auto mt-4 h-40 w-full max-w-[220px]">
           <svg
             viewBox="0 0 100 100"
             className="h-full w-full"
@@ -103,7 +177,6 @@ export default function CategoryVisualPanel({
                 <stop offset="100%" stopColor="rgba(0,0,0,0)" />
               </radialGradient>
             </defs>
-
             <circle
               cx="50"
               cy="50"
@@ -129,16 +202,6 @@ export default function CategoryVisualPanel({
               stroke="rgba(114,231,255,0.28)"
               strokeWidth="0.5"
             />
-            <circle
-              cx="50"
-              cy="50"
-              r="18"
-              fill="none"
-              stroke="rgba(114,231,255,0.45)"
-              strokeWidth="0.6"
-              className="intel-cyber-pulse"
-            />
-
             {nodes.map((node, index) => {
               const next = nodes[(index + 1) % nodes.length];
               return (
@@ -163,47 +226,26 @@ export default function CategoryVisualPanel({
                 </g>
               );
             })}
-
             {nodes.map((node, index) => (
-              <g key={`node-${index}`}>
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r="1.8"
-                  fill="#72e7ff"
-                  className="intel-cyber-node"
-                  style={{ animationDelay: `${index * 0.18}s` }}
-                />
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r="3.2"
-                  fill="none"
-                  stroke="rgba(114,231,255,0.35)"
-                  strokeWidth="0.35"
-                  className="intel-cyber-pulse"
-                  style={{ animationDelay: `${index * 0.18}s` }}
-                />
-              </g>
+              <circle
+                key={`node-${index}`}
+                cx={node.x}
+                cy={node.y}
+                r="1.8"
+                fill="#72e7ff"
+                className="intel-cyber-node"
+                style={{ animationDelay: `${index * 0.18}s` }}
+              />
             ))}
-
             <circle cx="50" cy="50" r="2.4" fill="#70E7FF" />
           </svg>
-
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <p className="text-2xl font-semibold tracking-tight text-white/90">
-              {hits.length || liveHits.length}
+            <p className="text-xl font-semibold text-white/90">
+              {scorecard.likelyMeCount}
             </p>
             <p className="font-mono text-[7px] tracking-[.14em] text-cyber-cyan/55">
-              SIGNAL NODES
+              WAHRSCH. ICH
             </p>
-          </div>
-
-          <div className="pointer-events-none absolute left-1 top-2 font-mono text-[6px] text-cyber-cyan/40">
-            LAT {actionRatio}%
-          </div>
-          <div className="pointer-events-none absolute bottom-2 right-1 font-mono text-[6px] text-white/25">
-            GRID // SECURE
           </div>
         </div>
 
@@ -211,9 +253,9 @@ export default function CategoryVisualPanel({
           {(
             [
               ["action", "Kritisch", riskCounts.action, "#fb7185"],
-              ["review", "Prüfen", riskCounts.review, "#fb923c"],
-              ["watch", "Beobachten", riskCounts.watch, "#fcd34d"],
-              ["none", "Neutral", riskCounts.none, "#6ee7b7"],
+              ["review", "Hoch", riskCounts.review, "#fb923c"],
+              ["watch", "Mittel", riskCounts.watch, "#fcd34d"],
+              ["none", "Niedrig", riskCounts.none, "#6ee7b7"],
             ] as const
           ).map(([key, label, count, color]) => (
             <li
