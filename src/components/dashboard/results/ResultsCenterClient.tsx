@@ -191,7 +191,7 @@ export default function ResultsCenterClient({
       <DashboardSectionHeader
         eyebrow="Command Center / Ergebnisse"
         title="Ergebnis Center"
-        description="Jede Analyse besitzt einen eigenen Reiter. Nach dem Start der Google-Analyse erscheint zuerst die SOC-Scan-Sequenz, anschließend der Enterprise OSINT Report."
+        description="Jede Analyse besitzt einen eigenen Reiter. Nach dem Start erscheint zuerst die SOC-Scan-Sequenz, anschließend der Enterprise OSINT Report mit Live-Treffern."
         helpLabel="Ergebnis Center"
         helpText="SynCredits werden im Analyse Center vor dem Start abgebucht. Der Bericht wird gespeichert und kann später erneut geöffnet werden."
       />

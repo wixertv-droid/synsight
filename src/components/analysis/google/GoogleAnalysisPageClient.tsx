@@ -41,9 +41,9 @@ export default function GoogleAnalysisPageClient({
       <DashboardSectionHeader
         eyebrow="Command Center / Google Intelligence"
         title="Google Analyse"
-        description="Professionelle OSINT-Auswertung Ihrer Google-Präsenz. Es werden ausschließlich öffentlich zugängliche, API-verifizierte Informationen ausgewertet — keine erfundenen Daten."
-        helpLabel="Datenquellen"
-        helpText="Suchanfragen stammen aus Ihrem Identitätsprofil. Treffer kommen von der Google Custom Search JSON API (wenn konfiguriert) oder aus explizit hinterlegten Profil-Verknüpfungen."
+        description="Professionelle OSINT-Auswertung Ihrer Google-Präsenz. Öffentlich indexierte Treffer werden live ausgewertet und als Enterprise-Report im Ergebnis Center dargestellt."
+        helpLabel="Ablauf"
+        helpText="Nach der SynCredits-Bestätigung startet der SOC-Scan. Anschließend erscheint der vollständige Google Intelligence Report."
       />
 
       {phase === "idle" ? (

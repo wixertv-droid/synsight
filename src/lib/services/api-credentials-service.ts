@@ -269,3 +269,187 @@ export async function markApiCredentialError(
     console.error("[api-credentials] mark error failed", error);
   }
 }
+
+export interface ApiCredentialTestResult {
+  provider: string;
+  ok: boolean;
+  message: string;
+  detail?: string;
+  latencyMs: number;
+  hitCount?: number;
+}
+
+/**
+ * Live connectivity probe for admin UI.
+ * Uses draft secret/engineId when provided, otherwise stored/env credentials.
+ */
+export async function testApiCredentialConnection(input: {
+  provider: string;
+  secret?: string | null;
+  engineId?: string | null;
+}): Promise<ApiCredentialTestResult> {
+  const started = Date.now();
+  const provider = input.provider;
+
+  if (provider === "google_custom_search") {
+    let apiKey = input.secret?.trim() || "";
+    let engineId = input.engineId?.trim() || "";
+
+    if (!apiKey || !engineId) {
+      const resolved = await resolveGoogleSearchCredentials();
+      if (!apiKey) apiKey = resolved?.apiKey ?? "";
+      if (!engineId) engineId = resolved?.engineId ?? "";
+    }
+
+    if (!apiKey || !engineId) {
+      return {
+        provider,
+        ok: false,
+        message: "Kein API-Key oder Engine-ID (cx) vorhanden.",
+        detail: "Bitte speichern oder Felder ausfüllen und erneut testen.",
+        latencyMs: Date.now() - started,
+      };
+    }
+
+    const url = new URL("https://www.googleapis.com/customsearch/v1");
+    url.searchParams.set("key", apiKey);
+    url.searchParams.set("cx", engineId);
+    url.searchParams.set("q", "SynSight OSINT");
+    url.searchParams.set("num", "3");
+    url.searchParams.set("safe", "active");
+
+    try {
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      const latencyMs = Date.now() - started;
+      const body = (await response.json().catch(() => ({}))) as {
+        items?: unknown[];
+        error?: { message?: string };
+      };
+
+      if (!response.ok) {
+        const detail = body.error?.message || `HTTP ${response.status}`;
+        await markApiCredentialError(provider, detail);
+        return {
+          provider,
+          ok: false,
+          message: "Google Custom Search antwortet nicht korrekt.",
+          detail,
+          latencyMs,
+        };
+      }
+
+      const hitCount = Array.isArray(body.items) ? body.items.length : 0;
+      await markApiCredentialSuccess(provider);
+      return {
+        provider,
+        ok: true,
+        message: `Verbindung aktiv — ${hitCount} Probe-Treffer in ${latencyMs} ms.`,
+        detail: `Engine cx=${engineId}`,
+        latencyMs,
+        hitCount,
+      };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Netzwerkfehler";
+      await markApiCredentialError(provider, detail);
+      return {
+        provider,
+        ok: false,
+        message: "Verbindung zu Google fehlgeschlagen.",
+        detail,
+        latencyMs: Date.now() - started,
+      };
+    }
+  }
+
+  if (provider === "gemini") {
+    let apiKey = input.secret?.trim() || "";
+    if (!apiKey) {
+      const resolved = await resolveGeminiCredentials();
+      apiKey = resolved?.apiKey ?? "";
+    }
+    if (!apiKey) {
+      return {
+        provider,
+        ok: false,
+        message: "Kein Gemini API-Key vorhanden.",
+        detail: "Bitte speichern oder Feld ausfüllen und erneut testen.",
+        latencyMs: Date.now() - started,
+      };
+    }
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: "Antworte nur mit dem Wort OK.",
+                  },
+                ],
+              },
+            ],
+            generationConfig: { temperature: 0, maxOutputTokens: 8 },
+          }),
+        }
+      );
+      const latencyMs = Date.now() - started;
+      const body = (await response.json().catch(() => ({}))) as {
+        candidates?: Array<{
+          content?: { parts?: Array<{ text?: string }> };
+        }>;
+        error?: { message?: string };
+      };
+
+      if (!response.ok) {
+        const detail = body.error?.message || `HTTP ${response.status}`;
+        await markApiCredentialError("gemini", detail);
+        return {
+          provider,
+          ok: false,
+          message: "Gemini antwortet nicht korrekt.",
+          detail,
+          latencyMs,
+        };
+      }
+
+      const text =
+        body.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+      await markApiCredentialSuccess("gemini");
+      return {
+        provider,
+        ok: true,
+        message: `Gemini aktiv — Antwort in ${latencyMs} ms.`,
+        detail: text ? `Probe: ${text.slice(0, 40)}` : "Antwort empfangen",
+        latencyMs,
+      };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Netzwerkfehler";
+      await markApiCredentialError("gemini", detail);
+      return {
+        provider,
+        ok: false,
+        message: "Verbindung zu Gemini fehlgeschlagen.",
+        detail,
+        latencyMs: Date.now() - started,
+      };
+    }
+  }
+
+  return {
+    provider,
+    ok: false,
+    message: "Live-Test für diesen Anbieter ist noch nicht freigeschaltet.",
+    detail: "Google Custom Search und Gemini können getestet werden.",
+    latencyMs: Date.now() - started,
+  };
+}

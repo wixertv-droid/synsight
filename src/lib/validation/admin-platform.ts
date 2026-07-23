@@ -32,4 +32,17 @@ export const adminApiCredentialSchema = z.discriminatedUnion("action", [
     provider: z.enum(ADMIN_API_PROVIDERS),
     isActive: z.boolean(),
   }),
+  z.object({
+    action: z.literal("test"),
+    provider: z.enum(ADMIN_API_PROVIDERS),
+    secret: z.string().trim().min(8).max(4096).optional().nullable(),
+    engineId: z
+      .string()
+      .trim()
+      .min(6)
+      .max(128)
+      .regex(/^[a-zA-Z0-9:_-]+$/)
+      .optional()
+      .nullable(),
+  }),
 ]);

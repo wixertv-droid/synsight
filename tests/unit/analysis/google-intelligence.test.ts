@@ -87,5 +87,11 @@ describe("runGoogleIntelligenceAnalysis", () => {
     expect(report.managementOverview.mentions).toBe(report.hits.length);
     expect(report.recommendations[0]?.why).toBeTruthy();
     expect(report.aiSummary).toBeNull();
+    expect(
+      report.recommendations.some((item) =>
+        item.title.includes("Live-Google-Suche")
+      )
+    ).toBe(false);
+    expect(report.summaryText).not.toMatch(/nicht konfiguriert/i);
   });
 });

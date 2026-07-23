@@ -84,8 +84,7 @@ export default function GoogleIntelligenceReport({
   if (!report) {
     return (
       <div className="rounded-xl border border-dashed border-rose-400/20 px-4 py-8 text-center text-sm text-rose-100/60">
-        Report-Daten sind unvollständig oder beschädigt. Bitte starten Sie die
-        Analyse erneut.
+        Report-Daten sind unvollständig. Bitte starten Sie die Analyse erneut.
       </div>
     );
   }
@@ -105,70 +104,110 @@ export default function GoogleIntelligenceReport({
   const otherHits = hits.filter((hit) => !assigned.has(hit.id));
   const queries = report.queries;
   const recommendations = report.recommendations;
+  const liveHits = hits.filter(
+    (hit) => hit.sourceType === "google_custom_search"
+  );
+  const profileHits = hits.filter(
+    (hit) => hit.sourceType === "identity_profile"
+  );
 
   return (
     <div className="space-y-6">
       <SectionReveal delayMs={0} enabled={revealSections}>
-        <header className="rounded-2xl border border-cyber-cyan/20 bg-cyber-cyan/[0.04] p-5 md:p-6">
-          <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/55">
-            GOOGLE INTELLIGENCE REPORT · ENTERPRISE OSINT
+        <header className="relative overflow-hidden rounded-2xl border border-cyber-cyan/25 bg-gradient-to-br from-cyber-cyan/[0.08] via-[#071018] to-transparent p-5 md:p-7">
+          <div
+            className="pointer-events-none absolute -right-10 top-0 h-40 w-40 rounded-full opacity-40"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(112,231,255,0.25), transparent 70%)",
+            }}
+          />
+          <p className="font-mono text-[9px] tracking-[.18em] text-cyber-cyan/70">
+            GOOGLE INTELLIGENCE REPORT · LIVE OSINT
           </p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-.03em] text-white/92 md:text-3xl">
-            Was Google über {report.subjectName} öffentlich finden konnte
+          <h2 className="mt-2 max-w-4xl text-2xl font-semibold tracking-[-.03em] text-white/95 md:text-3xl">
+            Öffentliche Google-Spuren von {report.subjectName}
           </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-white/45">
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-white/55">
             {report.summaryText}
           </p>
-          {!report.apiConfigured ? (
-            <p className="mt-3 rounded-lg border border-amber-300/15 bg-amber-300/[0.04] px-3 py-2 text-[11px] text-amber-50/65">
-              Live-Google-Treffer erfordern die Google Custom Search API. Es
-              werden keine Daten simuliert oder erfunden.
-            </p>
-          ) : null}
-          <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-white/30">
+
+          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                label: "Live-Treffer",
+                value: String(liveHits.length),
+              },
+              {
+                label: "Profil-Links",
+                value: String(profileHits.length),
+              },
+              {
+                label: "Risiko",
+                value: report.riskLevel.toUpperCase(),
+              },
+              {
+                label: "Score",
+                value: String(report.riskScore),
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="rounded-xl border border-white/[0.08] bg-black/25 px-3 py-3"
+              >
+                <p className="font-mono text-[7px] tracking-[.12em] text-white/30">
+                  {item.label.toUpperCase()}
+                </p>
+                <p className="mt-1 text-xl font-semibold text-cyber-cyan/90">
+                  {item.value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-white/35">
             Erstellt: {report.generatedAtLabel}
             <span className="text-white/15">·</span>
             Profil {report.profileCompleteness} %
+            <span className="text-white/15">·</span>
+            {report.dataSourceLabel}
             <InfoTooltip label="Datenquelle">
-              {`${report.dataSourceLabel}. Abgerufen am entspricht dem Analysezeitpunkt.`}
+              Treffer stammen aus der Live-Suche und Ihrem Identitätsprofil.
             </InfoTooltip>
           </p>
         </header>
       </SectionReveal>
 
-      <SectionReveal delayMs={350} enabled={revealSections}>
+      <SectionReveal delayMs={280} enabled={revealSections}>
         <ManagementOverviewPanel report={report} />
       </SectionReveal>
 
       {report.aiSummary ? (
-        <SectionReveal delayMs={550} enabled={revealSections}>
+        <SectionReveal delayMs={480} enabled={revealSections}>
           <section className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 md:p-6">
             <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/55">
-              KI ZUSAMMENFASSUNG
+              KI-LAGEBILD
             </p>
-            <p className="mt-3 text-sm leading-relaxed text-white/55">
+            <p className="mt-3 text-sm leading-relaxed text-white/60">
               {report.aiSummary}
-            </p>
-            <p className="mt-3 font-mono text-[8px] tracking-[.12em] text-white/25">
-              NUR AUF BASIS VERIFIZIERTER TREFFER · KEINE ERFUNDENEN DATEN
             </p>
           </section>
         </SectionReveal>
       ) : null}
 
-      <SectionReveal delayMs={700} enabled={revealSections}>
+      <SectionReveal delayMs={620} enabled={revealSections}>
         <RiskOverviewPanel report={report} />
       </SectionReveal>
 
-      <SectionReveal delayMs={900} enabled={revealSections}>
+      <SectionReveal delayMs={800} enabled={revealSections}>
         <section>
           <div className="mb-3 flex items-center gap-2">
             <h3 className="font-mono text-[9px] tracking-[.16em] text-white/35">
               AUSGEFÜHRTE SUCHANFRAGEN
             </h3>
             <InfoTooltip label="Suchanfragen">
-              Jede Anfrage wird aus Ihren Profilfeldern gebildet und an die
-              Google Custom Search API übergeben (wenn konfiguriert).
+              Jede Anfrage wird aus Ihren Profilfeldern gebildet und live gegen
+              den öffentlichen Index ausgeführt.
             </InfoTooltip>
           </div>
           <ul className="space-y-2">
@@ -200,7 +239,7 @@ export default function GoogleIntelligenceReport({
       {sections.map((section, index) => (
         <SectionReveal
           key={section.id}
-          delayMs={1100 + index * 250}
+          delayMs={1000 + index * 220}
           enabled={revealSections}
         >
           <section className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(220px,0.65fr)]">
@@ -226,7 +265,7 @@ export default function GoogleIntelligenceReport({
       ))}
 
       {otherHits.length > 0 ? (
-        <SectionReveal delayMs={2000} enabled={revealSections}>
+        <SectionReveal delayMs={1800} enabled={revealSections}>
           <section>
             <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
               SONSTIGE ERWÄHNUNGEN
@@ -243,16 +282,20 @@ export default function GoogleIntelligenceReport({
       ) : null}
 
       {sections.length === 0 && otherHits.length === 0 ? (
-        <SectionReveal delayMs={1100} enabled={revealSections}>
-          <div className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/40">
-            Keine öffentlichen Treffer gefunden. Das ist ein valides Ergebnis —
-            SynSight zeigt ausschließlich API-verifizierte oder profilverknüpfte
-            Daten.
+        <SectionReveal delayMs={1000} enabled={revealSections}>
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
+            <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/50">
+              CLEAR CHANNEL
+            </p>
+            <p className="mt-3 text-sm text-white/50">
+              Keine öffentlichen Treffer zu den aktuellen Suchanfragen. Das
+              Profil erscheint derzeit wenig sichtbar im offenen Index.
+            </p>
           </div>
         </SectionReveal>
       ) : null}
 
-      <SectionReveal delayMs={2300} enabled={revealSections}>
+      <SectionReveal delayMs={2100} enabled={revealSections}>
         <section>
           <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
             HANDLUNGSEMPFEHLUNGEN
@@ -289,7 +332,7 @@ export default function GoogleIntelligenceReport({
         </section>
       </SectionReveal>
 
-      <SectionReveal delayMs={2600} enabled={revealSections}>
+      <SectionReveal delayMs={2350} enabled={revealSections}>
         <ExecutiveSummaryPanel report={report} />
       </SectionReveal>
     </div>

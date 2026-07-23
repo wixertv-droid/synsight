@@ -62,6 +62,18 @@ export async function PUT(request: Request) {
     return NextResponse.json(apiSuccess({ credential }));
   }
 
+  if (parsed.data.action === "test") {
+    const { testApiCredentialConnection } =
+      await import("@/lib/services/api-credentials-service");
+    const result = await testApiCredentialConnection({
+      provider: parsed.data.provider,
+      secret: parsed.data.secret,
+      engineId: parsed.data.engineId,
+    });
+    const credentials = await listAdminApiCredentials(access.user);
+    return NextResponse.json(apiSuccess({ result, credentials }));
+  }
+
   try {
     const credential = await upsertAdminApiCredential(access.user, {
       provider: parsed.data.provider,
