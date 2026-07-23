@@ -193,11 +193,12 @@ export default function AdminApiCredentialsView() {
       <p className="text-sm text-white/45">
         API-Schlüssel werden AES-256-GCM verschlüsselt in{" "}
         <code className="text-cyber-cyan/70">api_credentials</code> gespeichert.
-        Für die Google-Analyse brauchen Sie den{" "}
-        <strong className="font-medium text-white/70">Custom Search Key</strong>{" "}
-        und die{" "}
-        <strong className="font-medium text-white/70">Engine-ID (cx)</strong> —
-        z. B. <code className="text-cyber-cyan/70">0728bba0e53574410</code>. Mit{" "}
+        Für Google brauchen Sie Key + Engine-ID (cx) und in der Google Cloud
+        Console muss die{" "}
+        <strong className="font-medium text-white/70">
+          Custom Search JSON API
+        </strong>{" "}
+        für dasselbe Projekt aktiviert sein. Mit{" "}
         <strong className="font-medium text-white/70">Verbindung testen</strong>{" "}
         prüfen Sie den Live-Datenaustausch.
       </p>
@@ -305,6 +306,8 @@ export default function AdminApiCredentialsView() {
                 }}
               >
                 <input
+                  name={`label-${row.provider}`}
+                  autoComplete="off"
                   value={draft.label}
                   onChange={(event) =>
                     setDrafts((current) => ({
@@ -319,6 +322,7 @@ export default function AdminApiCredentialsView() {
                   className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/80 outline-none focus:border-cyber-cyan/35"
                 />
                 <input
+                  name={`secret-${row.provider}`}
                   type="password"
                   autoComplete="new-password"
                   value={draft.secret}
@@ -340,6 +344,8 @@ export default function AdminApiCredentialsView() {
                 />
                 {isGoogle ? (
                   <input
+                    name={`engine-${row.provider}`}
+                    autoComplete="off"
                     value={draft.engineId}
                     onChange={(event) =>
                       setDrafts((current) => ({

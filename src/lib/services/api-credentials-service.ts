@@ -432,11 +432,17 @@ export async function testApiCredentialConnection(input: {
           body.error?.status ||
           `HTTP ${response.status}`;
         await markApiCredentialError(provider, detail);
+        const accessDenied =
+          /does not have access to Custom Search JSON API/i.test(detail);
         return {
           provider,
           ok: false,
-          message: "Google Custom Search lehnt die Anfrage ab.",
-          detail,
+          message: accessDenied
+            ? "Custom Search JSON API ist im Google-Projekt nicht aktiviert."
+            : "Google Custom Search lehnt die Anfrage ab.",
+          detail: accessDenied
+            ? `${detail} — Google Cloud Console → APIs & Dienste → „Custom Search JSON API“ aktivieren (gleiches Projekt wie der API-Key).`
+            : detail,
           latencyMs,
         };
       }
@@ -509,9 +515,10 @@ export async function testApiCredentialConnection(input: {
     }
 
     const models = [
+      "gemini-3.6-flash",
+      "gemini-2.5-flash",
+      "gemini-flash-latest",
       "gemini-2.0-flash",
-      "gemini-1.5-flash",
-      "gemini-1.5-flash-latest",
     ];
     let lastDetail = "Unbekannter Fehler";
 
