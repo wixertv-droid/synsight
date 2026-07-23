@@ -22,6 +22,14 @@ import {
 import { summarizeWithGemini } from "@/lib/analysis/gemini-summary";
 import type { IdentityView } from "@/lib/services/identity-service";
 
+function safeHostname(link: string, fallback = "google"): string {
+  try {
+    return new URL(link).hostname || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function clean(value: string | undefined | null): string {
   return (value ?? "").trim();
 }
@@ -235,49 +243,60 @@ export async function runGoogleIntelligenceAnalysis(
 
   if (apiConfigured) {
     for (const plan of queries) {
-      const items = await fetchGoogleCustomSearch(plan.query);
+      let items: Awaited<ReturnType<typeof fetchGoogleCustomSearch>> = [];
+      try {
+        items = await fetchGoogleCustomSearch(plan.query);
+      } catch (error) {
+        console.error("[google-analysis] query failed", plan.id, error);
+        continue;
+      }
+
       for (const item of items) {
         if (!item.title || !item.link) continue;
-        const category = inferCategory(plan.query, plan.label);
-        const classification = classifyHitContent({
-          title: item.title,
-          snippet: item.snippet,
-          url: item.link,
-          category,
-          sourceType: "google_custom_search",
-        });
+        try {
+          const category = inferCategory(plan.query, plan.label);
+          const classification = classifyHitContent({
+            title: item.title,
+            snippet: item.snippet,
+            url: item.link,
+            category,
+            sourceType: "google_custom_search",
+          });
 
-        const hit: IntelligenceHit = {
-          id: `serp-${++hitSeq}`,
-          query: plan.query,
-          title: item.title,
-          url: item.link,
-          snippet: item.snippet || "—",
-          category,
-          fetchedAt: generatedAt,
-          source: item.displayLink || new URL(item.link).hostname,
-          sourceType: "google_custom_search",
-          visibility: "public_index",
-          relevance: classification.relevance,
-          risk: classification.risk,
-          status: "verified",
-          whyFound: `Gefunden über die Profil-Suchanfrage „${plan.query}".`,
-          whyRelevant:
-            classification.relevance === "relevant"
-              ? "Der Treffer enthält personenbezogene Signale aus Ihrem Profil."
-              : "Allgemeiner öffentlicher Treffer zur Suchanfrage.",
-          visibleData: [item.title, item.snippet].filter(Boolean).join(" — "),
-          isPublic: true,
-          isProblematic: classification.isProblematic,
-          risks: classification.isProblematic
-            ? "Personenbezogene oder Kontaktdaten sind ohne Login sichtbar."
-            : "Öffentlich indexierte Information.",
-          canIgnore: classification.canIgnore,
-          shouldAct: classification.shouldAct,
-          recommendation: "",
-        };
-        hit.recommendation = buildRecommendation(hit);
-        serpHits.push(hit);
+          const hit: IntelligenceHit = {
+            id: `serp-${++hitSeq}`,
+            query: plan.query,
+            title: item.title,
+            url: item.link,
+            snippet: item.snippet || "—",
+            category,
+            fetchedAt: generatedAt,
+            source: item.displayLink || safeHostname(item.link),
+            sourceType: "google_custom_search",
+            visibility: "public_index",
+            relevance: classification.relevance,
+            risk: classification.risk,
+            status: "verified",
+            whyFound: `Gefunden über die Profil-Suchanfrage „${plan.query}".`,
+            whyRelevant:
+              classification.relevance === "relevant"
+                ? "Der Treffer enthält personenbezogene Signale aus Ihrem Profil."
+                : "Allgemeiner öffentlicher Treffer zur Suchanfrage.",
+            visibleData: [item.title, item.snippet].filter(Boolean).join(" — "),
+            isPublic: true,
+            isProblematic: classification.isProblematic,
+            risks: classification.isProblematic
+              ? "Personenbezogene oder Kontaktdaten sind ohne Login sichtbar."
+              : "Öffentlich indexierte Information.",
+            canIgnore: classification.canIgnore,
+            shouldAct: classification.shouldAct,
+            recommendation: "",
+          };
+          hit.recommendation = buildRecommendation(hit);
+          serpHits.push(hit);
+        } catch (error) {
+          console.error("[google-analysis] hit mapping failed", error);
+        }
       }
     }
   }
@@ -349,7 +368,12 @@ export async function runGoogleIntelligenceAnalysis(
     missingProfileHints,
   };
 
-  draft.aiSummary = await summarizeWithGemini(draft);
+  try {
+    draft.aiSummary = await summarizeWithGemini(draft);
+  } catch (error) {
+    console.error("[google-analysis] gemini summary failed", error);
+    draft.aiSummary = null;
+  }
   return draft;
 }
 

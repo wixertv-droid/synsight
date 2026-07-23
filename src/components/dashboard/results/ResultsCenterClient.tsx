@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import GoogleIntelligenceReport from "@/components/analysis/google/GoogleIntelligenceReport";
 import IntelligenceScanSequence from "@/components/analysis/intelligence/IntelligenceScanSequence";
@@ -87,16 +87,29 @@ export default function ResultsCenterClient({
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scanDone, setScanDone] = useState(false);
+  const scanStartedRef = useRef(false);
 
   const activeModule = useMemo(
     () => tabs.find((tab) => tab.id === activeTab) ?? tabs[0],
     [activeTab, tabs]
   );
 
+  const finishScanAttempt = useCallback(
+    (options?: { clearScanParam?: boolean }) => {
+      setScanning(false);
+      setScanDone(true);
+      if (options?.clearScanParam !== false) {
+        router.replace("/dashboard/results?tab=google_search", {
+          scroll: false,
+        });
+      }
+    },
+    [router]
+  );
+
   const runGoogleScan = useCallback(async () => {
     setError(null);
     setScanning(true);
-    setScanDone(false);
     const scanStart = Date.now();
     const minScanMs = Math.max(
       googleIntelligenceModule.minScanMs,
@@ -110,7 +123,16 @@ export default function ResultsCenterClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const body = await response.json();
+      let body: {
+        success?: boolean;
+        data?: { report?: unknown };
+        error?: { message?: string };
+      } = {};
+      try {
+        body = await response.json();
+      } catch {
+        body = {};
+      }
 
       const elapsed = Date.now() - scanStart;
       const waitMs = Math.max(0, minScanMs - elapsed);
@@ -120,9 +142,12 @@ export default function ResultsCenterClient({
 
       if (!response.ok || !body.success) {
         setError(
-          body?.error?.message ?? "Analyse konnte nicht abgeschlossen werden."
+          body?.error?.message ??
+            (response.status === 500
+              ? "Serverfehler bei der Google-Analyse. Bitte API-Keys unter Website → API prüfen und erneut versuchen."
+              : "Analyse konnte nicht abgeschlossen werden.")
         );
-        setScanning(false);
+        finishScanAttempt();
         return;
       }
 
@@ -131,22 +156,27 @@ export default function ResultsCenterClient({
         setError(
           "Analyse abgeschlossen, aber der Report war unvollständig. Bitte erneut versuchen."
         );
-        setScanning(false);
+        finishScanAttempt();
         return;
       }
 
       setReport(nextReport);
-      setScanning(false);
-      setScanDone(true);
-      router.replace("/dashboard/results?tab=google_search", { scroll: false });
+      finishScanAttempt();
     } catch {
       setError("Verbindung zum Server nicht möglich.");
-      setScanning(false);
+      finishScanAttempt();
     }
-  }, [router]);
+  }, [finishScanAttempt]);
 
   useEffect(() => {
-    if (shouldScan && activeTab === "google_search" && !scanning && !scanDone) {
+    if (
+      shouldScan &&
+      activeTab === "google_search" &&
+      !scanning &&
+      !scanDone &&
+      !scanStartedRef.current
+    ) {
+      scanStartedRef.current = true;
       void runGoogleScan();
     }
   }, [shouldScan, activeTab, scanning, scanDone, runGoogleScan]);

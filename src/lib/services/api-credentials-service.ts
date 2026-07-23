@@ -237,14 +237,18 @@ export async function markApiCredentialSuccess(
 ): Promise<void> {
   const db = getDatabase();
   if (!db) return;
-  await db
-    .update(apiCredentials)
-    .set({
-      lastSuccessAt: new Date().toISOString(),
-      lastErrorAt: null,
-      lastErrorMessage: null,
-    })
-    .where(eq(apiCredentials.provider, provider));
+  try {
+    await db
+      .update(apiCredentials)
+      .set({
+        lastSuccessAt: new Date().toISOString(),
+        lastErrorAt: null,
+        lastErrorMessage: null,
+      })
+      .where(eq(apiCredentials.provider, provider));
+  } catch (error) {
+    console.error("[api-credentials] mark success failed", error);
+  }
 }
 
 export async function markApiCredentialError(
@@ -253,11 +257,15 @@ export async function markApiCredentialError(
 ): Promise<void> {
   const db = getDatabase();
   if (!db) return;
-  await db
-    .update(apiCredentials)
-    .set({
-      lastErrorAt: new Date().toISOString(),
-      lastErrorMessage: message.slice(0, 1000),
-    })
-    .where(eq(apiCredentials.provider, provider));
+  try {
+    await db
+      .update(apiCredentials)
+      .set({
+        lastErrorAt: new Date().toISOString(),
+        lastErrorMessage: message.slice(0, 1000),
+      })
+      .where(eq(apiCredentials.provider, provider));
+  } catch (error) {
+    console.error("[api-credentials] mark error failed", error);
+  }
 }

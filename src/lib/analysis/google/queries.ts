@@ -18,7 +18,7 @@ export function buildGoogleQueriesFromIdentity(
   const location = clean(identity?.personal.location);
   const address = clean(identity?.personal.addressLine);
   const company =
-    clean(identity?.personal.company) || clean(identity?.companies[0]) || "";
+    clean(identity?.personal.company) || clean(identity?.companies?.[0]) || "";
 
   const emails = [...(identity?.emails ?? [])].map(clean).filter(Boolean);
   const phones = [

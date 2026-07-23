@@ -33,13 +33,17 @@ export async function POST(request: Request) {
     return NextResponse.json(apiSuccess({ report }));
   } catch (error) {
     console.error("[analysis/google/run] failed", error);
+    const technical =
+      error instanceof Error ? error.message : "unbekannter Fehler";
+    const friendly =
+      /api_credentials|intelligence_reports|ER_NO_SUCH_TABLE/i.test(technical)
+        ? "Datenbanktabellen fehlen. Bitte Migrationen ausführen (npm run db:migrate)."
+        : /decrypt|auth|bad decrypt|Unsupported state/i.test(technical)
+          ? "API-Schlüssel konnten nicht entschlüsselt werden. IMAGE_ENCRYPTION_KEY/SESSION_SECRET prüfen und Keys neu speichern."
+          : "Google-Analyse ist fehlgeschlagen. Bitte API-Keys unter Website → API prüfen.";
+
     return NextResponse.json(
-      apiError(
-        "ANALYSIS_FAILED",
-        error instanceof Error
-          ? error.message
-          : "Google-Analyse ist unerwartet fehlgeschlagen."
-      ),
+      apiError("ANALYSIS_FAILED", `${friendly} (${technical.slice(0, 160)})`),
       { status: 500 }
     );
   }
