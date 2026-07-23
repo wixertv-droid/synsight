@@ -396,7 +396,9 @@ export function buildReportScorecard(
 
   const publicVisibility = Math.min(
     100,
-    Math.round((likely.length / Math.max(1, live.length)) * 100)
+    Math.round(
+      (likely.length / Math.max(1, live.length)) * 70 + avgConfidence * 0.3
+    )
   );
   const identityRisk = Math.min(
     100,

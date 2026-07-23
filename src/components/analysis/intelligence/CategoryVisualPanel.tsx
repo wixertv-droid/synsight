@@ -79,7 +79,10 @@ export default function CategoryVisualPanel({
     () => (Array.isArray(rawHits) ? rawHits : []),
     [rawHits]
   );
-  const reportHits = Array.isArray(report.hits) ? report.hits : [];
+  const reportHits = useMemo(
+    () => (Array.isArray(report.hits) ? report.hits : []),
+    [report.hits]
+  );
   const liveHits = useMemo(
     () => reportHits.filter((hit) => hit.sourceType !== "identity_profile"),
     [reportHits]
