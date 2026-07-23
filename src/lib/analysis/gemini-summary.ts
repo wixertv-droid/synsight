@@ -1,5 +1,8 @@
 import type { IntelligenceReport } from "@/lib/analysis/types";
-import { sanitizeAiSummary } from "@/lib/analysis/ai-summary-text";
+import {
+  isCompleteAiSummary,
+  sanitizeAiSummary,
+} from "@/lib/analysis/ai-summary-text";
 import {
   markApiCredentialError,
   markApiCredentialSuccess,
@@ -16,6 +19,7 @@ interface GeminiUsageMetadata {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
   totalTokenCount?: number;
+  thoughtsTokenCount?: number;
 }
 
 function parseUsageMetadata(raw: unknown): ApiTokenUsage | null {
@@ -47,6 +51,37 @@ function mergeTokenUsage(
     totalTokenCount:
       (current.totalTokenCount ?? 0) + (next.totalTokenCount ?? 0),
   };
+}
+
+function extractCandidateText(
+  candidate:
+    | {
+        content?: { parts?: Array<{ text?: string; thought?: boolean }> };
+      }
+    | undefined
+): string {
+  const parts = candidate?.content?.parts ?? [];
+  return parts
+    .filter((part) => !part.thought && typeof part.text === "string")
+    .map((part) => part.text!.trim())
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+}
+
+function generationConfigForModel(model: string): Record<string, unknown> {
+  const isGemini3 = /gemini-3/i.test(model);
+  const config: Record<string, unknown> = {
+    // Thinking + Antwort teilen sich das Limit — großzügig bemessen.
+    maxOutputTokens: 8192,
+  };
+  if (isGemini3) {
+    // Default „medium“ Thinking frisst oft das sichtbare Lagebild weg.
+    config.thinkingConfig = { thinkingLevel: "minimal" };
+  } else {
+    config.temperature = 0.25;
+  }
+  return config;
 }
 
 /**
@@ -82,19 +117,18 @@ export async function summarizeWithGemini(
     })),
   };
 
-  const prompt = `Du bist ein Sicherheitsberater für Privatpersonen. Schreibe ein vollständiges KI-Lagebild auf Deutsch.
+  const prompt = `Du bist ein Sicherheitsberater für Privatpersonen. Schreibe ein VOLLSTÄNDIGES KI-Lagebild auf Deutsch.
 
-Regeln:
-- Nutze AUSSCHLIESSLICH die gelieferten Treffer.
-- Erfinde keine URLs, Profile, Telefonnummern oder E-Mails.
-- Kein Markdown, keine Sternchen (**), keine Überschriften wie „Management-Zusammenfassung“.
-- Schreibe so, dass Laien sofort verstehen, was gemeint ist.
-- 180–280 Wörter, genau 3 Absätze mit Leerzeile dazwischen:
-  1) Was wurde gefunden?
-  2) Was bedeutet das für die Person?
-  3) Was sollte als Nächstes getan werden?
-- Wenn keine Treffer vorhanden sind, sage klar, dass nichts Relevantes gefunden wurde.
-- Jeder Absatz muss mit einem vollständigen Satz enden. Niemals mitten im Wort abbrechen.
+HARTE REGELN:
+- Nutze AUSSCHLIESSLICH die gelieferten Treffer. Erfinde nichts.
+- KEINE Überschriften, KEINE Labels. Verboten u. a.: „Management-Zusammenfassung“, „Befund“, „Lagebild“, „Empfehlung“, „Executive Summary“, Markdown, Sternchen.
+- Schreibe genau 3 Absätze, getrennt durch eine Leerzeile:
+  Absatz 1: Was wurde gefunden? (konkret, in ganzen Sätzen)
+  Absatz 2: Was bedeutet das für die Person?
+  Absatz 3: Was sollte als Nächstes getan werden?
+- 180–320 Wörter insgesamt. Jeder Absatz endet mit einem vollständigen Satz (. ! oder ?).
+- Niemals mitten im Wort oder Satz abbrechen. Wenn der Platz knapp wird: kürzer formulieren, aber fertig schreiben.
+- Wenn keine Treffer: klar sagen, dass nichts Relevantes gefunden wurde (trotzdem 3 kurze Absätze).
 
 Daten:
 ${JSON.stringify(payload)}`;
@@ -109,6 +143,7 @@ ${JSON.stringify(payload)}`;
   let lastError = "gemini failed";
   let attempts = 0;
   let accumulatedUsage: ApiTokenUsage | null = null;
+  let bestPartial: string | null = null;
 
   for (const model of models) {
     attempts += 1;
@@ -120,10 +155,7 @@ ${JSON.stringify(payload)}`;
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.25,
-              maxOutputTokens: 4096,
-            },
+            generationConfig: generationConfigForModel(model),
           }),
         }
       );
@@ -136,7 +168,7 @@ ${JSON.stringify(payload)}`;
       const body = (await response.json()) as {
         candidates?: Array<{
           finishReason?: string;
-          content?: { parts?: Array<{ text?: string }> };
+          content?: { parts?: Array<{ text?: string; thought?: boolean }> };
         }>;
         usageMetadata?: GeminiUsageMetadata;
       };
@@ -145,37 +177,78 @@ ${JSON.stringify(payload)}`;
         parseUsageMetadata(body.usageMetadata)
       );
       const candidate = body.candidates?.[0];
-      const text = candidate?.content?.parts?.[0]?.text?.trim();
-      if (text) {
-        const sanitized = sanitizeAiSummary(text);
-        if (candidate?.finishReason === "MAX_TOKENS" && sanitized.length < 80) {
-          lastError = "MAX_TOKENS truncation";
-          continue;
-        }
-        await markApiCredentialSuccess("gemini");
-        const tokens = accumulatedUsage;
-        await recordApiUsageEvent({
-          providerCode: "gemini",
-          eventType: "summarize",
-          referenceKey: `gemini:${report.subjectName}:${Date.now()}`,
-          requestCount: attempts,
-          success: true,
-          detail: tokens
-            ? `KI-Lagebild · ${report.subjectName} · ${model} · ${tokens.promptTokenCount} in / ${tokens.candidatesTokenCount} out Tokens`
-            : `KI-Lagebild · ${report.subjectName} · Modell ${model}`,
-          tokenUsage: tokens,
-          metaJson: {
-            model,
-            attempts,
-            hitCount: verified.length,
-            subjectName: report.subjectName,
-            finishReason: candidate?.finishReason ?? null,
-          },
-        });
-        return sanitized;
+      const text = extractCandidateText(candidate);
+      if (!text) {
+        lastError = "empty candidate text";
+        continue;
       }
+
+      const sanitized = sanitizeAiSummary(text);
+      const finishReason = candidate?.finishReason ?? null;
+      const truncatedByLimit =
+        finishReason === "MAX_TOKENS" || finishReason === "LENGTH";
+      const complete = isCompleteAiSummary(sanitized);
+
+      if (sanitized.length > (bestPartial?.length ?? 0)) {
+        bestPartial = sanitized;
+      }
+
+      // Unvollständige Antworten verwerfen und nächstes Modell versuchen.
+      if (truncatedByLimit || !complete) {
+        lastError = truncatedByLimit
+          ? `MAX_TOKENS truncation (${sanitized.length} chars)`
+          : `incomplete summary (${sanitized.length} chars)`;
+        continue;
+      }
+
+      await markApiCredentialSuccess("gemini");
+      const tokens = accumulatedUsage;
+      await recordApiUsageEvent({
+        providerCode: "gemini",
+        eventType: "summarize",
+        referenceKey: `gemini:${report.subjectName}:${Date.now()}`,
+        requestCount: attempts,
+        success: true,
+        detail: tokens
+          ? `KI-Lagebild · ${report.subjectName} · ${model} · ${tokens.promptTokenCount} in / ${tokens.candidatesTokenCount} out Tokens`
+          : `KI-Lagebild · ${report.subjectName} · Modell ${model}`,
+        tokenUsage: tokens,
+        metaJson: {
+          model,
+          attempts,
+          hitCount: verified.length,
+          subjectName: report.subjectName,
+          finishReason,
+          charCount: sanitized.length,
+        },
+      });
+      return sanitized;
     } catch (error) {
       lastError = error instanceof Error ? error.message : "gemini failed";
+    }
+  }
+
+  // Letzter Fallback: längstes brauchbares Fragment nur wenn es schon wie Text wirkt.
+  if (bestPartial && bestPartial.length >= 160) {
+    const fallback = sanitizeAiSummary(bestPartial);
+    if (fallback.length >= 120) {
+      await markApiCredentialSuccess("gemini");
+      await recordApiUsageEvent({
+        providerCode: "gemini",
+        eventType: "summarize_partial",
+        referenceKey: `gemini-partial:${report.subjectName}:${Date.now()}`,
+        requestCount: Math.max(1, attempts),
+        success: true,
+        detail: `KI-Lagebild (Teilantwort) · ${report.subjectName}`,
+        tokenUsage: accumulatedUsage,
+        metaJson: {
+          attempts,
+          subjectName: report.subjectName,
+          charCount: fallback.length,
+          lastError,
+        },
+      });
+      return fallback;
     }
   }
 

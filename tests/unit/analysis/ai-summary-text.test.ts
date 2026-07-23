@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeAiSummary } from "@/lib/analysis/ai-summary-text";
+import {
+  isCompleteAiSummary,
+  sanitizeAiSummary,
+} from "@/lib/analysis/ai-summary-text";
 
 describe("sanitizeAiSummary", () => {
   it("strips markdown bold markers but keeps full text", () => {
@@ -30,5 +33,31 @@ describe("sanitizeAiSummary", () => {
     const result = sanitizeAiSummary(input);
     expect(result).toBe("Es wurden mehrere Treffer gefunden.");
     expect(result).not.toMatch(/\(Ris/);
+  });
+
+  it("removes banned Management/Befund headings", () => {
+    const input = [
+      "Management-Zusammenfassung",
+      "",
+      "Befund",
+      "",
+      "Zu der Person wurden mehrere öffentliche Treffer gefunden. Das Lagebild ist überschaubar.",
+      "",
+      "Als Nächstes sollten kritische Treffer geprüft werden.",
+    ].join("\n");
+    const result = sanitizeAiSummary(input);
+    expect(result).not.toMatch(/Management-Zusammenfassung/i);
+    expect(result).not.toMatch(/^Befund$/im);
+    expect(result).toContain("mehrere öffentliche Treffer");
+    expect(result).toContain("kritische Treffer");
+  });
+
+  it("detects incomplete truncated summaries", () => {
+    expect(isCompleteAiSummary("Zu der Person…")).toBe(false);
+    expect(
+      isCompleteAiSummary(
+        "Zu der Person wurden mehrere Treffer gefunden. Das Risiko ist niedrig. Prüfen Sie die kritischen Einträge zuerst."
+      )
+    ).toBe(true);
   });
 });
