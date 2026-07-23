@@ -126,7 +126,7 @@ function profileLinkedHits(
   let seq = startId;
   const hits: IntelligenceHit[] = [];
 
-  for (const social of identity.socialAccounts) {
+  for (const social of identity.socialAccounts ?? []) {
     const url = clean(social.profileUrl);
     if (!url) continue;
     const classification = classifyHitContent({
@@ -165,7 +165,10 @@ function profileLinkedHits(
     });
   }
 
-  for (const site of [...identity.websites, ...identity.domains]) {
+  for (const site of [
+    ...(identity.websites ?? []),
+    ...(identity.domains ?? []),
+  ]) {
     const url = site.startsWith("http") ? site : `https://${site}`;
     const classification = classifyHitContent({
       title: site,

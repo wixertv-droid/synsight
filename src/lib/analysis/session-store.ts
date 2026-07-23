@@ -1,6 +1,7 @@
 import { eq, and } from "drizzle-orm";
 import { getDatabase } from "@/lib/database/client";
 import { intelligenceReports } from "@/lib/database/schema";
+import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 
 const memoryReports = new Map<string, IntelligenceReport>();
@@ -13,31 +14,43 @@ export async function saveIntelligenceReport(
   userId: number,
   report: IntelligenceReport
 ): Promise<void> {
-  memoryReports.set(storeKey(userId, report.moduleKey), report);
+  const normalized = normalizeIntelligenceReport(report);
+  if (!normalized) return;
+
+  memoryReports.set(storeKey(userId, normalized.moduleKey), normalized);
 
   const db = getDatabase();
   if (!db) return;
 
-  await db
-    .insert(intelligenceReports)
-    .values({
-      userId,
-      moduleKey: report.moduleKey,
-      subjectName: report.subjectName,
-      riskScore: report.riskScore,
-      riskLevel: report.riskLevel,
-      hitCount: report.hits.length,
-      reportJson: report,
-    })
-    .onDuplicateKeyUpdate({
-      set: {
-        subjectName: report.subjectName,
-        riskScore: report.riskScore,
-        riskLevel: report.riskLevel,
-        hitCount: report.hits.length,
-        reportJson: report,
-      },
-    });
+  try {
+    // Ensure plain JSON (no prototype / undefined quirks) for MySQL JSON column
+    const reportJson = JSON.parse(
+      JSON.stringify(normalized)
+    ) as IntelligenceReport;
+    await db
+      .insert(intelligenceReports)
+      .values({
+        userId,
+        moduleKey: normalized.moduleKey,
+        subjectName: normalized.subjectName,
+        riskScore: normalized.riskScore,
+        riskLevel: normalized.riskLevel,
+        hitCount: normalized.hits.length,
+        reportJson,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          subjectName: normalized.subjectName,
+          riskScore: normalized.riskScore,
+          riskLevel: normalized.riskLevel,
+          hitCount: normalized.hits.length,
+          reportJson,
+        },
+      });
+  } catch (error) {
+    // Persistence must not break the live analysis response (e.g. missing migration).
+    console.error("[intelligence-reports] save failed", error);
+  }
 }
 
 export async function getIntelligenceReport(
@@ -50,22 +63,28 @@ export async function getIntelligenceReport(
   const db = getDatabase();
   if (!db) return null;
 
-  const rows = await db
-    .select()
-    .from(intelligenceReports)
-    .where(
-      and(
-        eq(intelligenceReports.userId, userId),
-        eq(intelligenceReports.moduleKey, moduleKey)
+  try {
+    const rows = await db
+      .select()
+      .from(intelligenceReports)
+      .where(
+        and(
+          eq(intelligenceReports.userId, userId),
+          eq(intelligenceReports.moduleKey, moduleKey)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  const row = rows[0];
-  if (!row) return null;
-  const report = row.reportJson as IntelligenceReport;
-  memoryReports.set(storeKey(userId, moduleKey), report);
-  return report;
+    const row = rows[0];
+    if (!row) return null;
+    const report = normalizeIntelligenceReport(row.reportJson);
+    if (!report) return null;
+    memoryReports.set(storeKey(userId, moduleKey), report);
+    return report;
+  } catch (error) {
+    console.error("[intelligence-reports] load failed", error);
+    return null;
+  }
 }
 
 /** Sync helper for client-facing code that already loaded via async. */

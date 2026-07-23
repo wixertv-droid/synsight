@@ -7,6 +7,18 @@ export default function ExecutiveSummaryPanel({
 }: {
   report: IntelligenceReport;
 }) {
+  const executive = report.executive ?? {
+    totalPublicHits: 0,
+    criticalHits: 0,
+    recommendedActions: [] as string[],
+    overallRisk: report.riskLevel ?? "low",
+    priority: "Keine Maßnahme" as const,
+    narrative: "Keine Executive Summary verfügbar.",
+  };
+  const actions = Array.isArray(executive.recommendedActions)
+    ? executive.recommendedActions
+    : [];
+
   return (
     <section className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-5 md:p-6">
       <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/55">
@@ -16,26 +28,26 @@ export default function ExecutiveSummaryPanel({
         Gesamteinschätzung — {report.subjectName}
       </h3>
       <p className="mt-2 text-[12px] leading-relaxed text-white/45">
-        {report.executive.narrative}
+        {executive.narrative}
       </p>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           {
             label: "Öffentliche Treffer",
-            value: String(report.executive.totalPublicHits),
+            value: String(executive.totalPublicHits),
           },
           {
             label: "Kritische Treffer",
-            value: String(report.executive.criticalHits),
+            value: String(executive.criticalHits),
           },
           {
             label: "Gesamtrisiko",
-            value: report.executive.overallRisk.toUpperCase(),
+            value: String(executive.overallRisk).toUpperCase(),
           },
           {
             label: "Priorität",
-            value: report.executive.priority,
+            value: executive.priority,
           },
         ].map((item) => (
           <div
@@ -52,13 +64,13 @@ export default function ExecutiveSummaryPanel({
         ))}
       </div>
 
-      {report.executive.recommendedActions.length > 0 ? (
+      {actions.length > 0 ? (
         <div className="mt-5">
           <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
             EMPFOHLENE MASSNAHMEN
           </p>
           <ol className="mt-3 space-y-2">
-            {report.executive.recommendedActions.map((action) => (
+            {actions.map((action) => (
               <li
                 key={action}
                 className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[12px] text-white/55"

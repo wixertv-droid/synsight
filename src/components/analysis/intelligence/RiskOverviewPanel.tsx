@@ -27,16 +27,25 @@ export default function RiskOverviewPanel({
 }: {
   report: IntelligenceReport;
 }) {
-  const ui = riskUi[report.riskLevel];
+  const ui = riskUi[report.riskLevel] ?? riskUi.low;
   const circumference = 2 * Math.PI * 54;
   const offset = circumference - (report.riskScore / 100) * circumference;
+  const buckets = report.buckets ?? {
+    total: 0,
+    relevant: 0,
+    neutral: 0,
+    low: 0,
+    stale: 0,
+  };
+  const queries = report.queries ?? [];
+  const executive = report.executive;
 
   const radarPoints = [
-    report.buckets.relevant,
-    report.buckets.neutral,
-    report.buckets.low,
-    report.executive.criticalHits,
-    report.queries.length,
+    buckets.relevant,
+    buckets.neutral,
+    buckets.low,
+    executive?.criticalHits ?? 0,
+    queries.length,
   ];
   const maxRadar = Math.max(...radarPoints, 1);
 
@@ -50,22 +59,22 @@ export default function RiskOverviewPanel({
           {[
             {
               label: "Relevant",
-              value: report.buckets.relevant,
+              value: buckets.relevant,
               tone: "text-cyber-cyan",
             },
             {
               label: "Neutral",
-              value: report.buckets.neutral,
+              value: buckets.neutral,
               tone: "text-white/70",
             },
             {
               label: "Gering",
-              value: report.buckets.low,
+              value: buckets.low,
               tone: "text-white/45",
             },
             {
               label: "Veraltet",
-              value: report.buckets.stale,
+              value: buckets.stale,
               tone: "text-white/30",
             },
           ].map((item) => (

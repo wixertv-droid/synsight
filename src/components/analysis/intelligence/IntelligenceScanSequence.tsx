@@ -17,6 +17,7 @@ export default function IntelligenceScanSequence({
   onComplete: () => void;
   subjectName: string;
 }) {
+  const safeSteps = Array.isArray(steps) ? steps : [];
   const [elapsed, setElapsed] = useState(0);
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
 
@@ -38,37 +39,38 @@ export default function IntelligenceScanSequence({
 
   const activeIndex = useMemo(() => {
     let index = 0;
-    for (let i = 0; i < steps.length; i += 1) {
-      if (elapsed >= steps[i].atMs) index = i;
+    for (let i = 0; i < safeSteps.length; i += 1) {
+      if (elapsed >= safeSteps[i].atMs) index = i;
     }
     return index;
-  }, [elapsed, steps]);
+  }, [elapsed, safeSteps]);
 
   useEffect(() => {
     if (!running) return;
-    const visible = steps
+    const visible = safeSteps
       .filter((step) => elapsed >= step.atMs)
       .map((step) => step.terminal);
     setTerminalLines(visible.slice(-8));
-  }, [elapsed, running, steps]);
+  }, [elapsed, running, safeSteps]);
 
   useEffect(() => {
     if (!running) return;
     const targetMs = Math.max(
       minDurationMs,
-      steps.at(-1)?.atMs ?? minDurationMs
+      safeSteps.at(-1)?.atMs ?? minDurationMs
     );
     if (elapsed >= targetMs) {
       const timer = window.setTimeout(onComplete, 400);
       return () => window.clearTimeout(timer);
     }
     return undefined;
-  }, [elapsed, minDurationMs, onComplete, running, steps]);
+  }, [elapsed, minDurationMs, onComplete, running, safeSteps]);
 
   const progress = Math.min(
     100,
     Math.round(
-      (elapsed / Math.max(minDurationMs, steps.at(-1)?.atMs ?? minDurationMs)) *
+      (elapsed /
+        Math.max(minDurationMs, safeSteps.at(-1)?.atMs ?? minDurationMs)) *
         100
     )
   );
@@ -120,7 +122,7 @@ export default function IntelligenceScanSequence({
           </div>
 
           <ul className="space-y-2.5">
-            {steps.map((step, index) => {
+            {safeSteps.map((step, index) => {
               const state =
                 index < activeIndex
                   ? "done"
@@ -197,10 +199,9 @@ export default function IntelligenceScanSequence({
                 </p>
                 <p className="mt-1 font-mono text-sm text-cyber-cyan/80">
                   {label === "QUERIES"
-                    ? String(Math.min(steps.length, activeIndex + 1)).padStart(
-                        2,
-                        "0"
-                      )
+                    ? String(
+                        Math.min(safeSteps.length, activeIndex + 1)
+                      ).padStart(2, "0")
                     : label === "SERP"
                       ? elapsed > 2100
                         ? "PROC"

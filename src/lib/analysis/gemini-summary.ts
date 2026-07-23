@@ -19,7 +19,7 @@ export async function summarizeWithGemini(
   const credentials = await resolveGeminiCredentials();
   if (!credentials) return null;
 
-  const verified = report.hits.filter(
+  const verified = (report.hits ?? []).filter(
     (hit) => hit.sourceType === "google_custom_search"
   );
 

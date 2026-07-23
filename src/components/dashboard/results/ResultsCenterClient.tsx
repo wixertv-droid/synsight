@@ -6,6 +6,7 @@ import GoogleIntelligenceReport from "@/components/analysis/google/GoogleIntelli
 import IntelligenceScanSequence from "@/components/analysis/intelligence/IntelligenceScanSequence";
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
 import { googleIntelligenceModule } from "@/lib/analysis/google/module";
+import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 
 export interface ResultsTabModule {
@@ -80,8 +81,8 @@ export default function ResultsCenterClient({
   const [activeTab, setActiveTab] = useState(() =>
     tabs.some((tab) => tab.id === requestedTab) ? requestedTab : tabs[0].id
   );
-  const [report, setReport] = useState<IntelligenceReport | null>(
-    initialGoogleReport
+  const [report, setReport] = useState<IntelligenceReport | null>(() =>
+    normalizeIntelligenceReport(initialGoogleReport)
   );
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +126,16 @@ export default function ResultsCenterClient({
         return;
       }
 
-      setReport(body.data.report);
+      const nextReport = normalizeIntelligenceReport(body.data?.report);
+      if (!nextReport) {
+        setError(
+          "Analyse abgeschlossen, aber der Report war unvollständig. Bitte erneut versuchen."
+        );
+        setScanning(false);
+        return;
+      }
+
+      setReport(nextReport);
       setScanning(false);
       setScanDone(true);
       router.replace("/dashboard/results?tab=google_search", { scroll: false });

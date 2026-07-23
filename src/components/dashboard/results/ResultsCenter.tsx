@@ -3,6 +3,7 @@ import ResultsCenterClient, {
   type ResultsTabModule,
 } from "@/components/dashboard/results/ResultsCenterClient";
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
+import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import { resolveSubjectName } from "@/lib/analysis/google/queries";
 import { resolveActiveAnalyses } from "@/lib/dashboard/resolve-active-analyses";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -68,7 +69,9 @@ export default async function ResultsCenter() {
     >
       <ResultsCenterClient
         modules={tabs}
-        initialGoogleReport={googleReport}
+        initialGoogleReport={
+          googleReport ? normalizeIntelligenceReport(googleReport) : null
+        }
         subjectName={resolveSubjectName(identity)}
       />
     </Suspense>

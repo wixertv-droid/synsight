@@ -7,6 +7,7 @@ import CategoryVisualPanel from "@/components/analysis/intelligence/CategoryVisu
 import RiskOverviewPanel from "@/components/analysis/intelligence/RiskOverviewPanel";
 import SectionReveal from "@/components/analysis/intelligence/SectionReveal";
 import InfoTooltip from "@/components/ui/InfoTooltip";
+import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import type { IntelligenceHit, IntelligenceReport } from "@/lib/analysis/types";
 
 const CATEGORY_SECTIONS: Array<{
@@ -73,24 +74,37 @@ const CATEGORY_SECTIONS: Array<{
 ];
 
 export default function GoogleIntelligenceReport({
-  report,
+  report: rawReport,
   revealSections = true,
 }: {
   report: IntelligenceReport;
   revealSections?: boolean;
 }) {
+  const report = normalizeIntelligenceReport(rawReport);
+  if (!report) {
+    return (
+      <div className="rounded-xl border border-dashed border-rose-400/20 px-4 py-8 text-center text-sm text-rose-100/60">
+        Report-Daten sind unvollständig oder beschädigt. Bitte starten Sie die
+        Analyse erneut.
+      </div>
+    );
+  }
+
+  const hits = report.hits;
   const assigned = new Set<string>();
   const sections = CATEGORY_SECTIONS.map((section) => {
-    const hits = report.hits.filter((hit) => {
+    const sectionHits = hits.filter((hit) => {
       if (assigned.has(hit.id)) return false;
       if (!section.match(hit)) return false;
       assigned.add(hit.id);
       return true;
     });
-    return { ...section, hits };
+    return { ...section, hits: sectionHits };
   }).filter((section) => section.hits.length > 0);
 
-  const otherHits = report.hits.filter((hit) => !assigned.has(hit.id));
+  const otherHits = hits.filter((hit) => !assigned.has(hit.id));
+  const queries = report.queries;
+  const recommendations = report.recommendations;
 
   return (
     <div className="space-y-6">
@@ -158,13 +172,13 @@ export default function GoogleIntelligenceReport({
             </InfoTooltip>
           </div>
           <ul className="space-y-2">
-            {report.queries.length === 0 ? (
+            {queries.length === 0 ? (
               <li className="rounded-xl border border-dashed border-white/10 px-4 py-5 text-sm text-white/40">
                 Keine Suchanfragen möglich — bitte Identitätsprofil
                 vervollständigen.
               </li>
             ) : (
-              report.queries.map((query) => (
+              queries.map((query) => (
                 <li
                   key={query.id}
                   className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3"
@@ -244,7 +258,7 @@ export default function GoogleIntelligenceReport({
             HANDLUNGSEMPFEHLUNGEN
           </h3>
           <ol className="space-y-3">
-            {report.recommendations.map((item, index) => (
+            {recommendations.map((item, index) => (
               <li
                 key={item.title}
                 className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4"

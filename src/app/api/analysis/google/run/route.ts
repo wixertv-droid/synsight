@@ -26,9 +26,21 @@ export async function POST(request: Request) {
     );
   }
 
-  const identity = await getIdentityForUser(userId);
-  const report = await runGoogleIntelligenceAnalysis(identity);
-  await saveIntelligenceReport(userId, report);
-
-  return NextResponse.json(apiSuccess({ report }));
+  try {
+    const identity = await getIdentityForUser(userId);
+    const report = await runGoogleIntelligenceAnalysis(identity);
+    await saveIntelligenceReport(userId, report);
+    return NextResponse.json(apiSuccess({ report }));
+  } catch (error) {
+    console.error("[analysis/google/run] failed", error);
+    return NextResponse.json(
+      apiError(
+        "ANALYSIS_FAILED",
+        error instanceof Error
+          ? error.message
+          : "Google-Analyse ist unerwartet fehlgeschlagen."
+      ),
+      { status: 500 }
+    );
+  }
 }

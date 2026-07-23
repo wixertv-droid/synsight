@@ -4,13 +4,14 @@ import type { IntelligenceHit, IntelligenceReport } from "@/lib/analysis/types";
 
 export default function CategoryVisualPanel({
   title,
-  hits,
+  hits: rawHits,
   report,
 }: {
   title: string;
   hits: IntelligenceHit[];
   report: IntelligenceReport;
 }) {
+  const hits = Array.isArray(rawHits) ? rawHits : [];
   const riskCounts = {
     none: hits.filter((hit) => hit.risk === "none").length,
     watch: hits.filter((hit) => hit.risk === "watch").length,
@@ -26,8 +27,9 @@ export default function CategoryVisualPanel({
     1
   );
 
+  const reportHits = Array.isArray(report.hits) ? report.hits : [];
   const ringPercent = Math.round(
-    (hits.length / Math.max(1, report.hits.length)) * 100
+    (hits.length / Math.max(1, reportHits.length)) * 100
   );
 
   return (

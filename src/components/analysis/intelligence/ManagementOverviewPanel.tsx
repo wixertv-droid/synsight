@@ -7,9 +7,24 @@ export default function ManagementOverviewPanel({
 }: {
   report: IntelligenceReport;
 }) {
-  const overview = report.managementOverview;
+  const overview = report.managementOverview ?? {
+    websites: 0,
+    social: 0,
+    images: 0,
+    phones: 0,
+    emails: 0,
+    companies: 0,
+    documents: 0,
+    press: 0,
+    forums: 0,
+    other: 0,
+    mentions: 0,
+  };
   const items = [
-    { label: "Google Treffer", value: report.executive.totalPublicHits },
+    {
+      label: "Google Treffer",
+      value: report.executive?.totalPublicHits ?? 0,
+    },
     { label: "Webseiten", value: overview.websites },
     { label: "Erwähnungen", value: overview.mentions },
     { label: "Bilder", value: overview.images },
