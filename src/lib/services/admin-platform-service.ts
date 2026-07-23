@@ -7,8 +7,6 @@ import { eq } from "drizzle-orm";
 export const ADMIN_API_PROVIDERS = [
   "gemini",
   "openai",
-  "google_custom_search",
-  "serpapi",
   "haveibeenpwned",
   "virustotal",
   "hunter_io",
@@ -205,10 +203,7 @@ export async function upsertAdminApiCredential(
   const engineId =
     incomingEngineId || readEngineId(current?.configJson) || null;
 
-  const configJson =
-    input.provider === "google_custom_search"
-      ? { engineId }
-      : (current?.configJson ?? null);
+  const configJson = current?.configJson ?? (engineId ? { engineId } : null);
 
   if (db) {
     await db

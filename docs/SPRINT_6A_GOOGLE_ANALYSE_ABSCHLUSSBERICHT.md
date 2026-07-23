@@ -1,5 +1,10 @@
 # Sprint 6A — Google Analyse 2.0 · Abschlussbericht
 
+> **Hinweis (Update):** Die Google Custom Search JSON API wurde in Sprint 6A (SerpAPI)
+> vollständig ersetzt. Aktuelle Konfiguration: siehe
+> [`SPRINT_6A_SERPAPI_ABSCHLUSSBERICHT.md`](./SPRINT_6A_SERPAPI_ABSCHLUSSBERICHT.md)
+> und README-Abschnitt „SerpAPI (Suchanbieter)“.
+
 **Branch:** `cursor/sprint-6a-google-osint-7c12`  
 **Datum:** 23. Juli 2026  
 **Status:** Implementiert · Typecheck / ESLint / Tests grün

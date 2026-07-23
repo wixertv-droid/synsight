@@ -19,6 +19,16 @@ interface DashboardData {
   >;
   openTickets: number;
   failedLogins: number;
+  searchProvider?: {
+    online: boolean;
+    status: string;
+    lastSuccessAt: string | null;
+    dailyRequests: number;
+    totalRequests: number;
+    errorRatePercent: number;
+    averageResponseTimeMs: number;
+    configured: boolean;
+  };
 }
 
 export default function AdminDashboardTiles() {
@@ -61,6 +71,75 @@ export default function AdminDashboardTiles() {
           </article>
         ))}
       </section>
+
+      {data.searchProvider ? (
+        <section className="hardware-panel rounded-[1.3rem] border border-white/[0.08] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/55">
+                API STATUS
+              </p>
+              <h2 className="mt-2 text-lg font-medium text-white/88">
+                SerpAPI
+              </h2>
+            </div>
+            <span
+              className={`rounded border px-2 py-1 font-mono text-[10px] tracking-[.12em] ${
+                data.searchProvider.online
+                  ? "border-emerald-300/30 text-emerald-100/80"
+                  : "border-rose-300/30 text-rose-100/75"
+              }`}
+            >
+              {data.searchProvider.online ? "ONLINE" : "OFFLINE"}
+            </span>
+          </div>
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              {
+                label: "Letzter Erfolg",
+                value: data.searchProvider.lastSuccessAt
+                  ? new Intl.DateTimeFormat("de-DE", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    }).format(new Date(data.searchProvider.lastSuccessAt))
+                  : "—",
+              },
+              {
+                label: "Requests heute",
+                value: String(data.searchProvider.dailyRequests),
+              },
+              {
+                label: "Requests gesamt",
+                value: String(data.searchProvider.totalRequests),
+              },
+              {
+                label: "Fehlerquote",
+                value: `${data.searchProvider.errorRatePercent} %`,
+              },
+              {
+                label: "Ø Antwortzeit",
+                value: `${data.searchProvider.averageResponseTimeMs} ms`,
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-3"
+              >
+                <dt className="font-mono text-[7px] tracking-[.12em] text-white/30">
+                  {item.label.toUpperCase()}
+                </dt>
+                <dd className="mt-1 text-sm text-white/75">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <Link
+            href="/admin/website/api"
+            className="mt-4 inline-flex font-mono text-[8px] tracking-[.12em] text-cyber-cyan/70 hover:text-cyber-cyan"
+          >
+            APIs & INTEGRATIONEN ÖFFNEN →
+          </Link>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {Object.values(data.sections).map((section) => (

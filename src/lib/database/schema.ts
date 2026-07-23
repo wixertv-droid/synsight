@@ -10,6 +10,7 @@ import {
   bigint,
   boolean,
   char,
+  date,
   decimal,
   index,
   int,
@@ -1170,6 +1171,54 @@ export const intelligenceReports = mysqlTable(
       table.moduleKey
     ),
     index("intelligence_reports_user_id_idx").on(table.userId),
+  ]
+);
+
+export const searchProviderSettings = mysqlTable(
+  "search_provider_settings",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    provider: varchar("provider", { length: 64 }).notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    encryptedApiKey: text("encrypted_api_key"),
+    status: varchar("status", { length: 32 }).notNull().default("unknown"),
+    lastCheckAt: timestamp("last_check_at", { mode: "string", fsp: 3 }),
+    lastSuccessAt: timestamp("last_success_at", { mode: "string", fsp: 3 }),
+    lastErrorAt: timestamp("last_error_at", { mode: "string", fsp: 3 }),
+    lastErrorMessage: text("last_error_message"),
+    averageResponseTimeMs: int("average_response_time_ms", {
+      unsigned: true,
+    })
+      .notNull()
+      .default(0),
+    dailyRequests: int("daily_requests", { unsigned: true })
+      .notNull()
+      .default(0),
+    dailyRequestsDate: date("daily_requests_date", { mode: "string" }),
+    totalRequests: bigint("total_requests", { mode: "number", unsigned: true })
+      .notNull()
+      .default(0),
+    totalErrors: bigint("total_errors", { mode: "number", unsigned: true })
+      .notNull()
+      .default(0),
+    apiVersion: varchar("api_version", { length: 64 }),
+    configJson: json("config_json"),
+    updatedByAdminId: bigint("updated_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("search_provider_settings_provider_unique").on(table.provider),
   ]
 );
 

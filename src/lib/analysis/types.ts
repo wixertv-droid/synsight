@@ -6,7 +6,7 @@ export type AnalysisModuleKey = "google_search" | string;
 export type IntelligenceHitRisk = "none" | "watch" | "review" | "action";
 export type IntelligenceRelevance = "relevant" | "neutral" | "low" | "stale";
 
-export type IntelligenceHitSource = "google_custom_search" | "identity_profile";
+export type IntelligenceHitSource = "serpapi_google" | "identity_profile";
 
 export interface IntelligenceScanStep {
   id: string;

@@ -8,7 +8,7 @@ import {
   maskSecret,
 } from "@/lib/security/secret-vault";
 
-export const API_PROVIDERS = ["google_custom_search", "gemini"] as const;
+export const API_PROVIDERS = ["gemini"] as const;
 
 export type ApiProvider = (typeof API_PROVIDERS)[number];
 
@@ -24,12 +24,6 @@ export interface ApiCredentialPublic {
   lastErrorMessage: string | null;
 }
 
-export interface GoogleSearchCredentials {
-  apiKey: string;
-  engineId: string;
-  source: "database" | "env";
-}
-
 export interface GeminiCredentials {
   apiKey: string;
   source: "database" | "env";
@@ -40,10 +34,8 @@ function assertAdmin(actor: AuthenticatedUser): void {
 }
 
 function providerLabel(provider: ApiProvider): string {
-  if (provider === "google_custom_search") {
-    return "Google Custom Search";
-  }
-  return "Google Gemini";
+  if (provider === "gemini") return "Google Gemini";
+  return provider;
 }
 
 function parseConfigObject(
@@ -200,14 +192,7 @@ export async function upsertApiCredential(
     ? encryptSecret(secret)
     : current!.encryptedSecret;
 
-  const incomingEngineId = input.engineId?.trim() || "";
-  const engineId =
-    incomingEngineId || readConfigEngineId(current?.configJson) || null;
-
-  const configJson =
-    input.provider === "google_custom_search"
-      ? { engineId }
-      : (current?.configJson ?? null);
+  const configJson = current?.configJson ?? null;
 
   await db
     .insert(apiCredentials)
@@ -231,32 +216,6 @@ export async function upsertApiCredential(
 
   const listed = await listApiCredentials(actor);
   return listed.find((item) => item.provider === input.provider)!;
-}
-
-/** Runtime resolver — DB first, then env. Used by Google Search. */
-export async function resolveGoogleSearchCredentials(): Promise<GoogleSearchCredentials | null> {
-  const db = getDatabase();
-  if (db) {
-    try {
-      const row = await loadStoredProviderRow("google_custom_search");
-      if (row?.isActive) {
-        const decrypted = tryDecryptSecret(row.encryptedSecret);
-        const engineId = readConfigEngineId(row.configJson);
-        if (decrypted.ok && engineId) {
-          return { apiKey: decrypted.value, engineId, source: "database" };
-        }
-      }
-    } catch (error) {
-      console.error("[api-credentials] google resolve failed", error);
-    }
-  }
-
-  const apiKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY?.trim();
-  const engineId = process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID?.trim();
-  if (apiKey && engineId) {
-    return { apiKey, engineId, source: "env" };
-  }
-  return null;
 }
 
 /** Runtime resolver — DB first, then env. Used by Gemini summary. */
@@ -329,9 +288,8 @@ export interface ApiCredentialTestResult {
 }
 
 /**
- * Live connectivity probe for admin UI.
- * Uses draft secret/engineId when provided, otherwise stored DB credentials
- * (with precise diagnostics if decrypt/cx missing).
+ * Live connectivity probe for remaining admin API cards (Gemini).
+ * Search provider tests use /api/admin/search-provider/test.
  */
 export async function testApiCredentialConnection(input: {
   provider: string;
@@ -340,135 +298,6 @@ export async function testApiCredentialConnection(input: {
 }): Promise<ApiCredentialTestResult> {
   const started = Date.now();
   const provider = input.provider;
-
-  if (provider === "google_custom_search") {
-    let apiKey = input.secret?.trim() || "";
-    let engineId = input.engineId?.trim() || "";
-    let source = "draft";
-
-    if (!apiKey || !engineId) {
-      const row = await loadStoredProviderRow("google_custom_search");
-      if (!row) {
-        const envKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY?.trim() || "";
-        const envCx = process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID?.trim() || "";
-        if (envKey && envCx) {
-          apiKey = apiKey || envKey;
-          engineId = engineId || envCx;
-          source = "env";
-        } else {
-          return {
-            provider,
-            ok: false,
-            message: "Kein Google-Eintrag in der Datenbank.",
-            detail: "Bitte API-Key und Engine-ID (cx) eintragen und speichern.",
-            latencyMs: Date.now() - started,
-          };
-        }
-      } else {
-        if (!row.isActive) {
-          return {
-            provider,
-            ok: false,
-            message: "Google Custom Search ist inaktiv.",
-            detail: "Bitte zuerst auf „Aktiv“ schalten.",
-            latencyMs: Date.now() - started,
-          };
-        }
-
-        if (!apiKey) {
-          const decrypted = tryDecryptSecret(row.encryptedSecret);
-          if (!decrypted.ok) {
-            return {
-              provider,
-              ok: false,
-              message: "API-Key in der DB nicht lesbar.",
-              detail: `${decrypted.error} — Schlüssel neu speichern (IMAGE_ENCRYPTION_KEY/SESSION_SECRET muss gleich bleiben).`,
-              latencyMs: Date.now() - started,
-            };
-          }
-          apiKey = decrypted.value;
-        }
-
-        if (!engineId) {
-          engineId = readConfigEngineId(row.configJson) || "";
-        }
-
-        if (!engineId) {
-          return {
-            provider,
-            ok: false,
-            message: "Engine-ID (cx) fehlt in der Datenbank.",
-            detail:
-              "Der Key ist gespeichert, aber cx fehlt. Bitte Search Engine ID eintragen (z. B. 0728bba0e53574410) und speichern.",
-            latencyMs: Date.now() - started,
-          };
-        }
-        source = "database";
-      }
-    }
-
-    const url = new URL("https://www.googleapis.com/customsearch/v1");
-    url.searchParams.set("key", apiKey);
-    url.searchParams.set("cx", engineId);
-    url.searchParams.set("q", "SynSight OSINT");
-    url.searchParams.set("num", "3");
-    url.searchParams.set("safe", "active");
-
-    try {
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        cache: "no-store",
-      });
-      const latencyMs = Date.now() - started;
-      const body = (await response.json().catch(() => ({}))) as {
-        items?: unknown[];
-        error?: { message?: string; status?: string };
-      };
-
-      if (!response.ok) {
-        const detail =
-          body.error?.message ||
-          body.error?.status ||
-          `HTTP ${response.status}`;
-        await markApiCredentialError(provider, detail);
-        const accessDenied =
-          /does not have access to Custom Search JSON API/i.test(detail);
-        return {
-          provider,
-          ok: false,
-          message: accessDenied
-            ? "Custom Search JSON API ist im Google-Projekt nicht aktiviert."
-            : "Google Custom Search lehnt die Anfrage ab.",
-          detail: accessDenied
-            ? `${detail} — Google Cloud Console → APIs & Dienste → „Custom Search JSON API“ aktivieren (gleiches Projekt wie der API-Key).`
-            : detail,
-          latencyMs,
-        };
-      }
-
-      const hitCount = Array.isArray(body.items) ? body.items.length : 0;
-      await markApiCredentialSuccess(provider);
-      return {
-        provider,
-        ok: true,
-        message: `Verbindung aktiv — ${hitCount} Probe-Treffer in ${latencyMs} ms.`,
-        detail: `Quelle=${source} · cx=${engineId}`,
-        latencyMs,
-        hitCount,
-      };
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : "Netzwerkfehler";
-      await markApiCredentialError(provider, detail);
-      return {
-        provider,
-        ok: false,
-        message: "Verbindung zu Google fehlgeschlagen.",
-        detail,
-        latencyMs: Date.now() - started,
-      };
-    }
-  }
 
   if (provider === "gemini") {
     let apiKey = input.secret?.trim() || "";
@@ -581,7 +410,8 @@ export async function testApiCredentialConnection(input: {
     provider,
     ok: false,
     message: "Live-Test für diesen Anbieter ist noch nicht freigeschaltet.",
-    detail: "Google Custom Search und Gemini können getestet werden.",
+    detail:
+      "Gemini kann hier getestet werden. Suchanbieter (SerpAPI) unter Website → APIs & Integrationen.",
     latencyMs: Date.now() - started,
   };
 }

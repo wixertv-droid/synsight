@@ -10,8 +10,8 @@ import type {
   IntelligenceReport,
 } from "@/lib/analysis/types";
 import {
-  fetchGoogleCustomSearch,
-  isGoogleCustomSearchConfigured,
+  fetchGoogleSearch,
+  isGoogleSearchConfigured,
 } from "@/lib/analysis/google/custom-search";
 import { googleIntelligenceModule } from "@/lib/analysis/google/module";
 import {
@@ -222,7 +222,7 @@ function profileLinkedHits(
 /**
  * Runs the Google Intelligence analysis using only:
  * - Profile-derived query plans
- * - Google Custom Search API results (when configured)
+ * - SerpAPI Google Search results (when configured)
  * - Profile-linked assets (clearly labeled, not fabricated SERP)
  */
 export async function runGoogleIntelligenceAnalysis(
@@ -237,15 +237,15 @@ export async function runGoogleIntelligenceAnalysis(
 
   const subjectName = resolveSubjectName(identity);
   const queries = buildGoogleQueriesFromIdentity(identity);
-  const apiConfigured = await isGoogleCustomSearchConfigured();
+  const apiConfigured = await isGoogleSearchConfigured();
   const serpHits: IntelligenceHit[] = [];
   let hitSeq = 0;
 
   if (apiConfigured) {
     for (const plan of queries) {
-      let items: Awaited<ReturnType<typeof fetchGoogleCustomSearch>> = [];
+      let items: Awaited<ReturnType<typeof fetchGoogleSearch>> = [];
       try {
-        items = await fetchGoogleCustomSearch(plan.query);
+        items = await fetchGoogleSearch(plan.query);
       } catch (error) {
         console.error("[google-analysis] query failed", plan.id, error);
         continue;
@@ -260,7 +260,7 @@ export async function runGoogleIntelligenceAnalysis(
             snippet: item.snippet,
             url: item.link,
             category,
-            sourceType: "google_custom_search",
+            sourceType: "serpapi_google",
           });
 
           const hit: IntelligenceHit = {
@@ -272,7 +272,7 @@ export async function runGoogleIntelligenceAnalysis(
             category,
             fetchedAt: generatedAt,
             source: item.displayLink || safeHostname(item.link),
-            sourceType: "google_custom_search",
+            sourceType: "serpapi_google",
             visibility: "public_index",
             relevance: classification.relevance,
             risk: classification.risk,
@@ -304,7 +304,7 @@ export async function runGoogleIntelligenceAnalysis(
   const profileHits = profileLinkedHits(identity, generatedAt, hitSeq);
   const hits = [...serpHits, ...profileHits];
   const buckets = summarizeBuckets(
-    hits.filter((h) => h.sourceType === "google_custom_search")
+    hits.filter((h) => h.sourceType === "serpapi_google")
   );
   const { riskScore, riskLevel } = computeOverallRisk(hits);
   const managementOverview = buildManagementOverview(hits);
@@ -318,7 +318,7 @@ export async function runGoogleIntelligenceAnalysis(
         : `Live-OSINT abgeschlossen: Für eine Suche fehlen noch Identitätsdaten im Profil.`;
 
   const dataSourceLabel = apiConfigured
-    ? "Google Custom Search JSON API · Identitätsprofil"
+    ? "SerpAPI Google Search · Identitätsprofil"
     : "Identitätsprofil · öffentliche Verknüpfungen";
 
   const criticalHits = hits.filter(
@@ -382,7 +382,7 @@ async function buildReportRecommendations(
   identity: IdentityView | null
 ): Promise<IntelligenceRecommendation[]> {
   const actionHits = hits.filter(
-    (h) => h.shouldAct && h.sourceType === "google_custom_search"
+    (h) => h.shouldAct && h.sourceType === "serpapi_google"
   );
   const recs: IntelligenceRecommendation[] = [];
 

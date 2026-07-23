@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–014 migration files", () => {
+  it("ships ordered 001–015 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -24,6 +24,7 @@ describe("database migrations workflow", () => {
       "012_mobile_upload_token.sql",
       "013_admin_platform_settings.sql",
       "014_intelligence_reports.sql",
+      "015_search_provider_settings.sql",
     ]);
   });
 
@@ -158,12 +159,26 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS `api_credentials`");
   });
 
-  it("adds intelligence reports persistence in 015", () => {
+  it("adds intelligence reports persistence in 014", () => {
     const sql = readFileSync(
       path.join(dir, "014_intelligence_reports.sql"),
       "utf8"
     );
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS `intelligence_reports`");
     expect(sql).toContain("`report_json`");
+  });
+
+  it("adds search_provider_settings for SerpAPI in 015", () => {
+    const sql = readFileSync(
+      path.join(dir, "015_search_provider_settings.sql"),
+      "utf8"
+    );
+    expect(sql).toContain(
+      "CREATE TABLE IF NOT EXISTS `search_provider_settings`"
+    );
+    expect(sql).toContain("`encrypted_api_key`");
+    expect(sql).toContain("`daily_requests`");
+    expect(sql).toContain("`average_response_time_ms`");
+    expect(sql).toContain("'serpapi'");
   });
 });

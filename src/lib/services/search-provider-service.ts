@@ -1,0 +1,436 @@
+import { eq } from "drizzle-orm";
+import type { AuthenticatedUser } from "@/lib/auth/types";
+import { getDatabase } from "@/lib/database/client";
+import { searchProviderSettings } from "@/lib/database/schema";
+import { SerpApiProvider } from "@/lib/search/providers/serpapi-provider";
+import type { SearchProviderId } from "@/lib/search/types";
+import {
+  decryptSecret,
+  encryptSecret,
+  maskSecret,
+} from "@/lib/security/secret-vault";
+
+function assertAdmin(actor: AuthenticatedUser): void {
+  if (actor.role !== "admin") throw new Error("ADMIN_FORBIDDEN");
+}
+
+function todayDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export interface SearchProviderPublicSettings {
+  provider: SearchProviderId;
+  label: string;
+  enabled: boolean;
+  configured: boolean;
+  maskedKey: string | null;
+  status: string;
+  lastCheckAt: string | null;
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  lastErrorMessage: string | null;
+  averageResponseTimeMs: number;
+  dailyRequests: number;
+  totalRequests: number;
+  totalErrors: number;
+  errorRatePercent: number;
+  apiVersion: string | null;
+}
+
+export interface SearchProviderStatusOverview {
+  provider: SearchProviderId;
+  online: boolean;
+  status: string;
+  lastSuccessAt: string | null;
+  lastCheckAt: string | null;
+  dailyRequests: number;
+  totalRequests: number;
+  totalErrors: number;
+  errorRatePercent: number;
+  averageResponseTimeMs: number;
+  apiVersion: string | null;
+  configured: boolean;
+}
+
+function providerLabel(provider: string): string {
+  if (provider === "serpapi") return "SerpAPI";
+  if (provider === "dataforseo") return "DataForSEO";
+  if (provider === "bing") return "Bing Search";
+  return provider;
+}
+
+async function ensureProviderRow(provider: SearchProviderId) {
+  const db = getDatabase();
+  if (!db) return null;
+
+  const existing = await db
+    .select()
+    .from(searchProviderSettings)
+    .where(eq(searchProviderSettings.provider, provider))
+    .limit(1);
+  if (existing[0]) return existing[0];
+
+  await db.insert(searchProviderSettings).values({
+    provider,
+    enabled: true,
+    status: "unknown",
+  });
+
+  const rows = await db
+    .select()
+    .from(searchProviderSettings)
+    .where(eq(searchProviderSettings.provider, provider))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+function toPublic(
+  row: typeof searchProviderSettings.$inferSelect
+): SearchProviderPublicSettings {
+  let maskedKey: string | null = null;
+  let configured = false;
+  if (row.encryptedApiKey) {
+    configured = true;
+    try {
+      maskedKey = maskSecret(decryptSecret(row.encryptedApiKey));
+    } catch {
+      maskedKey = "••••••••";
+    }
+  }
+
+  const totalRequests = Number(row.totalRequests) || 0;
+  const totalErrors = Number(row.totalErrors) || 0;
+  const errorRatePercent =
+    totalRequests > 0
+      ? Math.round((totalErrors / totalRequests) * 1000) / 10
+      : 0;
+
+  const dailyDate = row.dailyRequestsDate;
+  const dailyRequests =
+    dailyDate === todayDateString() ? Number(row.dailyRequests) || 0 : 0;
+
+  return {
+    provider: row.provider as SearchProviderId,
+    label: providerLabel(row.provider),
+    enabled: row.enabled,
+    configured,
+    maskedKey,
+    status: row.status,
+    lastCheckAt: row.lastCheckAt,
+    lastSuccessAt: row.lastSuccessAt,
+    lastErrorAt: row.lastErrorAt,
+    lastErrorMessage: row.lastErrorMessage,
+    averageResponseTimeMs: row.averageResponseTimeMs,
+    dailyRequests,
+    totalRequests,
+    totalErrors,
+    errorRatePercent,
+    apiVersion: row.apiVersion,
+  };
+}
+
+export async function resolveSearchProviderApiKey(
+  provider: SearchProviderId = "serpapi"
+): Promise<string | null> {
+  const db = getDatabase();
+  if (db) {
+    try {
+      const rows = await db
+        .select()
+        .from(searchProviderSettings)
+        .where(eq(searchProviderSettings.provider, provider))
+        .limit(1);
+      const row = rows[0];
+      if (row?.enabled && row.encryptedApiKey) {
+        const key = decryptSecret(row.encryptedApiKey).trim();
+        if (key) return key;
+      }
+    } catch (error) {
+      console.error("[search-provider] resolve key failed", error);
+    }
+  }
+
+  if (provider === "serpapi") {
+    return process.env.SERPAPI_API_KEY?.trim() || null;
+  }
+  return null;
+}
+
+export async function isSearchProviderConfigured(
+  provider: SearchProviderId = "serpapi"
+): Promise<boolean> {
+  return Boolean(await resolveSearchProviderApiKey(provider));
+}
+
+export async function getSearchProviderSettings(
+  actor: AuthenticatedUser,
+  provider: SearchProviderId = "serpapi"
+): Promise<SearchProviderPublicSettings> {
+  assertAdmin(actor);
+  const row = await ensureProviderRow(provider);
+  if (!row) {
+    return {
+      provider,
+      label: providerLabel(provider),
+      enabled: true,
+      configured: Boolean(process.env.SERPAPI_API_KEY?.trim()),
+      maskedKey: process.env.SERPAPI_API_KEY
+        ? maskSecret(process.env.SERPAPI_API_KEY.trim())
+        : null,
+      status: "unknown",
+      lastCheckAt: null,
+      lastSuccessAt: null,
+      lastErrorAt: null,
+      lastErrorMessage: null,
+      averageResponseTimeMs: 0,
+      dailyRequests: 0,
+      totalRequests: 0,
+      totalErrors: 0,
+      errorRatePercent: 0,
+      apiVersion: null,
+    };
+  }
+  return toPublic(row);
+}
+
+export async function getSearchProviderStatusOverview(
+  actor?: AuthenticatedUser
+): Promise<SearchProviderStatusOverview> {
+  if (actor) assertAdmin(actor);
+  const settings = actor
+    ? await getSearchProviderSettings(actor, "serpapi")
+    : await (async () => {
+        const row = await ensureProviderRow("serpapi");
+        return row
+          ? toPublic(row)
+          : ({
+              provider: "serpapi" as const,
+              configured: Boolean(process.env.SERPAPI_API_KEY?.trim()),
+              status: "unknown",
+              lastSuccessAt: null,
+              lastCheckAt: null,
+              dailyRequests: 0,
+              totalRequests: 0,
+              totalErrors: 0,
+              errorRatePercent: 0,
+              averageResponseTimeMs: 0,
+              apiVersion: null,
+            } satisfies Partial<SearchProviderPublicSettings> as SearchProviderPublicSettings);
+      })();
+
+  return {
+    provider: "serpapi",
+    online: settings.status === "online",
+    status: settings.status,
+    lastSuccessAt: settings.lastSuccessAt,
+    lastCheckAt: settings.lastCheckAt,
+    dailyRequests: settings.dailyRequests,
+    totalRequests: settings.totalRequests,
+    totalErrors: settings.totalErrors,
+    errorRatePercent: settings.errorRatePercent,
+    averageResponseTimeMs: settings.averageResponseTimeMs,
+    apiVersion: settings.apiVersion,
+    configured: settings.configured,
+  };
+}
+
+export async function saveSearchProviderApiKey(
+  actor: AuthenticatedUser,
+  input: {
+    provider: SearchProviderId;
+    apiKey: string;
+    enabled?: boolean;
+  }
+): Promise<SearchProviderPublicSettings> {
+  assertAdmin(actor);
+  const apiKey = input.apiKey.trim();
+  if (apiKey.length < 8) {
+    throw new Error("API_KEY_REQUIRED");
+  }
+  if (input.provider !== "serpapi") {
+    throw new Error("PROVIDER_NOT_SUPPORTED");
+  }
+
+  const db = getDatabase();
+  const adminId = Number(actor.id);
+  const encrypted = encryptSecret(apiKey);
+
+  if (!db) {
+    return {
+      provider: "serpapi",
+      label: "SerpAPI",
+      enabled: input.enabled ?? true,
+      configured: true,
+      maskedKey: maskSecret(apiKey),
+      status: "unknown",
+      lastCheckAt: null,
+      lastSuccessAt: null,
+      lastErrorAt: null,
+      lastErrorMessage: null,
+      averageResponseTimeMs: 0,
+      dailyRequests: 0,
+      totalRequests: 0,
+      totalErrors: 0,
+      errorRatePercent: 0,
+      apiVersion: null,
+    };
+  }
+
+  await ensureProviderRow("serpapi");
+  await db
+    .update(searchProviderSettings)
+    .set({
+      encryptedApiKey: encrypted,
+      enabled: input.enabled ?? true,
+      updatedByAdminId: adminId,
+    })
+    .where(eq(searchProviderSettings.provider, "serpapi"));
+
+  return getSearchProviderSettings(actor, "serpapi");
+}
+
+export async function recordSearchProviderRequest(input: {
+  provider: SearchProviderId;
+  ok: boolean;
+  latencyMs: number;
+  errorMessage?: string | null;
+  apiVersion?: string | null;
+}): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+
+  try {
+    const row = await ensureProviderRow(input.provider);
+    if (!row) return;
+
+    const today = todayDateString();
+    const dailyRequests =
+      row.dailyRequestsDate === today ? Number(row.dailyRequests) || 0 : 0;
+    const totalRequests = Number(row.totalRequests) || 0;
+    const totalErrors = Number(row.totalErrors) || 0;
+    const prevAvg = Number(row.averageResponseTimeMs) || 0;
+    const nextTotal = totalRequests + 1;
+    const nextAvg = Math.round(
+      (prevAvg * totalRequests + Math.max(0, input.latencyMs)) / nextTotal
+    );
+
+    await db
+      .update(searchProviderSettings)
+      .set({
+        lastCheckAt: new Date().toISOString(),
+        lastSuccessAt: input.ok ? new Date().toISOString() : row.lastSuccessAt,
+        lastErrorAt: input.ok ? row.lastErrorAt : new Date().toISOString(),
+        lastErrorMessage: input.ok
+          ? null
+          : (input.errorMessage ?? "Unbekannter Fehler").slice(0, 1000),
+        status: input.ok ? "online" : "offline",
+        averageResponseTimeMs: nextAvg,
+        dailyRequests: dailyRequests + 1,
+        dailyRequestsDate: today,
+        totalRequests: nextTotal,
+        totalErrors: input.ok ? totalErrors : totalErrors + 1,
+        apiVersion: input.apiVersion ?? row.apiVersion,
+      })
+      .where(eq(searchProviderSettings.provider, input.provider));
+  } catch (error) {
+    console.error("[search-provider] record request failed", error);
+  }
+}
+
+export async function testSearchProviderConnection(
+  actor: AuthenticatedUser,
+  input?: { provider?: SearchProviderId; apiKey?: string | null }
+): Promise<{
+  ok: boolean;
+  message: string;
+  detail?: string;
+  latencyMs: number;
+  apiVersion?: string | null;
+  googleSearchOnline?: boolean;
+  settings: SearchProviderPublicSettings;
+}> {
+  assertAdmin(actor);
+  const provider = input?.provider ?? "serpapi";
+  if (provider !== "serpapi") {
+    return {
+      ok: false,
+      message: "Provider noch nicht freigeschaltet",
+      detail: "Aktuell ist nur SerpAPI verfügbar.",
+      latencyMs: 0,
+      settings: await getSearchProviderSettings(actor, "serpapi"),
+    };
+  }
+
+  const draftKey = input?.apiKey?.trim() || "";
+  const apiKey = draftKey || (await resolveSearchProviderApiKey("serpapi"));
+  if (!apiKey) {
+    return {
+      ok: false,
+      message: "Ungültiger API-Key",
+      detail: "Bitte zuerst einen SerpAPI-Key speichern.",
+      latencyMs: 0,
+      settings: await getSearchProviderSettings(actor, "serpapi"),
+    };
+  }
+
+  const client = new SerpApiProvider(apiKey);
+  const health = await client.healthCheck();
+  await recordSearchProviderRequest({
+    provider: "serpapi",
+    ok: health.ok,
+    latencyMs: health.latencyMs,
+    errorMessage: health.ok ? null : health.detail || health.message,
+    apiVersion: health.apiVersion,
+  });
+
+  return {
+    ok: health.ok,
+    message: health.message,
+    detail: health.detail,
+    latencyMs: health.latencyMs,
+    apiVersion: health.apiVersion,
+    googleSearchOnline: health.googleSearchOnline,
+    settings: await getSearchProviderSettings(actor, "serpapi"),
+  };
+}
+
+/** Runtime search used by Google analysis — records metrics. */
+export async function searchViaActiveProvider(query: string): Promise<
+  Array<{
+    title: string;
+    link: string;
+    snippet: string;
+    displayLink: string;
+  }>
+> {
+  const apiKey = await resolveSearchProviderApiKey("serpapi");
+  if (!apiKey || !query.trim()) return [];
+
+  const provider = new SerpApiProvider(apiKey);
+  const started = Date.now();
+  try {
+    const hits = await provider.search(query, { num: 10 });
+    await recordSearchProviderRequest({
+      provider: "serpapi",
+      ok: true,
+      latencyMs: Date.now() - started,
+      apiVersion: "serpapi",
+    });
+    return hits.map((hit) => ({
+      title: hit.title,
+      link: hit.link,
+      snippet: hit.snippet,
+      displayLink: hit.displayLink,
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "search failed";
+    await recordSearchProviderRequest({
+      provider: "serpapi",
+      ok: false,
+      latencyMs: Date.now() - started,
+      errorMessage: message,
+    });
+    console.error("[search-provider] search failed", message);
+    return [];
+  }
+}

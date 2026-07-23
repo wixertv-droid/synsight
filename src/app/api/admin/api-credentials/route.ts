@@ -83,19 +83,6 @@ export async function PUT(request: Request) {
       isActive: parsed.data.isActive,
     });
 
-    if (
-      parsed.data.provider === "google_custom_search" &&
-      !credential.engineId
-    ) {
-      return NextResponse.json(
-        apiError(
-          "VALIDATION_ERROR",
-          "Bitte die Search-Engine-ID (cx) eintragen — z. B. 0728bba0e53574410."
-        ),
-        { status: 400 }
-      );
-    }
-
     return NextResponse.json(apiSuccess({ credential }));
   } catch (error) {
     if (error instanceof Error && error.message === "SECRET_REQUIRED") {

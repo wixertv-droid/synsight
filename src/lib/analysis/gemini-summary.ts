@@ -20,7 +20,7 @@ export async function summarizeWithGemini(
   if (!credentials) return null;
 
   const verified = (report.hits ?? []).filter(
-    (hit) => hit.sourceType === "google_custom_search"
+    (hit) => hit.sourceType === "serpapi_google"
   );
 
   const payload = {

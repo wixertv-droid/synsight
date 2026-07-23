@@ -16,7 +16,7 @@ export const googleIntelligenceModule: IntelligenceModuleDefinition = {
     {
       id: "auth",
       label: "Authentifiziere Suchkanäle …",
-      terminal: "> AUTH google_custom_search.v1 · tls1.3",
+      terminal: "> AUTH serpapi.google · tls1.3",
       atMs: 700,
     },
     {

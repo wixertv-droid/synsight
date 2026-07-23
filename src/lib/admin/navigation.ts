@@ -121,9 +121,9 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
       },
       {
         slug: "api",
-        label: "API-Verwaltung",
-        description: "Externe Dienst-Keys (verschlüsselt).",
-        help: "Gemini, OpenAI, Google Search u.a. — Vorbereitung api_credentials.",
+        label: "APIs & Integrationen",
+        description: "Suchanbieter und externe Dienst-Keys.",
+        help: "SerpAPI Search Provider sowie optionale KI-/OSINT-Keys.",
         view: "website-api",
       },
       {

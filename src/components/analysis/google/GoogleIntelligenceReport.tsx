@@ -21,7 +21,7 @@ const CATEGORY_SECTIONS: Array<{
     match: (hit) =>
       ["website", "name", "address", "general", "alias"].includes(
         hit.category
-      ) && hit.sourceType === "google_custom_search",
+      ) && hit.sourceType !== "identity_profile",
   },
   {
     id: "social",
@@ -104,9 +104,7 @@ export default function GoogleIntelligenceReport({
   const otherHits = hits.filter((hit) => !assigned.has(hit.id));
   const queries = report.queries;
   const recommendations = report.recommendations;
-  const liveHits = hits.filter(
-    (hit) => hit.sourceType === "google_custom_search"
-  );
+  const liveHits = hits.filter((hit) => hit.sourceType !== "identity_profile");
   const profileHits = hits.filter(
     (hit) => hit.sourceType === "identity_profile"
   );

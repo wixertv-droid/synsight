@@ -5,8 +5,8 @@ import { clearIntelligenceReportsForTests } from "@/lib/analysis/session-store";
 import type { IdentityView } from "@/lib/services/identity-service";
 
 vi.mock("@/lib/analysis/google/custom-search", () => ({
-  isGoogleCustomSearchConfigured: vi.fn(async () => false),
-  fetchGoogleCustomSearch: vi.fn(async () => []),
+  isGoogleSearchConfigured: vi.fn(async () => false),
+  fetchGoogleSearch: vi.fn(async () => []),
 }));
 
 vi.mock("@/lib/analysis/gemini-summary", () => ({
@@ -70,7 +70,7 @@ describe("runGoogleIntelligenceAnalysis", () => {
   it("does not fabricate SERP hits when API is not configured", async () => {
     const report = await runGoogleIntelligenceAnalysis(sampleIdentity());
     const serpHits = report.hits.filter(
-      (h) => h.sourceType === "google_custom_search"
+      (h) => h.sourceType === "serpapi_google"
     );
     expect(serpHits).toHaveLength(0);
     expect(report.apiConfigured).toBe(false);

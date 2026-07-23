@@ -7,6 +7,7 @@ import {
 } from "@/lib/repositories";
 import { getAdminSystemStatus } from "@/lib/services/admin-service";
 import { getCommunicationInboxSummary } from "@/lib/services/communications-service";
+import { getSearchProviderStatusOverview } from "@/lib/services/search-provider-service";
 
 function assertAdmin(actor: AuthenticatedUser): void {
   if (actor.role !== "admin") throw new Error("ADMIN_FORBIDDEN");
@@ -15,7 +16,7 @@ function assertAdmin(actor: AuthenticatedUser): void {
 export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
   assertAdmin(actor);
 
-  const [system, userStats, inbox, pricing, promotions, database] =
+  const [system, userStats, inbox, pricing, promotions, database, searchApi] =
     await Promise.all([
       getAdminSystemStatus(actor),
       getAdminRepository().getUserOverviewStats(),
@@ -31,11 +32,24 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
       getPricingRepository().listAnalyses(false),
       getPromotionsRepository().listPromotions(),
       getDatabaseHealth(),
+      getSearchProviderStatusOverview(actor).catch(() => ({
+        provider: "serpapi" as const,
+        online: false,
+        status: "unknown",
+        lastSuccessAt: null,
+        lastCheckAt: null,
+        dailyRequests: 0,
+        totalRequests: 0,
+        totalErrors: 0,
+        errorRatePercent: 0,
+        averageResponseTimeMs: 0,
+        apiVersion: null,
+        configured: false,
+      })),
     ]);
 
   const activeAnalyses = pricing.filter((item) => item.isActive).length;
   const activePromotions = promotions.filter((item) => item.isActive).length;
-
   const failedLogins = 0;
 
   return {
@@ -48,6 +62,7 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
     failedLogins,
     storageUsedMb: system.memoryMb,
     apiStatus: database.reachable ? "operational" : "degraded",
+    searchProvider: searchApi,
     sections: {
       benutzer: {
         label: "Benutzer",
@@ -84,9 +99,9 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
               system.systemStatus === "operational" ? "Online" : "Degraded",
           },
           {
-            label: "DB",
-            value: database.reachable ? 1 : 0,
-            display: database.reachable ? "OK" : "ERR",
+            label: "SerpAPI",
+            value: searchApi.online ? 1 : 0,
+            display: searchApi.online ? "ONLINE" : "OFFLINE",
           },
           { label: "RAM (MB)", value: system.memoryMb },
         ],
