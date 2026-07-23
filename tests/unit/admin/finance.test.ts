@@ -43,8 +43,25 @@ describe("admin finanzen module", () => {
     expect(search).toContain("recordApiUsageEvent");
     expect(search).toContain("recordFinance");
     expect(gemini).toContain('providerCode: "gemini"');
+    expect(gemini).toContain("usageMetadata");
+    expect(gemini).toContain("tokenUsage");
     expect(analysis).toContain('providerCode: "serpapi"');
     expect(analysis).toContain('eventType: "google_analysis"');
     expect(analysis).toContain("recordFinance: false");
+  });
+});
+
+describe("gemini token cost calculation", () => {
+  it("calculates cost from prompt/output tokens and 1M prices", async () => {
+    const { calculateTokenCostEur } =
+      await import("@/lib/services/finance-service");
+    // 1500 in + 500 out, €0.14 / €0.55 per 1M
+    const cost = calculateTokenCostEur(
+      { promptTokenCount: 1500, candidatesTokenCount: 500 },
+      0.14,
+      0.55
+    );
+    // (1500/1e6)*0.14 + (500/1e6)*0.55 = 0.00021 + 0.000275 = 0.000485
+    expect(cost).toBeCloseTo(0.000485, 8);
   });
 });

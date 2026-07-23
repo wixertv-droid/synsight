@@ -47,11 +47,22 @@ export interface PaymentProviderPublic {
   configJson: unknown;
 }
 
+export type ApiBillingMode = "per_request" | "per_token";
+
+export interface ApiTokenUsage {
+  promptTokenCount: number;
+  candidatesTokenCount: number;
+  totalTokenCount?: number;
+}
+
 export interface ApiCostSettingPublic {
   id: number;
   providerCode: string;
   label: string;
   costPerRequestEur: number;
+  billingMode: ApiBillingMode;
+  costPer1mInputTokensEur: number;
+  costPer1mOutputTokensEur: number;
   currency: string;
   isActive: boolean;
   notes: string | null;
@@ -206,15 +217,41 @@ export async function listApiCostSettings(
   const db = getDatabase();
   if (!db) return [];
   const rows = await db.select().from(apiCostSettings);
-  return rows.map((row) => ({
+  return rows.map((row) => mapApiCostSetting(row));
+}
+
+function normalizeBillingMode(value: unknown): ApiBillingMode {
+  return value === "per_token" ? "per_token" : "per_request";
+}
+
+function mapApiCostSetting(
+  row: typeof apiCostSettings.$inferSelect
+): ApiCostSettingPublic {
+  return {
     id: row.id,
     providerCode: row.providerCode,
     label: row.label,
     costPerRequestEur: toNumber(row.costPerRequestEur),
+    billingMode: normalizeBillingMode(row.billingMode),
+    costPer1mInputTokensEur: toNumber(row.costPer1mInputTokensEur),
+    costPer1mOutputTokensEur: toNumber(row.costPer1mOutputTokensEur),
     currency: row.currency,
     isActive: row.isActive,
     notes: row.notes,
-  }));
+  };
+}
+
+export function calculateTokenCostEur(
+  usage: ApiTokenUsage,
+  inputPricePer1mEur: number,
+  outputPricePer1mEur: number
+): number {
+  const prompt = Math.max(0, usage.promptTokenCount || 0);
+  const candidates = Math.max(0, usage.candidatesTokenCount || 0);
+  const inputCost = (prompt / 1_000_000) * Math.max(0, inputPricePer1mEur);
+  const outputCost =
+    (candidates / 1_000_000) * Math.max(0, outputPricePer1mEur);
+  return inputCost + outputCost;
 }
 
 export async function upsertApiCostSetting(
@@ -223,6 +260,9 @@ export async function upsertApiCostSetting(
     providerCode: string;
     label: string;
     costPerRequestEur: number;
+    billingMode?: ApiBillingMode;
+    costPer1mInputTokensEur?: number;
+    costPer1mOutputTokensEur?: number;
     notes?: string | null;
     isActive?: boolean;
   }
@@ -233,6 +273,9 @@ export async function upsertApiCostSetting(
 
   const providerCode = input.providerCode.trim().toLowerCase();
   const cost = Math.max(0, input.costPerRequestEur);
+  const billingMode = normalizeBillingMode(input.billingMode);
+  const inputTokenCost = Math.max(0, input.costPer1mInputTokensEur ?? 0);
+  const outputTokenCost = Math.max(0, input.costPer1mOutputTokensEur ?? 0);
   const adminId = Number(actor.id);
 
   await db
@@ -241,6 +284,9 @@ export async function upsertApiCostSetting(
       providerCode,
       label: input.label.trim() || providerCode,
       costPerRequestEur: cost.toFixed(6),
+      billingMode,
+      costPer1mInputTokensEur: inputTokenCost.toFixed(6),
+      costPer1mOutputTokensEur: outputTokenCost.toFixed(6),
       notes: input.notes ?? null,
       isActive: input.isActive ?? true,
       updatedByAdminId: adminId,
@@ -249,6 +295,9 @@ export async function upsertApiCostSetting(
       set: {
         label: input.label.trim() || providerCode,
         costPerRequestEur: cost.toFixed(6),
+        billingMode,
+        costPer1mInputTokensEur: inputTokenCost.toFixed(6),
+        costPer1mOutputTokensEur: outputTokenCost.toFixed(6),
         notes: input.notes ?? null,
         isActive: input.isActive ?? true,
         updatedByAdminId: adminId,
@@ -270,6 +319,8 @@ export async function recordApiUsageEvent(input: {
   success?: boolean;
   detail?: string | null;
   metaJson?: unknown;
+  /** Gemini/OpenAI-style token usage for per_token billing. */
+  tokenUsage?: ApiTokenUsage | null;
 }): Promise<void> {
   const db = getDatabase();
   if (!db) return;
@@ -282,8 +333,60 @@ export async function recordApiUsageEvent(input: {
       .from(apiCostSettings)
       .where(eq(apiCostSettings.providerCode, providerCode))
       .limit(1);
-    const unitCost = toNumber(settings[0]?.costPerRequestEur);
-    const totalCost = unitCost * requestCount;
+    const setting = settings[0];
+    const billingMode = normalizeBillingMode(setting?.billingMode);
+    const perRequest = toNumber(setting?.costPerRequestEur);
+    const inputPer1m = toNumber(setting?.costPer1mInputTokensEur);
+    const outputPer1m = toNumber(setting?.costPer1mOutputTokensEur);
+
+    const tokenUsage = input.tokenUsage
+      ? {
+          promptTokenCount: Math.max(0, input.tokenUsage.promptTokenCount || 0),
+          candidatesTokenCount: Math.max(
+            0,
+            input.tokenUsage.candidatesTokenCount || 0
+          ),
+          totalTokenCount: Math.max(
+            0,
+            input.tokenUsage.totalTokenCount ??
+              (input.tokenUsage.promptTokenCount || 0) +
+                (input.tokenUsage.candidatesTokenCount || 0)
+          ),
+        }
+      : null;
+
+    let unitCost = perRequest;
+    let totalCost = perRequest * requestCount;
+
+    if (billingMode === "per_token" && tokenUsage) {
+      totalCost = calculateTokenCostEur(tokenUsage, inputPer1m, outputPer1m);
+      unitCost = requestCount > 0 ? totalCost / requestCount : totalCost;
+    }
+
+    const baseMeta =
+      input.metaJson &&
+      typeof input.metaJson === "object" &&
+      !Array.isArray(input.metaJson)
+        ? (input.metaJson as Record<string, unknown>)
+        : {};
+
+    const metaJson = {
+      ...baseMeta,
+      billingMode,
+      ...(tokenUsage
+        ? {
+            usageMetadata: {
+              promptTokenCount: tokenUsage.promptTokenCount,
+              candidatesTokenCount: tokenUsage.candidatesTokenCount,
+              totalTokenCount: tokenUsage.totalTokenCount,
+            },
+            tokenPricesEurPer1m: {
+              input: inputPer1m,
+              output: outputPer1m,
+            },
+          }
+        : {}),
+    };
 
     await db.insert(apiUsageEvents).values({
       providerCode,
@@ -295,7 +398,7 @@ export async function recordApiUsageEvent(input: {
       totalCostEur: totalCost.toFixed(6),
       success: input.success ?? true,
       detail: input.detail?.slice(0, 500) ?? null,
-      metaJson: input.metaJson ?? null,
+      metaJson,
     });
   } catch (error) {
     console.error("[finance] recordApiUsageEvent failed", error);

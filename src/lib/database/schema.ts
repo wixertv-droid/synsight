@@ -1247,6 +1247,21 @@ export const apiCostSettings = mysqlTable(
     })
       .notNull()
       .default("0"),
+    billingMode: varchar("billing_mode", { length: 32 })
+      .notNull()
+      .default("per_request"),
+    costPer1mInputTokensEur: decimal("cost_per_1m_input_tokens_eur", {
+      precision: 12,
+      scale: 6,
+    })
+      .notNull()
+      .default("0"),
+    costPer1mOutputTokensEur: decimal("cost_per_1m_output_tokens_eur", {
+      precision: 12,
+      scale: 6,
+    })
+      .notNull()
+      .default("0"),
     currency: char("currency", { length: 3 }).notNull().default("EUR"),
     isActive: boolean("is_active").notNull().default(true),
     notes: varchar("notes", { length: 500 }),

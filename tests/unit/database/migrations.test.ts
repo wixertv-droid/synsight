@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–017 migration files", () => {
+  it("ships ordered 001–018 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -27,6 +27,7 @@ describe("database migrations workflow", () => {
       "015_search_provider_settings.sql",
       "016_intelligence_report_retention.sql",
       "017_admin_finanzen.sql",
+      "018_gemini_token_billing.sql",
     ]);
   });
 
@@ -199,5 +200,17 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS `api_usage_events`");
     expect(sql).toContain("`encrypted_api_key`");
     expect(sql).toContain("`cost_per_request_eur`");
+  });
+
+  it("adds gemini token billing columns in 018", () => {
+    const sql = readFileSync(
+      path.join(dir, "018_gemini_token_billing.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("`billing_mode`");
+    expect(sql).toContain("`cost_per_1m_input_tokens_eur`");
+    expect(sql).toContain("`cost_per_1m_output_tokens_eur`");
+    expect(sql).toContain("per_token");
+    expect(sql).toContain("gemini");
   });
 });

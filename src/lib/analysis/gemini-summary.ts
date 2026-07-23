@@ -5,14 +5,55 @@ import {
   markApiCredentialSuccess,
   resolveGeminiCredentials,
 } from "@/lib/services/api-credentials-service";
-import { recordApiUsageEvent } from "@/lib/services/finance-service";
+import {
+  recordApiUsageEvent,
+  type ApiTokenUsage,
+} from "@/lib/services/finance-service";
 
 export { sanitizeAiSummary } from "@/lib/analysis/ai-summary-text";
+
+interface GeminiUsageMetadata {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+}
+
+function parseUsageMetadata(raw: unknown): ApiTokenUsage | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const meta = raw as GeminiUsageMetadata;
+  const prompt = Number(meta.promptTokenCount) || 0;
+  const candidates = Number(meta.candidatesTokenCount) || 0;
+  const total =
+    Number(meta.totalTokenCount) ||
+    (prompt > 0 || candidates > 0 ? prompt + candidates : 0);
+  if (prompt <= 0 && candidates <= 0 && total <= 0) return null;
+  return {
+    promptTokenCount: prompt,
+    candidatesTokenCount: candidates,
+    totalTokenCount: total,
+  };
+}
+
+function mergeTokenUsage(
+  current: ApiTokenUsage | null,
+  next: ApiTokenUsage | null
+): ApiTokenUsage | null {
+  if (!next) return current;
+  if (!current) return next;
+  return {
+    promptTokenCount: current.promptTokenCount + next.promptTokenCount,
+    candidatesTokenCount:
+      current.candidatesTokenCount + next.candidatesTokenCount,
+    totalTokenCount:
+      (current.totalTokenCount ?? 0) + (next.totalTokenCount ?? 0),
+  };
+}
 
 /**
  * Optional Gemini summary — only summarizes verified hits.
  * Never invents findings. Returns null if API is unavailable.
  * Credentials: Admin DB first, then env GEMINI_API_KEY.
+ * Costs: usageMetadata tokens × Admin Finanzen Token-Preise.
  */
 export async function summarizeWithGemini(
   report: Pick<
@@ -66,6 +107,7 @@ ${JSON.stringify(payload)}`;
   ];
   let lastError = "gemini failed";
   let attempts = 0;
+  let accumulatedUsage: ApiTokenUsage | null = null;
 
   for (const model of models) {
     attempts += 1;
@@ -95,7 +137,12 @@ ${JSON.stringify(payload)}`;
           finishReason?: string;
           content?: { parts?: Array<{ text?: string }> };
         }>;
+        usageMetadata?: GeminiUsageMetadata;
       };
+      accumulatedUsage = mergeTokenUsage(
+        accumulatedUsage,
+        parseUsageMetadata(body.usageMetadata)
+      );
       const candidate = body.candidates?.[0];
       const text = candidate?.content?.parts?.[0]?.text?.trim();
       if (text) {
@@ -105,13 +152,17 @@ ${JSON.stringify(payload)}`;
           continue;
         }
         await markApiCredentialSuccess("gemini");
+        const tokens = accumulatedUsage;
         await recordApiUsageEvent({
           providerCode: "gemini",
           eventType: "summarize",
           referenceKey: `gemini:${report.subjectName}:${Date.now()}`,
           requestCount: attempts,
           success: true,
-          detail: `KI-Lagebild · ${report.subjectName} · Modell ${model}`,
+          detail: tokens
+            ? `KI-Lagebild · ${report.subjectName} · ${model} · ${tokens.promptTokenCount} in / ${tokens.candidatesTokenCount} out Tokens`
+            : `KI-Lagebild · ${report.subjectName} · Modell ${model}`,
+          tokenUsage: tokens,
           metaJson: {
             model,
             attempts,
@@ -135,7 +186,12 @@ ${JSON.stringify(payload)}`;
     requestCount: Math.max(1, attempts),
     success: false,
     detail: lastError.slice(0, 500),
-    metaJson: { attempts, subjectName: report.subjectName },
+    tokenUsage: accumulatedUsage,
+    metaJson: {
+      attempts,
+      subjectName: report.subjectName,
+      usageMetadata: accumulatedUsage,
+    },
   });
   return null;
 }

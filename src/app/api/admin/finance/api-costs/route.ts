@@ -25,7 +25,13 @@ function denied(status: 401 | 403) {
 const costSchema = z.object({
   providerCode: z.string().min(2).max(64),
   label: z.string().min(2).max(150),
-  costPerRequestEur: z.number().min(0).max(1000),
+  costPerRequestEur: z.number().min(0).max(1000).optional().default(0),
+  billingMode: z
+    .enum(["per_request", "per_token"])
+    .optional()
+    .default("per_request"),
+  costPer1mInputTokensEur: z.number().min(0).max(100000).optional().default(0),
+  costPer1mOutputTokensEur: z.number().min(0).max(100000).optional().default(0),
   notes: z.string().max(500).nullable().optional(),
   isActive: z.boolean().optional(),
 });

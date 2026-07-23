@@ -24,11 +24,11 @@ ersetzt. Support bleibt **A5**.
 
 Migration `017_admin_finanzen.sql` (idempotent):
 
-| Änderung            | Inhalt                                                                  |
-| ------------------- | ----------------------------------------------------------------------- |
-| `payment_providers` | `encrypted_api_key`, `encrypted_webhook_secret`, `environment`, `notes` |
-| `api_cost_settings` | Preis pro Request (Seed: serpapi, gemini, openai, stripe, paypal)       |
-| `api_usage_events`  | Verbuchte API-Calls mit Kosten, Detail und Meta-JSON                    |
+| Änderung            | Inhalt                                                                   |
+| ------------------- | ------------------------------------------------------------------------ |
+| `payment_providers` | `encrypted_api_key`, `encrypted_webhook_secret`, `environment`, `notes`  |
+| `api_cost_settings` | SerpAPI: €/Request; Gemini: `billing_mode=per_token` + €/1M Input/Output |
+| `api_usage_events`  | Verbuchte API-Calls mit Kosten, Detail und Meta-JSON                     |
 
 ## APIs
 
@@ -48,9 +48,12 @@ Mutationen prüfen Admin-Rolle und CSRF-Origin.
 - Einzelne SerpAPI-Calls aktualisieren weiterhin die Live-Metriken unter
   Website → APIs; die Finanzbuchung ist davon entkoppelt (schlägt Metrics fehl,
   werden Kosten trotzdem erfasst).
-- Gemini-Zusammenfassungen werden ebenfalls verbucht (inkl. Modell-Fallback-Versuche).
+- Gemini-Zusammenfassungen werden über **usageMetadata** verbucht:
+  `(promptTokenCount/1M)×cost_per_1m_input_tokens_eur + (candidatesTokenCount/1M)×cost_per_1m_output_tokens_eur`
+  (Preise in Admin → Finanzen → API-Ausgaben; Migration `018_gemini_token_billing.sql`).
+  Token-Counts und angewandte Preise liegen in `meta_json`.
 - Health-Checks laufen als `health_check`.
-- Kosten = `request_count × cost_per_request_eur` aus `api_cost_settings`.
+- SerpAPI-Kosten = `request_count × cost_per_request_eur` aus `api_cost_settings`.
 
 ## Deploy
 
