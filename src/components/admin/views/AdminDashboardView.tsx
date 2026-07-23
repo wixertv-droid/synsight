@@ -124,7 +124,7 @@ export default function AdminDashboardTiles() {
               <StatusDot
                 tone={
                   section.metrics[0]?.display === "Degraded"
-                    ? "offline"
+                    ? "danger"
                     : "online"
                 }
               />
@@ -138,7 +138,7 @@ export default function AdminDashboardTiles() {
                   <span className="inline-flex items-center gap-1 text-white/45">
                     {metric.label}
                     <InfoTooltip label={metric.label}>
-                      Kennzahl aus dem Admin-Bereich {section.label}.
+                      {`Kennzahl aus dem Admin-Bereich ${section.label}.`}
                     </InfoTooltip>
                   </span>
                   <span className="font-mono text-white/75">

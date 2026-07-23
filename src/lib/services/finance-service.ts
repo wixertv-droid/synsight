@@ -513,7 +513,7 @@ export async function getFinanceOverview(
   }
 
   const dailyMap = new Map(
-    dayKeys.map((date) => [date, { income: 0, expense: 0 }] as const)
+    dayKeys.map((date) => [date, { income: 0, expense: 0 }])
   );
 
   for (const row of paymentRows) {
