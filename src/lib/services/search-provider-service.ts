@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 import { getDatabase } from "@/lib/database/client";
 import { searchProviderSettings } from "@/lib/database/schema";
@@ -16,6 +16,17 @@ function assertAdmin(actor: AuthenticatedUser): void {
 
 function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function mysqlTimestampNow(): string {
+  return new Date().toISOString().slice(0, 23).replace("T", " ");
+}
+
+function asDateString(value: unknown): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  const text = String(value);
+  return text.slice(0, 10) || null;
 }
 
 export interface SearchProviderPublicSettings {
@@ -105,7 +116,7 @@ function toPublic(
       ? Math.round((totalErrors / totalRequests) * 1000) / 10
       : 0;
 
-  const dailyDate = row.dailyRequestsDate;
+  const dailyDate = asDateString(row.dailyRequestsDate);
   const dailyRequests =
     dailyDate === todayDateString() ? Number(row.dailyRequests) || 0 : 0;
 
@@ -300,7 +311,42 @@ export async function recordSearchProviderRequest(input: {
   referenceKey?: string | null;
   userId?: number | null;
   requestCount?: number;
+  /** When false, only updates provider metrics — finance is recorded elsewhere. */
+  recordFinance?: boolean;
 }): Promise<void> {
+  const requestCount = Math.max(1, input.requestCount ?? 1);
+  const eventType = input.eventType ?? (input.ok ? "search" : "search_error");
+  const queryDetail = input.query?.trim() || null;
+  const referenceKey = input.referenceKey ?? `${input.provider}:${Date.now()}`;
+
+  // Finance first — must not depend on metrics update succeeding.
+  if (input.recordFinance !== false) {
+    try {
+      const { recordApiUsageEvent } =
+        await import("@/lib/services/finance-service");
+      await recordApiUsageEvent({
+        providerCode: input.provider,
+        eventType,
+        referenceKey,
+        userId: input.userId ?? null,
+        requestCount,
+        success: input.ok,
+        detail: input.ok
+          ? queryDetail
+            ? `Query · ${queryDetail} · ${input.latencyMs} ms`
+            : `Latenz ${input.latencyMs} ms`
+          : (input.errorMessage ?? "Fehler"),
+        metaJson: {
+          latencyMs: input.latencyMs,
+          apiVersion: input.apiVersion ?? null,
+          query: queryDetail,
+        },
+      });
+    } catch (error) {
+      console.error("[search-provider] finance record failed", error);
+    }
+  }
+
   const db = getDatabase();
   if (!db) return;
 
@@ -309,60 +355,45 @@ export async function recordSearchProviderRequest(input: {
     if (!row) return;
 
     const today = todayDateString();
-    const dailyRequests =
-      row.dailyRequestsDate === today ? Number(row.dailyRequests) || 0 : 0;
-    const totalRequests = Number(row.totalRequests) || 0;
-    const totalErrors = Number(row.totalErrors) || 0;
-    const prevAvg = Number(row.averageResponseTimeMs) || 0;
-    const requestCount = Math.max(1, input.requestCount ?? 1);
-    const nextTotal = totalRequests + requestCount;
-    const nextAvg = Math.round(
-      (prevAvg * totalRequests + Math.max(0, input.latencyMs)) / nextTotal
-    );
+    const dailyDate = asDateString(row.dailyRequestsDate);
+    const sameDay = dailyDate === today;
+    const now = mysqlTimestampNow();
 
     await db
       .update(searchProviderSettings)
       .set({
-        lastCheckAt: new Date().toISOString(),
-        lastSuccessAt: input.ok ? new Date().toISOString() : row.lastSuccessAt,
-        lastErrorAt: input.ok ? row.lastErrorAt : new Date().toISOString(),
+        lastCheckAt: now,
+        lastSuccessAt: input.ok ? now : row.lastSuccessAt,
+        lastErrorAt: input.ok ? row.lastErrorAt : now,
         lastErrorMessage: input.ok
           ? null
           : (input.errorMessage ?? "Unbekannter Fehler").slice(0, 1000),
         status: input.ok ? "online" : "offline",
-        averageResponseTimeMs: nextAvg,
-        dailyRequests: dailyRequests + requestCount,
+        averageResponseTimeMs: sql`CASE
+          WHEN COALESCE(${searchProviderSettings.totalRequests}, 0) = 0
+          THEN ${Math.max(0, input.latencyMs)}
+          ELSE ROUND(
+            (
+              COALESCE(${searchProviderSettings.averageResponseTimeMs}, 0) * COALESCE(${searchProviderSettings.totalRequests}, 0)
+              + ${Math.max(0, input.latencyMs)}
+            ) / (COALESCE(${searchProviderSettings.totalRequests}, 0) + ${requestCount})
+          )
+        END`,
+        dailyRequests: sameDay
+          ? sql`COALESCE(${searchProviderSettings.dailyRequests}, 0) + ${requestCount}`
+          : requestCount,
         dailyRequestsDate: today,
-        totalRequests: nextTotal,
-        totalErrors: input.ok ? totalErrors : totalErrors + 1,
+        totalRequests: sql`COALESCE(${searchProviderSettings.totalRequests}, 0) + ${requestCount}`,
+        ...(input.ok
+          ? {}
+          : {
+              totalErrors: sql`COALESCE(${searchProviderSettings.totalErrors}, 0) + 1`,
+            }),
         apiVersion: input.apiVersion ?? row.apiVersion,
       })
       .where(eq(searchProviderSettings.provider, input.provider));
-
-    const { recordApiUsageEvent } =
-      await import("@/lib/services/finance-service");
-    const eventType = input.eventType ?? (input.ok ? "search" : "search_error");
-    const queryDetail = input.query?.trim();
-    await recordApiUsageEvent({
-      providerCode: input.provider,
-      eventType,
-      referenceKey: input.referenceKey ?? `${input.provider}:${Date.now()}`,
-      userId: input.userId ?? null,
-      requestCount,
-      success: input.ok,
-      detail: input.ok
-        ? queryDetail
-          ? `Query · ${queryDetail} · ${input.latencyMs} ms`
-          : `Latenz ${input.latencyMs} ms`
-        : (input.errorMessage ?? "Fehler"),
-      metaJson: {
-        latencyMs: input.latencyMs,
-        apiVersion: input.apiVersion ?? null,
-        query: queryDetail ?? null,
-      },
-    });
   } catch (error) {
-    console.error("[search-provider] record request failed", error);
+    console.error("[search-provider] metrics record failed", error);
   }
 }
 
@@ -425,7 +456,15 @@ export async function testSearchProviderConnection(
 }
 
 /** Runtime search used by Google analysis — records metrics. */
-export async function searchViaActiveProvider(query: string): Promise<
+export async function searchViaActiveProvider(
+  query: string,
+  options?: {
+    recordFinance?: boolean;
+    userId?: number | null;
+    referenceKey?: string | null;
+    eventType?: string;
+  }
+): Promise<
   Array<{
     title: string;
     link: string;
@@ -438,7 +477,7 @@ export async function searchViaActiveProvider(query: string): Promise<
 
   const provider = new SerpApiProvider(apiKey);
   const started = Date.now();
-  const referenceKey = `serpapi-search:${Date.now()}`;
+  const referenceKey = options?.referenceKey ?? `serpapi-search:${Date.now()}`;
   try {
     const hits = await provider.search(query, { num: 10 });
     await recordSearchProviderRequest({
@@ -446,10 +485,12 @@ export async function searchViaActiveProvider(query: string): Promise<
       ok: true,
       latencyMs: Date.now() - started,
       apiVersion: "serpapi",
-      eventType: "search",
+      eventType: options?.eventType ?? "search",
       query,
       referenceKey,
+      userId: options?.userId ?? null,
       requestCount: 1,
+      recordFinance: options?.recordFinance,
     });
     return hits.map((hit) => ({
       title: hit.title,
@@ -464,10 +505,12 @@ export async function searchViaActiveProvider(query: string): Promise<
       ok: false,
       latencyMs: Date.now() - started,
       errorMessage: message,
-      eventType: "search_error",
+      eventType: options?.eventType ?? "search_error",
       query,
       referenceKey,
+      userId: options?.userId ?? null,
       requestCount: 1,
+      recordFinance: options?.recordFinance,
     });
     console.error("[search-provider] search failed", message);
     return [];

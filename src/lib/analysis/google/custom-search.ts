@@ -10,6 +10,13 @@ export interface GoogleSearchItem {
   displayLink: string;
 }
 
+export interface FetchGoogleSearchOptions {
+  /** When false, only provider metrics are updated (analysis records finance once). */
+  recordFinance?: boolean;
+  userId?: number | null;
+  referenceKey?: string | null;
+}
+
 /**
  * Live Google search via the active SearchProvider (SerpAPI).
  */
@@ -18,7 +25,13 @@ export async function isGoogleSearchConfigured(): Promise<boolean> {
 }
 
 export async function fetchGoogleSearch(
-  query: string
+  query: string,
+  options?: FetchGoogleSearchOptions
 ): Promise<GoogleSearchItem[]> {
-  return searchViaActiveProvider(query);
+  return searchViaActiveProvider(query, {
+    recordFinance: options?.recordFinance,
+    userId: options?.userId,
+    referenceKey: options?.referenceKey,
+    eventType: "search",
+  });
 }

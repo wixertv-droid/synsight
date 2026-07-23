@@ -361,6 +361,44 @@ export default function AdminFinanceApiCostsView() {
                 <p className="break-all font-mono text-[10px] text-white/35">
                   Ref · {selected.referenceKey || "—"}
                 </p>
+                {(() => {
+                  const meta =
+                    selected.metaJson &&
+                    typeof selected.metaJson === "object" &&
+                    !Array.isArray(selected.metaJson)
+                      ? (selected.metaJson as Record<string, unknown>)
+                      : null;
+                  const queries = Array.isArray(meta?.queries)
+                    ? (meta.queries as Array<{
+                        id?: string;
+                        label?: string;
+                        query?: string;
+                      }>)
+                    : [];
+                  if (queries.length === 0) return null;
+                  return (
+                    <div className="rounded-lg border border-cyber-cyan/20 bg-black/30 p-3">
+                      <p className="font-mono text-[8px] tracking-[.12em] text-cyber-cyan/55">
+                        SUCHANFRAGEN · {queries.length}
+                      </p>
+                      <ul className="mt-2 max-h-48 space-y-1.5 overflow-auto">
+                        {queries.map((item, index) => (
+                          <li
+                            key={`${item.id ?? index}-${item.query ?? ""}`}
+                            className="text-[11px] text-white/55"
+                          >
+                            <span className="font-mono text-cyber-cyan/50">
+                              {(item.label || `Q${index + 1}`).toUpperCase()}
+                            </span>
+                            <span className="mt-0.5 block truncate text-white/70">
+                              {item.query || "—"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
                 {selected.metaJson ? (
                   <pre className="overflow-auto rounded-lg border border-white/10 bg-black/30 p-3 font-mono text-[10px] text-emerald-100/50">
                     {JSON.stringify(selected.metaJson, null, 2)}

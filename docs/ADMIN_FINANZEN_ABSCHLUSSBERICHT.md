@@ -42,9 +42,14 @@ Mutationen prüfen Admin-Rolle und CSRF-Origin.
 
 ## Kostenbuchung
 
-- Jede SerpAPI-Suche schreibt ein `api_usage_events`-Event inkl. Query.
+- Jede Google-Analyse schreibt **ein** SerpAPI-Event (`google_analysis`) mit
+  `requestCount = Anzahl Suchanfragen`, Query-Liste in `meta_json` und Kosten
+  = Requests × Preis aus `api_cost_settings`.
+- Einzelne SerpAPI-Calls aktualisieren weiterhin die Live-Metriken unter
+  Website → APIs; die Finanzbuchung ist davon entkoppelt (schlägt Metrics fehl,
+  werden Kosten trotzdem erfasst).
 - Gemini-Zusammenfassungen werden ebenfalls verbucht (inkl. Modell-Fallback-Versuche).
-- Health-Checks laufen als `health_check` (nicht als normale Suche).
+- Health-Checks laufen als `health_check`.
 - Kosten = `request_count × cost_per_request_eur` aus `api_cost_settings`.
 
 ## Deploy

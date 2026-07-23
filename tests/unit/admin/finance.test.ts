@@ -36,8 +36,15 @@ describe("admin finanzen module", () => {
       path.join(process.cwd(), "src/lib/analysis/gemini-summary.ts"),
       "utf8"
     );
+    const analysis = readFileSync(
+      path.join(process.cwd(), "src/lib/analysis/google/run-analysis.ts"),
+      "utf8"
+    );
     expect(search).toContain("recordApiUsageEvent");
-    expect(search).toContain("eventType");
+    expect(search).toContain("recordFinance");
     expect(gemini).toContain('providerCode: "gemini"');
+    expect(analysis).toContain('providerCode: "serpapi"');
+    expect(analysis).toContain('eventType: "google_analysis"');
+    expect(analysis).toContain("recordFinance: false");
   });
 });

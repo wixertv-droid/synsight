@@ -33,6 +33,7 @@ import {
 } from "@/lib/analysis/google/queries";
 import { summarizeWithGemini } from "@/lib/analysis/gemini-summary";
 import type { IdentityView } from "@/lib/services/identity-service";
+import { recordApiUsageEvent } from "@/lib/services/finance-service";
 
 async function mapPool<T, R>(
   items: T[],
@@ -260,7 +261,7 @@ function profileLinkedHits(
  */
 export async function runGoogleIntelligenceAnalysis(
   identity: IdentityView | null,
-  options?: { retentionDays?: ReportRetentionDays }
+  options?: { retentionDays?: ReportRetentionDays; userId?: number | null }
 ): Promise<IntelligenceReport> {
   const generatedAt = new Date().toISOString();
   const generatedAtLabel = new Intl.DateTimeFormat("de-DE", {
@@ -279,20 +280,32 @@ export async function runGoogleIntelligenceAnalysis(
   const apiConfigured = await isGoogleSearchConfigured();
   const serpHits: IntelligenceHit[] = [];
   let hitSeq = 0;
+  const analysisRef = `google-analysis:${options?.userId ?? "anon"}:${Date.now()}`;
+  let serpRequestCount = 0;
+  let serpSuccessCount = 0;
 
   if (apiConfigured) {
     const batches = await mapPool(queries, 3, async (plan) => {
       try {
-        const items = await fetchGoogleSearch(plan.query);
-        return { plan, items };
+        const items = await fetchGoogleSearch(plan.query, {
+          // One finance event for the whole analysis (see below).
+          recordFinance: false,
+          userId: options?.userId ?? null,
+          referenceKey: `${analysisRef}:${plan.id}`,
+        });
+        return { plan, items, ok: true as const };
       } catch (error) {
         console.error("[google-analysis] query failed", plan.id, error);
         return {
           plan,
           items: [] as Awaited<ReturnType<typeof fetchGoogleSearch>>,
+          ok: false as const,
         };
       }
     });
+
+    serpRequestCount = batches.length;
+    serpSuccessCount = batches.filter((batch) => batch.ok).length;
 
     for (const { plan, items } of batches) {
       for (const item of items) {
@@ -342,6 +355,30 @@ export async function runGoogleIntelligenceAnalysis(
           console.error("[google-analysis] hit mapping failed", error);
         }
       }
+    }
+
+    if (serpRequestCount > 0) {
+      await recordApiUsageEvent({
+        providerCode: "serpapi",
+        eventType: "google_analysis",
+        referenceKey: analysisRef,
+        userId: options?.userId ?? null,
+        requestCount: serpRequestCount,
+        success: serpSuccessCount > 0,
+        detail: `Google-Analyse · ${subjectName} · ${serpRequestCount} SerpAPI-Anfragen`,
+        metaJson: {
+          subjectName,
+          analysisRef,
+          requestCount: serpRequestCount,
+          successCount: serpSuccessCount,
+          hitCount: serpHits.length,
+          queries: queries.map((plan) => ({
+            id: plan.id,
+            label: plan.label,
+            query: plan.query,
+          })),
+        },
+      });
     }
   }
 

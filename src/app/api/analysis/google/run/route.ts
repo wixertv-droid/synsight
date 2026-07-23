@@ -38,6 +38,7 @@ export async function POST(request: Request) {
     const identity = await getIdentityForUser(userId);
     const report = await runGoogleIntelligenceAnalysis(identity, {
       retentionDays,
+      userId,
     });
     await saveIntelligenceReport(userId, report);
     return NextResponse.json(apiSuccess({ report }));
