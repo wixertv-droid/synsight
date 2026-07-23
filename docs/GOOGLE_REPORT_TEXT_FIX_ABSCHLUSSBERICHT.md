@@ -13,10 +13,10 @@
    Sanitizer kürzt nicht mehr aggressiv; Absätze bleiben erhalten.
 3. **Analyse-Zusammenfassung** — in verständliche Kurzabschnitte umgeschrieben
    (Kurz gesagt → Was betrifft Sie → Risiko → Empfehlung).
-4. **Abschnitts-Rail** — rechts wie auf der Startseite, Labels immer sichtbar,
-   präzises Scroll-Tracking (`getBoundingClientRect` + rAF), Klick-Lock gegen
-   Springen, schmalerer Report-Body (`max-w ~880–940px`) und sehr dezenter
-   Matrix-Code nur in den Seiten-Gutters.
+4. **Abschnitts-Rail** — sticky unter den Analyse-Reitern (nicht viewport-mittig),
+   Labels immer sichtbar, präzises Scroll-Tracking.
+5. **Layout** — mittlerer Report wieder breit (`flex-1`), Rail rechts daneben.
+6. **Matrix-Code** — klassischer Regen nur rechts, von oben nach unten, dezent grün.
 
 ## Deploy
 
@@ -30,6 +30,3 @@ DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run db:mi
 DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run build
 pm2 restart ecosystem.config.cjs --update-env
 ```
-
-Hinweis: Für ein frisches, vollständiges KI-Lagebild die Google-Analyse einmal
-neu starten. Rail und Matrix-Hintergrund gelten sofort nach Deploy.

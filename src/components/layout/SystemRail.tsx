@@ -25,6 +25,11 @@ interface SystemRailProps {
   alwaysShowLabels?: boolean;
   /** Distance from viewport top used as the “active” reading line. */
   activeOffsetPx?: number;
+  /**
+   * `fixed` = landing-style viewport rail.
+   * `sticky` = sits in page flow under tabs / beside content.
+   */
+  placement?: "fixed" | "sticky";
 }
 
 function resolveActiveSection(
@@ -50,6 +55,7 @@ export default function SystemRail({
   className = "",
   alwaysShowLabels = false,
   activeOffsetPx = 120,
+  placement = "fixed",
 }: SystemRailProps) {
   const fallbackId = sections[0]?.id ?? "hero";
   const [active, setActive] = useState(fallbackId);
@@ -99,9 +105,14 @@ export default function SystemRail({
 
   if (sections.length === 0) return null;
 
+  const shellClass =
+    placement === "sticky"
+      ? "pointer-events-none sticky top-24 z-20 hidden w-[9.5rem] flex-col items-end gap-2.5 self-start xl:flex"
+      : "pointer-events-none fixed right-4 top-1/2 z-40 hidden w-[9.5rem] -translate-y-1/2 flex-col items-end gap-2.5 xl:flex";
+
   return (
     <aside
-      className={`pointer-events-none fixed right-4 top-1/2 z-40 hidden w-[9.5rem] -translate-y-1/2 flex-col items-end gap-2.5 xl:flex ${className}`}
+      className={`${shellClass} ${className}`}
       aria-label="Seitennavigation"
     >
       {sections.map(({ id, label }, index) => {

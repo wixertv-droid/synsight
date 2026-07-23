@@ -3,10 +3,10 @@
 import { useEffect, useRef } from "react";
 
 const GLYPHS =
-  "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン<>[]{}|/\\";
+  "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789<>[]{}|/\\*+=#";
 
 /**
- * Very subtle matrix rain for report gutters — low opacity, side-masked.
+ * Classic Matrix rain — only on the right gutter, faint, top → bottom.
  */
 export default function MatrixCodeField({
   className = "",
@@ -23,57 +23,57 @@ export default function MatrixCodeField({
 
     let raf = 0;
     let disposed = false;
-    let columns: number[] = [];
+    let drops: number[] = [];
     let width = 0;
     let height = 0;
-    const fontSize = 12;
-
-    const resize = () => {
-      const parent = canvas.parentElement;
-      width = parent?.clientWidth ?? window.innerWidth;
-      height = parent?.clientHeight ?? window.innerHeight;
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const colCount = Math.max(8, Math.floor(width / fontSize));
-      columns = Array.from({ length: colCount }, () =>
-        Math.floor(Math.random() * (height / fontSize))
-      );
-    };
-
+    const fontSize = 14;
     const prefersReduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
+    const resize = () => {
+      width = canvas.clientWidth || 180;
+      height = canvas.clientHeight || window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const colCount = Math.max(6, Math.floor(width / fontSize));
+      drops = Array.from({ length: colCount }, () =>
+        Math.floor(Math.random() * -40)
+      );
+    };
+
     const draw = () => {
       if (disposed) return;
-      ctx.fillStyle = "rgba(2, 6, 12, 0.12)";
+
+      // Trail fade — keeps falling columns readable
+      ctx.fillStyle = "rgba(3, 8, 14, 0.18)";
       ctx.fillRect(0, 0, width, height);
       ctx.font = `${fontSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
 
-      for (let i = 0; i < columns.length; i += 1) {
+      for (let i = 0; i < drops.length; i += 1) {
         const x = i * fontSize;
-        const edge = width * 0.18;
-        if (x > edge && x < width - edge) {
-          columns[i] = 0;
-          continue;
-        }
-
+        const y = drops[i]! * fontSize;
         const char = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? "0";
-        const y = columns[i]! * fontSize;
-        ctx.fillStyle =
-          Math.random() > 0.92
-            ? "rgba(160, 240, 255, 0.22)"
-            : "rgba(80, 180, 210, 0.11)";
+
+        // Bright head
+        ctx.fillStyle = "rgba(190, 255, 210, 0.55)";
         ctx.fillText(char, x, y);
 
+        // Soft body trail above
+        ctx.fillStyle = "rgba(40, 200, 90, 0.28)";
+        const trail = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? "1";
+        ctx.fillText(trail, x, y - fontSize);
+
+        ctx.fillStyle = "rgba(20, 140, 60, 0.16)";
+        const deeper = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? "0";
+        ctx.fillText(deeper, x, y - fontSize * 2);
+
         if (y > height && Math.random() > 0.975) {
-          columns[i] = 0;
+          drops[i] = Math.floor(Math.random() * -20);
         } else {
-          columns[i] = columns[i]! + 1;
+          drops[i] = drops[i]! + 1;
         }
       }
 
@@ -83,25 +83,29 @@ export default function MatrixCodeField({
     };
 
     resize();
+    // Seed a dark base so first frames aren't blank
+    ctx.fillStyle = "rgba(3, 8, 14, 1)";
+    ctx.fillRect(0, 0, width, height);
     draw();
-    window.addEventListener("resize", resize);
+
+    const onResize = () => resize();
+    window.addEventListener("resize", onResize);
 
     return () => {
       disposed = true;
       window.cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 
   return (
     <div
-      className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
+      className={`pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[9.5rem] overflow-hidden xl:block 2xl:w-[11rem] ${className}`}
       aria-hidden="true"
     >
-      <canvas
-        ref={canvasRef}
-        className="h-full w-full opacity-[0.35] [mask-image:linear-gradient(90deg,black_0%,black_14%,transparent_22%,transparent_78%,black_86%,black_100%)]"
-      />
+      <canvas ref={canvasRef} className="h-full w-full opacity-[0.55]" />
+      <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#03070e]/85" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#03070e]/40 via-transparent to-[#03070e]/50" />
     </div>
   );
 }
