@@ -1131,6 +1131,35 @@ export const intelligenceReports = mysqlTable(
   ]
 );
 
+export const apiCredentials = mysqlTable(
+  "api_credentials",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    provider: varchar("provider", { length: 64 }).notNull(),
+    label: varchar("label", { length: 150 }).notNull(),
+    encryptedSecret: text("encrypted_secret").notNull(),
+    configJson: json("config_json"),
+    isActive: boolean("is_active").notNull().default(true),
+    lastSuccessAt: timestamp("last_success_at", { mode: "string", fsp: 3 }),
+    lastErrorAt: timestamp("last_error_at", { mode: "string", fsp: 3 }),
+    lastErrorMessage: text("last_error_message"),
+    updatedByAdminId: bigint("updated_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [uniqueIndex("api_credentials_provider_unique").on(table.provider)]
+);
+
 export type DbUser = typeof users.$inferSelect;
 export type DbProfile = typeof profiles.$inferSelect;
 export type DbSession = typeof sessions.$inferSelect;

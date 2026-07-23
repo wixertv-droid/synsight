@@ -5,7 +5,7 @@ import { clearIntelligenceReportsForTests } from "@/lib/analysis/session-store";
 import type { IdentityView } from "@/lib/services/identity-service";
 
 vi.mock("@/lib/analysis/google/custom-search", () => ({
-  isGoogleCustomSearchConfigured: vi.fn(() => false),
+  isGoogleCustomSearchConfigured: vi.fn(async () => false),
   fetchGoogleCustomSearch: vi.fn(async () => []),
 }));
 

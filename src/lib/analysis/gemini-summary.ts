@@ -1,8 +1,14 @@
 import type { IntelligenceReport } from "@/lib/analysis/types";
+import {
+  markApiCredentialError,
+  markApiCredentialSuccess,
+  resolveGeminiCredentials,
+} from "@/lib/services/api-credentials-service";
 
 /**
  * Optional Gemini summary — only summarizes verified hits.
  * Never invents findings. Returns null if API is unavailable.
+ * Credentials: Admin DB first, then env GEMINI_API_KEY.
  */
 export async function summarizeWithGemini(
   report: Pick<
@@ -10,8 +16,8 @@ export async function summarizeWithGemini(
     "subjectName" | "hits" | "summaryText" | "riskLevel" | "executive"
   >
 ): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) return null;
+  const credentials = await resolveGeminiCredentials();
+  if (!credentials) return null;
 
   const verified = report.hits.filter(
     (hit) => hit.sourceType === "google_custom_search"
@@ -44,7 +50,7 @@ ${JSON.stringify(payload)}`;
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(credentials.apiKey)}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,15 +64,27 @@ ${JSON.stringify(payload)}`;
       }
     );
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      await markApiCredentialError(
+        "gemini",
+        `HTTP ${response.status}: ${detail.slice(0, 200)}`
+      );
+      return null;
+    }
     const body = (await response.json()) as {
       candidates?: Array<{
         content?: { parts?: Array<{ text?: string }> };
       }>;
     };
     const text = body.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (text) await markApiCredentialSuccess("gemini");
     return text || null;
-  } catch {
+  } catch (error) {
+    await markApiCredentialError(
+      "gemini",
+      error instanceof Error ? error.message : "gemini failed"
+    );
     return null;
   }
 }

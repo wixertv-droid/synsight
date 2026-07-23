@@ -4,6 +4,7 @@ import AdminUserControl from "@/components/admin/AdminUserControl";
 import AdminPricingControl from "@/components/admin/AdminPricingControl";
 import AdminPromotionsControl from "@/components/admin/AdminPromotionsControl";
 import AdminCommunicationsControl from "@/components/admin/AdminCommunicationsControl";
+import AdminApiCredentialsControl from "@/components/admin/AdminApiCredentialsControl";
 import StatusDot from "@/components/ui/StatusDot";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getAdminSystemStatus } from "@/lib/services/admin-service";
@@ -20,7 +21,6 @@ const comingSoon = [
   "Umsätze",
   "Zahlungsanbieter",
   "KI-Auslastung",
-  "API-Verbrauch",
   "Benutzerstatistiken",
   "Analysestatistiken",
   "Systemlogs",
@@ -127,6 +127,7 @@ export default async function AdminPage() {
       <AdminPricingControl />
       <AdminPromotionsControl />
       <AdminCommunicationsControl />
+      <AdminApiCredentialsControl />
 
       <section className="mt-6" aria-labelledby="future-admin-heading">
         <div className="mb-4">

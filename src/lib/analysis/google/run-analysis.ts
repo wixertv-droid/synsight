@@ -226,7 +226,7 @@ export async function runGoogleIntelligenceAnalysis(
 
   const subjectName = resolveSubjectName(identity);
   const queries = buildGoogleQueriesFromIdentity(identity);
-  const apiConfigured = isGoogleCustomSearchConfigured();
+  const apiConfigured = await isGoogleCustomSearchConfigured();
   const serpHits: IntelligenceHit[] = [];
   let hitSeq = 0;
 
@@ -303,7 +303,7 @@ export async function runGoogleIntelligenceAnalysis(
     (h) => h.risk === "action" || h.risk === "review"
   ).length;
 
-  const recommendations = buildReportRecommendations(hits, identity);
+  const recommendations = await buildReportRecommendations(hits, identity);
   const missingProfileHints = buildMissingProfileHints(identity);
 
   const priority =
@@ -350,10 +350,10 @@ export async function runGoogleIntelligenceAnalysis(
   return draft;
 }
 
-function buildReportRecommendations(
+async function buildReportRecommendations(
   hits: IntelligenceHit[],
   identity: IdentityView | null
-): IntelligenceRecommendation[] {
+): Promise<IntelligenceRecommendation[]> {
   const actionHits = hits.filter(
     (h) => h.shouldAct && h.sourceType === "google_custom_search"
   );
@@ -375,16 +375,16 @@ function buildReportRecommendations(
     });
   }
 
-  if (!isGoogleCustomSearchConfigured()) {
+  if (!(await isGoogleCustomSearchConfigured())) {
     recs.push({
       title: "Live-Google-Suche aktivieren",
       detail:
-        "Für verifizierte Suchtreffer muss die Google Custom Search JSON API konfiguriert werden.",
+        "Für verifizierte Suchtreffer müssen Google Custom Search API-Key und Search-Engine-ID (cx) im Admin unter API-Verwaltung hinterlegt werden.",
       why: "Ohne API können keine echten Google-Treffer geladen werden — SynSight erfindet keine Ergebnisse.",
       danger: "Ohne Live-Daten bleibt die Sichtbarkeit unvollständig.",
       howToFix:
-        "Setzen Sie GOOGLE_CUSTOM_SEARCH_API_KEY und GOOGLE_CUSTOM_SEARCH_ENGINE_ID auf dem Server.",
-      effort: "10–20 Minuten",
+        "Admin Control Center → API-Verwaltung → Google Custom Search: API-Key und Engine-ID (cx) speichern. Optional Gemini für die KI-Zusammenfassung.",
+      effort: "5–10 Minuten",
       priority: "Optional",
       difficulty: "Niedrig",
       relatedHitIds: [],

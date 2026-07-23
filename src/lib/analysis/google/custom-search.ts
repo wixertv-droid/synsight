@@ -1,3 +1,9 @@
+import {
+  markApiCredentialError,
+  markApiCredentialSuccess,
+  resolveGoogleSearchCredentials,
+} from "@/lib/services/api-credentials-service";
+
 export interface GoogleCustomSearchItem {
   title: string;
   link: string;
@@ -13,27 +19,24 @@ export interface GoogleCustomSearchResult {
   };
 }
 
-export function isGoogleCustomSearchConfigured(): boolean {
-  return Boolean(
-    process.env.GOOGLE_CUSTOM_SEARCH_API_KEY?.trim() &&
-    process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID?.trim()
-  );
+export async function isGoogleCustomSearchConfigured(): Promise<boolean> {
+  return Boolean(await resolveGoogleSearchCredentials());
 }
 
 /**
  * Executes a single Google Custom Search JSON API request.
+ * Credentials: Admin DB first, then env fallback.
  * Returns only fields delivered by the API — empty array when not configured or on error.
  */
 export async function fetchGoogleCustomSearch(
   query: string
 ): Promise<GoogleCustomSearchItem[]> {
-  const apiKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY?.trim();
-  const cx = process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID?.trim();
-  if (!apiKey || !cx || !query.trim()) return [];
+  const credentials = await resolveGoogleSearchCredentials();
+  if (!credentials || !query.trim()) return [];
 
   const url = new URL("https://www.googleapis.com/customsearch/v1");
-  url.searchParams.set("key", apiKey);
-  url.searchParams.set("cx", cx);
+  url.searchParams.set("key", credentials.apiKey);
+  url.searchParams.set("cx", credentials.engineId);
   url.searchParams.set("q", query);
   url.searchParams.set("num", "10");
   url.searchParams.set("safe", "active");
@@ -46,15 +49,17 @@ export async function fetchGoogleCustomSearch(
     });
 
     if (!response.ok) {
-      console.error(
-        "[google-custom-search] HTTP",
-        response.status,
-        await response.text().catch(() => "")
+      const detail = await response.text().catch(() => "");
+      console.error("[google-custom-search] HTTP", response.status, detail);
+      await markApiCredentialError(
+        "google_custom_search",
+        `HTTP ${response.status}: ${detail.slice(0, 200)}`
       );
       return [];
     }
 
     const body = (await response.json()) as GoogleCustomSearchResult;
+    await markApiCredentialSuccess("google_custom_search");
     return (body.items ?? []).map((item) => ({
       title: item.title?.trim() ?? "",
       link: item.link?.trim() ?? "",
@@ -63,6 +68,10 @@ export async function fetchGoogleCustomSearch(
     }));
   } catch (error) {
     console.error("[google-custom-search] fetch failed", error);
+    await markApiCredentialError(
+      "google_custom_search",
+      error instanceof Error ? error.message : "fetch failed"
+    );
     return [];
   }
 }
