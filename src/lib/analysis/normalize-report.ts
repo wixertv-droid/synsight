@@ -152,6 +152,16 @@ export function normalizeIntelligenceReport(
       typeof source.generatedAtLabel === "string"
         ? source.generatedAtLabel
         : "—",
+    retentionDays:
+      typeof source.retentionDays === "number" && source.retentionDays >= 0
+        ? source.retentionDays
+        : 30,
+    expiresAt:
+      typeof source.expiresAt === "string"
+        ? source.expiresAt
+        : source.expiresAt === null
+          ? null
+          : null,
     profileCompleteness: Number(source.profileCompleteness) || 0,
     dataSourceLabel:
       typeof source.dataSourceLabel === "string"

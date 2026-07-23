@@ -2,9 +2,12 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
 import { runGoogleIntelligenceAnalysis } from "@/lib/analysis/google/run-analysis";
 import { saveIntelligenceReport } from "@/lib/analysis/session-store";
+import { parseRetentionDays } from "@/lib/analysis/retention";
 import { getIdentityForUser } from "@/lib/services/identity-service";
 import { NextResponse } from "next/server";
 import { validateMutationOrigin } from "@/lib/security/request";
+
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   const csrfError = validateMutationOrigin(request);
@@ -26,9 +29,16 @@ export async function POST(request: Request) {
     );
   }
 
+  const body = (await request.json().catch(() => ({}))) as {
+    retentionDays?: unknown;
+  };
+  const retentionDays = parseRetentionDays(body.retentionDays);
+
   try {
     const identity = await getIdentityForUser(userId);
-    const report = await runGoogleIntelligenceAnalysis(identity);
+    const report = await runGoogleIntelligenceAnalysis(identity, {
+      retentionDays,
+    });
     await saveIntelligenceReport(userId, report);
     return NextResponse.json(apiSuccess({ report }));
   } catch (error) {
@@ -40,7 +50,7 @@ export async function POST(request: Request) {
         ? "Datenbanktabellen fehlen. Bitte Migrationen ausführen (npm run db:migrate)."
         : /decrypt|auth|bad decrypt|Unsupported state/i.test(technical)
           ? "API-Schlüssel konnten nicht entschlüsselt werden. IMAGE_ENCRYPTION_KEY/SESSION_SECRET prüfen und Keys neu speichern."
-          : "Google-Analyse ist fehlgeschlagen. Bitte API-Keys unter Website → API prüfen.";
+          : "Google-Analyse ist fehlgeschlagen. Bitte API-Keys unter Website → APIs & Integrationen prüfen.";
 
     return NextResponse.json(
       apiError("ANALYSIS_FAILED", `${friendly} (${technical.slice(0, 160)})`),

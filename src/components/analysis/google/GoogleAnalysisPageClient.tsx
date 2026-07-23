@@ -5,6 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import ConsumeConfirm from "@/components/credits/ConsumeConfirm";
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
 import { googleIntelligenceModule } from "@/lib/analysis/google/module";
+import {
+  DEFAULT_REPORT_RETENTION_DAYS,
+  parseRetentionDays,
+  REPORT_RETENTION_PRESETS,
+  REPORT_RETENTION_STORAGE_KEY,
+  type ReportRetentionDays,
+} from "@/lib/analysis/retention";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 
 type Phase = "idle" | "confirm";
@@ -22,6 +29,21 @@ export default function GoogleAnalysisPageClient({
 
   const [phase, setPhase] = useState<Phase>(autoStart ? "confirm" : "idle");
   const [error, setError] = useState<string | null>(null);
+  const [retentionDays, setRetentionDays] = useState<ReportRetentionDays>(
+    DEFAULT_REPORT_RETENTION_DAYS
+  );
+
+  useEffect(() => {
+    try {
+      setRetentionDays(
+        parseRetentionDays(
+          window.localStorage.getItem(REPORT_RETENTION_STORAGE_KEY)
+        )
+      );
+    } catch {
+      setRetentionDays(DEFAULT_REPORT_RETENTION_DAYS);
+    }
+  }, []);
 
   const beginFlow = () => {
     setError(null);
@@ -29,8 +51,18 @@ export default function GoogleAnalysisPageClient({
   };
 
   const onCreditsConfirmed = useCallback(() => {
-    router.push("/dashboard/results?tab=google_search&scan=1");
-  }, [router]);
+    try {
+      window.localStorage.setItem(
+        REPORT_RETENTION_STORAGE_KEY,
+        String(retentionDays)
+      );
+    } catch {
+      /* ignore */
+    }
+    router.push(
+      `/dashboard/results?tab=google_search&scan=1&retention=${retentionDays}`
+    );
+  }, [retentionDays, router]);
 
   useEffect(() => {
     if (autoStart) setPhase("confirm");
@@ -132,6 +164,29 @@ export default function GoogleAnalysisPageClient({
               </span>
             </span>
           </div>
+
+          <label className="mt-5 block max-w-md space-y-1.5">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              SPEICHERDAUER DES ERGEBNISSES
+            </span>
+            <select
+              value={retentionDays}
+              onChange={(event) =>
+                setRetentionDays(parseRetentionDays(Number(event.target.value)))
+              }
+              className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+            >
+              {REPORT_RETENTION_PRESETS.map((preset) => (
+                <option key={preset.days} value={preset.days}>
+                  {preset.label} — {preset.description}
+                </option>
+              ))}
+            </select>
+            <span className="block text-[11px] text-white/35">
+              Der Report wird gespeichert und nach Ablauf nicht mehr angezeigt.
+            </span>
+          </label>
+
           <div className="mt-6">
             <ConsumeConfirm
               analysisKey="google_search"

@@ -1156,6 +1156,10 @@ export const intelligenceReports = mysqlTable(
       .notNull()
       .default("niedrig"),
     hitCount: int("hit_count", { unsigned: true }).notNull().default(0),
+    retentionDays: int("retention_days", { unsigned: true })
+      .notNull()
+      .default(30),
+    expiresAt: timestamp("expires_at", { mode: "string", fsp: 3 }),
     reportJson: json("report_json").notNull(),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
       .notNull()
@@ -1171,6 +1175,7 @@ export const intelligenceReports = mysqlTable(
       table.moduleKey
     ),
     index("intelligence_reports_user_id_idx").on(table.userId),
+    index("intelligence_reports_expires_at_idx").on(table.expiresAt),
   ]
 );
 

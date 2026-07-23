@@ -107,6 +107,10 @@ export interface IntelligenceReport {
   subjectName: string;
   generatedAt: string;
   generatedAtLabel: string;
+  /** Days to keep the report; 0 = unlimited. */
+  retentionDays: number;
+  /** ISO expiry; null when unlimited. */
+  expiresAt: string | null;
   profileCompleteness: number;
   dataSourceLabel: string;
   apiConfigured: boolean;

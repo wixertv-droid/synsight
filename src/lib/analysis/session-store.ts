@@ -2,12 +2,53 @@ import { eq, and } from "drizzle-orm";
 import { getDatabase } from "@/lib/database/client";
 import { intelligenceReports } from "@/lib/database/schema";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
+import { isReportExpired } from "@/lib/analysis/retention";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 
 const memoryReports = new Map<string, IntelligenceReport>();
 
 function storeKey(userId: number, moduleKey: string): string {
   return `${userId}:${moduleKey}`;
+}
+
+function forgetIfExpired(
+  userId: number,
+  moduleKey: string,
+  report: IntelligenceReport
+): IntelligenceReport | null {
+  if (
+    isReportExpired({
+      expiresAt: report.expiresAt,
+      generatedAt: report.generatedAt,
+      retentionDays: report.retentionDays,
+    })
+  ) {
+    memoryReports.delete(storeKey(userId, moduleKey));
+    void deleteIntelligenceReport(userId, moduleKey);
+    return null;
+  }
+  return report;
+}
+
+export async function deleteIntelligenceReport(
+  userId: number,
+  moduleKey: string
+): Promise<void> {
+  memoryReports.delete(storeKey(userId, moduleKey));
+  const db = getDatabase();
+  if (!db) return;
+  try {
+    await db
+      .delete(intelligenceReports)
+      .where(
+        and(
+          eq(intelligenceReports.userId, userId),
+          eq(intelligenceReports.moduleKey, moduleKey)
+        )
+      );
+  } catch (error) {
+    console.error("[intelligence-reports] delete failed", error);
+  }
 }
 
 export async function saveIntelligenceReport(
@@ -23,7 +64,6 @@ export async function saveIntelligenceReport(
   if (!db) return;
 
   try {
-    // Ensure plain JSON (no prototype / undefined quirks) for MySQL JSON column
     const reportJson = JSON.parse(
       JSON.stringify(normalized)
     ) as IntelligenceReport;
@@ -36,6 +76,8 @@ export async function saveIntelligenceReport(
         riskScore: normalized.riskScore,
         riskLevel: normalized.riskLevel,
         hitCount: normalized.hits.length,
+        retentionDays: normalized.retentionDays,
+        expiresAt: normalized.expiresAt,
         reportJson,
       })
       .onDuplicateKeyUpdate({
@@ -44,11 +86,12 @@ export async function saveIntelligenceReport(
           riskScore: normalized.riskScore,
           riskLevel: normalized.riskLevel,
           hitCount: normalized.hits.length,
+          retentionDays: normalized.retentionDays,
+          expiresAt: normalized.expiresAt,
           reportJson,
         },
       });
   } catch (error) {
-    // Persistence must not break the live analysis response (e.g. missing migration).
     console.error("[intelligence-reports] save failed", error);
   }
 }
@@ -58,7 +101,9 @@ export async function getIntelligenceReport(
   moduleKey: string
 ): Promise<IntelligenceReport | null> {
   const cached = memoryReports.get(storeKey(userId, moduleKey));
-  if (cached) return cached;
+  if (cached) {
+    return forgetIfExpired(userId, moduleKey, cached);
+  }
 
   const db = getDatabase();
   if (!db) return null;
@@ -79,8 +124,19 @@ export async function getIntelligenceReport(
     if (!row) return null;
     const report = normalizeIntelligenceReport(row.reportJson);
     if (!report) return null;
-    memoryReports.set(storeKey(userId, moduleKey), report);
-    return report;
+
+    // Prefer DB retention columns when present
+    if (typeof row.retentionDays === "number") {
+      report.retentionDays = row.retentionDays;
+    }
+    if (row.expiresAt !== undefined) {
+      report.expiresAt = row.expiresAt;
+    }
+
+    const valid = forgetIfExpired(userId, moduleKey, report);
+    if (!valid) return null;
+    memoryReports.set(storeKey(userId, moduleKey), valid);
+    return valid;
   } catch (error) {
     console.error("[intelligence-reports] load failed", error);
     return null;
@@ -92,7 +148,9 @@ export function getIntelligenceReportSync(
   userId: number,
   moduleKey: string
 ): IntelligenceReport | null {
-  return memoryReports.get(storeKey(userId, moduleKey)) ?? null;
+  const cached = memoryReports.get(storeKey(userId, moduleKey));
+  if (!cached) return null;
+  return forgetIfExpired(userId, moduleKey, cached);
 }
 
 export function clearIntelligenceReportsForTests(): void {

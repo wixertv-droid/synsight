@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import ExecutiveSummaryPanel from "@/components/analysis/intelligence/ExecutiveSummaryPanel";
 import IntelligenceHitCard from "@/components/analysis/intelligence/IntelligenceHitCard";
 import ManagementOverviewPanel from "@/components/analysis/intelligence/ManagementOverviewPanel";
@@ -7,8 +8,11 @@ import CategoryVisualPanel from "@/components/analysis/intelligence/CategoryVisu
 import RiskOverviewPanel from "@/components/analysis/intelligence/RiskOverviewPanel";
 import SectionReveal from "@/components/analysis/intelligence/SectionReveal";
 import InfoTooltip from "@/components/ui/InfoTooltip";
+import { isPrimaryHit } from "@/lib/analysis/hit-quality";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
+import { retentionLabel } from "@/lib/analysis/retention";
 import type { IntelligenceHit, IntelligenceReport } from "@/lib/analysis/types";
+import type { ReportRetentionDays } from "@/lib/analysis/retention";
 
 const CATEGORY_SECTIONS: Array<{
   id: string;
@@ -81,7 +85,43 @@ export default function GoogleIntelligenceReport({
   revealSections?: boolean;
 }) {
   const report = normalizeIntelligenceReport(rawReport);
-  if (!report) {
+  const [showWeakHits, setShowWeakHits] = useState(false);
+  const [queriesOpen, setQueriesOpen] = useState(false);
+
+  const derived = useMemo(() => {
+    if (!report) return null;
+    const visibleHits = report.hits.filter(
+      (hit) => showWeakHits || isPrimaryHit(hit)
+    );
+    const weakCount = report.hits.filter((hit) => !isPrimaryHit(hit)).length;
+    const assigned = new Set<string>();
+    const sections = CATEGORY_SECTIONS.map((section) => {
+      const sectionHits = visibleHits.filter((hit) => {
+        if (assigned.has(hit.id)) return false;
+        if (!section.match(hit)) return false;
+        assigned.add(hit.id);
+        return true;
+      });
+      return { ...section, hits: sectionHits };
+    }).filter((section) => section.hits.length > 0);
+    const otherHits = visibleHits.filter((hit) => !assigned.has(hit.id));
+    return {
+      hits: visibleHits,
+      weakCount,
+      sections,
+      otherHits,
+      queries: report.queries,
+      recommendations: report.recommendations,
+      liveHits: report.hits.filter(
+        (hit) => hit.sourceType !== "identity_profile"
+      ),
+      profileHits: report.hits.filter(
+        (hit) => hit.sourceType === "identity_profile"
+      ),
+    };
+  }, [report, showWeakHits]);
+
+  if (!report || !derived) {
     return (
       <div className="rounded-xl border border-dashed border-rose-400/20 px-4 py-8 text-center text-sm text-rose-100/60">
         Report-Daten sind unvollständig. Bitte starten Sie die Analyse erneut.
@@ -89,25 +129,23 @@ export default function GoogleIntelligenceReport({
     );
   }
 
-  const hits = report.hits;
-  const assigned = new Set<string>();
-  const sections = CATEGORY_SECTIONS.map((section) => {
-    const sectionHits = hits.filter((hit) => {
-      if (assigned.has(hit.id)) return false;
-      if (!section.match(hit)) return false;
-      assigned.add(hit.id);
-      return true;
-    });
-    return { ...section, hits: sectionHits };
-  }).filter((section) => section.hits.length > 0);
+  const {
+    sections,
+    otherHits,
+    queries,
+    recommendations,
+    liveHits,
+    profileHits,
+    weakCount,
+  } = derived;
 
-  const otherHits = hits.filter((hit) => !assigned.has(hit.id));
-  const queries = report.queries;
-  const recommendations = report.recommendations;
-  const liveHits = hits.filter((hit) => hit.sourceType !== "identity_profile");
-  const profileHits = hits.filter(
-    (hit) => hit.sourceType === "identity_profile"
-  );
+  const expiresLabel = report.expiresAt
+    ? new Intl.DateTimeFormat("de-DE", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Europe/Berlin",
+      }).format(new Date(report.expiresAt))
+    : "Unbegrenzt";
 
   return (
     <div className="space-y-6">
@@ -132,22 +170,10 @@ export default function GoogleIntelligenceReport({
 
           <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              {
-                label: "Live-Treffer",
-                value: String(liveHits.length),
-              },
-              {
-                label: "Profil-Links",
-                value: String(profileHits.length),
-              },
-              {
-                label: "Risiko",
-                value: report.riskLevel.toUpperCase(),
-              },
-              {
-                label: "Score",
-                value: String(report.riskScore),
-              },
+              { label: "Live-Treffer", value: String(liveHits.length) },
+              { label: "Profil-Links", value: String(profileHits.length) },
+              { label: "Risiko", value: report.riskLevel.toUpperCase() },
+              { label: "Score", value: String(report.riskScore) },
             ].map((item) => (
               <div
                 key={item.label}
@@ -166,11 +192,17 @@ export default function GoogleIntelligenceReport({
           <p className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-white/35">
             Erstellt: {report.generatedAtLabel}
             <span className="text-white/15">·</span>
+            Speicherung:{" "}
+            {retentionLabel(report.retentionDays as ReportRetentionDays)}
+            <span className="text-white/15">·</span>
+            Gültig bis: {expiresLabel}
+            <span className="text-white/15">·</span>
             Profil {report.profileCompleteness} %
             <span className="text-white/15">·</span>
             {report.dataSourceLabel}
-            <InfoTooltip label="Datenquelle">
-              Treffer stammen aus der Live-Suche und Ihrem Identitätsprofil.
+            <InfoTooltip label="Speicherung">
+              Der Report wird serverseitig gespeichert und nach Ablauf der
+              gewählten Dauer automatisch nicht mehr angezeigt.
             </InfoTooltip>
           </p>
         </header>
@@ -198,41 +230,77 @@ export default function GoogleIntelligenceReport({
       </SectionReveal>
 
       <SectionReveal delayMs={800} enabled={revealSections}>
-        <section>
-          <div className="mb-3 flex items-center gap-2">
-            <h3 className="font-mono text-[9px] tracking-[.16em] text-white/35">
-              AUSGEFÜHRTE SUCHANFRAGEN
-            </h3>
-            <InfoTooltip label="Suchanfragen">
-              Jede Anfrage wird aus Ihren Profilfeldern gebildet und live gegen
-              den öffentlichen Index ausgeführt.
-            </InfoTooltip>
-          </div>
-          <ul className="space-y-2">
-            {queries.length === 0 ? (
-              <li className="rounded-xl border border-dashed border-white/10 px-4 py-5 text-sm text-white/40">
-                Keine Suchanfragen möglich — bitte Identitätsprofil
-                vervollständigen.
-              </li>
-            ) : (
-              queries.map((query) => (
-                <li
-                  key={query.id}
-                  className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3"
-                >
-                  <span className="font-mono text-[8px] tracking-[.12em] text-cyber-cyan/55">
-                    {query.label.toUpperCase()}
-                  </span>
-                  <p className="mt-1.5 font-mono text-[12px] text-white/70">
-                    {query.query}
-                  </p>
-                  <p className="mt-1 text-[11px] text-white/35">{query.help}</p>
+        <section className="rounded-xl border border-white/[0.07] bg-white/[0.015]">
+          <button
+            type="button"
+            onClick={() => setQueriesOpen((open) => !open)}
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+            aria-expanded={queriesOpen}
+          >
+            <div className="flex items-center gap-2">
+              <h3 className="font-mono text-[9px] tracking-[.16em] text-white/35">
+                AUSGEFÜHRTE SUCHANFRAGEN
+              </h3>
+              <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[9px] text-white/40">
+                {queries.length}
+              </span>
+              <InfoTooltip label="Suchanfragen">
+                Nachweis der durchsuchten Profilfelder. Für die Bewertung der
+                Treffer nicht erforderlich — standardmäßig zugeklappt.
+              </InfoTooltip>
+            </div>
+            <span className="font-mono text-[10px] text-cyber-cyan/70">
+              {queriesOpen ? "ZUKLAPPEN" : "AUFKLAPPEN"}
+            </span>
+          </button>
+          {queriesOpen ? (
+            <ul className="space-y-2 border-t border-white/[0.05] px-4 py-3">
+              {queries.length === 0 ? (
+                <li className="rounded-xl border border-dashed border-white/10 px-4 py-5 text-sm text-white/40">
+                  Keine Suchanfragen möglich — bitte Identitätsprofil
+                  vervollständigen.
                 </li>
-              ))
-            )}
-          </ul>
+              ) : (
+                queries.map((query) => (
+                  <li
+                    key={query.id}
+                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3"
+                  >
+                    <span className="font-mono text-[8px] tracking-[.12em] text-cyber-cyan/55">
+                      {query.label.toUpperCase()}
+                    </span>
+                    <p className="mt-1.5 font-mono text-[12px] text-white/70">
+                      {query.query}
+                    </p>
+                    <p className="mt-1 text-[11px] text-white/35">
+                      {query.help}
+                    </p>
+                  </li>
+                ))
+              )}
+            </ul>
+          ) : (
+            <p className="border-t border-white/[0.05] px-4 py-2.5 text-[11px] text-white/30">
+              {queries.length} Profil-Suchanfragen ausgeführt · Details
+              aufklappen bei Bedarf
+            </p>
+          )}
         </section>
       </SectionReveal>
+
+      {weakCount > 0 ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setShowWeakHits((value) => !value)}
+            className="rounded-lg border border-white/10 px-3 py-1.5 font-mono text-[10px] tracking-[.08em] text-white/45 hover:border-white/20 hover:text-white/70"
+          >
+            {showWeakHits
+              ? "Schwache Treffer ausblenden"
+              : `${weakCount} schwache Treffer anzeigen`}
+          </button>
+        </div>
+      ) : null}
 
       {sections.map((section, index) => (
         <SectionReveal
@@ -240,12 +308,15 @@ export default function GoogleIntelligenceReport({
           delayMs={1000 + index * 220}
           enabled={revealSections}
         >
-          <section className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(220px,0.65fr)]">
-            <div>
+          <section className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(200px,0.55fr)]">
+            <div className="min-w-0">
               <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
                 {section.title.toUpperCase()}
+                <span className="ml-2 text-white/25">
+                  · {section.hits.length}
+                </span>
               </h3>
-              <ul className="space-y-2.5">
+              <ul className="space-y-2">
                 {section.hits.map((hit) => (
                   <li key={hit.id}>
                     <IntelligenceHitCard hit={hit} />
@@ -253,11 +324,13 @@ export default function GoogleIntelligenceReport({
                 ))}
               </ul>
             </div>
-            <CategoryVisualPanel
-              title={section.title}
-              hits={section.hits}
-              report={report}
-            />
+            <div className="lg:sticky lg:top-6">
+              <CategoryVisualPanel
+                title={section.title}
+                hits={section.hits}
+                report={report}
+              />
+            </div>
           </section>
         </SectionReveal>
       ))}
@@ -266,9 +339,9 @@ export default function GoogleIntelligenceReport({
         <SectionReveal delayMs={1800} enabled={revealSections}>
           <section>
             <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
-              SONSTIGE ERWÄHNUNGEN
+              SONSTIGE ERWÄHNUNGEN · {otherHits.length}
             </h3>
-            <ul className="space-y-2.5">
+            <ul className="space-y-2">
               {otherHits.map((hit) => (
                 <li key={hit.id}>
                   <IntelligenceHitCard hit={hit} />
@@ -286,8 +359,9 @@ export default function GoogleIntelligenceReport({
               CLEAR CHANNEL
             </p>
             <p className="mt-3 text-sm text-white/50">
-              Keine öffentlichen Treffer zu den aktuellen Suchanfragen. Das
-              Profil erscheint derzeit wenig sichtbar im offenen Index.
+              Keine relevanten öffentlichen Treffer zu den aktuellen
+              Suchanfragen. Das Profil erscheint derzeit wenig sichtbar im
+              offenen Index.
             </p>
           </div>
         </SectionReveal>

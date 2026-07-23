@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–015 migration files", () => {
+  it("ships ordered 001–016 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -25,6 +25,7 @@ describe("database migrations workflow", () => {
       "013_admin_platform_settings.sql",
       "014_intelligence_reports.sql",
       "015_search_provider_settings.sql",
+      "016_intelligence_report_retention.sql",
     ]);
   });
 
@@ -180,5 +181,14 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("`daily_requests`");
     expect(sql).toContain("`average_response_time_ms`");
     expect(sql).toContain("'serpapi'");
+  });
+
+  it("adds intelligence report retention columns in 016", () => {
+    const sql = readFileSync(
+      path.join(dir, "016_intelligence_report_retention.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("`retention_days`");
+    expect(sql).toContain("`expires_at`");
   });
 });

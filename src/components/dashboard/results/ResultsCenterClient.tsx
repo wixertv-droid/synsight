@@ -7,6 +7,13 @@ import IntelligenceScanSequence from "@/components/analysis/intelligence/Intelli
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
 import { googleIntelligenceModule } from "@/lib/analysis/google/module";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
+import {
+  DEFAULT_REPORT_RETENTION_DAYS,
+  parseRetentionDays,
+  REPORT_RETENTION_PRESETS,
+  REPORT_RETENTION_STORAGE_KEY,
+  type ReportRetentionDays,
+} from "@/lib/analysis/retention";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 
 export interface ResultsTabModule {
@@ -62,6 +69,26 @@ const FALLBACK_TABS: ResultsTabModule[] = [
   },
 ];
 
+function readStoredRetention(): ReportRetentionDays {
+  if (typeof window === "undefined") return DEFAULT_REPORT_RETENTION_DAYS;
+  try {
+    return parseRetentionDays(
+      window.localStorage.getItem(REPORT_RETENTION_STORAGE_KEY)
+    );
+  } catch {
+    return DEFAULT_REPORT_RETENTION_DAYS;
+  }
+}
+
+async function loadLatestReport(): Promise<IntelligenceReport | null> {
+  const response = await fetch("/api/analysis/google/latest", {
+    cache: "no-store",
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !body?.success) return null;
+  return normalizeIntelligenceReport(body.data?.report);
+}
+
 export default function ResultsCenterClient({
   modules,
   initialGoogleReport,
@@ -77,6 +104,10 @@ export default function ResultsCenterClient({
 
   const requestedTab = searchParams.get("tab") ?? "google_search";
   const shouldScan = searchParams.get("scan") === "1";
+  const retentionFromUrl = parseRetentionDays(
+    searchParams.get("retention"),
+    DEFAULT_REPORT_RETENTION_DAYS
+  );
 
   const [activeTab, setActiveTab] = useState(() =>
     tabs.some((tab) => tab.id === requestedTab) ? requestedTab : tabs[0].id
@@ -87,7 +118,27 @@ export default function ResultsCenterClient({
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scanDone, setScanDone] = useState(false);
+  const [retentionDays, setRetentionDays] = useState<ReportRetentionDays>(
+    DEFAULT_REPORT_RETENTION_DAYS
+  );
   const scanStartedRef = useRef(false);
+
+  useEffect(() => {
+    const fromUrl = searchParams.get("retention");
+    if (fromUrl != null) {
+      setRetentionDays(retentionFromUrl);
+      try {
+        window.localStorage.setItem(
+          REPORT_RETENTION_STORAGE_KEY,
+          String(retentionFromUrl)
+        );
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    setRetentionDays(readStoredRetention());
+  }, [retentionFromUrl, searchParams]);
 
   const activeModule = useMemo(
     () => tabs.find((tab) => tab.id === activeTab) ?? tabs[0],
@@ -121,7 +172,7 @@ export default function ResultsCenterClient({
       const response = await fetch("/api/analysis/google/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ retentionDays }),
       });
       let body: {
         success?: boolean;
@@ -141,10 +192,31 @@ export default function ResultsCenterClient({
       }
 
       if (!response.ok || !body.success) {
+        // Gateway timeout: analysis may still finish server-side and save the report
+        if (response.status === 502 || response.status === 504) {
+          for (let attempt = 0; attempt < 4; attempt += 1) {
+            await new Promise((resolve) =>
+              window.setTimeout(resolve, 1500 + attempt * 1000)
+            );
+            const recovered = await loadLatestReport();
+            if (recovered) {
+              setReport(recovered);
+              setError(null);
+              finishScanAttempt();
+              return;
+            }
+          }
+          setError(
+            "Die Analyse dauerte zu lange (Gateway-Timeout). Bitte Seite aktualisieren — der Report wird oft trotzdem gespeichert."
+          );
+          finishScanAttempt();
+          return;
+        }
+
         setError(
           body?.error?.message ??
             (response.status === 500
-              ? "Serverfehler bei der Google-Analyse. Bitte API-Keys unter Website → API prüfen und erneut versuchen."
+              ? "Serverfehler bei der Google-Analyse. Bitte SerpAPI unter Website → APIs & Integrationen prüfen."
               : "Analyse konnte nicht abgeschlossen werden.")
         );
         finishScanAttempt();
@@ -153,6 +225,12 @@ export default function ResultsCenterClient({
 
       const nextReport = normalizeIntelligenceReport(body.data?.report);
       if (!nextReport) {
+        const recovered = await loadLatestReport();
+        if (recovered) {
+          setReport(recovered);
+          finishScanAttempt();
+          return;
+        }
         setError(
           "Analyse abgeschlossen, aber der Report war unvollständig. Bitte erneut versuchen."
         );
@@ -163,10 +241,16 @@ export default function ResultsCenterClient({
       setReport(nextReport);
       finishScanAttempt();
     } catch {
+      const recovered = await loadLatestReport().catch(() => null);
+      if (recovered) {
+        setReport(recovered);
+        finishScanAttempt();
+        return;
+      }
       setError("Verbindung zum Server nicht möglich.");
       finishScanAttempt();
     }
-  }, [finishScanAttempt]);
+  }, [finishScanAttempt, retentionDays]);
 
   useEffect(() => {
     if (
@@ -186,6 +270,15 @@ export default function ResultsCenterClient({
     router.replace(`/dashboard/results?tab=${id}`, { scroll: false });
   }
 
+  function updateRetention(days: ReportRetentionDays) {
+    setRetentionDays(days);
+    try {
+      window.localStorage.setItem(REPORT_RETENTION_STORAGE_KEY, String(days));
+    } catch {
+      /* ignore */
+    }
+  }
+
   return (
     <main id="results-center-page" className="mx-auto max-w-[1500px]">
       <DashboardSectionHeader
@@ -193,7 +286,7 @@ export default function ResultsCenterClient({
         title="Ergebnis Center"
         description="Jede Analyse besitzt einen eigenen Reiter. Nach dem Start erscheint zuerst die SOC-Scan-Sequenz, anschließend der Enterprise OSINT Report mit Live-Treffern."
         helpLabel="Ergebnis Center"
-        helpText="SynCredits werden im Analyse Center vor dem Start abgebucht. Der Bericht wird gespeichert und kann später erneut geöffnet werden."
+        helpText="SynCredits werden im Analyse Center vor dem Start abgebucht. Der Bericht wird gespeichert — die Speicherdauer können Sie unten wählen."
       />
 
       <nav
@@ -218,6 +311,40 @@ export default function ResultsCenterClient({
           );
         })}
       </nav>
+
+      {activeModule.id === "google_search" && !scanning ? (
+        <section className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
+                REPORT SPEICHERN
+              </p>
+              <p className="mt-1 text-sm text-white/55">
+                Wie lange soll das Suchergebnis gespeichert bleiben?
+              </p>
+            </div>
+            <label className="block min-w-[200px]">
+              <span className="sr-only">Speicherdauer</span>
+              <select
+                value={retentionDays}
+                disabled={scanning}
+                onChange={(event) =>
+                  updateRetention(
+                    parseRetentionDays(Number(event.target.value))
+                  )
+                }
+                className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+              >
+                {REPORT_RETENTION_PRESETS.map((preset) => (
+                  <option key={preset.days} value={preset.days}>
+                    {preset.label} — {preset.description}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
+      ) : null}
 
       <div className="mt-6">
         {activeModule.id === "google_search" ? (

@@ -18,7 +18,6 @@ export default function CategoryVisualPanel({
     review: hits.filter((hit) => hit.risk === "review").length,
     action: hits.filter((hit) => hit.risk === "action").length,
   };
-  const total = Math.max(1, hits.length);
   const maxBar = Math.max(
     riskCounts.none,
     riskCounts.watch,
@@ -33,12 +32,12 @@ export default function CategoryVisualPanel({
   );
 
   return (
-    <aside className="hardware-panel rounded-[1.2rem] border border-white/[0.07] bg-white/[0.015] p-4 lg:sticky lg:top-6 lg:self-start">
+    <aside className="hardware-panel h-fit rounded-[1.2rem] border border-white/[0.07] bg-white/[0.015] p-4">
       <p className="font-mono text-[8px] tracking-[.14em] text-cyber-cyan/50">
         VISUAL · {title.toUpperCase()}
       </p>
 
-      <div className="relative mx-auto mt-5 h-28 w-28">
+      <div className="relative mx-auto mt-4 h-24 w-24">
         <div
           className="absolute inset-0 rounded-full"
           style={{
@@ -47,13 +46,13 @@ export default function CategoryVisualPanel({
         />
         <div className="absolute inset-3 flex items-center justify-center rounded-full bg-[#070d16]">
           <div className="text-center">
-            <p className="text-xl font-semibold text-white/85">{hits.length}</p>
+            <p className="text-lg font-semibold text-white/85">{hits.length}</p>
             <p className="font-mono text-[7px] text-white/30">TREFFER</p>
           </div>
         </div>
       </div>
 
-      <ul className="mt-5 space-y-2">
+      <ul className="mt-4 space-y-1.5">
         {(
           [
             ["none", "Keine Auffälligkeit", riskCounts.none, "#6ee7b7"],
@@ -80,9 +79,8 @@ export default function CategoryVisualPanel({
         ))}
       </ul>
 
-      <p className="mt-4 font-mono text-[8px] tracking-[.1em] text-white/25">
-        ANTEIL AM REPORT · {Math.round((hits.length / total) * 100)} % DIESER
-        KATEGORIE · {ringPercent} % GESAMT
+      <p className="mt-3 font-mono text-[8px] tracking-[.1em] text-white/25">
+        ANTEIL · {ringPercent} % GESAMT
       </p>
     </aside>
   );

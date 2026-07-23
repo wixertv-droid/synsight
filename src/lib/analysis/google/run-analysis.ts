@@ -3,6 +3,13 @@ import {
   computeOverallRisk,
   summarizeBuckets,
 } from "@/lib/analysis/risk-assessment";
+import { refineSerpHits } from "@/lib/analysis/hit-quality";
+import {
+  computeExpiresAt,
+  DEFAULT_REPORT_RETENTION_DAYS,
+  parseRetentionDays,
+  type ReportRetentionDays,
+} from "@/lib/analysis/retention";
 import type {
   IntelligenceCategoryStats,
   IntelligenceHit,
@@ -21,6 +28,27 @@ import {
 } from "@/lib/analysis/google/queries";
 import { summarizeWithGemini } from "@/lib/analysis/gemini-summary";
 import type { IdentityView } from "@/lib/services/identity-service";
+
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function runWorker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const current = nextIndex;
+      nextIndex += 1;
+      results[current] = await worker(items[current], current);
+    }
+  }
+
+  const poolSize = Math.max(1, Math.min(concurrency, items.length || 1));
+  await Promise.all(Array.from({ length: poolSize }, () => runWorker()));
+  return results;
+}
 
 function safeHostname(link: string, fallback = "google"): string {
   try {
@@ -226,7 +254,8 @@ function profileLinkedHits(
  * - Profile-linked assets (clearly labeled, not fabricated SERP)
  */
 export async function runGoogleIntelligenceAnalysis(
-  identity: IdentityView | null
+  identity: IdentityView | null,
+  options?: { retentionDays?: ReportRetentionDays }
 ): Promise<IntelligenceReport> {
   const generatedAt = new Date().toISOString();
   const generatedAtLabel = new Intl.DateTimeFormat("de-DE", {
@@ -234,6 +263,11 @@ export async function runGoogleIntelligenceAnalysis(
     timeStyle: "short",
     timeZone: "Europe/Berlin",
   }).format(new Date(generatedAt));
+  const retentionDays = parseRetentionDays(
+    options?.retentionDays,
+    DEFAULT_REPORT_RETENTION_DAYS
+  );
+  const expiresAt = computeExpiresAt(generatedAt, retentionDays);
 
   const subjectName = resolveSubjectName(identity);
   const queries = buildGoogleQueriesFromIdentity(identity);
@@ -242,15 +276,20 @@ export async function runGoogleIntelligenceAnalysis(
   let hitSeq = 0;
 
   if (apiConfigured) {
-    for (const plan of queries) {
-      let items: Awaited<ReturnType<typeof fetchGoogleSearch>> = [];
+    const batches = await mapPool(queries, 3, async (plan) => {
       try {
-        items = await fetchGoogleSearch(plan.query);
+        const items = await fetchGoogleSearch(plan.query);
+        return { plan, items };
       } catch (error) {
         console.error("[google-analysis] query failed", plan.id, error);
-        continue;
+        return {
+          plan,
+          items: [] as Awaited<ReturnType<typeof fetchGoogleSearch>>,
+        };
       }
+    });
 
+    for (const { plan, items } of batches) {
       for (const item of items) {
         if (!item.title || !item.link) continue;
         try {
@@ -302,19 +341,20 @@ export async function runGoogleIntelligenceAnalysis(
   }
 
   const profileHits = profileLinkedHits(identity, generatedAt, hitSeq);
-  const hits = [...serpHits, ...profileHits];
+  const refinedSerp = refineSerpHits(serpHits, subjectName);
+  const hits = [...refinedSerp, ...profileHits];
   const buckets = summarizeBuckets(
     hits.filter((h) => h.sourceType === "serpapi_google")
   );
   const { riskScore, riskLevel } = computeOverallRisk(hits);
   const managementOverview = buildManagementOverview(hits);
 
-  const serpCount = serpHits.length;
+  const serpCount = refinedSerp.length;
   const summaryText =
     serpCount > 0
-      ? `Live-OSINT abgeschlossen: ${serpCount} öffentlich indexierte Google-Treffer zu ${subjectName} ausgewertet.`
+      ? `Live-OSINT abgeschlossen: ${serpCount} relevante öffentliche Google-Treffer zu ${subjectName} ausgewertet.`
       : queries.length > 0
-        ? `Live-OSINT abgeschlossen: Zu den Profil-Suchanfragen wurden keine öffentlichen Google-Treffer gefunden.`
+        ? `Live-OSINT abgeschlossen: Zu den Profil-Suchanfragen wurden keine relevanten öffentlichen Google-Treffer gefunden.`
         : `Live-OSINT abgeschlossen: Für eine Suche fehlen noch Identitätsdaten im Profil.`;
 
   const dataSourceLabel = apiConfigured
@@ -343,6 +383,8 @@ export async function runGoogleIntelligenceAnalysis(
     subjectName,
     generatedAt,
     generatedAtLabel,
+    retentionDays,
+    expiresAt,
     profileCompleteness: identity?.completenessPercent ?? 0,
     dataSourceLabel,
     apiConfigured,
