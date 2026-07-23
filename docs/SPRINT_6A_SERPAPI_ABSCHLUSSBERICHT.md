@@ -3,7 +3,7 @@
 **Branch:** `cursor/serpapi-search-provider-7c12`  
 **Basis:** `main` (Arbeitsstand von `cursor/sprint-6a-google-osint-7c12`)  
 **Datum:** 23. Juli 2026  
-**Status:** Implementiert
+**Status:** Implementiert · Typecheck / ESLint / Tests (171) / Build grün · PR #37
 
 ---
 
