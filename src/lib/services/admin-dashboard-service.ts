@@ -7,7 +7,7 @@ import {
 } from "@/lib/repositories";
 import { getAdminSystemStatus } from "@/lib/services/admin-service";
 import { getCommunicationInboxSummary } from "@/lib/services/communications-service";
-import { getSearchProviderStatusOverview } from "@/lib/services/search-provider-service";
+import { getFinanceOverview } from "@/lib/services/finance-service";
 
 function assertAdmin(actor: AuthenticatedUser): void {
   if (actor.role !== "admin") throw new Error("ADMIN_FORBIDDEN");
@@ -16,7 +16,7 @@ function assertAdmin(actor: AuthenticatedUser): void {
 export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
   assertAdmin(actor);
 
-  const [system, userStats, inbox, pricing, promotions, database, searchApi] =
+  const [system, userStats, inbox, pricing, promotions, database, finance] =
     await Promise.all([
       getAdminSystemStatus(actor),
       getAdminRepository().getUserOverviewStats(),
@@ -32,19 +32,19 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
       getPricingRepository().listAnalyses(false),
       getPromotionsRepository().listPromotions(),
       getDatabaseHealth(),
-      getSearchProviderStatusOverview(actor).catch(() => ({
-        provider: "serpapi" as const,
-        online: false,
-        status: "unknown",
-        lastSuccessAt: null,
-        lastCheckAt: null,
-        dailyRequests: 0,
-        totalRequests: 0,
-        totalErrors: 0,
-        errorRatePercent: 0,
-        averageResponseTimeMs: 0,
-        apiVersion: null,
-        configured: false,
+      getFinanceOverview(actor).catch(() => ({
+        incomeEur: 0,
+        expenseEur: 0,
+        balanceEur: 0,
+        incomeLabel: "0,00 €",
+        expenseLabel: "0,00 €",
+        balanceLabel: "0,00 €",
+        paymentsCount: 0,
+        apiCallsToday: 0,
+        apiCallsTotal: 0,
+        dailySeries: [],
+        expenseByProvider: [],
+        incomeByProvider: [],
       })),
     ]);
 
@@ -62,7 +62,12 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
     failedLogins,
     storageUsedMb: system.memoryMb,
     apiStatus: database.reachable ? "operational" : "degraded",
-    searchProvider: searchApi,
+    finance: {
+      incomeLabel: finance.incomeLabel,
+      expenseLabel: finance.expenseLabel,
+      balanceLabel: finance.balanceLabel,
+      apiCallsToday: finance.apiCallsToday,
+    },
     sections: {
       benutzer: {
         label: "Benutzer",
@@ -98,12 +103,32 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
             display:
               system.systemStatus === "operational" ? "Online" : "Degraded",
           },
-          {
-            label: "SerpAPI",
-            value: searchApi.online ? 1 : 0,
-            display: searchApi.online ? "ONLINE" : "OFFLINE",
-          },
           { label: "RAM (MB)", value: system.memoryMb },
+          {
+            label: "DB",
+            value: database.reachable ? 1 : 0,
+            display: database.reachable ? "Online" : "Offline",
+          },
+        ],
+      },
+      finanzen: {
+        label: "Finanzen",
+        href: "/admin/finanzen/uebersicht",
+        metrics: [
+          {
+            label: "Einnahmen",
+            value: Math.round(finance.incomeEur * 100),
+            display: finance.incomeLabel,
+          },
+          {
+            label: "API-Ausgaben",
+            value: Math.round(finance.expenseEur * 100),
+            display: finance.expenseLabel,
+          },
+          {
+            label: "API Calls heute",
+            value: finance.apiCallsToday,
+          },
         ],
       },
       support: {

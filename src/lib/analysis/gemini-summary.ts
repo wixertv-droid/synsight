@@ -4,6 +4,7 @@ import {
   markApiCredentialSuccess,
   resolveGeminiCredentials,
 } from "@/lib/services/api-credentials-service";
+import { recordApiUsageEvent } from "@/lib/services/finance-service";
 
 /**
  * Optional Gemini summary — only summarizes verified hits.
@@ -55,8 +56,10 @@ ${JSON.stringify(payload)}`;
     "gemini-2.0-flash",
   ];
   let lastError = "gemini failed";
+  let attempts = 0;
 
   for (const model of models) {
+    attempts += 1;
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(credentials.apiKey)}`,
@@ -86,6 +89,20 @@ ${JSON.stringify(payload)}`;
       const text = body.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
       if (text) {
         await markApiCredentialSuccess("gemini");
+        await recordApiUsageEvent({
+          providerCode: "gemini",
+          eventType: "summarize",
+          referenceKey: `gemini:${report.subjectName}:${Date.now()}`,
+          requestCount: attempts,
+          success: true,
+          detail: `KI-Lagebild · ${report.subjectName} · Modell ${model}`,
+          metaJson: {
+            model,
+            attempts,
+            hitCount: verified.length,
+            subjectName: report.subjectName,
+          },
+        });
         return text;
       }
     } catch (error) {
@@ -94,5 +111,14 @@ ${JSON.stringify(payload)}`;
   }
 
   await markApiCredentialError("gemini", lastError);
+  await recordApiUsageEvent({
+    providerCode: "gemini",
+    eventType: "summarize_error",
+    referenceKey: `gemini-error:${Date.now()}`,
+    requestCount: Math.max(1, attempts),
+    success: false,
+    detail: lastError.slice(0, 500),
+    metaJson: { attempts, subjectName: report.subjectName },
+  });
   return null;
 }

@@ -1,0 +1,376 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import type {
+  ApiCostSettingPublic,
+  ApiUsageEventPublic,
+} from "@/lib/services/finance-service";
+
+export default function AdminFinanceApiCostsView() {
+  const [settings, setSettings] = useState<ApiCostSettingPublic[]>([]);
+  const [events, setEvents] = useState<ApiUsageEventPublic[]>([]);
+  const [selected, setSelected] = useState<ApiUsageEventPublic | null>(null);
+  const [drafts, setDrafts] = useState<
+    Record<string, { label: string; cost: string; notes: string }>
+  >({});
+  const [newProvider, setNewProvider] = useState({
+    providerCode: "",
+    label: "",
+    cost: "0.01",
+    notes: "",
+  });
+  const [message, setMessage] = useState<string | null>(null);
+  const [tone, setTone] = useState<"ok" | "err">("ok");
+  const [busyCode, setBusyCode] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const response = await fetch("/api/admin/finance/api-costs");
+    const body = await response.json();
+    if (!body.success) return;
+    setSettings(body.data.settings);
+    setEvents(body.data.events);
+    const next: Record<string, { label: string; cost: string; notes: string }> =
+      {};
+    for (const row of body.data.settings as ApiCostSettingPublic[]) {
+      next[row.providerCode] = {
+        label: row.label,
+        cost: String(row.costPerRequestEur),
+        notes: row.notes ?? "",
+      };
+    }
+    setDrafts(next);
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function saveSetting(providerCode: string) {
+    const draft = drafts[providerCode];
+    if (!draft) return;
+    setBusyCode(providerCode);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/finance/api-costs", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          providerCode,
+          label: draft.label,
+          costPerRequestEur:
+            Number.parseFloat(draft.cost.replace(",", ".")) || 0,
+          notes: draft.notes || null,
+          isActive: true,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setTone("err");
+        setMessage(body.error?.message ?? "Speichern fehlgeschlagen.");
+        return;
+      }
+      setTone("ok");
+      setMessage("Preis pro Abfrage gespeichert.");
+      setSettings(body.data.settings);
+    } finally {
+      setBusyCode(null);
+    }
+  }
+
+  async function openEvent(eventId: number) {
+    const response = await fetch(
+      `/api/admin/finance/api-costs?eventId=${eventId}`
+    );
+    const body = await response.json();
+    if (body.success) setSelected(body.data.event);
+  }
+
+  async function createSetting() {
+    if (!newProvider.providerCode.trim() || !newProvider.label.trim()) {
+      setTone("err");
+      setMessage("Provider-Code und Label sind erforderlich.");
+      return;
+    }
+    setBusyCode("__new__");
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/finance/api-costs", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          providerCode: newProvider.providerCode,
+          label: newProvider.label,
+          costPerRequestEur:
+            Number.parseFloat(newProvider.cost.replace(",", ".")) || 0,
+          notes: newProvider.notes || null,
+          isActive: true,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setTone("err");
+        setMessage(body.error?.message ?? "Anlegen fehlgeschlagen.");
+        return;
+      }
+      setTone("ok");
+      setMessage("API-Anbieter / Preis angelegt.");
+      setNewProvider({ providerCode: "", label: "", cost: "0.01", notes: "" });
+      setSettings(body.data.settings);
+      const next: Record<
+        string,
+        { label: string; cost: string; notes: string }
+      > = {};
+      for (const row of body.data.settings as ApiCostSettingPublic[]) {
+        next[row.providerCode] = {
+          label: row.label,
+          cost: String(row.costPerRequestEur),
+          notes: row.notes ?? "",
+        };
+      }
+      setDrafts(next);
+    } finally {
+      setBusyCode(null);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-[1.3rem] border border-cyber-cyan/20 bg-gradient-to-br from-cyber-cyan/[0.05] to-transparent p-5 md:p-6">
+        <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
+          API-AUSGABEN · PREIS PRO ABFRAGE
+        </p>
+        <p className="mt-2 max-w-3xl text-sm text-white/45">
+          Falls der Anbieter keinen festen Preis liefert, hier den Betrag pro
+          Request hinterlegen. Jede SerpAPI-/Gemini-Abfrage wird damit als
+          Ausgabe verbucht.
+        </p>
+        {message ? (
+          <p
+            className={`mt-3 text-sm ${tone === "ok" ? "text-emerald-200/80" : "text-rose-200/80"}`}
+          >
+            {message}
+          </p>
+        ) : null}
+
+        <div className="mt-5 grid gap-3 rounded-xl border border-white/[0.07] bg-black/20 p-4 md:grid-cols-4">
+          <input
+            value={newProvider.providerCode}
+            onChange={(event) =>
+              setNewProvider((current) => ({
+                ...current,
+                providerCode: event.target.value,
+              }))
+            }
+            placeholder="provider_code"
+            className="rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+          />
+          <input
+            value={newProvider.label}
+            onChange={(event) =>
+              setNewProvider((current) => ({
+                ...current,
+                label: event.target.value,
+              }))
+            }
+            placeholder="Anzeigename"
+            className="rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+          />
+          <input
+            value={newProvider.cost}
+            onChange={(event) =>
+              setNewProvider((current) => ({
+                ...current,
+                cost: event.target.value,
+              }))
+            }
+            placeholder="EUR / Request"
+            className="rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+          />
+          <button
+            type="button"
+            disabled={busyCode === "__new__"}
+            onClick={() => void createSetting()}
+            className="rounded-lg border border-cyber-cyan/30 px-3 py-2 text-sm text-cyber-cyan disabled:opacity-40"
+          >
+            {busyCode === "__new__" ? "Anlegen…" : "Anbieter anlegen"}
+          </button>
+        </div>
+
+        <ul className="mt-5 grid gap-3 lg:grid-cols-2">
+          {settings.map((row) => {
+            const draft = drafts[row.providerCode] ?? {
+              label: row.label,
+              cost: String(row.costPerRequestEur),
+              notes: "",
+            };
+            return (
+              <li
+                key={row.providerCode}
+                className="rounded-xl border border-white/[0.07] bg-black/20 p-4"
+              >
+                <p className="font-mono text-[9px] tracking-[.12em] text-cyber-cyan/55">
+                  {row.providerCode.toUpperCase()}
+                </p>
+                <div className="mt-3 space-y-2">
+                  <input
+                    value={draft.label}
+                    onChange={(event) =>
+                      setDrafts((current) => ({
+                        ...current,
+                        [row.providerCode]: {
+                          ...draft,
+                          label: event.target.value,
+                        },
+                      }))
+                    }
+                    className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+                  />
+                  <label className="block space-y-1">
+                    <span className="font-mono text-[8px] text-white/35">
+                      EUR PRO REQUEST
+                    </span>
+                    <input
+                      value={draft.cost}
+                      onChange={(event) =>
+                        setDrafts((current) => ({
+                          ...current,
+                          [row.providerCode]: {
+                            ...draft,
+                            cost: event.target.value,
+                          },
+                        }))
+                      }
+                      className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+                    />
+                  </label>
+                  <input
+                    value={draft.notes}
+                    onChange={(event) =>
+                      setDrafts((current) => ({
+                        ...current,
+                        [row.providerCode]: {
+                          ...draft,
+                          notes: event.target.value,
+                        },
+                      }))
+                    }
+                    placeholder="Notiz"
+                    className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-xs text-white/70 outline-none focus:border-cyber-cyan/35"
+                  />
+                  <button
+                    type="button"
+                    disabled={busyCode === row.providerCode}
+                    onClick={() => void saveSetting(row.providerCode)}
+                    className="rounded-lg border border-cyber-cyan/30 px-3 py-1.5 text-xs text-cyber-cyan disabled:opacity-40"
+                  >
+                    {busyCode === row.providerCode
+                      ? "Speichern…"
+                      : "Preis speichern"}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-[1.2rem] border border-white/[0.08] bg-white/[0.015] p-4">
+          <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
+            LETZTE API-ANFRAGEN
+          </p>
+          <ul className="mt-3 max-h-[520px] space-y-2 overflow-auto">
+            {events.length === 0 ? (
+              <li className="text-sm text-white/40">
+                Noch keine API-Events. Nach einer Google-Analyse erscheinen
+                SerpAPI-Kosten hier.
+              </li>
+            ) : (
+              events.map((event) => (
+                <li key={event.id}>
+                  <button
+                    type="button"
+                    onClick={() => void openEvent(event.id)}
+                    className="w-full rounded-xl border border-white/[0.06] bg-black/20 px-3 py-3 text-left transition hover:border-cyber-cyan/25"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[9px] text-cyber-cyan/60">
+                        {event.providerCode.toUpperCase()} · {event.eventType}
+                      </span>
+                      <span className="font-mono text-[11px] text-rose-100/75">
+                        {event.totalCostEur.toFixed(4)} €
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate text-[12px] text-white/55">
+                      {event.detail || event.referenceKey || "—"}
+                    </p>
+                    <p className="mt-1 font-mono text-[9px] text-white/30">
+                      {event.requestCount} Request(s) ·{" "}
+                      {new Intl.DateTimeFormat("de-DE", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      }).format(new Date(event.createdAt))}
+                    </p>
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+
+        <aside className="intel-cyber-hud relative overflow-hidden rounded-[1.2rem] border border-cyber-cyan/20 bg-[#050b14] p-4">
+          <div className="intel-cyber-scanlines" aria-hidden="true" />
+          <div className="relative z-[1]">
+            <p className="font-mono text-[8px] tracking-[.14em] text-cyber-cyan/60">
+              DETAIL · API AUSGABE
+            </p>
+            {!selected ? (
+              <p className="mt-4 text-sm text-white/40">
+                Wählen Sie links eine Anfrage, um Kosten und Meta-Daten zu
+                sehen.
+              </p>
+            ) : (
+              <div className="mt-4 space-y-3 text-sm text-white/65">
+                <p>
+                  <span className="text-white/35">Provider: </span>
+                  {selected.providerCode}
+                </p>
+                <p>
+                  <span className="text-white/35">Typ: </span>
+                  {selected.eventType}
+                </p>
+                <p>
+                  <span className="text-white/35">Requests: </span>
+                  {selected.requestCount}
+                </p>
+                <p>
+                  <span className="text-white/35">Stückpreis: </span>
+                  {selected.unitCostEur.toFixed(6)} €
+                </p>
+                <p className="text-lg text-rose-100/85">
+                  Gesamt: {selected.totalCostEur.toFixed(4)} €
+                </p>
+                <p>
+                  <span className="text-white/35">Status: </span>
+                  {selected.success ? "Erfolg" : "Fehler"}
+                </p>
+                <p>
+                  <span className="text-white/35">Detail: </span>
+                  {selected.detail || "—"}
+                </p>
+                <p className="break-all font-mono text-[10px] text-white/35">
+                  Ref · {selected.referenceKey || "—"}
+                </p>
+                {selected.metaJson ? (
+                  <pre className="overflow-auto rounded-lg border border-white/10 bg-black/30 p-3 font-mono text-[10px] text-emerald-100/50">
+                    {JSON.stringify(selected.metaJson, null, 2)}
+                  </pre>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </aside>
+      </section>
+    </div>
+  );
+}

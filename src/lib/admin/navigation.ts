@@ -1,4 +1,5 @@
-export type AdminSectionId = "benutzer" | "marketing" | "website" | "support";
+export type AdminSectionId =
+  "benutzer" | "marketing" | "website" | "finanzen" | "support";
 
 export interface AdminNavItem {
   slug: string;
@@ -20,7 +21,7 @@ export interface AdminSectionConfig {
   items: AdminNavItem[];
 }
 
-/** Vier Admin-Bereiche — schlank sortiert, nur funktionale Module */
+/** Sechs Admin-Bereiche — schlank sortiert, nur funktionale Module */
 export const ADMIN_SECTIONS: AdminSectionConfig[] = [
   {
     id: "benutzer",
@@ -136,9 +137,42 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
     ],
   },
   {
+    id: "finanzen",
+    title: "Finanzen",
+    sidebarCode: "A4",
+    description:
+      "Einnahmen, API-Ausgaben, Zahlungsanbieter und Kosten pro Abfrage.",
+    href: "/admin/finanzen",
+    defaultSlug: "uebersicht",
+    icon: "M12 1v22M5 8h14M5 16h14",
+    items: [
+      {
+        slug: "uebersicht",
+        label: "Einnahmen & Ausgaben",
+        description: "Cashflow, API-Kosten und Diagramme.",
+        help: "Übersicht aus payments/invoices und api_usage_events.",
+        view: "finance-overview",
+      },
+      {
+        slug: "zahlungsanbieter",
+        label: "Zahlungsanbieter",
+        description: "Stripe, PayPal & Co. anlegen und API-Keys hinterlegen.",
+        help: "payment_providers — Keys werden verschlüsselt gespeichert.",
+        view: "finance-providers",
+      },
+      {
+        slug: "api-kosten",
+        label: "API-Ausgaben",
+        description: "Preis pro Abfrage und detaillierte API-Kosten.",
+        help: "api_cost_settings + api_usage_events — öffnen für Einzelkosten.",
+        view: "finance-api-costs",
+      },
+    ],
+  },
+  {
     id: "support",
     title: "Support",
-    sidebarCode: "A4",
+    sidebarCode: "A5",
     description: "Nachrichten, Benutzersuche und Aktivitäten.",
     href: "/admin/support",
     defaultSlug: "nachrichten",

@@ -531,6 +531,12 @@ export const paymentProviders = mysqlTable(
     isActive: boolean("is_active").notNull().default(false),
     supportsCheckout: boolean("supports_checkout").notNull().default(true),
     configJson: json("config_json"),
+    encryptedApiKey: text("encrypted_api_key"),
+    encryptedWebhookSecret: text("encrypted_webhook_secret"),
+    environment: varchar("environment", { length: 32 })
+      .notNull()
+      .default("test"),
+    notes: varchar("notes", { length: 500 }),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
       .notNull()
       .default(sql`CURRENT_TIMESTAMP(3)`),
@@ -1224,6 +1230,74 @@ export const searchProviderSettings = mysqlTable(
   },
   (table) => [
     uniqueIndex("search_provider_settings_provider_unique").on(table.provider),
+  ]
+);
+
+export const apiCostSettings = mysqlTable(
+  "api_cost_settings",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    providerCode: varchar("provider_code", { length: 64 }).notNull(),
+    label: varchar("label", { length: 150 }).notNull(),
+    costPerRequestEur: decimal("cost_per_request_eur", {
+      precision: 12,
+      scale: 6,
+    })
+      .notNull()
+      .default("0"),
+    currency: char("currency", { length: 3 }).notNull().default("EUR"),
+    isActive: boolean("is_active").notNull().default(true),
+    notes: varchar("notes", { length: 500 }),
+    updatedByAdminId: bigint("updated_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("api_cost_settings_provider_unique").on(table.providerCode),
+  ]
+);
+
+export const apiUsageEvents = mysqlTable(
+  "api_usage_events",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    providerCode: varchar("provider_code", { length: 64 }).notNull(),
+    eventType: varchar("event_type", { length: 64 }).notNull(),
+    referenceKey: varchar("reference_key", { length: 128 }),
+    userId: bigint("user_id", { mode: "number", unsigned: true }),
+    requestCount: int("request_count", { unsigned: true }).notNull().default(1),
+    unitCostEur: decimal("unit_cost_eur", { precision: 12, scale: 6 })
+      .notNull()
+      .default("0"),
+    totalCostEur: decimal("total_cost_eur", { precision: 14, scale: 6 })
+      .notNull()
+      .default("0"),
+    success: boolean("success").notNull().default(true),
+    detail: varchar("detail", { length: 500 }),
+    metaJson: json("meta_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("api_usage_events_provider_created_idx").on(
+      table.providerCode,
+      table.createdAt
+    ),
+    index("api_usage_events_created_idx").on(table.createdAt),
+    index("api_usage_events_reference_idx").on(table.referenceKey),
   ]
 );
 

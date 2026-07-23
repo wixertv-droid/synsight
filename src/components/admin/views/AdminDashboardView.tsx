@@ -19,15 +19,11 @@ interface DashboardData {
   >;
   openTickets: number;
   failedLogins: number;
-  searchProvider?: {
-    online: boolean;
-    status: string;
-    lastSuccessAt: string | null;
-    dailyRequests: number;
-    totalRequests: number;
-    errorRatePercent: number;
-    averageResponseTimeMs: number;
-    configured: boolean;
+  finance?: {
+    incomeLabel: string;
+    expenseLabel: string;
+    balanceLabel: string;
+    apiCallsToday: number;
   };
 }
 
@@ -72,107 +68,88 @@ export default function AdminDashboardTiles() {
         ))}
       </section>
 
-      {data.searchProvider ? (
+      {data.finance ? (
         <section className="hardware-panel rounded-[1.3rem] border border-white/[0.08] p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/55">
-                API STATUS
+                FINANZEN · KURZ
               </p>
               <h2 className="mt-2 text-lg font-medium text-white/88">
-                SerpAPI
+                Einnahmen & API-Ausgaben
               </h2>
             </div>
-            <span
-              className={`rounded border px-2 py-1 font-mono text-[10px] tracking-[.12em] ${
-                data.searchProvider.online
-                  ? "border-emerald-300/30 text-emerald-100/80"
-                  : "border-rose-300/30 text-rose-100/75"
-              }`}
+            <Link
+              href="/admin/finanzen/uebersicht"
+              className="rounded border border-cyber-cyan/30 px-2 py-1 font-mono text-[10px] text-cyber-cyan/80"
             >
-              {data.searchProvider.online ? "ONLINE" : "OFFLINE"}
-            </span>
+              ZUM FINANZBEREICH →
+            </Link>
           </div>
-          <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
+              { label: "Einnahmen", value: data.finance.incomeLabel },
+              { label: "API-Ausgaben", value: data.finance.expenseLabel },
+              { label: "Saldo", value: data.finance.balanceLabel },
               {
-                label: "Letzter Erfolg",
-                value: data.searchProvider.lastSuccessAt
-                  ? new Intl.DateTimeFormat("de-DE", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    }).format(new Date(data.searchProvider.lastSuccessAt))
-                  : "—",
-              },
-              {
-                label: "Requests heute",
-                value: String(data.searchProvider.dailyRequests),
-              },
-              {
-                label: "Requests gesamt",
-                value: String(data.searchProvider.totalRequests),
-              },
-              {
-                label: "Fehlerquote",
-                value: `${data.searchProvider.errorRatePercent} %`,
-              },
-              {
-                label: "Ø Antwortzeit",
-                value: `${data.searchProvider.averageResponseTimeMs} ms`,
+                label: "API Calls heute",
+                value: String(data.finance.apiCallsToday),
               },
             ].map((item) => (
               <div
                 key={item.label}
-                className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-3"
+                className="rounded-xl border border-white/[0.06] bg-black/20 px-3 py-3"
               >
-                <dt className="font-mono text-[7px] tracking-[.12em] text-white/30">
+                <dt className="font-mono text-[8px] text-white/30">
                   {item.label.toUpperCase()}
                 </dt>
-                <dd className="mt-1 text-sm text-white/75">{item.value}</dd>
+                <dd className="mt-1 text-sm text-white/80">{item.value}</dd>
               </div>
             ))}
           </dl>
-          <Link
-            href="/admin/website/api"
-            className="mt-4 inline-flex font-mono text-[8px] tracking-[.12em] text-cyber-cyan/70 hover:text-cyber-cyan"
-          >
-            APIs & INTEGRATIONEN ÖFFNEN →
-          </Link>
         </section>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {Object.values(data.sections).map((section) => (
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {Object.entries(data.sections).map(([key, section]) => (
           <Link
-            key={section.href}
+            key={key}
             href={section.href}
-            className="hardware-panel group rounded-[1.3rem] border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-5 transition hover:border-cyber-cyan/25"
+            className="hardware-panel rounded-[1.2rem] border border-white/[0.07] p-5 transition hover:border-cyber-cyan/25"
           >
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-medium text-white/88">
-                {section.label}
-              </h2>
-              <StatusDot pulse tone="online" />
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-mono text-[9px] tracking-[.14em] text-cyber-cyan/50">
+                {section.label.toUpperCase()}
+              </p>
+              <StatusDot
+                tone={
+                  section.metrics[0]?.display === "Degraded"
+                    ? "offline"
+                    : "online"
+                }
+              />
             </div>
             <ul className="mt-4 space-y-2">
               {section.metrics.map((metric) => (
                 <li
                   key={metric.label}
-                  className="flex items-center justify-between rounded-lg border border-white/[0.05] px-3 py-2 text-[12px]"
+                  className="flex items-center justify-between gap-3 text-sm"
                 >
-                  <span className="text-white/45">{metric.label}</span>
-                  <span className="font-medium text-cyber-cyan/85">
+                  <span className="inline-flex items-center gap-1 text-white/45">
+                    {metric.label}
+                    <InfoTooltip label={metric.label}>
+                      Kennzahl aus dem Admin-Bereich {section.label}.
+                    </InfoTooltip>
+                  </span>
+                  <span className="font-mono text-white/75">
                     {metric.display ?? metric.value}
                   </span>
                 </li>
               ))}
             </ul>
-            <p className="mt-4 font-mono text-[8px] tracking-[.12em] text-white/25 group-hover:text-cyber-cyan/60">
-              MODUL ÖFFNEN →
-            </p>
           </Link>
         ))}
-      </div>
+      </section>
     </div>
   );
 }
@@ -185,8 +162,8 @@ export function AdminDashboardHeader({ email }: { email: string }) {
         <h1 className="mt-4 flex flex-wrap items-center text-3xl font-semibold tracking-[-.04em] text-white md:text-4xl">
           Admin Control Center
           <InfoTooltip label="Admin SOC">
-            Vier Bereiche: Benutzer, Marketing, Website und Support. Alle
-            bestehenden APIs und Funktionen bleiben erhalten — nur neu
+            Fünf Bereiche: Benutzer, Marketing, Website, Finanzen und Support.
+            Alle bestehenden APIs und Funktionen bleiben erhalten — nur neu
             strukturiert.
           </InfoTooltip>
         </h1>

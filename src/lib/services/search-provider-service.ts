@@ -295,6 +295,11 @@ export async function recordSearchProviderRequest(input: {
   latencyMs: number;
   errorMessage?: string | null;
   apiVersion?: string | null;
+  eventType?: string;
+  query?: string | null;
+  referenceKey?: string | null;
+  userId?: number | null;
+  requestCount?: number;
 }): Promise<void> {
   const db = getDatabase();
   if (!db) return;
@@ -309,7 +314,8 @@ export async function recordSearchProviderRequest(input: {
     const totalRequests = Number(row.totalRequests) || 0;
     const totalErrors = Number(row.totalErrors) || 0;
     const prevAvg = Number(row.averageResponseTimeMs) || 0;
-    const nextTotal = totalRequests + 1;
+    const requestCount = Math.max(1, input.requestCount ?? 1);
+    const nextTotal = totalRequests + requestCount;
     const nextAvg = Math.round(
       (prevAvg * totalRequests + Math.max(0, input.latencyMs)) / nextTotal
     );
@@ -325,13 +331,36 @@ export async function recordSearchProviderRequest(input: {
           : (input.errorMessage ?? "Unbekannter Fehler").slice(0, 1000),
         status: input.ok ? "online" : "offline",
         averageResponseTimeMs: nextAvg,
-        dailyRequests: dailyRequests + 1,
+        dailyRequests: dailyRequests + requestCount,
         dailyRequestsDate: today,
         totalRequests: nextTotal,
         totalErrors: input.ok ? totalErrors : totalErrors + 1,
         apiVersion: input.apiVersion ?? row.apiVersion,
       })
       .where(eq(searchProviderSettings.provider, input.provider));
+
+    const { recordApiUsageEvent } =
+      await import("@/lib/services/finance-service");
+    const eventType = input.eventType ?? (input.ok ? "search" : "search_error");
+    const queryDetail = input.query?.trim();
+    await recordApiUsageEvent({
+      providerCode: input.provider,
+      eventType,
+      referenceKey: input.referenceKey ?? `${input.provider}:${Date.now()}`,
+      userId: input.userId ?? null,
+      requestCount,
+      success: input.ok,
+      detail: input.ok
+        ? queryDetail
+          ? `Query · ${queryDetail} · ${input.latencyMs} ms`
+          : `Latenz ${input.latencyMs} ms`
+        : (input.errorMessage ?? "Fehler"),
+      metaJson: {
+        latencyMs: input.latencyMs,
+        apiVersion: input.apiVersion ?? null,
+        query: queryDetail ?? null,
+      },
+    });
   } catch (error) {
     console.error("[search-provider] record request failed", error);
   }
@@ -381,6 +410,7 @@ export async function testSearchProviderConnection(
     latencyMs: health.latencyMs,
     errorMessage: health.ok ? null : health.detail || health.message,
     apiVersion: health.apiVersion,
+    eventType: "health_check",
   });
 
   return {
@@ -408,6 +438,7 @@ export async function searchViaActiveProvider(query: string): Promise<
 
   const provider = new SerpApiProvider(apiKey);
   const started = Date.now();
+  const referenceKey = `serpapi-search:${Date.now()}`;
   try {
     const hits = await provider.search(query, { num: 10 });
     await recordSearchProviderRequest({
@@ -415,6 +446,10 @@ export async function searchViaActiveProvider(query: string): Promise<
       ok: true,
       latencyMs: Date.now() - started,
       apiVersion: "serpapi",
+      eventType: "search",
+      query,
+      referenceKey,
+      requestCount: 1,
     });
     return hits.map((hit) => ({
       title: hit.title,
@@ -429,6 +464,10 @@ export async function searchViaActiveProvider(query: string): Promise<
       ok: false,
       latencyMs: Date.now() - started,
       errorMessage: message,
+      eventType: "search_error",
+      query,
+      referenceKey,
+      requestCount: 1,
     });
     console.error("[search-provider] search failed", message);
     return [];

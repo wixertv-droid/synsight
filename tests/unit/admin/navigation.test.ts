@@ -8,30 +8,39 @@ import {
 } from "@/lib/admin/navigation";
 
 describe("admin navigation", () => {
-  it("defines four main sections", () => {
+  it("defines five main sections including finanzen", () => {
     expect(ADMIN_SECTIONS.map((section) => section.id)).toEqual([
       "benutzer",
       "marketing",
       "website",
+      "finanzen",
       "support",
     ]);
   });
 
-  it("exposes five sidebar links (overview + four areas)", () => {
+  it("exposes six sidebar links (overview + five areas)", () => {
     expect(ADMIN_SIDEBAR_LINKS.map((link) => link.code)).toEqual([
       "A0",
       "A1",
       "A2",
       "A3",
       "A4",
+      "A5",
     ]);
   });
 
-  it("resolves sub pages", () => {
-    const item = getAdminNavItem("marketing", "preise");
-    expect(item?.view).toBe("marketing-pricing");
-    expect(adminPageHref("benutzer", "uebersicht")).toBe(
-      "/admin/benutzer/uebersicht"
+  it("resolves finance sub pages", () => {
+    expect(getAdminNavItem("finanzen", "uebersicht")?.view).toBe(
+      "finance-overview"
+    );
+    expect(getAdminNavItem("finanzen", "zahlungsanbieter")?.view).toBe(
+      "finance-providers"
+    );
+    expect(getAdminNavItem("finanzen", "api-kosten")?.view).toBe(
+      "finance-api-costs"
+    );
+    expect(adminPageHref("finanzen", "uebersicht")).toBe(
+      "/admin/finanzen/uebersicht"
     );
   });
 

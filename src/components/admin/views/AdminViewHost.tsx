@@ -7,6 +7,9 @@ import AdminSystemStatusView from "@/components/admin/views/AdminSystemStatusVie
 import AdminAnalysisModulesView from "@/components/admin/views/AdminAnalysisModulesView";
 import AdminApiCredentialsView from "@/components/admin/views/AdminApiCredentialsView";
 import AdminImageSettingsView from "@/components/admin/views/AdminImageSettingsView";
+import AdminFinanceOverviewView from "@/components/admin/views/AdminFinanceOverviewView";
+import AdminFinanceProvidersView from "@/components/admin/views/AdminFinanceProvidersView";
+import AdminFinanceApiCostsView from "@/components/admin/views/AdminFinanceApiCostsView";
 import AdminUserProfilePanel from "@/components/admin/views/AdminUserProfilePanel";
 import AdminUserOverviewView, {
   AdminUserTable,
@@ -46,6 +49,12 @@ export default function AdminViewHost({
       return <AdminAnalysisModulesView />;
     case "website-images":
       return <AdminImageSettingsView />;
+    case "finance-overview":
+      return <AdminFinanceOverviewView />;
+    case "finance-providers":
+      return <AdminFinanceProvidersView />;
+    case "finance-api-costs":
+      return <AdminFinanceApiCostsView />;
     case "support-messages":
       return <AdminCommunicationsControl />;
     case "support-activity":
