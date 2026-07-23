@@ -13,10 +13,10 @@
    Sanitizer kürzt nicht mehr aggressiv; Absätze bleiben erhalten.
 3. **Analyse-Zusammenfassung** — in verständliche Kurzabschnitte umgeschrieben
    (Kurz gesagt → Was betrifft Sie → Risiko → Empfehlung).
-4. **Abschnitts-Rail** — sticky unter den Analyse-Reitern (nicht viewport-mittig),
-   Labels immer sichtbar, präzises Scroll-Tracking.
-5. **Layout** — mittlerer Report wieder breit (`flex-1`), Rail rechts daneben.
-6. **Matrix-Code** — klassischer Regen nur rechts, von oben nach unten, dezent grün.
+4. **Abschnitts-Rail** — sticky unter den Analyse-Reitern im Report; ebenso im
+   Analyse Center und Ergebnis Center (wenn kein Report offen).
+5. **SerpAPI Account API** — kostenlose Kontodaten (Rest-Quota, Monatsverbrauch,
+   geschätzte $-Ausgaben) unter Website → APIs und Finanzen-Übersicht, Cache ~10 Min.
 
 ## Deploy
 

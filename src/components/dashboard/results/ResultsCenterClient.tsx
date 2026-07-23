@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import GoogleIntelligenceReport from "@/components/analysis/google/GoogleIntelligenceReport";
 import IntelligenceScanSequence from "@/components/analysis/intelligence/IntelligenceScanSequence";
+import DashboardPageRail from "@/components/dashboard/DashboardPageRail";
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
 import { googleIntelligenceModule } from "@/lib/analysis/google/module";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
@@ -15,6 +16,7 @@ import {
   type ReportRetentionDays,
 } from "@/lib/analysis/retention";
 import type { IntelligenceReport } from "@/lib/analysis/types";
+import { RESULTS_CENTER_RAIL } from "@/lib/dashboard/page-rails";
 
 export interface ResultsTabModule {
   id: string;
@@ -289,117 +291,193 @@ export default function ResultsCenterClient({
         helpText="SynCredits werden im Analyse Center vor dem Start abgebucht. Der Bericht wird gespeichert — die Speicherdauer können Sie unten wählen."
       />
 
-      <nav
-        aria-label="Analyse-Reiter"
-        className="mt-6 flex gap-1 overflow-x-auto rounded-[1.2rem] border border-white/[0.07] bg-white/[0.015] p-1.5"
-      >
-        {tabs.map((tab) => {
-          const active = tab.id === activeTab;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => selectTab(tab.id)}
-              className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-[12px] transition ${
-                active
-                  ? "bg-cyber-cyan/[0.12] text-cyber-cyan"
-                  : "text-white/40 hover:bg-white/[0.03] hover:text-white/70"
-              }`}
-            >
-              {tab.title}
-            </button>
-          );
-        })}
-      </nav>
+      {!scanning && report && activeModule.id === "google_search" ? (
+        <>
+          <nav
+            id="results-tabs"
+            aria-label="Analyse-Reiter"
+            className="mt-6 flex gap-1 overflow-x-auto rounded-[1.2rem] border border-white/[0.07] bg-white/[0.015] p-1.5"
+          >
+            {tabs.map((tab) => {
+              const active = tab.id === activeTab;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => selectTab(tab.id)}
+                  className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-[12px] transition ${
+                    active
+                      ? "bg-cyber-cyan/[0.12] text-cyber-cyan"
+                      : "text-white/40 hover:bg-white/[0.03] hover:text-white/70"
+                  }`}
+                >
+                  {tab.title}
+                </button>
+              );
+            })}
+          </nav>
 
-      {activeModule.id === "google_search" && !scanning ? (
-        <section className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
-                REPORT SPEICHERN
-              </p>
-              <p className="mt-1 text-sm text-white/55">
-                Wie lange soll das Suchergebnis gespeichert bleiben?
-              </p>
+          <section
+            id="results-retention"
+            className="mt-4 scroll-mt-24 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4"
+          >
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
+                  REPORT SPEICHERN
+                </p>
+                <p className="mt-1 text-sm text-white/55">
+                  Wie lange soll das Suchergebnis gespeichert bleiben?
+                </p>
+              </div>
+              <label className="block min-w-[200px]">
+                <span className="sr-only">Speicherdauer</span>
+                <select
+                  value={retentionDays}
+                  disabled={scanning}
+                  onChange={(event) =>
+                    updateRetention(
+                      parseRetentionDays(Number(event.target.value))
+                    )
+                  }
+                  className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+                >
+                  {REPORT_RETENTION_PRESETS.map((preset) => (
+                    <option key={preset.days} value={preset.days}>
+                      {preset.label} — {preset.description}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-            <label className="block min-w-[200px]">
-              <span className="sr-only">Speicherdauer</span>
-              <select
-                value={retentionDays}
-                disabled={scanning}
-                onChange={(event) =>
-                  updateRetention(
-                    parseRetentionDays(Number(event.target.value))
-                  )
-                }
-                className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
-              >
-                {REPORT_RETENTION_PRESETS.map((preset) => (
-                  <option key={preset.days} value={preset.days}>
-                    {preset.label} — {preset.description}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </section>
-      ) : null}
+          </section>
 
-      <div className="mt-6">
-        {activeModule.id === "google_search" ? (
-          <>
-            {scanning ? (
-              <IntelligenceScanSequence
-                steps={googleIntelligenceModule.scanSteps}
-                minDurationMs={googleIntelligenceModule.minScanMs}
-                running={scanning}
-                subjectName={subjectName}
-                onComplete={() => undefined}
-              />
-            ) : null}
-
+          <div id="results-body" className="mt-6 scroll-mt-24">
             {error ? (
-              <p className="mt-4 rounded-lg border border-rose-400/20 bg-rose-400/[0.05] px-4 py-3 text-sm text-rose-100/70">
+              <p className="mb-4 rounded-lg border border-rose-400/20 bg-rose-400/[0.05] px-4 py-3 text-sm text-rose-100/70">
                 {error}
               </p>
             ) : null}
+            <GoogleIntelligenceReport report={report} revealSections />
+          </div>
+        </>
+      ) : (
+        <DashboardPageRail sections={RESULTS_CENTER_RAIL}>
+          <nav
+            id="results-tabs"
+            aria-label="Analyse-Reiter"
+            className="mt-6 flex gap-1 overflow-x-auto rounded-[1.2rem] border border-white/[0.07] bg-white/[0.015] p-1.5"
+          >
+            {tabs.map((tab) => {
+              const active = tab.id === activeTab;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => selectTab(tab.id)}
+                  className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-[12px] transition ${
+                    active
+                      ? "bg-cyber-cyan/[0.12] text-cyber-cyan"
+                      : "text-white/40 hover:bg-white/[0.03] hover:text-white/70"
+                  }`}
+                >
+                  {tab.title}
+                </button>
+              );
+            })}
+          </nav>
 
-            {!scanning && report ? (
-              <GoogleIntelligenceReport report={report} revealSections />
-            ) : null}
+          {activeModule.id === "google_search" && !scanning ? (
+            <section
+              id="results-retention"
+              className="mt-4 scroll-mt-24 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4"
+            >
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
+                    REPORT SPEICHERN
+                  </p>
+                  <p className="mt-1 text-sm text-white/55">
+                    Wie lange soll das Suchergebnis gespeichert bleiben?
+                  </p>
+                </div>
+                <label className="block min-w-[200px]">
+                  <span className="sr-only">Speicherdauer</span>
+                  <select
+                    value={retentionDays}
+                    disabled={scanning}
+                    onChange={(event) =>
+                      updateRetention(
+                        parseRetentionDays(Number(event.target.value))
+                      )
+                    }
+                    className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+                  >
+                    {REPORT_RETENTION_PRESETS.map((preset) => (
+                      <option key={preset.days} value={preset.days}>
+                        {preset.label} — {preset.description}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </section>
+          ) : (
+            <div id="results-retention" className="sr-only" />
+          )}
 
-            {!scanning && !report && !error ? (
+          <div id="results-body" className="mt-6 scroll-mt-24">
+            {activeModule.id === "google_search" ? (
+              <>
+                {scanning ? (
+                  <IntelligenceScanSequence
+                    steps={googleIntelligenceModule.scanSteps}
+                    minDurationMs={googleIntelligenceModule.minScanMs}
+                    running={scanning}
+                    subjectName={subjectName}
+                    onComplete={() => undefined}
+                  />
+                ) : null}
+
+                {error ? (
+                  <p className="mt-4 rounded-lg border border-rose-400/20 bg-rose-400/[0.05] px-4 py-3 text-sm text-rose-100/70">
+                    {error}
+                  </p>
+                ) : null}
+
+                {!scanning && !report && !error ? (
+                  <section className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] p-6 md:p-8">
+                    <p className="font-mono text-[9px] tracking-[.16em] text-white/35">
+                      GOOGLE ANALYSE
+                    </p>
+                    <p className="mt-3 text-sm text-white/50">
+                      Noch kein Report vorhanden. Starten Sie die Analyse im
+                      Analyse Center.
+                    </p>
+                    <a
+                      href="/dashboard/analysis/google?start=1"
+                      className="mt-5 inline-flex rounded-lg border border-cyber-cyan/50 bg-cyber-cyan/[0.1] px-4 py-2.5 text-sm font-medium text-cyber-cyan"
+                    >
+                      Google Analyse starten
+                    </a>
+                  </section>
+                ) : null}
+              </>
+            ) : (
               <section className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] p-6 md:p-8">
                 <p className="font-mono text-[9px] tracking-[.16em] text-white/35">
-                  GOOGLE ANALYSE
+                  {activeModule.title.toUpperCase()}
                 </p>
                 <p className="mt-3 text-sm text-white/50">
-                  Noch kein Report vorhanden. Starten Sie die Analyse im Analyse
-                  Center.
+                  {activeModule.available
+                    ? activeModule.tagline
+                    : "Dieses Modul wird in einem späteren Sprint freigeschaltet. Die Google Analyse ist bereits verfügbar."}
                 </p>
-                <a
-                  href="/dashboard/analysis/google?start=1"
-                  className="mt-5 inline-flex rounded-lg border border-cyber-cyan/50 bg-cyber-cyan/[0.1] px-4 py-2.5 text-sm font-medium text-cyber-cyan"
-                >
-                  Google Analyse starten
-                </a>
               </section>
-            ) : null}
-          </>
-        ) : (
-          <section className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] p-6 md:p-8">
-            <p className="font-mono text-[9px] tracking-[.16em] text-white/35">
-              {activeModule.title.toUpperCase()}
-            </p>
-            <p className="mt-3 text-sm text-white/50">
-              {activeModule.available
-                ? activeModule.tagline
-                : "Dieses Modul wird in einem späteren Sprint freigeschaltet. Die Google Analyse ist bereits verfügbar."}
-            </p>
-          </section>
-        )}
-      </div>
+            )}
+          </div>
+        </DashboardPageRail>
+      )}
     </main>
   );
 }

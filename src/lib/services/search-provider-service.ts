@@ -443,6 +443,9 @@ export async function testSearchProviderConnection(
     apiVersion: health.apiVersion,
     eventType: "health_check",
   });
+  if (health.ok) {
+    void refreshSerpApiAccountCacheQuietly();
+  }
 
   return {
     ok: health.ok,
@@ -492,6 +495,7 @@ export async function searchViaActiveProvider(
       requestCount: 1,
       recordFinance: options?.recordFinance,
     });
+    void refreshSerpApiAccountCacheQuietly();
     return hits.map((hit) => ({
       title: hit.title,
       link: hit.link,
@@ -514,5 +518,167 @@ export async function searchViaActiveProvider(
     });
     console.error("[search-provider] search failed", message);
     return [];
+  }
+}
+
+const ACCOUNT_CACHE_TTL_MS = 10 * 60 * 1000;
+
+export interface SerpApiAccountSnapshot {
+  accountId: string | null;
+  accountEmail: string | null;
+  planName: string | null;
+  planMonthlyPrice: number;
+  searchesPerMonth: number;
+  planSearchesLeft: number;
+  totalSearchesLeft: number;
+  thisMonthUsage: number;
+  accountRateLimitPerHour: number;
+  estimatedMonthSpendUsd: number;
+  fetchedAt: string;
+  stale: boolean;
+  source: "live" | "cache";
+}
+
+function parseConfigObject(value: unknown): Record<string, unknown> {
+  if (!value) return {};
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+    return {};
+  }
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function toAccountSnapshot(
+  raw: Record<string, unknown>,
+  fetchedAt: string,
+  source: "live" | "cache",
+  stale = false
+): SerpApiAccountSnapshot {
+  const planMonthlyPrice = Number(raw.plan_monthly_price ?? 0) || 0;
+  const searchesPerMonth = Number(raw.searches_per_month ?? 0) || 0;
+  const thisMonthUsage = Number(raw.this_month_usage ?? 0) || 0;
+  const estimatedMonthSpendUsd =
+    searchesPerMonth > 0
+      ? (thisMonthUsage / searchesPerMonth) * planMonthlyPrice
+      : 0;
+
+  return {
+    accountId: typeof raw.account_id === "string" ? raw.account_id : null,
+    accountEmail:
+      typeof raw.account_email === "string" ? raw.account_email : null,
+    planName: typeof raw.plan_name === "string" ? raw.plan_name : null,
+    planMonthlyPrice,
+    searchesPerMonth,
+    planSearchesLeft: Number(raw.plan_searches_left ?? 0) || 0,
+    totalSearchesLeft: Number(raw.total_searches_left ?? 0) || 0,
+    thisMonthUsage,
+    accountRateLimitPerHour: Number(raw.account_rate_limit_per_hour ?? 0) || 0,
+    estimatedMonthSpendUsd: Math.round(estimatedMonthSpendUsd * 100) / 100,
+    fetchedAt,
+    stale,
+    source,
+  };
+}
+
+async function readCachedAccountSnapshot(): Promise<SerpApiAccountSnapshot | null> {
+  const row = await ensureProviderRow("serpapi");
+  if (!row) return null;
+  const config = parseConfigObject(row.configJson);
+  const cache = config.accountCache;
+  if (!cache || typeof cache !== "object" || Array.isArray(cache)) return null;
+  const payload = cache as Record<string, unknown>;
+  const fetchedAt =
+    typeof payload.fetchedAt === "string" ? payload.fetchedAt : null;
+  const raw = payload.raw;
+  if (!fetchedAt || !raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+  const age = Date.now() - new Date(fetchedAt).getTime();
+  const stale = !Number.isFinite(age) || age > ACCOUNT_CACHE_TTL_MS;
+  return toAccountSnapshot(
+    raw as Record<string, unknown>,
+    fetchedAt,
+    "cache",
+    stale
+  );
+}
+
+async function writeAccountCache(raw: Record<string, unknown>): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+  const row = await ensureProviderRow("serpapi");
+  if (!row) return;
+  const config = parseConfigObject(row.configJson);
+  const fetchedAt = new Date().toISOString();
+  config.accountCache = { fetchedAt, raw };
+  await db
+    .update(searchProviderSettings)
+    .set({ configJson: config })
+    .where(eq(searchProviderSettings.provider, "serpapi"));
+}
+
+/**
+ * Free SerpAPI Account API — does not consume search credits.
+ * Results are cached ~10 minutes in search_provider_settings.config_json.
+ */
+export async function getSerpApiAccountSnapshot(
+  actor: AuthenticatedUser,
+  options?: { forceRefresh?: boolean }
+): Promise<SerpApiAccountSnapshot | null> {
+  assertAdmin(actor);
+
+  if (!options?.forceRefresh) {
+    const cached = await readCachedAccountSnapshot();
+    if (cached && !cached.stale) return cached;
+  }
+
+  const apiKey = await resolveSearchProviderApiKey("serpapi");
+  if (!apiKey) {
+    const cached = await readCachedAccountSnapshot();
+    return cached;
+  }
+
+  try {
+    const response = await fetch(
+      `https://serpapi.com/account.json?api_key=${encodeURIComponent(apiKey)}`,
+      { method: "GET", cache: "no-store" }
+    );
+    if (!response.ok) {
+      console.error("[search-provider] account api failed", response.status);
+      return (await readCachedAccountSnapshot()) ?? null;
+    }
+    const raw = (await response.json()) as Record<string, unknown>;
+    await writeAccountCache(raw);
+    return toAccountSnapshot(raw, new Date().toISOString(), "live", false);
+  } catch (error) {
+    console.error("[search-provider] account api error", error);
+    return (await readCachedAccountSnapshot()) ?? null;
+  }
+}
+
+/** Best-effort refresh after searches — never throws to callers. */
+export async function refreshSerpApiAccountCacheQuietly(): Promise<void> {
+  try {
+    const apiKey = await resolveSearchProviderApiKey("serpapi");
+    if (!apiKey) return;
+    const response = await fetch(
+      `https://serpapi.com/account.json?api_key=${encodeURIComponent(apiKey)}`,
+      { method: "GET", cache: "no-store" }
+    );
+    if (!response.ok) return;
+    const raw = (await response.json()) as Record<string, unknown>;
+    await writeAccountCache(raw);
+  } catch (error) {
+    console.error("[search-provider] quiet account refresh failed", error);
   }
 }

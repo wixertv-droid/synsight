@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { SearchProviderPublicSettings } from "@/lib/services/search-provider-service";
+import type {
+  SearchProviderPublicSettings,
+  SerpApiAccountSnapshot,
+} from "@/lib/services/search-provider-service";
 import type { SearchProviderId } from "@/lib/search/types";
 
 interface ProviderOption {
@@ -33,10 +36,21 @@ export default function AdminSearchProviderPanel() {
   const [providers, setProviders] = useState<ProviderOption[]>([]);
   const [provider, setProvider] = useState<SearchProviderId>("serpapi");
   const [apiKey, setApiKey] = useState("");
-  const [busy, setBusy] = useState<"save" | "test" | null>(null);
+  const [busy, setBusy] = useState<"save" | "test" | "account" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"ok" | "err">("ok");
   const [testCard, setTestCard] = useState<TestCard | null>(null);
+  const [account, setAccount] = useState<SerpApiAccountSnapshot | null>(null);
+
+  const loadAccount = useCallback(async (force = false) => {
+    const response = await fetch(
+      `/api/admin/search-provider/account${force ? "?refresh=1" : ""}`
+    );
+    const body = await response.json().catch(() => null);
+    if (response.ok && body?.success) {
+      setAccount(body.data.account);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/admin/search-provider");
@@ -46,7 +60,8 @@ export default function AdminSearchProviderPanel() {
       setProviders(body.data.providers ?? []);
       setProvider(body.data.settings.provider ?? "serpapi");
     }
-  }, []);
+    await loadAccount(false);
+  }, [loadAccount]);
 
   useEffect(() => {
     void load();
@@ -116,9 +131,21 @@ export default function AdminSearchProviderPanel() {
       });
       setMessageTone(result.ok ? "ok" : "err");
       setMessage(result.message);
+      if (result.ok) await loadAccount(true);
     } catch {
       setMessageTone("err");
       setMessage("Verbindungstest nicht möglich.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function refreshAccount() {
+    setBusy("account");
+    try {
+      await loadAccount(true);
+      setMessageTone("ok");
+      setMessage("SerpAPI-Konto aktualisiert (kostenloser Account-Endpoint).");
     } finally {
       setBusy(null);
     }
@@ -328,6 +355,81 @@ export default function AdminSearchProviderPanel() {
               </dl>
             </article>
           ) : null}
+
+          <article className="rounded-xl border border-cyber-cyan/20 bg-cyber-cyan/[0.04] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-[8px] tracking-[.14em] text-cyber-cyan/60">
+                  SERPAPI KONTO · ACCOUNT API
+                </p>
+                <p className="mt-1 text-[11px] text-white/40">
+                  Kostenloser Endpoint — verbraucht keine Such-Credits. Cache
+                  ca. 10 Min.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={() => void refreshAccount()}
+                className="rounded-lg border border-cyber-cyan/30 px-2.5 py-1.5 font-mono text-[9px] text-cyber-cyan disabled:opacity-40"
+              >
+                {busy === "account" ? "Lädt…" : "Aktualisieren"}
+              </button>
+            </div>
+            {account ? (
+              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <dt className="text-[10px] text-white/35">Plan</dt>
+                  <dd className="text-white/80">{account.planName ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] text-white/35">
+                    Verbleibende Suchen
+                  </dt>
+                  <dd className="text-emerald-100/80">
+                    {account.totalSearchesLeft.toLocaleString("de-DE")}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] text-white/35">
+                    Verbrauch diesen Monat
+                  </dt>
+                  <dd className="text-white/80">
+                    {account.thisMonthUsage.toLocaleString("de-DE")} /{" "}
+                    {account.searchesPerMonth.toLocaleString("de-DE")}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] text-white/35">
+                    Geschätzte Ausgaben
+                  </dt>
+                  <dd className="text-rose-100/80">
+                    {account.estimatedMonthSpendUsd.toLocaleString("de-DE", {
+                      style: "currency",
+                      currency: "USD",
+                    })}
+                  </dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-[10px] text-white/35">Rate-Limit / h</dt>
+                  <dd className="font-mono text-[11px] text-white/55">
+                    {account.accountRateLimitPerHour.toLocaleString("de-DE")} ·
+                    Quelle {account.source}
+                    {account.stale ? " · veraltet" : ""} ·{" "}
+                    {new Intl.DateTimeFormat("de-DE", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    }).format(new Date(account.fetchedAt))}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="mt-3 text-sm text-white/40">
+                Noch keine Kontodaten. Key speichern und „Aktualisieren“ oder
+                Verbindung testen.
+              </p>
+            )}
+          </article>
         </div>
       </div>
     </section>

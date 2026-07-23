@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { FinanceOverview } from "@/lib/services/finance-service";
+import type { SerpApiAccountSnapshot } from "@/lib/services/search-provider-service";
 
 function formatDay(date: string): string {
   try {
@@ -16,17 +17,28 @@ function formatDay(date: string): string {
 
 export default function AdminFinanceOverviewView() {
   const [overview, setOverview] = useState<FinanceOverview | null>(null);
+  const [serpAccount, setSerpAccount] = useState<SerpApiAccountSnapshot | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
-    const response = await fetch("/api/admin/finance/overview");
-    const body = await response.json().catch(() => null);
-    if (!response.ok || !body?.success) {
-      setError(body?.error?.message ?? "Finanzübersicht nicht ladbar.");
+    const [financeRes, accountRes] = await Promise.all([
+      fetch("/api/admin/finance/overview"),
+      fetch("/api/admin/search-provider/account"),
+    ]);
+    const financeBody = await financeRes.json().catch(() => null);
+    if (!financeRes.ok || !financeBody?.success) {
+      setError(financeBody?.error?.message ?? "Finanzübersicht nicht ladbar.");
       return;
     }
-    setOverview(body.data.overview);
+    setOverview(financeBody.data.overview);
+
+    const accountBody = await accountRes.json().catch(() => null);
+    if (accountRes.ok && accountBody?.success) {
+      setSerpAccount(accountBody.data.account);
+    }
   }, []);
 
   useEffect(() => {
@@ -97,6 +109,48 @@ export default function AdminFinanceOverviewView() {
           </div>
         </div>
       </section>
+
+      {serpAccount ? (
+        <section className="rounded-[1.2rem] border border-cyber-cyan/20 bg-cyber-cyan/[0.04] p-5">
+          <p className="font-mono text-[8px] tracking-[.14em] text-cyber-cyan/60">
+            SERPAPI PLAN · ACCOUNT API (KOSTENLOS)
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <article className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-3">
+              <p className="font-mono text-[8px] text-white/30">PLAN</p>
+              <p className="mt-1 text-sm text-white/80">
+                {serpAccount.planName ?? "—"}
+              </p>
+            </article>
+            <article className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-3">
+              <p className="font-mono text-[8px] text-white/30">VERBLEIBEND</p>
+              <p className="mt-1 text-sm text-emerald-100/80">
+                {serpAccount.totalSearchesLeft.toLocaleString("de-DE")}
+              </p>
+            </article>
+            <article className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-3">
+              <p className="font-mono text-[8px] text-white/30">
+                VERBRAUCH MONAT
+              </p>
+              <p className="mt-1 text-sm text-white/80">
+                {serpAccount.thisMonthUsage.toLocaleString("de-DE")} /{" "}
+                {serpAccount.searchesPerMonth.toLocaleString("de-DE")}
+              </p>
+            </article>
+            <article className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-3">
+              <p className="font-mono text-[8px] text-white/30">
+                GESCHÄTZTE AUSGABEN
+              </p>
+              <p className="mt-1 text-sm text-rose-100/80">
+                {serpAccount.estimatedMonthSpendUsd.toLocaleString("de-DE", {
+                  style: "currency",
+                  currency: "USD",
+                })}
+              </p>
+            </article>
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
         <article className="intel-cyber-hud relative overflow-hidden rounded-[1.2rem] border border-white/[0.08] bg-[#060d16] p-5">

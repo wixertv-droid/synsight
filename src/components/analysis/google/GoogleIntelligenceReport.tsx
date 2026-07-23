@@ -7,7 +7,6 @@ import ManagementOverviewPanel from "@/components/analysis/intelligence/Manageme
 import CategoryVisualPanel from "@/components/analysis/intelligence/CategoryVisualPanel";
 import RiskOverviewPanel from "@/components/analysis/intelligence/RiskOverviewPanel";
 import SectionReveal from "@/components/analysis/intelligence/SectionReveal";
-import MatrixCodeField from "@/components/analysis/google/MatrixCodeField";
 import SystemRail, {
   type SystemRailSection,
 } from "@/components/layout/SystemRail";
@@ -229,7 +228,6 @@ export default function GoogleIntelligenceReport({
 
   return (
     <div className="relative isolate">
-      <MatrixCodeField />
       <div className="relative z-[1] flex items-start gap-5 xl:gap-6">
         <div className="min-w-0 flex-1 space-y-6 xl:pr-2">
           <SectionReveal delayMs={0} enabled={revealSections}>
