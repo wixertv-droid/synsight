@@ -226,9 +226,12 @@ export default function IntelligenceScanSequence({
           </ul>
         </div>
 
-        <div className="relative min-h-[340px] bg-[#030912]/90 p-5 md:p-6">
+        <div className="relative min-h-[340px] overflow-hidden bg-[#030912]/90 p-5 md:p-6">
+          <div className="intel-cyber-earth opacity-40" aria-hidden="true" />
+          <div className="intel-cyber-hex" aria-hidden="true" />
+          <div className="intel-cyber-scanlines" aria-hidden="true" />
           <div
-            className="pointer-events-none absolute inset-0 opacity-40"
+            className="pointer-events-none absolute inset-0 opacity-30"
             aria-hidden="true"
             style={{
               backgroundImage:
@@ -236,25 +239,69 @@ export default function IntelligenceScanSequence({
               backgroundSize: "22px 22px",
             }}
           />
+
           <div
-            className="pointer-events-none absolute right-6 top-8 h-36 w-36 rounded-full border border-cyber-cyan/20"
+            className="pointer-events-none absolute right-4 top-6 h-40 w-40"
             aria-hidden="true"
           >
-            <div
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: `conic-gradient(from ${radarAngle}deg, rgba(112,231,255,0.35), transparent 55%)`,
-              }}
-            />
-            <div className="absolute inset-4 rounded-full border border-cyber-cyan/15" />
-            <div className="absolute inset-10 rounded-full border border-emerald-300/20" />
-            <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyber-cyan shadow-[0_0_12px_#70e7ff]" />
+            <svg viewBox="0 0 100 100" className="h-full w-full">
+              <circle
+                cx="50"
+                cy="50"
+                r="42"
+                fill="none"
+                stroke="rgba(114,231,255,0.2)"
+                strokeWidth="0.5"
+                strokeDasharray="1.5 2"
+                className="intel-cyber-orbit"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="28"
+                fill="none"
+                stroke="rgba(114,231,255,0.28)"
+                strokeWidth="0.6"
+                className="intel-cyber-pulse"
+              />
+              {[0, 1, 2, 3, 4, 5].map((index) => {
+                const angle = (Math.PI * 2 * index) / 6 - Math.PI / 2;
+                const x = 50 + Math.cos(angle) * 34;
+                const y = 50 + Math.sin(angle) * 34;
+                return (
+                  <g key={index}>
+                    <line
+                      x1="50"
+                      y1="50"
+                      x2={x}
+                      y2={y}
+                      stroke="rgba(114,231,255,0.2)"
+                      strokeWidth="0.4"
+                    />
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="1.8"
+                      fill="#72e7ff"
+                      className="intel-cyber-node"
+                      style={{ animationDelay: `${index * 0.15}s` }}
+                    />
+                  </g>
+                );
+              })}
+              <circle cx="50" cy="50" r="2.4" fill="#70E7FF" />
+              <path
+                d={`M50 50 L${50 + Math.cos((radarAngle * Math.PI) / 180) * 40} ${50 + Math.sin((radarAngle * Math.PI) / 180) * 40}`}
+                stroke="rgba(114,231,255,0.55)"
+                strokeWidth="0.7"
+              />
+            </svg>
           </div>
 
-          <p className="relative font-mono text-[8px] tracking-[.16em] text-cyber-cyan/55">
-            TERMINAL / CYBER OPS
+          <p className="relative z-[1] font-mono text-[8px] tracking-[.16em] text-cyber-cyan/55">
+            TERMINAL / CYBER OPS · NASA HUD
           </p>
-          <div className="relative mt-3 max-h-[210px] space-y-1.5 overflow-hidden font-mono text-[11px] leading-relaxed">
+          <div className="relative z-[1] mt-3 max-h-[210px] space-y-1.5 overflow-hidden font-mono text-[11px] leading-relaxed">
             {terminalLines.map((line, index) => (
               <p
                 key={`${line}-${index}`}
@@ -270,7 +317,7 @@ export default function IntelligenceScanSequence({
             <p className="animate-pulse text-cyber-cyan/80">█</p>
           </div>
 
-          <div className="relative mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="relative z-[1] mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               {
                 label: "NODES",

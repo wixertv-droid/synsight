@@ -857,3 +857,146 @@ body::before {
     animation: none;
   }
 }
+
+/* Google Intelligence · Cyber HUD visuals (NASA / JARVIS) */
+.intel-cyber-hud {
+  isolation: isolate;
+}
+
+.intel-cyber-earth {
+  position: absolute;
+  inset: -20% -10% auto auto;
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background:
+    radial-gradient(
+      circle at 35% 35%,
+      rgba(114, 231, 255, 0.18),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 60% 55%,
+      rgba(41, 182, 246, 0.12),
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(8, 24, 40, 0.9),
+      rgba(3, 8, 16, 0.2)
+    );
+  box-shadow: inset 0 0 40px rgba(114, 231, 255, 0.08);
+  opacity: 0.55;
+  pointer-events: none;
+  filter: blur(0.2px);
+}
+
+.intel-cyber-hex {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(114, 231, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(114, 231, 255, 0.05) 1px, transparent 1px);
+  background-size: 18px 18px;
+  mask-image: radial-gradient(circle at 50% 40%, black 20%, transparent 75%);
+}
+
+.intel-cyber-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 3px,
+    rgba(114, 231, 255, 0.03) 3px,
+    rgba(114, 231, 255, 0.03) 4px
+  );
+  mix-blend-mode: screen;
+  animation: intel-scan-drift 7s linear infinite;
+}
+
+.intel-cyber-pulse {
+  animation: intel-pulse 2.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.intel-cyber-orbit {
+  animation: intel-orbit 14s linear infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.intel-cyber-node {
+  animation: intel-node-blink 2.2s ease-in-out infinite;
+}
+
+.intel-cyber-code {
+  animation: intel-code-flicker 3.6s ease-in-out infinite;
+}
+
+.intel-cyber-bar {
+  box-shadow: 0 0 12px rgba(114, 231, 255, 0.25);
+}
+
+@keyframes intel-scan-drift {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(8px);
+  }
+}
+
+@keyframes intel-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes intel-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes intel-node-blink {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@keyframes intel-code-flicker {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intel-cyber-scanlines,
+  .intel-cyber-pulse,
+  .intel-cyber-orbit,
+  .intel-cyber-node,
+  .intel-cyber-code {
+    animation: none;
+  }
+}

@@ -302,53 +302,52 @@ export default function GoogleIntelligenceReport({
         </div>
       ) : null}
 
-      {sections.map((section, index) => (
-        <SectionReveal
-          key={section.id}
-          delayMs={1000 + index * 220}
-          enabled={revealSections}
-        >
-          <section className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(200px,0.55fr)]">
-            <div className="min-w-0">
-              <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
-                {section.title.toUpperCase()}
-                <span className="ml-2 text-white/25">
-                  · {section.hits.length}
-                </span>
-              </h3>
-              <ul className="space-y-2">
-                {section.hits.map((hit) => (
-                  <li key={hit.id}>
-                    <IntelligenceHitCard hit={hit} />
-                  </li>
-                ))}
-              </ul>
+      {sections.length > 0 || otherHits.length > 0 ? (
+        <SectionReveal delayMs={1000} enabled={revealSections}>
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(240px,0.55fr)]">
+            <div className="min-w-0 space-y-6">
+              {sections.map((section) => (
+                <section key={section.id}>
+                  <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
+                    {section.title.toUpperCase()}
+                    <span className="ml-2 text-white/25">
+                      · {section.hits.length}
+                    </span>
+                  </h3>
+                  <ul className="space-y-2">
+                    {section.hits.map((hit) => (
+                      <li key={hit.id}>
+                        <IntelligenceHitCard hit={hit} />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+
+              {otherHits.length > 0 ? (
+                <section>
+                  <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
+                    SONSTIGE ERWÄHNUNGEN · {otherHits.length}
+                  </h3>
+                  <ul className="space-y-2">
+                    {otherHits.map((hit) => (
+                      <li key={hit.id}>
+                        <IntelligenceHitCard hit={hit} />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
             </div>
+
             <div className="lg:sticky lg:top-6">
               <CategoryVisualPanel
-                title={section.title}
-                hits={section.hits}
                 report={report}
+                hits={derived.hits}
+                categories={sections}
               />
             </div>
-          </section>
-        </SectionReveal>
-      ))}
-
-      {otherHits.length > 0 ? (
-        <SectionReveal delayMs={1800} enabled={revealSections}>
-          <section>
-            <h3 className="mb-3 font-mono text-[9px] tracking-[.16em] text-white/35">
-              SONSTIGE ERWÄHNUNGEN · {otherHits.length}
-            </h3>
-            <ul className="space-y-2">
-              {otherHits.map((hit) => (
-                <li key={hit.id}>
-                  <IntelligenceHitCard hit={hit} />
-                </li>
-              ))}
-            </ul>
-          </section>
+          </div>
         </SectionReveal>
       ) : null}
 
