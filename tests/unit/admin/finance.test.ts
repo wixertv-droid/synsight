@@ -48,6 +48,8 @@ describe("admin finanzen module", () => {
     expect(analysis).toContain('providerCode: "serpapi"');
     expect(analysis).toContain('eventType: "google_analysis"');
     expect(analysis).toContain("recordFinance: false");
+    expect(analysis).toContain("serpSuccessCount");
+    expect(analysis).toContain("billableCount");
   });
 });
 
@@ -67,5 +69,16 @@ describe("gemini token cost calculation", () => {
     expect(inputEur).toBeCloseTo(1.38, 6);
     expect(outputEur).toBeCloseTo(6.9, 6);
     expect(cost).toBeCloseTo(0.00552, 8);
+  });
+
+  it("maps SerpAPI Starter $0.025 to ≈ €0.023", async () => {
+    const {
+      SERPAPI_STARTER_USD_PER_SEARCH,
+      SERPAPI_STARTER_EUR_PER_SEARCH,
+      USD_TO_EUR,
+    } = await import("@/lib/services/finance-service");
+    expect(SERPAPI_STARTER_USD_PER_SEARCH).toBe(0.025);
+    expect(SERPAPI_STARTER_EUR_PER_SEARCH).toBeCloseTo(0.025 * USD_TO_EUR, 3);
+    expect(SERPAPI_STARTER_EUR_PER_SEARCH).toBeCloseTo(0.023, 3);
   });
 });

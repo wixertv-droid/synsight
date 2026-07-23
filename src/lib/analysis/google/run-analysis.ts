@@ -357,21 +357,26 @@ export async function runGoogleIntelligenceAnalysis(
       }
     }
 
-    if (serpRequestCount > 0) {
+    // SerpAPI: nur erfolgreiche Suchen kosten ($0.025 ≈ €0.023 Starter).
+    if (serpSuccessCount > 0) {
       await recordApiUsageEvent({
         providerCode: "serpapi",
         eventType: "google_analysis",
         referenceKey: analysisRef,
         userId: options?.userId ?? null,
-        requestCount: serpRequestCount,
-        success: serpSuccessCount > 0,
-        detail: `Google-Analyse · ${subjectName} · ${serpRequestCount} SerpAPI-Anfragen`,
+        requestCount: serpSuccessCount,
+        success: true,
+        detail: `Google-Analyse · ${subjectName} · ${serpSuccessCount}/${serpRequestCount} erfolgreiche SerpAPI-Suchen`,
         metaJson: {
           subjectName,
           analysisRef,
           requestCount: serpRequestCount,
+          billableCount: serpSuccessCount,
           successCount: serpSuccessCount,
+          failedCount: Math.max(0, serpRequestCount - serpSuccessCount),
           hitCount: serpHits.length,
+          unitPriceUsd: 0.025,
+          unitPriceEurNote: "$0.025 × 0.92 ≈ €0.023",
           queries: queries.map((plan) => ({
             id: plan.id,
             label: plan.label,

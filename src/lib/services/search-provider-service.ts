@@ -514,10 +514,12 @@ export async function searchViaActiveProvider(
       referenceKey,
       userId: options?.userId ?? null,
       requestCount: 1,
+      // Fehler kosten bei SerpAPI 0 Credits — Event nur bei expliziter Finance.
       recordFinance: options?.recordFinance,
     });
     console.error("[search-provider] search failed", message);
-    return [];
+    // Re-throw, damit Google-Analyse fehlgeschlagene Queries nicht als Erfolg zählt.
+    throw error instanceof Error ? error : new Error(message);
   }
 }
 

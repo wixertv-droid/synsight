@@ -175,12 +175,15 @@ export default function AdminFinanceApiCostsView() {
           API-AUSGABEN · PREISE
         </p>
         <p className="mt-2 max-w-3xl text-sm text-white/45">
-          SerpAPI: Preis pro Request. Gemini (3.6 Flash Standard):{" "}
+          SerpAPI Starter:{" "}
           <span className="text-white/60">
-            (prompt/1M)×$1,50 + (candidates/1M)×$7,50
+            $25/1000 = $0,025 ≈ 0,023 € pro erfolgreiche Suche
+          </span>{" "}
+          (Fehler/Timeout = 0 €). Gemini 3.6 Flash:{" "}
+          <span className="text-white/60">
+            (prompt/1M)×$1,50 + (candidates/1M)×$7,50 → EUR ×0,92
           </span>
-          , im Dashboard als EUR (×0,92 → 1,38 / 6,90 € pro 1M). Preise hier
-          anpassbar.
+          .
         </p>
         {message ? (
           <p

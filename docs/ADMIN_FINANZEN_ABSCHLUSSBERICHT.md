@@ -56,7 +56,9 @@ Mutationen prüfen Admin-Rolle und CSRF-Origin.
     (`018_gemini_token_billing.sql`, Admin → Finanzen → API-Ausgaben).
   - Token-Counts und angewandte Preise liegen in `meta_json`.
 - Health-Checks laufen als `health_check`.
-- SerpAPI-Kosten = `request_count × cost_per_request_eur` aus `api_cost_settings`.
+- SerpAPI-Kosten = nur **erfolgreiche** Suchen × `cost_per_request_eur`
+  (Starter-Default: `$25/1000 = $0,025 ≈ €0,023`, Migration `019_serpapi_starter_pricing.sql`).
+  Fehler/Timeouts → 0 €.
 
 ## Deploy
 

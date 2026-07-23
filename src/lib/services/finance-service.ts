@@ -266,6 +266,11 @@ export const GEMINI_36_FLASH_STANDARD_USD = {
 } as const;
 export const USD_TO_EUR = 0.92;
 
+/** SerpAPI Starter: $25 / 1000 Suchen = $0.025 ≈ €0.023. */
+export const SERPAPI_STARTER_USD_PER_SEARCH = 0.025;
+export const SERPAPI_STARTER_EUR_PER_SEARCH =
+  Math.round(SERPAPI_STARTER_USD_PER_SEARCH * USD_TO_EUR * 1000) / 1000;
+
 export async function upsertApiCostSetting(
   actor: AuthenticatedUser,
   input: {
@@ -367,12 +372,18 @@ export async function recordApiUsageEvent(input: {
         }
       : null;
 
+    const success = input.success ?? true;
     let unitCost = perRequest;
     let totalCost = perRequest * requestCount;
 
     if (billingMode === "per_token" && tokenUsage) {
+      // Token-APIs können auch bei Fehlern Tokens verbrauchen.
       totalCost = calculateTokenCostEur(tokenUsage, inputPer1m, outputPer1m);
       unitCost = requestCount > 0 ? totalCost / requestCount : totalCost;
+    } else if (!success) {
+      // SerpAPI: Fehler / Timeouts kosten 0 Credits → 0 €.
+      unitCost = 0;
+      totalCost = 0;
     }
 
     const baseMeta =
@@ -416,7 +427,7 @@ export async function recordApiUsageEvent(input: {
       requestCount,
       unitCostEur: unitCost.toFixed(6),
       totalCostEur: totalCost.toFixed(6),
-      success: input.success ?? true,
+      success,
       detail: input.detail?.slice(0, 500) ?? null,
       metaJson,
     });

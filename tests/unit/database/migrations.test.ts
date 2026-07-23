@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–018 migration files", () => {
+  it("ships ordered 001–019 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -28,6 +28,7 @@ describe("database migrations workflow", () => {
       "016_intelligence_report_retention.sql",
       "017_admin_finanzen.sql",
       "018_gemini_token_billing.sql",
+      "019_serpapi_starter_pricing.sql",
     ]);
   });
 
@@ -216,5 +217,15 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("6.900000");
     expect(sql).toContain("$1.50");
     expect(sql).toContain("$7.50");
+  });
+
+  it("sets SerpAPI Starter EUR price in 019", () => {
+    const sql = readFileSync(
+      path.join(dir, "019_serpapi_starter_pricing.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("0.023000");
+    expect(sql).toContain("$0.025");
+    expect(sql).toContain("serpapi");
   });
 });
