@@ -20,7 +20,7 @@ export async function GET() {
     );
   }
 
-  const report = getIntelligenceReport(userId, "google_search");
+  const report = await getIntelligenceReport(userId, "google_search");
   if (!report) {
     return NextResponse.json(
       apiError("NOT_FOUND", "Noch keine Google-Analyse durchgeführt."),

@@ -9,6 +9,10 @@ vi.mock("@/lib/analysis/google/custom-search", () => ({
   fetchGoogleCustomSearch: vi.fn(async () => []),
 }));
 
+vi.mock("@/lib/analysis/gemini-summary", () => ({
+  summarizeWithGemini: vi.fn(async () => null),
+}));
+
 function sampleIdentity(): IdentityView {
   return {
     personal: {
@@ -80,5 +84,8 @@ describe("runGoogleIntelligenceAnalysis", () => {
     );
     expect(profileHits.length).toBeGreaterThan(0);
     expect(profileHits.every((h) => h.status === "profile_only")).toBe(true);
+    expect(report.managementOverview.mentions).toBe(report.hits.length);
+    expect(report.recommendations[0]?.why).toBeTruthy();
+    expect(report.aiSummary).toBeNull();
   });
 });

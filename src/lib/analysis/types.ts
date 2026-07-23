@@ -52,7 +52,12 @@ export interface IntelligenceHit {
 export interface IntelligenceRecommendation {
   title: string;
   detail: string;
+  why: string;
+  danger: string;
+  howToFix: string;
+  effort: string;
   priority: "Jetzt" | "Diese Woche" | "Optional";
+  difficulty: "Niedrig" | "Mittel" | "Hoch";
   relatedHitIds: string[];
 }
 
@@ -73,6 +78,29 @@ export interface IntelligenceExecutiveSummary {
   narrative: string;
 }
 
+export interface IntelligenceModuleDefinition {
+  key: AnalysisModuleKey;
+  title: string;
+  scanSteps: IntelligenceScanStep[];
+  minScanMs: number;
+  maxScanMs: number;
+  estimatedDurationLabel?: string;
+}
+
+export interface IntelligenceCategoryStats {
+  websites: number;
+  social: number;
+  images: number;
+  phones: number;
+  emails: number;
+  companies: number;
+  documents: number;
+  press: number;
+  forums: number;
+  other: number;
+  mentions: number;
+}
+
 export interface IntelligenceReport {
   moduleKey: AnalysisModuleKey;
   moduleTitle: string;
@@ -85,18 +113,12 @@ export interface IntelligenceReport {
   riskScore: number;
   riskLevel: RiskLevel;
   summaryText: string;
+  aiSummary: string | null;
+  managementOverview: IntelligenceCategoryStats;
   buckets: IntelligenceSummaryBuckets;
   queries: IntelligenceQueryPlan[];
   hits: IntelligenceHit[];
   recommendations: IntelligenceRecommendation[];
   executive: IntelligenceExecutiveSummary;
   missingProfileHints: string[];
-}
-
-export interface IntelligenceModuleDefinition {
-  key: AnalysisModuleKey;
-  title: string;
-  scanSteps: IntelligenceScanStep[];
-  minScanMs: number;
-  maxScanMs: number;
 }

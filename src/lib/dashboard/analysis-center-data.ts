@@ -47,7 +47,7 @@ export const analysisModules: AnalysisModule[] = [
       "Hinweise zu sichtbaren Kontaktdaten",
       "Einfache Risikoeinschätzung",
     ],
-    duration: "ca. 2–4 Min.",
+    duration: "ca. 30–90 Sek.",
     tier: "quick",
     badge: "Einstieg",
     help: "Gute erste Analyse, wenn Sie wissen möchten, was Fremde über Sie googeln können. Keine Installation nötig — nur Ihre Profilangaben.",

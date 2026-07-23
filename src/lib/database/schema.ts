@@ -1097,6 +1097,40 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   auditEvents: many(auditEvents),
 }));
 
+export const intelligenceReports = mysqlTable(
+  "intelligence_reports",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    moduleKey: varchar("module_key", { length: 64 }).notNull(),
+    subjectName: varchar("subject_name", { length: 255 }).notNull(),
+    riskScore: int("risk_score", { unsigned: true }).notNull().default(0),
+    riskLevel: varchar("risk_level", { length: 32 })
+      .notNull()
+      .default("niedrig"),
+    hitCount: int("hit_count", { unsigned: true }).notNull().default(0),
+    reportJson: json("report_json").notNull(),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("intelligence_reports_user_module_unique").on(
+      table.userId,
+      table.moduleKey
+    ),
+    index("intelligence_reports_user_id_idx").on(table.userId),
+  ]
+);
+
 export type DbUser = typeof users.$inferSelect;
 export type DbProfile = typeof profiles.$inferSelect;
 export type DbSession = typeof sessions.$inferSelect;

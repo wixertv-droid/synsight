@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   const identity = await getIdentityForUser(userId);
   const report = await runGoogleIntelligenceAnalysis(identity);
-  saveIntelligenceReport(userId, report);
+  await saveIntelligenceReport(userId, report);
 
   return NextResponse.json(apiSuccess({ report }));
 }

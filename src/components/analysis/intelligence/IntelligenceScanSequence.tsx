@@ -54,14 +54,24 @@ export default function IntelligenceScanSequence({
 
   useEffect(() => {
     if (!running) return;
-    if (elapsed >= minDurationMs && activeIndex >= steps.length - 1) {
+    const targetMs = Math.max(
+      minDurationMs,
+      steps.at(-1)?.atMs ?? minDurationMs
+    );
+    if (elapsed >= targetMs) {
       const timer = window.setTimeout(onComplete, 400);
       return () => window.clearTimeout(timer);
     }
     return undefined;
-  }, [activeIndex, elapsed, minDurationMs, onComplete, running, steps.length]);
+  }, [elapsed, minDurationMs, onComplete, running, steps]);
 
-  const progress = Math.min(100, Math.round((elapsed / minDurationMs) * 100));
+  const progress = Math.min(
+    100,
+    Math.round(
+      (elapsed / Math.max(minDurationMs, steps.at(-1)?.atMs ?? minDurationMs)) *
+        100
+    )
+  );
 
   if (!running) return null;
 

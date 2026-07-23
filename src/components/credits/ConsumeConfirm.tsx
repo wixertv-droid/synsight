@@ -7,6 +7,7 @@ import { getAnalysisGuidance, guidance } from "@/lib/content/guidance";
 
 interface ConsumeConfirmProps {
   analysisKey: string;
+  confirmLabel?: string;
   onCompleted?: (balance: number) => void;
 }
 
@@ -16,6 +17,7 @@ interface ConsumeConfirmProps {
  */
 export default function ConsumeConfirm({
   analysisKey,
+  confirmLabel = "Analyse bestätigen",
   onCompleted,
 }: ConsumeConfirmProps) {
   const [submitting, setSubmitting] = useState(false);
@@ -144,7 +146,7 @@ export default function ConsumeConfirm({
             onClick={confirm}
             disabled={submitting || !quote?.sufficient}
           >
-            {submitting ? "Wird abgebucht…" : "Analyse bestätigen"}
+            {submitting ? "Wird abgebucht…" : confirmLabel}
           </Button>
           {quote && !quote.sufficient ? (
             <p className="mt-2 text-xs text-amber-200/65">

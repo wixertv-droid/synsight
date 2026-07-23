@@ -23,7 +23,7 @@ export default async function GoogleAnalysisPage() {
     : null;
   const subjectName = resolveSubjectName(identity);
   const initialReport = Number.isFinite(userId)
-    ? getIntelligenceReport(userId, "google_search")
+    ? await getIntelligenceReport(userId, "google_search")
     : null;
 
   return (

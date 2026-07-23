@@ -4,6 +4,7 @@ import {
   summarizeBuckets,
 } from "@/lib/analysis/risk-assessment";
 import type {
+  IntelligenceCategoryStats,
   IntelligenceHit,
   IntelligenceRecommendation,
   IntelligenceReport,
@@ -18,6 +19,7 @@ import {
   buildMissingProfileHints,
   resolveSubjectName,
 } from "@/lib/analysis/google/queries";
+import { summarizeWithGemini } from "@/lib/analysis/gemini-summary";
 import type { IdentityView } from "@/lib/services/identity-service";
 
 function clean(value: string | undefined | null): string {
@@ -34,6 +36,63 @@ function inferCategory(query: string, label: string): string {
   if (label === "Ort / Adresse") return "address";
   if (label === "Name") return "name";
   return "general";
+}
+
+function categorizeHit(hit: IntelligenceHit): keyof IntelligenceCategoryStats {
+  const url = hit.url.toLowerCase();
+  const text = `${hit.title} ${hit.snippet}`.toLowerCase();
+  if (
+    hit.category === "social" ||
+    /linkedin|xing|facebook|instagram|twitter|x\.com|tiktok/.test(url)
+  ) {
+    return "social";
+  }
+  if (hit.category === "phone" || /\+?\d[\d\s\-()]{7,}/.test(text)) {
+    return "phones";
+  }
+  if (hit.category === "email" || /@/.test(text)) return "emails";
+  if (hit.category === "company" || /gmbh|ag|ltd|inc|unternehmen/.test(text)) {
+    return "companies";
+  }
+  if (/\.(pdf|docx?|xlsx?)(\?|$)/i.test(url) || /dokument|pdf/.test(text)) {
+    return "documents";
+  }
+  if (/presse|news|zeitung|magazin|artikel/.test(url + text)) return "press";
+  if (/forum|reddit|board|community/.test(url + text)) return "forums";
+  if (/cdn|image|img|photo|picture|\.jpe?g|\.png|\.webp/.test(url)) {
+    return "images";
+  }
+  if (
+    hit.category === "website" ||
+    hit.category === "name" ||
+    hit.category === "address"
+  ) {
+    return "websites";
+  }
+  return "other";
+}
+
+function buildManagementOverview(
+  hits: IntelligenceHit[]
+): IntelligenceCategoryStats {
+  const stats: IntelligenceCategoryStats = {
+    websites: 0,
+    social: 0,
+    images: 0,
+    phones: 0,
+    emails: 0,
+    companies: 0,
+    documents: 0,
+    press: 0,
+    forums: 0,
+    other: 0,
+    mentions: hits.length,
+  };
+  for (const hit of hits) {
+    const key = categorizeHit(hit);
+    if (key !== "mentions") stats[key] += 1;
+  }
+  return stats;
 }
 
 function buildRecommendation(hit: IntelligenceHit): string {
@@ -226,14 +285,15 @@ export async function runGoogleIntelligenceAnalysis(
     hits.filter((h) => h.sourceType === "google_custom_search")
   );
   const { riskScore, riskLevel } = computeOverallRisk(hits);
+  const managementOverview = buildManagementOverview(hits);
 
   const serpCount = serpHits.length;
   const summaryText =
     apiConfigured && serpCount > 0
-      ? `Es wurden ${serpCount} öffentliche Google-Suchtreffer über die Custom Search API gefunden.`
+      ? `Mit den von Ihnen angegebenen Daten konnten ${serpCount} öffentlich erreichbare Google-Suchtreffer gefunden werden.`
       : apiConfigured && serpCount === 0
-        ? "Die Google Custom Search API lieferte für Ihre Profil-Suchanfragen keine Treffer."
-        : "Google Custom Search API ist nicht konfiguriert — es werden nur Profil-Suchanfragen und hinterlegte Verknüpfungen angezeigt.";
+        ? "Mit den von Ihnen angegebenen Daten konnten über die Google Custom Search API keine öffentlichen Treffer gefunden werden."
+        : "Google Custom Search API ist nicht konfiguriert — es werden nur Profil-Suchanfragen und hinterlegte Verknüpfungen angezeigt. Es werden keine Treffer simuliert.";
 
   const dataSourceLabel = apiConfigured
     ? "Google Custom Search JSON API + Identitätsprofil"
@@ -255,7 +315,7 @@ export async function runGoogleIntelligenceAnalysis(
           ? "Beobachten"
           : "Keine Maßnahme";
 
-  return {
+  const draft: IntelligenceReport = {
     moduleKey: googleIntelligenceModule.key,
     moduleTitle: googleIntelligenceModule.title,
     subjectName,
@@ -267,6 +327,8 @@ export async function runGoogleIntelligenceAnalysis(
     riskScore,
     riskLevel,
     summaryText,
+    aiSummary: null,
+    managementOverview,
     buckets,
     queries,
     hits,
@@ -283,6 +345,9 @@ export async function runGoogleIntelligenceAnalysis(
     },
     missingProfileHints,
   };
+
+  draft.aiSummary = await summarizeWithGemini(draft);
+  return draft;
 }
 
 function buildReportRecommendations(
@@ -297,8 +362,15 @@ function buildReportRecommendations(
   if (actionHits.length > 0) {
     recs.push({
       title: "Sensible Google-Treffer prüfen",
-      detail: `${actionHits.length} Treffer enthalten Hinweise auf Kontaktdaten oder Verzeichniseinträge. Prüfen Sie jeden Treffer und leiten Sie Entfernung oder Korrektur ein.`,
+      detail: `${actionHits.length} Treffer enthalten Hinweise auf Kontaktdaten oder Verzeichniseinträge.`,
+      why: "Öffentlich indexierte Kontaktdaten erhöhen das Risiko für Spam, Social Engineering und Identitätsmissbrauch.",
+      danger:
+        "Dritte können Sie ungefragt kontaktieren oder Profile unter Ihrem Namen verknüpfen.",
+      howToFix:
+        "Öffnen Sie jeden kritischen Treffer, kontaktieren Sie den Seitenbetreiber und beantragen Sie Entfernung oder Anonymisierung.",
+      effort: "15–45 Minuten pro Eintrag",
       priority: "Jetzt",
+      difficulty: "Mittel",
       relatedHitIds: actionHits.map((h) => h.id),
     });
   }
@@ -307,8 +379,14 @@ function buildReportRecommendations(
     recs.push({
       title: "Live-Google-Suche aktivieren",
       detail:
-        "Für verifizierte Suchtreffer muss die Google Custom Search JSON API auf dem Server konfiguriert werden (GOOGLE_CUSTOM_SEARCH_API_KEY und GOOGLE_CUSTOM_SEARCH_ENGINE_ID).",
+        "Für verifizierte Suchtreffer muss die Google Custom Search JSON API konfiguriert werden.",
+      why: "Ohne API können keine echten Google-Treffer geladen werden — SynSight erfindet keine Ergebnisse.",
+      danger: "Ohne Live-Daten bleibt die Sichtbarkeit unvollständig.",
+      howToFix:
+        "Setzen Sie GOOGLE_CUSTOM_SEARCH_API_KEY und GOOGLE_CUSTOM_SEARCH_ENGINE_ID auf dem Server.",
+      effort: "10–20 Minuten",
       priority: "Optional",
+      difficulty: "Niedrig",
       relatedHitIds: [],
     });
   }
@@ -318,7 +396,13 @@ function buildReportRecommendations(
     recs.push({
       title: "Identitätsprofil vervollständigen",
       detail: `Für präzisere Suchanfragen: ${hints.slice(0, 3).join("; ")}.`,
+      why: "Mehr Profilfelder erzeugen präzisere, ehrliche Suchanfragen.",
+      danger: "Unvollständige Profile führen zu Lücken in der OSINT-Abdeckung.",
+      howToFix:
+        "Öffnen Sie das Identitätsprofil und ergänzen Sie fehlende Felder.",
+      effort: "5–10 Minuten",
       priority: "Optional",
+      difficulty: "Niedrig",
       relatedHitIds: [],
     });
   }
@@ -327,8 +411,14 @@ function buildReportRecommendations(
     recs.push({
       title: "Regelmäßige Beobachtung",
       detail:
-        "Aktuell sind keine kritischen Treffer erkannt. Wiederholen Sie die Analyse nach Profiländerungen oder bei neuen Auffälligkeiten.",
+        "Aktuell sind keine kritischen Treffer erkannt. Wiederholen Sie die Analyse nach Profiländerungen.",
+      why: "Digitale Spuren ändern sich laufend.",
+      danger: "Neue Einträge können unbemerkt entstehen.",
+      howToFix:
+        "Planen Sie eine erneute Google-Analyse nach größeren Profiländerungen.",
+      effort: "2–5 Minuten",
       priority: "Optional",
+      difficulty: "Niedrig",
       relatedHitIds: [],
     });
   }
