@@ -75,7 +75,9 @@ export default function AdminApiCredentialsView() {
           secret: draft.secret.trim() || undefined,
           engineId:
             provider === "google_custom_search"
-              ? draft.engineId.trim()
+              ? draft.engineId.trim() ||
+                rows.find((item) => item.provider === provider)?.engineId ||
+                undefined
               : undefined,
           isActive: true,
         }),
@@ -251,6 +253,18 @@ export default function AdminApiCredentialsView() {
                   cx · {row.engineId}
                 </p>
               ) : null}
+              {isGoogle && row.configured && !row.engineId ? (
+                <p className="mt-2 rounded-lg border border-amber-300/25 bg-amber-300/[0.05] px-2 py-1.5 text-[11px] text-amber-50/75">
+                  Engine-ID (cx) fehlt in der DB — bitte cx eintragen und
+                  speichern, sonst schlägt der Test fehl.
+                </p>
+              ) : null}
+              {row.configured && row.decryptOk === false ? (
+                <p className="mt-2 rounded-lg border border-rose-300/25 bg-rose-300/[0.05] px-2 py-1.5 text-[11px] text-rose-100/75">
+                  Schlüssel nicht entschlüsselbar. IMAGE_ENCRYPTION_KEY /
+                  SESSION_SECRET prüfen und Key neu speichern.
+                </p>
+              ) : null}
               <p className="mt-1 font-mono text-[8px] text-white/25">
                 Status:{" "}
                 {row.configured ? (row.isActive ? "Aktiv" : "Inaktiv") : "Leer"}
@@ -261,6 +275,11 @@ export default function AdminApiCredentialsView() {
                   ? ` · Letzter Fehler: ${new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short" }).format(new Date(row.lastErrorAt))}`
                   : ""}
               </p>
+              {row.lastErrorMessage ? (
+                <p className="mt-1 text-[10px] text-rose-100/55">
+                  DB-Hinweis: {row.lastErrorMessage}
+                </p>
+              ) : null}
               {testResult ? (
                 <p
                   className={`mt-2 rounded-lg border px-2 py-1.5 text-[11px] ${
@@ -271,13 +290,20 @@ export default function AdminApiCredentialsView() {
                 >
                   {testResult.ok ? "TEST OK" : "TEST FEHLER"} ·{" "}
                   {testResult.message}
+                  {testResult.detail ? ` — ${testResult.detail}` : ""}
                   {typeof testResult.hitCount === "number"
                     ? ` · ${testResult.hitCount} Treffer`
                     : ""}
                   {testResult.latencyMs ? ` · ${testResult.latencyMs} ms` : ""}
                 </p>
               ) : null}
-              <div className="mt-3 space-y-2">
+              <form
+                className="mt-3 space-y-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void save(row.provider);
+                }}
+              >
                 <input
                   value={draft.label}
                   onChange={(event) =>
@@ -294,6 +320,7 @@ export default function AdminApiCredentialsView() {
                 />
                 <input
                   type="password"
+                  autoComplete="new-password"
                   value={draft.secret}
                   onChange={(event) =>
                     setDrafts((current) => ({
@@ -329,13 +356,14 @@ export default function AdminApiCredentialsView() {
                 ) : null}
                 <div className="flex flex-wrap gap-2">
                   <button
-                    type="button"
+                    type="submit"
                     disabled={
                       busy ||
                       (!draft.secret.trim() && !row.configured) ||
-                      (isGoogle && draft.engineId.trim().length < 6)
+                      (isGoogle &&
+                        draft.engineId.trim().length < 6 &&
+                        !(row.engineId && row.engineId.length >= 6))
                     }
-                    onClick={() => void save(row.provider)}
                     className="rounded-lg border border-cyber-cyan/30 px-3 py-1.5 text-xs text-cyber-cyan disabled:opacity-40"
                   >
                     {busy ? "Bitte warten…" : "Schlüssel speichern"}
@@ -358,7 +386,7 @@ export default function AdminApiCredentialsView() {
                     </button>
                   ) : null}
                 </div>
-              </div>
+              </form>
             </li>
           );
         })}

@@ -1,7 +1,7 @@
 import type { AuthenticatedUser } from "@/lib/auth/types";
 import { getDatabase } from "@/lib/database/client";
 import { apiCredentials, platformSettings } from "@/lib/database/schema";
-import { encryptSecret } from "@/lib/security/secret-vault";
+import { decryptSecret, encryptSecret } from "@/lib/security/secret-vault";
 import { eq } from "drizzle-orm";
 
 export const ADMIN_API_PROVIDERS = [
@@ -45,6 +45,8 @@ export interface ApiCredentialSummary {
   engineId: string | null;
   lastSuccessAt: string | null;
   lastErrorAt: string | null;
+  lastErrorMessage: string | null;
+  decryptOk: boolean | null;
 }
 
 function assertAdmin(actor: AuthenticatedUser): void {
@@ -106,9 +108,18 @@ export async function updateAdminPlatformSettings(
 }
 
 function readEngineId(configJson: unknown): string | null {
-  if (!configJson || typeof configJson !== "object") return null;
-  const value = (configJson as { engineId?: unknown }).engineId;
-  return typeof value === "string" && value.trim() ? value.trim() : null;
+  let value: unknown = configJson;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as { engineId?: unknown; cx?: unknown };
+  const engine = row.engineId ?? row.cx;
+  return typeof engine === "string" && engine.trim() ? engine.trim() : null;
 }
 
 export async function listAdminApiCredentials(
@@ -131,7 +142,17 @@ export async function listAdminApiCredentials(
         engineId: null,
         lastSuccessAt: null,
         lastErrorAt: null,
+        lastErrorMessage: null,
+        decryptOk: null,
       };
+    }
+
+    let decryptOk: boolean | null = null;
+    try {
+      decryptSecret(row.encryptedSecret);
+      decryptOk = true;
+    } catch {
+      decryptOk = false;
     }
 
     return {
@@ -142,6 +163,8 @@ export async function listAdminApiCredentials(
       engineId: readEngineId(row.configJson),
       lastSuccessAt: row.lastSuccessAt,
       lastErrorAt: row.lastErrorAt,
+      lastErrorMessage: row.lastErrorMessage,
+      decryptOk,
     };
   });
 }
@@ -177,10 +200,10 @@ export async function upsertAdminApiCredential(
     ? encryptSecret(secret)
     : current!.encryptedSecret;
 
+  // Leere cx-Felder dürfen eine vorhandene Engine-ID nicht überschreiben.
+  const incomingEngineId = input.engineId?.trim() || "";
   const engineId =
-    input.engineId !== undefined
-      ? input.engineId?.trim() || null
-      : readEngineId(current?.configJson);
+    incomingEngineId || readEngineId(current?.configJson) || null;
 
   const configJson =
     input.provider === "google_custom_search"
@@ -217,6 +240,8 @@ export async function upsertAdminApiCredential(
     engineId,
     lastSuccessAt: null,
     lastErrorAt: null,
+    lastErrorMessage: null,
+    decryptOk: true,
   };
 }
 
@@ -252,5 +277,7 @@ export async function setAdminApiCredentialActive(
     engineId: readEngineId(row.configJson),
     lastSuccessAt: row.lastSuccessAt,
     lastErrorAt: row.lastErrorAt,
+    lastErrorMessage: row.lastErrorMessage,
+    decryptOk: true,
   };
 }

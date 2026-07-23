@@ -33,7 +33,7 @@ describe("testApiCredentialConnection", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.message).toMatch(/API-Key|Engine-ID/i);
+    expect(result.message).toMatch(/Datenbank|API-Key|Engine-ID|cx/i);
   });
 
   it("reports unsupported providers", async () => {

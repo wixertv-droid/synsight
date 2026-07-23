@@ -46,10 +46,68 @@ function providerLabel(provider: ApiProvider): string {
   return "Google Gemini";
 }
 
+function parseConfigObject(
+  configJson: unknown
+): Record<string, unknown> | null {
+  if (!configJson) return null;
+  if (typeof configJson === "string") {
+    try {
+      const parsed = JSON.parse(configJson) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+  if (typeof configJson === "object" && !Array.isArray(configJson)) {
+    return configJson as Record<string, unknown>;
+  }
+  return null;
+}
+
 function readConfigEngineId(configJson: unknown): string | null {
-  if (!configJson || typeof configJson !== "object") return null;
-  const value = (configJson as { engineId?: unknown }).engineId;
+  const config = parseConfigObject(configJson);
+  if (!config) return null;
+  const value = config.engineId ?? config.cx ?? config.searchEngineId;
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+async function loadStoredProviderRow(provider: string) {
+  const db = getDatabase();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(apiCredentials)
+    .where(eq(apiCredentials.provider, provider))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+function tryDecryptSecret(encryptedSecret: string):
+  | {
+      ok: true;
+      value: string;
+    }
+  | {
+      ok: false;
+      error: string;
+    } {
+  try {
+    const value = decryptSecret(encryptedSecret).trim();
+    if (!value)
+      return { ok: false, error: "Entschlüsselter Schlüssel ist leer." };
+    return { ok: true, value };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Entschlüsselung fehlgeschlagen (IMAGE_ENCRYPTION_KEY/SESSION_SECRET prüfen).",
+    };
+  }
 }
 
 export async function listApiCredentials(
@@ -142,10 +200,9 @@ export async function upsertApiCredential(
     ? encryptSecret(secret)
     : current!.encryptedSecret;
 
+  const incomingEngineId = input.engineId?.trim() || "";
   const engineId =
-    input.engineId !== undefined
-      ? input.engineId?.trim() || null
-      : readConfigEngineId(current?.configJson);
+    incomingEngineId || readConfigEngineId(current?.configJson) || null;
 
   const configJson =
     input.provider === "google_custom_search"
@@ -181,17 +238,12 @@ export async function resolveGoogleSearchCredentials(): Promise<GoogleSearchCred
   const db = getDatabase();
   if (db) {
     try {
-      const rows = await db
-        .select()
-        .from(apiCredentials)
-        .where(eq(apiCredentials.provider, "google_custom_search"))
-        .limit(1);
-      const row = rows[0];
+      const row = await loadStoredProviderRow("google_custom_search");
       if (row?.isActive) {
-        const apiKey = decryptSecret(row.encryptedSecret).trim();
+        const decrypted = tryDecryptSecret(row.encryptedSecret);
         const engineId = readConfigEngineId(row.configJson);
-        if (apiKey && engineId) {
-          return { apiKey, engineId, source: "database" };
+        if (decrypted.ok && engineId) {
+          return { apiKey: decrypted.value, engineId, source: "database" };
         }
       }
     } catch (error) {
@@ -212,15 +264,12 @@ export async function resolveGeminiCredentials(): Promise<GeminiCredentials | nu
   const db = getDatabase();
   if (db) {
     try {
-      const rows = await db
-        .select()
-        .from(apiCredentials)
-        .where(eq(apiCredentials.provider, "gemini"))
-        .limit(1);
-      const row = rows[0];
+      const row = await loadStoredProviderRow("gemini");
       if (row?.isActive) {
-        const apiKey = decryptSecret(row.encryptedSecret).trim();
-        if (apiKey) return { apiKey, source: "database" };
+        const decrypted = tryDecryptSecret(row.encryptedSecret);
+        if (decrypted.ok) {
+          return { apiKey: decrypted.value, source: "database" };
+        }
       }
     } catch (error) {
       console.error("[api-credentials] gemini resolve failed", error);
@@ -281,7 +330,8 @@ export interface ApiCredentialTestResult {
 
 /**
  * Live connectivity probe for admin UI.
- * Uses draft secret/engineId when provided, otherwise stored/env credentials.
+ * Uses draft secret/engineId when provided, otherwise stored DB credentials
+ * (with precise diagnostics if decrypt/cx missing).
  */
 export async function testApiCredentialConnection(input: {
   provider: string;
@@ -294,21 +344,67 @@ export async function testApiCredentialConnection(input: {
   if (provider === "google_custom_search") {
     let apiKey = input.secret?.trim() || "";
     let engineId = input.engineId?.trim() || "";
+    let source = "draft";
 
     if (!apiKey || !engineId) {
-      const resolved = await resolveGoogleSearchCredentials();
-      if (!apiKey) apiKey = resolved?.apiKey ?? "";
-      if (!engineId) engineId = resolved?.engineId ?? "";
-    }
+      const row = await loadStoredProviderRow("google_custom_search");
+      if (!row) {
+        const envKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY?.trim() || "";
+        const envCx = process.env.GOOGLE_CUSTOM_SEARCH_ENGINE_ID?.trim() || "";
+        if (envKey && envCx) {
+          apiKey = apiKey || envKey;
+          engineId = engineId || envCx;
+          source = "env";
+        } else {
+          return {
+            provider,
+            ok: false,
+            message: "Kein Google-Eintrag in der Datenbank.",
+            detail: "Bitte API-Key und Engine-ID (cx) eintragen und speichern.",
+            latencyMs: Date.now() - started,
+          };
+        }
+      } else {
+        if (!row.isActive) {
+          return {
+            provider,
+            ok: false,
+            message: "Google Custom Search ist inaktiv.",
+            detail: "Bitte zuerst auf „Aktiv“ schalten.",
+            latencyMs: Date.now() - started,
+          };
+        }
 
-    if (!apiKey || !engineId) {
-      return {
-        provider,
-        ok: false,
-        message: "Kein API-Key oder Engine-ID (cx) vorhanden.",
-        detail: "Bitte speichern oder Felder ausfüllen und erneut testen.",
-        latencyMs: Date.now() - started,
-      };
+        if (!apiKey) {
+          const decrypted = tryDecryptSecret(row.encryptedSecret);
+          if (!decrypted.ok) {
+            return {
+              provider,
+              ok: false,
+              message: "API-Key in der DB nicht lesbar.",
+              detail: `${decrypted.error} — Schlüssel neu speichern (IMAGE_ENCRYPTION_KEY/SESSION_SECRET muss gleich bleiben).`,
+              latencyMs: Date.now() - started,
+            };
+          }
+          apiKey = decrypted.value;
+        }
+
+        if (!engineId) {
+          engineId = readConfigEngineId(row.configJson) || "";
+        }
+
+        if (!engineId) {
+          return {
+            provider,
+            ok: false,
+            message: "Engine-ID (cx) fehlt in der Datenbank.",
+            detail:
+              "Der Key ist gespeichert, aber cx fehlt. Bitte Search Engine ID eintragen (z. B. 0728bba0e53574410) und speichern.",
+            latencyMs: Date.now() - started,
+          };
+        }
+        source = "database";
+      }
     }
 
     const url = new URL("https://www.googleapis.com/customsearch/v1");
@@ -327,16 +423,19 @@ export async function testApiCredentialConnection(input: {
       const latencyMs = Date.now() - started;
       const body = (await response.json().catch(() => ({}))) as {
         items?: unknown[];
-        error?: { message?: string };
+        error?: { message?: string; status?: string };
       };
 
       if (!response.ok) {
-        const detail = body.error?.message || `HTTP ${response.status}`;
+        const detail =
+          body.error?.message ||
+          body.error?.status ||
+          `HTTP ${response.status}`;
         await markApiCredentialError(provider, detail);
         return {
           provider,
           ok: false,
-          message: "Google Custom Search antwortet nicht korrekt.",
+          message: "Google Custom Search lehnt die Anfrage ab.",
           detail,
           latencyMs,
         };
@@ -348,7 +447,7 @@ export async function testApiCredentialConnection(input: {
         provider,
         ok: true,
         message: `Verbindung aktiv — ${hitCount} Probe-Treffer in ${latencyMs} ms.`,
-        detail: `Engine cx=${engineId}`,
+        detail: `Quelle=${source} · cx=${engineId}`,
         latencyMs,
         hitCount,
       };
@@ -367,82 +466,108 @@ export async function testApiCredentialConnection(input: {
 
   if (provider === "gemini") {
     let apiKey = input.secret?.trim() || "";
-    if (!apiKey) {
-      const resolved = await resolveGeminiCredentials();
-      apiKey = resolved?.apiKey ?? "";
-    }
-    if (!apiKey) {
-      return {
-        provider,
-        ok: false,
-        message: "Kein Gemini API-Key vorhanden.",
-        detail: "Bitte speichern oder Feld ausfüllen und erneut testen.",
-        latencyMs: Date.now() - started,
-      };
-    }
+    let source = "draft";
 
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: "Antworte nur mit dem Wort OK.",
-                  },
-                ],
-              },
-            ],
-            generationConfig: { temperature: 0, maxOutputTokens: 8 },
-          }),
+    if (!apiKey) {
+      const row = await loadStoredProviderRow("gemini");
+      if (!row) {
+        const envKey = process.env.GEMINI_API_KEY?.trim() || "";
+        if (envKey) {
+          apiKey = envKey;
+          source = "env";
+        } else {
+          return {
+            provider,
+            ok: false,
+            message: "Kein Gemini-Eintrag in der Datenbank.",
+            detail: "Bitte API-Key speichern und erneut testen.",
+            latencyMs: Date.now() - started,
+          };
         }
-      );
-      const latencyMs = Date.now() - started;
-      const body = (await response.json().catch(() => ({}))) as {
-        candidates?: Array<{
-          content?: { parts?: Array<{ text?: string }> };
-        }>;
-        error?: { message?: string };
-      };
-
-      if (!response.ok) {
-        const detail = body.error?.message || `HTTP ${response.status}`;
-        await markApiCredentialError("gemini", detail);
+      } else if (!row.isActive) {
         return {
           provider,
           ok: false,
-          message: "Gemini antwortet nicht korrekt.",
-          detail,
+          message: "Gemini ist inaktiv.",
+          detail: "Bitte zuerst auf „Aktiv“ schalten.",
+          latencyMs: Date.now() - started,
+        };
+      } else {
+        const decrypted = tryDecryptSecret(row.encryptedSecret);
+        if (!decrypted.ok) {
+          return {
+            provider,
+            ok: false,
+            message: "Gemini-Key in der DB nicht lesbar.",
+            detail: `${decrypted.error} — Schlüssel neu speichern.`,
+            latencyMs: Date.now() - started,
+          };
+        }
+        apiKey = decrypted.value;
+        source = "database";
+      }
+    }
+
+    const models = [
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-1.5-flash-latest",
+    ];
+    let lastDetail = "Unbekannter Fehler";
+
+    for (const model of models) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: "Antworten Sie nur mit OK." }] }],
+              generationConfig: { temperature: 0, maxOutputTokens: 8 },
+            }),
+          }
+        );
+        const latencyMs = Date.now() - started;
+        const body = (await response.json().catch(() => ({}))) as {
+          candidates?: Array<{
+            content?: { parts?: Array<{ text?: string }> };
+          }>;
+          error?: { message?: string; status?: string };
+        };
+
+        if (!response.ok) {
+          lastDetail =
+            body.error?.message ||
+            body.error?.status ||
+            `HTTP ${response.status} (${model})`;
+          continue;
+        }
+
+        const text =
+          body.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+        await markApiCredentialSuccess("gemini");
+        return {
+          provider,
+          ok: true,
+          message: `Gemini aktiv — Antwort in ${latencyMs} ms.`,
+          detail: `Quelle=${source} · Modell=${model}${text ? ` · Probe=${text.slice(0, 40)}` : ""}`,
           latencyMs,
         };
+      } catch (error) {
+        lastDetail = error instanceof Error ? error.message : "Netzwerkfehler";
       }
-
-      const text =
-        body.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-      await markApiCredentialSuccess("gemini");
-      return {
-        provider,
-        ok: true,
-        message: `Gemini aktiv — Antwort in ${latencyMs} ms.`,
-        detail: text ? `Probe: ${text.slice(0, 40)}` : "Antwort empfangen",
-        latencyMs,
-      };
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : "Netzwerkfehler";
-      await markApiCredentialError("gemini", detail);
-      return {
-        provider,
-        ok: false,
-        message: "Verbindung zu Gemini fehlgeschlagen.",
-        detail,
-        latencyMs: Date.now() - started,
-      };
     }
+
+    await markApiCredentialError("gemini", lastDetail);
+    return {
+      provider,
+      ok: false,
+      message: "Gemini antwortet nicht korrekt.",
+      detail: lastDetail,
+      latencyMs: Date.now() - started,
+    };
   }
 
   return {
