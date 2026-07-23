@@ -48,10 +48,13 @@ Mutationen prüfen Admin-Rolle und CSRF-Origin.
 - Einzelne SerpAPI-Calls aktualisieren weiterhin die Live-Metriken unter
   Website → APIs; die Finanzbuchung ist davon entkoppelt (schlägt Metrics fehl,
   werden Kosten trotzdem erfasst).
-- Gemini-Zusammenfassungen werden über **usageMetadata** verbucht:
-  `(promptTokenCount/1M)×cost_per_1m_input_tokens_eur + (candidatesTokenCount/1M)×cost_per_1m_output_tokens_eur`
-  (Preise in Admin → Finanzen → API-Ausgaben; Migration `018_gemini_token_billing.sql`).
-  Token-Counts und angewandte Preise liegen in `meta_json`.
+- Gemini-Zusammenfassungen werden über **usageMetadata** verbucht
+  (Modell-Priorität: `gemini-3.6-flash`):
+  - USD-Formel (Standard): `(prompt/1M)×$1,50 + (candidates/1M)×$7,50`
+  - Dashboard EUR: gleiche Formel mit Admin-Preisen
+    `$1,50×0,92=€1,38` / `$7,50×0,92=€6,90` pro 1M Tokens
+    (`018_gemini_token_billing.sql`, Admin → Finanzen → API-Ausgaben).
+  - Token-Counts und angewandte Preise liegen in `meta_json`.
 - Health-Checks laufen als `health_check`.
 - SerpAPI-Kosten = `request_count × cost_per_request_eur` aus `api_cost_settings`.
 

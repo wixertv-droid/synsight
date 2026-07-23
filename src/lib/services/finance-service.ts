@@ -241,6 +241,11 @@ function mapApiCostSetting(
   };
 }
 
+/**
+ * Live-Kosten aus usageMetadata.
+ * Admin speichert €/1M (Defaults = gemini-3.6-flash Standard $1.50/$7.50 × 0.92).
+ * Formel analog USD: (prompt/1M)×InputPreis + (candidates/1M)×OutputPreis
+ */
 export function calculateTokenCostEur(
   usage: ApiTokenUsage,
   inputPricePer1mEur: number,
@@ -253,6 +258,13 @@ export function calculateTokenCostEur(
     (candidates / 1_000_000) * Math.max(0, outputPricePer1mEur);
   return inputCost + outputCost;
 }
+
+/** Offizielle gemini-3.6-flash Standard-Preise (USD) und EUR-Kurs für Defaults. */
+export const GEMINI_36_FLASH_STANDARD_USD = {
+  inputPer1m: 1.5,
+  outputPer1m: 7.5,
+} as const;
+export const USD_TO_EUR = 0.92;
 
 export async function upsertApiCostSetting(
   actor: AuthenticatedUser,
@@ -384,6 +396,14 @@ export async function recordApiUsageEvent(input: {
               input: inputPer1m,
               output: outputPer1m,
             },
+            tokenPricesUsdPer1m:
+              providerCode === "gemini"
+                ? {
+                    input: GEMINI_36_FLASH_STANDARD_USD.inputPer1m,
+                    output: GEMINI_36_FLASH_STANDARD_USD.outputPer1m,
+                    usdToEur: USD_TO_EUR,
+                  }
+                : undefined,
           }
         : {}),
     };

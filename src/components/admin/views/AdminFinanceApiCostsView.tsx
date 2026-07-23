@@ -41,8 +41,8 @@ export default function AdminFinanceApiCostsView() {
     label: "",
     cost: "0.01",
     billingMode: "per_request" as ApiBillingMode,
-    inputTokenCost: "0.276",
-    outputTokenCost: "2.30",
+    inputTokenCost: "1.38",
+    outputTokenCost: "6.90",
     notes: "",
   });
   const [message, setMessage] = useState<string | null>(null);
@@ -153,8 +153,8 @@ export default function AdminFinanceApiCostsView() {
         label: "",
         cost: "0.01",
         billingMode: "per_request",
-        inputTokenCost: "0.276",
-        outputTokenCost: "2.30",
+        inputTokenCost: "1.38",
+        outputTokenCost: "6.90",
         notes: "",
       });
       setSettings(body.data.settings);
@@ -175,9 +175,12 @@ export default function AdminFinanceApiCostsView() {
           API-AUSGABEN · PREISE
         </p>
         <p className="mt-2 max-w-3xl text-sm text-white/45">
-          SerpAPI: Preis pro Request. Gemini: Token-basiert über{" "}
-          <span className="text-white/60">usageMetadata</span> (Input-/Output-
-          Tokens × Preis pro 1M Tokens aus diesen Einstellungen).
+          SerpAPI: Preis pro Request. Gemini (3.6 Flash Standard):{" "}
+          <span className="text-white/60">
+            (prompt/1M)×$1,50 + (candidates/1M)×$7,50
+          </span>
+          , im Dashboard als EUR (×0,92 → 1,38 / 6,90 € pro 1M). Preise hier
+          anpassbar.
         </p>
         {message ? (
           <p

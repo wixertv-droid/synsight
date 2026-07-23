@@ -53,15 +53,19 @@ describe("admin finanzen module", () => {
 
 describe("gemini token cost calculation", () => {
   it("calculates cost from prompt/output tokens and 1M prices", async () => {
-    const { calculateTokenCostEur } =
+    const { calculateTokenCostEur, GEMINI_36_FLASH_STANDARD_USD, USD_TO_EUR } =
       await import("@/lib/services/finance-service");
-    // 1500 in + 500 out, €0.14 / €0.55 per 1M
+    // gemini-3.6-flash Standard: $1.50 / $7.50 → EUR @0.92
+    const inputEur = GEMINI_36_FLASH_STANDARD_USD.inputPer1m * USD_TO_EUR;
+    const outputEur = GEMINI_36_FLASH_STANDARD_USD.outputPer1m * USD_TO_EUR;
     const cost = calculateTokenCostEur(
       { promptTokenCount: 1500, candidatesTokenCount: 500 },
-      0.14,
-      0.55
+      inputEur,
+      outputEur
     );
-    // (1500/1e6)*0.14 + (500/1e6)*0.55 = 0.00021 + 0.000275 = 0.000485
-    expect(cost).toBeCloseTo(0.000485, 8);
+    // USD: (1500/1e6)*1.5 + (500/1e6)*7.5 = 0.006; EUR = 0.006*0.92
+    expect(inputEur).toBeCloseTo(1.38, 6);
+    expect(outputEur).toBeCloseTo(6.9, 6);
+    expect(cost).toBeCloseTo(0.00552, 8);
   });
 });

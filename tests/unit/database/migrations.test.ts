@@ -212,5 +212,9 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("`cost_per_1m_output_tokens_eur`");
     expect(sql).toContain("per_token");
     expect(sql).toContain("gemini");
+    expect(sql).toContain("1.380000");
+    expect(sql).toContain("6.900000");
+    expect(sql).toContain("$1.50");
+    expect(sql).toContain("$7.50");
   });
 });

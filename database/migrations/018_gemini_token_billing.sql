@@ -43,11 +43,13 @@ SET @sql := IF(
 );
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
--- Gemini: token-based billing (Gemini 2.5 Flash list ≈ 0.30 / 2.50 USD → EUR @0.92).
+-- Gemini 3.6 Flash Standard Pay-As-You-Go (USD list → EUR @ 0.92):
+-- Input $1.50 / 1M → €1.38 | Output (inkl. Thinking) $7.50 / 1M → €6.90
+-- Formel: (prompt/1M)*1.50 + (candidates/1M)*7.50  [USD], dann × EUR-Kurs
 UPDATE `api_cost_settings`
 SET
   `billing_mode` = 'per_token',
-  `cost_per_1m_input_tokens_eur` = 0.276000,
-  `cost_per_1m_output_tokens_eur` = 2.300000,
-  `notes` = 'Token-basiert: usageMetadata × Preis pro 1M Input/Output-Tokens (Admin anpassbar)'
+  `cost_per_1m_input_tokens_eur` = 1.380000,
+  `cost_per_1m_output_tokens_eur` = 6.900000,
+  `notes` = 'gemini-3.6-flash Standard: $1.50 Input / $7.50 Output pro 1M Tokens → EUR @0.92'
 WHERE `provider_code` = 'gemini';
