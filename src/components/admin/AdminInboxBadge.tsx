@@ -47,7 +47,7 @@ export default function AdminInboxBadge() {
 
   return (
     <Link
-      href="/admin#admin-communications"
+      href="/admin/support/nachrichten"
       className={`relative rounded-lg border px-2.5 py-2 transition sm:px-3 ${
         hasNew
           ? "border-amber-300/30 bg-amber-300/[0.06] hover:border-amber-300/50"

@@ -22,10 +22,77 @@ export interface AdminSystemStats {
   registrationsToday: number;
 }
 
+export interface AdminUserOverviewStats {
+  usersTotal: number;
+  registrationsToday: number;
+  registrationsThisWeek: number;
+  registrationsThisMonth: number;
+  verifiedUsers: number;
+  unverifiedUsers: number;
+  activeUsers: number;
+  blockedUsers: number;
+  lastLoginAt: string | null;
+  administratorsTotal: number;
+  supportStaffTotal: number;
+  moderatorsTotal: number;
+  averageSynCredits: number;
+}
+
+export interface AdminUserListRow extends AdminUserSummary {
+  synCredits: number;
+  riskScore: number | null;
+  verified: boolean;
+}
+
+export interface AdminListUsersParams {
+  query?: string;
+  status?: string;
+  role?: string;
+  sort?: "id" | "created" | "login" | "credits";
+  direction?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminListUsersResult {
+  users: AdminUserListRow[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminSessionRow {
+  id: string;
+  userId: number;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  lastSeenAt: string;
+  revokedAt: string | null;
+}
+
+export interface AdminAuditRow {
+  id: number;
+  userId: number | null;
+  eventType: string;
+  entityType: string | null;
+  entityId: string | null;
+  ipAddress: string | null;
+  metadataJson: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 export interface AdminRepository {
   searchUsers(query: string, limit?: number): Promise<AdminUserSummary[]>;
   findUserById(userId: number): Promise<AdminUserSummary | null>;
   getSystemStats(): Promise<AdminSystemStats>;
+  getUserOverviewStats(): Promise<AdminUserOverviewStats>;
+  listUsers(params: AdminListUsersParams): Promise<AdminListUsersResult>;
+  listUserSessions(userId: number, limit?: number): Promise<AdminSessionRow[]>;
+  listAuditEvents(params: {
+    userId?: number;
+    limit?: number;
+  }): Promise<AdminAuditRow[]>;
 }
 
 type MemoryUser = {
@@ -88,6 +155,51 @@ export function createInMemoryAdminRepository(): AdminRepository {
           .length,
         registrationsToday: users.length,
       };
+    },
+
+    async getUserOverviewStats() {
+      const users = [...(memory.__synsightUsers?.values() ?? [])];
+      return {
+        usersTotal: users.length,
+        registrationsToday: users.length,
+        registrationsThisWeek: users.length,
+        registrationsThisMonth: users.length,
+        verifiedUsers: users.filter((u) => u.status === "active").length,
+        unverifiedUsers: users.filter((u) => u.status !== "active").length,
+        activeUsers: users.filter((u) => u.status === "active").length,
+        blockedUsers: users.filter((u) => u.status === "suspended").length,
+        lastLoginAt: null,
+        administratorsTotal: users.filter((u) => u.role === "admin").length,
+        supportStaffTotal: 0,
+        moderatorsTotal: 0,
+        averageSynCredits: 0,
+      };
+    },
+
+    async listUsers(params) {
+      const all = await this.searchUsers(
+        params.query ?? "",
+        params.limit ?? 50
+      );
+      return {
+        users: all.map((user) => ({
+          ...user,
+          synCredits: 0,
+          riskScore: null,
+          verified: user.status === "active",
+        })),
+        total: all.length,
+        page: params.page ?? 1,
+        limit: params.limit ?? 50,
+      };
+    },
+
+    async listUserSessions() {
+      return [];
+    },
+
+    async listAuditEvents() {
+      return [];
     },
   };
 }

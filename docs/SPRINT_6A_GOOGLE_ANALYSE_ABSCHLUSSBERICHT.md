@@ -69,10 +69,21 @@ Vollständige Überarbeitung der Google-Analyse zu einem professionellen Enterpr
 ## Umweltvariablen
 
 ```bash
+# Fallback, falls Admin noch nicht konfiguriert:
 GOOGLE_CUSTOM_SEARCH_API_KEY=
 GOOGLE_CUSTOM_SEARCH_ENGINE_ID=
-GEMINI_API_KEY=   # optional
+GEMINI_API_KEY=
 ```
+
+**Bevorzugt:** Admin Control Center → **API-Verwaltung**
+
+| Feld                  | Inhalt                                      |
+| --------------------- | ------------------------------------------- |
+| Custom Search API Key | Ihr Google CSE API-Key                      |
+| Search Engine ID (cx) | z. B. `0728bba0e53574410` aus `cse.js?cx=…` |
+| Gemini API Key        | Optional für KI-Zusammenfassung             |
+
+Schlüssel werden AES-256-GCM verschlüsselt in `api_credentials` gespeichert (Migration 014).
 
 ---
 

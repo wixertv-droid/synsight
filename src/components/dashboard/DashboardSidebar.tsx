@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import BrandLogo from "@/components/ui/BrandLogo";
 import StatusDot from "@/components/ui/StatusDot";
 import LogoutButton from "@/components/dashboard/LogoutButton";
+import AdminMainSidebarLinks from "@/components/admin/layout/AdminMainSidebarLinks";
 import { getInitials } from "@/lib/utils/strings";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 
@@ -157,48 +158,7 @@ export default function DashboardSidebar({
             );
           })}
           {user.role === "admin" ? (
-            <>
-              <Link
-                href="/admin"
-                onClick={onClose}
-                className={`group mt-3 flex items-center gap-3 rounded-xl border px-3 py-3 transition-all duration-300 ${
-                  pathname === "/admin" || pathname.startsWith("/admin/")
-                    ? "border-cyber-cyan/25 bg-cyber-cyan/[0.075] text-white/90"
-                    : "border-cyber-cyan/10 bg-cyber-cyan/[0.025] text-cyber-cyan/55 hover:border-cyber-cyan/25 hover:text-cyber-cyan/80"
-                }`}
-              >
-                <span className="font-mono text-[8px] text-cyber-cyan/40">
-                  A1
-                </span>
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4 flex-none"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.35"
-                >
-                  <path d="M12 3 4 7v5c0 5 3.4 8 8 9 4.6-1 8-4 8-9V7l-8-4zm-3 9 2 2 4-5" />
-                </svg>
-                <span className="text-xs">Administration</span>
-                {(pathname === "/admin" || pathname.startsWith("/admin/")) && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cyber-cyan shadow-[0_0_8px_rgba(112,231,255,.45)]" />
-                )}
-              </Link>
-              <Link
-                href="/admin#pricing-management"
-                onClick={onClose}
-                className="ml-8 flex items-center gap-2 rounded-lg px-3 py-2 font-mono text-[8px] tracking-[.1em] text-cyber-cyan/40 transition hover:bg-cyber-cyan/[0.04] hover:text-cyber-cyan/75"
-              >
-                A2 / PREISVERWALTUNG
-              </Link>
-              <Link
-                href="/admin#promotions-management"
-                onClick={onClose}
-                className="ml-8 flex items-center gap-2 rounded-lg px-3 py-2 font-mono text-[8px] tracking-[.1em] text-cyber-cyan/40 transition hover:bg-cyber-cyan/[0.04] hover:text-cyber-cyan/75"
-              >
-                A3 / PROMOTIONEN
-              </Link>
-            </>
+            <AdminMainSidebarLinks onNavigate={onClose} />
           ) : null}
         </nav>
 

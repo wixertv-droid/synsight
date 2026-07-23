@@ -22,8 +22,8 @@ describe("database migrations workflow", () => {
       "010_promotions.sql",
       "011_company_communications.sql",
       "012_mobile_upload_token.sql",
-      "013_intelligence_reports.sql",
-      "014_api_credentials.sql",
+      "013_admin_platform_settings.sql",
+      "014_intelligence_reports.sql",
     ]);
   });
 
@@ -147,5 +147,23 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("contact@synsight.de");
     expect(sql).toContain("press@synsight.de");
     expect(sql).toContain("partners@synsight.de");
+  });
+
+  it("adds platform settings and api credentials in 013", () => {
+    const sql = readFileSync(
+      path.join(dir, "013_admin_platform_settings.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `platform_settings`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `api_credentials`");
+  });
+
+  it("adds intelligence reports persistence in 015", () => {
+    const sql = readFileSync(
+      path.join(dir, "014_intelligence_reports.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `intelligence_reports`");
+    expect(sql).toContain("`report_json`");
   });
 });

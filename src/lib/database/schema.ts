@@ -1076,6 +1076,48 @@ export const pressRequests = mysqlTable(
   ]
 );
 
+export const platformSettings = mysqlTable("platform_settings", {
+  id: int("id", { unsigned: true }).primaryKey().default(1),
+  settingsJson: json("settings_json").notNull(),
+  updatedByAdminId: bigint("updated_by_admin_id", {
+    mode: "number",
+    unsigned: true,
+  }),
+  updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP(3)`)
+    .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+});
+
+export const apiCredentials = mysqlTable(
+  "api_credentials",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    provider: varchar("provider", { length: 64 }).notNull(),
+    label: varchar("label", { length: 150 }).notNull(),
+    encryptedSecret: text("encrypted_secret").notNull(),
+    configJson: json("config_json"),
+    isActive: boolean("is_active").notNull().default(true),
+    lastSuccessAt: timestamp("last_success_at", { mode: "string", fsp: 3 }),
+    lastErrorAt: timestamp("last_error_at", { mode: "string", fsp: 3 }),
+    lastErrorMessage: text("last_error_message"),
+    updatedByAdminId: bigint("updated_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [uniqueIndex("api_credentials_provider_unique").on(table.provider)]
+);
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(profiles, {
     fields: [users.id],
@@ -1129,35 +1171,6 @@ export const intelligenceReports = mysqlTable(
     ),
     index("intelligence_reports_user_id_idx").on(table.userId),
   ]
-);
-
-export const apiCredentials = mysqlTable(
-  "api_credentials",
-  {
-    id: bigint("id", { mode: "number", unsigned: true })
-      .primaryKey()
-      .autoincrement(),
-    provider: varchar("provider", { length: 64 }).notNull(),
-    label: varchar("label", { length: 150 }).notNull(),
-    encryptedSecret: text("encrypted_secret").notNull(),
-    configJson: json("config_json"),
-    isActive: boolean("is_active").notNull().default(true),
-    lastSuccessAt: timestamp("last_success_at", { mode: "string", fsp: 3 }),
-    lastErrorAt: timestamp("last_error_at", { mode: "string", fsp: 3 }),
-    lastErrorMessage: text("last_error_message"),
-    updatedByAdminId: bigint("updated_by_admin_id", {
-      mode: "number",
-      unsigned: true,
-    }),
-    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP(3)`),
-    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP(3)`)
-      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
-  },
-  (table) => [uniqueIndex("api_credentials_provider_unique").on(table.provider)]
 );
 
 export type DbUser = typeof users.$inferSelect;

@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getAdminAccess } from "@/lib/admin/access";
 import {
-  listApiCredentials,
-  upsertApiCredential,
-} from "@/lib/services/api-credentials-service";
-import { upsertApiCredentialSchema } from "@/lib/validation/api-credentials";
+  listAdminApiCredentials,
+  setAdminApiCredentialActive,
+  upsertAdminApiCredential,
+} from "@/lib/services/admin-platform-service";
+import { adminApiCredentialSchema } from "@/lib/validation/admin-platform";
 import { validateMutationOrigin } from "@/lib/security/request";
 
 function denied(status: 401 | 403) {
@@ -23,7 +24,7 @@ function denied(status: 401 | 403) {
 export async function GET() {
   const access = await getAdminAccess();
   if (!access.granted) return denied(access.status);
-  const credentials = await listApiCredentials(access.user);
+  const credentials = await listAdminApiCredentials(access.user);
   return NextResponse.json(apiSuccess({ credentials }));
 }
 
@@ -33,7 +34,7 @@ export async function PUT(request: Request) {
   const access = await getAdminAccess();
   if (!access.granted) return denied(access.status);
 
-  const parsed = upsertApiCredentialSchema.safeParse(
+  const parsed = adminApiCredentialSchema.safeParse(
     await request.json().catch(() => null)
   );
   if (!parsed.success) {
@@ -46,18 +47,30 @@ export async function PUT(request: Request) {
     );
   }
 
-  if (
-    parsed.data.provider === "google_custom_search" &&
-    parsed.data.secret &&
-    !parsed.data.engineId
-  ) {
-    // Allow update of secret without engineId if engine already stored —
-    // service keeps existing engineId when undefined. Require engineId only
-    // when creating fresh; validated in service via existing row.
+  if (parsed.data.action === "toggle") {
+    const credential = await setAdminApiCredentialActive(
+      access.user,
+      parsed.data.provider,
+      parsed.data.isActive
+    );
+    if (!credential) {
+      return NextResponse.json(
+        apiError("NOT_FOUND", "API-Anbieter ist noch nicht konfiguriert."),
+        { status: 404 }
+      );
+    }
+    return NextResponse.json(apiSuccess({ credential }));
   }
 
   try {
-    const credential = await upsertApiCredential(access.user, parsed.data);
+    const credential = await upsertAdminApiCredential(access.user, {
+      provider: parsed.data.provider,
+      label: parsed.data.label,
+      secret: parsed.data.secret,
+      engineId: parsed.data.engineId,
+      isActive: parsed.data.isActive,
+    });
+
     if (
       parsed.data.provider === "google_custom_search" &&
       !credential.engineId
@@ -70,6 +83,7 @@ export async function PUT(request: Request) {
         { status: 400 }
       );
     }
+
     return NextResponse.json(apiSuccess({ credential }));
   } catch (error) {
     if (error instanceof Error && error.message === "SECRET_REQUIRED") {
