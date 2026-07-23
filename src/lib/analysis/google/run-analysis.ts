@@ -493,7 +493,7 @@ async function buildReportRecommendations(
 
   if (actionHits.length > 0) {
     recs.push({
-      title: "Sensible Google-Treffer prüfen",
+      title: "Kritische Treffer prüfen",
       detail: `${actionHits.length} Treffer enthalten Hinweise auf Kontaktdaten oder Verzeichniseinträge.`,
       why: "Öffentlich indexierte Kontaktdaten erhöhen das Risiko für Spam, Social Engineering und Identitätsmissbrauch.",
       danger:

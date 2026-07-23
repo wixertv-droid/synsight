@@ -1,0 +1,34 @@
+# Google Report Text — Abschlussbericht
+
+**Branch:** `cursor/google-report-text-fix-7c12`  
+**Basis:** `cursor/admin-finanzen-7c12`  
+**Status:** Implementiert
+
+## Behoben
+
+1. **„Als Erstes tun“** — Text wurde mit `.slice(0, 28)` abgeschnitten
+   (`Sensible Google-Treffer prüf .`). Jetzt vollständiger Titel, Empfehlung
+   heißt klar **„Kritische Treffer prüfen“**.
+2. **KI-Lagebild** — abgeschnittene Gemini-Antworten (z. B. `(Ris`):
+   mehr Output-Tokens, klarerer Prompt ohne Markdown, Sanitizer für
+   unvollständige Enden; Anzeige bereinigt vorhandene Reports.
+3. **Analyse-Zusammenfassung** — in verständliche Kurzabschnitte umgeschrieben
+   (Kurz gesagt → Was betrifft Sie → Risiko → Empfehlung).
+
+## Deploy
+
+```bash
+cd /opt/synsight
+git fetch origin
+git reset --hard origin/cursor/google-report-text-fix-7c12
+rm -rf node_modules .next
+npm ci
+DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run db:migrate
+DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run build
+pm2 restart ecosystem.config.cjs --update-env
+```
+
+Hinweis: Für ein frisches KI-Lagebild die Google-Analyse einmal neu starten.
+Die Analyse-Zusammenfassung wird auch für gespeicherte Reports neu berechnet,
+sofern kein alter `analysisSummary`-String erzwungen wird — nach Neuanalyse
+sind alle Texte aktuell.

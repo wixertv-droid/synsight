@@ -16,6 +16,7 @@ import {
   riskToSeverity,
   type HitSeverity,
 } from "@/lib/analysis/hit-intel";
+import { sanitizeAiSummary } from "@/lib/analysis/ai-summary-text";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import {
   retentionLabel,
@@ -81,9 +82,12 @@ export default function GoogleIntelligenceReport({
       (hit) => hit.sourceType === "identity_profile"
     );
     const scorecard = report.scorecard ?? buildReportScorecard(enriched);
-    const analysisSummary =
-      report.analysisSummary ??
-      buildStructuredAnalysisSummary(report.subjectName, enriched, scorecard);
+    // Always rebuild for current wording (stored text may be outdated).
+    const analysisSummary = buildStructuredAnalysisSummary(
+      report.subjectName,
+      enriched,
+      scorecard
+    );
 
     const severityCounts = {
       all: liveHits.length,
@@ -200,6 +204,13 @@ export default function GoogleIntelligenceReport({
     : "Unbegrenzt";
 
   const firstAction = recommendations.find((item) => item.priority === "Jetzt");
+  const firstActionLabel = (() => {
+    const title = firstAction?.title?.trim() || "";
+    if (!title) return "Beobachten";
+    if (/Sensible Google-Treffer/i.test(title))
+      return "Kritische Treffer prüfen";
+    return title;
+  })();
 
   return (
     <div className="space-y-6">
@@ -228,7 +239,7 @@ export default function GoogleIntelligenceReport({
               },
               {
                 label: "Als Erstes tun",
-                value: firstAction?.title?.slice(0, 28) ?? "Beobachten",
+                value: firstActionLabel,
               },
             ].map((item) => (
               <div
@@ -238,7 +249,13 @@ export default function GoogleIntelligenceReport({
                 <p className="font-mono text-[7px] tracking-[.12em] text-white/30">
                   {item.label.toUpperCase()}
                 </p>
-                <p className="mt-1 text-lg font-semibold leading-snug text-cyber-cyan/90">
+                <p
+                  className={`mt-1 font-semibold leading-snug text-cyber-cyan/90 ${
+                    item.label === "Als Erstes tun"
+                      ? "text-[15px] md:text-base"
+                      : "text-lg"
+                  }`}
+                >
                   {item.value}
                 </p>
               </div>
@@ -263,7 +280,7 @@ export default function GoogleIntelligenceReport({
           <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
             ANALYSE-ZUSAMMENFASSUNG
           </p>
-          <p className="mt-3 text-sm leading-relaxed text-white/70">
+          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-white/70">
             {analysisSummary}
           </p>
           {report.aiSummary ? (
@@ -271,8 +288,8 @@ export default function GoogleIntelligenceReport({
               <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
                 KI-LAGEBILD
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-white/55">
-                {report.aiSummary}
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-white/55">
+                {sanitizeAiSummary(report.aiSummary)}
               </p>
             </div>
           ) : null}

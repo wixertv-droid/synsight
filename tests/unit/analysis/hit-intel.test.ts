@@ -95,7 +95,9 @@ describe("hit intel enrichment", () => {
       hits,
       scorecard
     );
-    expect(summary).toMatch(/gefundenen Treffern/i);
+    expect(summary).toMatch(/Kurz gesagt/i);
+    expect(summary).toMatch(/öffentlichen Google-Treffern/i);
     expect(summary).toMatch(/Rene Eule/);
+    expect(summary).toMatch(/Empfehlung/i);
   });
 });

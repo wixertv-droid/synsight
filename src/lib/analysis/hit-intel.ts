@@ -445,11 +445,67 @@ export function buildStructuredAnalysisSummary(
   const other = Math.max(0, likely.length - social - forums - websites);
   const weak = live.length - likely.length;
 
-  return `Von ${live.length} gefundenen Treffern konnten ${likely.length} mit hoher Wahrscheinlichkeit der digitalen Identität von ${subjectName} zugeordnet werden. Davon enthalten ${social} öffentlich sichtbare Social-Media-Bezüge, ${forums} Foreneinträge und ${websites} Webseiten mit personenbezogenen Signalen${other > 0 ? ` sowie ${other} weitere Zuordnungen` : ""}. ${
-    weak > 0
-      ? `Die übrigen ${weak} Treffer sind überwiegend Namensgleichheiten oder thematisch ähnliche Inhalte und stellen aktuell kein relevantes Risiko dar.`
-      : "Schwache oder unklare Treffer wurden weitgehend herausgefiltert."
-  } Gesamt-Score ${scorecard.overallScore}/100 · Identitätsrisiko ${scorecard.identityRisk} % · ${scorecard.criticalCount} kritisch, ${scorecard.highCount} hoch.`;
+  const riskLabel =
+    scorecard.identityRisk >= 70
+      ? "hoch"
+      : scorecard.identityRisk >= 40
+        ? "mittel"
+        : "niedrig";
+
+  const lines: string[] = [];
+
+  lines.push(
+    `Kurz gesagt: Von ${live.length} öffentlichen Google-Treffern gehören ${likely.length} sehr wahrscheinlich zu ${subjectName}.`
+  );
+
+  if (likely.length === 0) {
+    lines.push(
+      "Es wurden keine klar zuordenbaren Treffer gefunden. Das ist gut — aktuell wirkt Ihre digitale Spur auf Google eher unauffällig."
+    );
+  } else {
+    const parts: string[] = [];
+    if (social > 0) {
+      parts.push(`${social}× Social Media (z. B. Profile oder Erwähnungen)`);
+    }
+    if (forums > 0) {
+      parts.push(`${forums}× Foren oder Diskussionsbeiträge`);
+    }
+    if (websites > 0) {
+      parts.push(`${websites}× Webseiten mit personenbezogenen Hinweisen`);
+    }
+    if (other > 0) {
+      parts.push(`${other}× weitere Treffer`);
+    }
+    if (parts.length > 0) {
+      lines.push(`Davon betreffen Sie besonders: ${parts.join(", ")}.`);
+    }
+  }
+
+  if (weak > 0) {
+    lines.push(
+      `${weak} weitere Treffer sind eher Namensvettern oder ähnliche Themen — für Sie aktuell kein akutes Risiko.`
+    );
+  }
+
+  lines.push(
+    `Risiko-Einschätzung: ${riskLabel} (Gesamt-Score ${scorecard.overallScore} von 100). ${scorecard.criticalCount} Treffer sind kritisch und ${scorecard.highCount} hoch priorisiert.`
+  );
+
+  if (scorecard.criticalCount > 0) {
+    lines.push(
+      "Empfehlung: Öffnen Sie zuerst die kritischen Treffer und prüfen Sie, ob dort private Daten (Telefon, Adresse, E-Mail) sichtbar sind."
+    );
+  } else if (likely.length > 0) {
+    lines.push(
+      "Empfehlung: Schauen Sie die Treffer unter „Betrifft mich“ an und entscheiden Sie, was öffentlich bleiben soll."
+    );
+  } else {
+    lines.push(
+      "Empfehlung: Profil weiter vervollständigen und die Analyse später wiederholen."
+    );
+  }
+
+  return lines.join("\n\n");
 }
 
 export function isLikelyIdentityHit(hit: IntelligenceHit): boolean {

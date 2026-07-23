@@ -1,10 +1,13 @@
 import type { IntelligenceReport } from "@/lib/analysis/types";
+import { sanitizeAiSummary } from "@/lib/analysis/ai-summary-text";
 import {
   markApiCredentialError,
   markApiCredentialSuccess,
   resolveGeminiCredentials,
 } from "@/lib/services/api-credentials-service";
 import { recordApiUsageEvent } from "@/lib/services/finance-service";
+
+export { sanitizeAiSummary } from "@/lib/analysis/ai-summary-text";
 
 /**
  * Optional Gemini summary — only summarizes verified hits.
@@ -38,22 +41,28 @@ export async function summarizeWithGemini(
     })),
   };
 
-  const prompt = `Du bist ein OSINT-Analyst für SynSight. Erstelle eine kurze, professionelle Management-Zusammenfassung auf Deutsch.
+  const prompt = `Du bist ein Sicherheitsberater für Privatpersonen. Schreibe ein kurzes KI-Lagebild auf Deutsch.
+
 Regeln:
 - Nutze AUSSCHLIESSLICH die gelieferten Treffer.
 - Erfinde keine URLs, Profile, Telefonnummern oder E-Mails.
-- Wenn keine Treffer vorhanden sind, sage klar, dass nichts gefunden wurde.
-- Maximal 180 Wörter.
-- Struktur: Kurzer Befund, Hauptrisiken, empfohlene nächste Schritte.
+- Kein Markdown, keine Sternchen, keine Aufzählungszeichen mit **.
+- Schreibe so, dass Laien sofort verstehen, was gemeint ist.
+- Maximal 120 Wörter, 3 kurze Absätze:
+  1) Was wurde gefunden?
+  2) Was bedeutet das für die Person?
+  3) Was sollte als Nächstes getan werden?
+- Wenn keine Treffer vorhanden sind, sage klar, dass nichts Relevantes gefunden wurde.
+- Beende jeden Absatz mit einem vollständigen Satz.
 
 Daten:
 ${JSON.stringify(payload)}`;
 
   const models = [
-    "gemini-3.6-flash",
     "gemini-2.5-flash",
     "gemini-flash-latest",
     "gemini-2.0-flash",
+    "gemini-1.5-flash",
   ];
   let lastError = "gemini failed";
   let attempts = 0;
@@ -70,7 +79,7 @@ ${JSON.stringify(payload)}`;
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.2,
-              maxOutputTokens: 500,
+              maxOutputTokens: 2048,
             },
           }),
         }
@@ -83,11 +92,18 @@ ${JSON.stringify(payload)}`;
       }
       const body = (await response.json()) as {
         candidates?: Array<{
+          finishReason?: string;
           content?: { parts?: Array<{ text?: string }> };
         }>;
       };
-      const text = body.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      const candidate = body.candidates?.[0];
+      const text = candidate?.content?.parts?.[0]?.text?.trim();
       if (text) {
+        const sanitized = sanitizeAiSummary(text);
+        if (candidate?.finishReason === "MAX_TOKENS" && sanitized.length < 80) {
+          lastError = "MAX_TOKENS truncation";
+          continue;
+        }
         await markApiCredentialSuccess("gemini");
         await recordApiUsageEvent({
           providerCode: "gemini",
@@ -101,9 +117,10 @@ ${JSON.stringify(payload)}`;
             attempts,
             hitCount: verified.length,
             subjectName: report.subjectName,
+            finishReason: candidate?.finishReason ?? null,
           },
         });
-        return text;
+        return sanitized;
       }
     } catch (error) {
       lastError = error instanceof Error ? error.message : "gemini failed";
