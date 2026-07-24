@@ -34,6 +34,10 @@ import {
 import { summarizeWithGemini } from "@/lib/analysis/gemini-summary";
 import type { IdentityView } from "@/lib/services/identity-service";
 import { recordApiUsageEvent } from "@/lib/services/finance-service";
+import {
+  dedupeHitsByUrl,
+  verifyAndPartitionHits,
+} from "@/lib/analysis/osint/result-verifier";
 
 async function mapPool<T, R>(
   items: T[],
@@ -75,8 +79,9 @@ function inferCategory(query: string, label: string): string {
   if (label === "Firma") return "company";
   if (label === "Alias") return "alias";
   if (label === "Website" || lower.startsWith("site:")) return "website";
+  if (label === "Name + Wohnort" || label === "Name") return "name";
+  if (label === "Name + Firma") return "company";
   if (label === "Ort / Adresse") return "address";
-  if (label === "Name") return "name";
   return "general";
 }
 
@@ -281,31 +286,50 @@ export async function runGoogleIntelligenceAnalysis(
   const serpHits: IntelligenceHit[] = [];
   let hitSeq = 0;
   const analysisRef = `google-analysis:${options?.userId ?? "anon"}:${Date.now()}`;
-  let serpRequestCount = 0;
   let serpSuccessCount = 0;
 
   if (apiConfigured) {
-    const batches = await mapPool(queries, 3, async (plan) => {
+    const batches = await mapPool(queries, 2, async (plan) => {
       try {
+        const { getCachedSearchResults, setCachedSearchResults } =
+          await import("@/lib/analysis/osint/search-cache");
+        const cached = getCachedSearchResults(plan.query);
+        if (cached) {
+          return {
+            plan,
+            items: cached,
+            ok: true as const,
+            fromCache: true as const,
+          };
+        }
         const items = await fetchGoogleSearch(plan.query, {
           // One finance event for the whole analysis (see below).
           recordFinance: false,
           userId: options?.userId ?? null,
           referenceKey: `${analysisRef}:${plan.id}`,
         });
-        return { plan, items, ok: true as const };
+        setCachedSearchResults(plan.query, items);
+        return {
+          plan,
+          items,
+          ok: true as const,
+          fromCache: false as const,
+        };
       } catch (error) {
         console.error("[google-analysis] query failed", plan.id, error);
         return {
           plan,
           items: [] as Awaited<ReturnType<typeof fetchGoogleSearch>>,
           ok: false as const,
+          fromCache: false as const,
         };
       }
     });
 
-    serpRequestCount = batches.length;
-    serpSuccessCount = batches.filter((batch) => batch.ok).length;
+    serpSuccessCount = batches.filter(
+      (batch) => batch.ok && !batch.fromCache
+    ).length;
+    const plannedCount = batches.length;
 
     for (const { plan, items } of batches) {
       for (const item of items) {
@@ -366,17 +390,19 @@ export async function runGoogleIntelligenceAnalysis(
         userId: options?.userId ?? null,
         requestCount: serpSuccessCount,
         success: true,
-        detail: `Google-Analyse · ${subjectName} · ${serpSuccessCount}/${serpRequestCount} erfolgreiche SerpAPI-Suchen`,
+        detail: `Google-Analyse · ${subjectName} · ${serpSuccessCount} SerpAPI-Calls / ${plannedCount} Queries`,
         metaJson: {
           subjectName,
           analysisRef,
-          requestCount: serpRequestCount,
+          requestCount: plannedCount,
           billableCount: serpSuccessCount,
           successCount: serpSuccessCount,
-          failedCount: Math.max(0, serpRequestCount - serpSuccessCount),
+          failedCount: batches.filter((batch) => !batch.ok).length,
+          cacheHits: batches.filter((batch) => batch.fromCache).length,
           hitCount: serpHits.length,
           unitPriceUsd: 0.025,
           unitPriceEurNote: "$0.025 × 0.92 ≈ €0.023",
+          maxQueries: 5,
           queries: queries.map((plan) => ({
             id: plan.id,
             label: plan.label,
@@ -391,6 +417,8 @@ export async function runGoogleIntelligenceAnalysis(
   const refinedSerp = refineSerpHits(serpHits, subjectName);
   const intelContext = {
     subjectName,
+    firstName: identity?.personal.firstName ?? "",
+    lastName: identity?.personal.lastName ?? "",
     location:
       identity?.personal.location || identity?.personal.addressLine || "",
     company: identity?.personal.company || identity?.companies?.[0] || "",
@@ -399,10 +427,22 @@ export async function runGoogleIntelligenceAnalysis(
       identity?.personal.phone ?? "",
       ...(identity?.phoneNumbers ?? []),
     ].filter(Boolean),
+    aliases: [
+      identity?.aliases.publicAlias ?? "",
+      ...(identity?.aliases.usernames ?? []),
+      ...(identity?.aliases.nicknames ?? []),
+      ...(identity?.aliases.gamingNames ?? []),
+      ...(identity?.aliases.formerNames ?? []),
+    ].filter(Boolean),
   };
-  const hits = [...refinedSerp, ...profileHits].map((hit) =>
-    enrichHitIntel(hit, intelContext)
+  const enrichedAll = dedupeHitsByUrl(
+    [...refinedSerp, ...profileHits].map((hit) =>
+      enrichHitIntel(hit, intelContext)
+    )
   );
+
+  const partitioned = verifyAndPartitionHits(enrichedAll);
+  const hits = partitioned.displayHits;
   const buckets = summarizeBuckets(
     hits.filter((h) => h.sourceType === "serpapi_google")
   );
@@ -415,7 +455,9 @@ export async function runGoogleIntelligenceAnalysis(
     scorecard
   );
 
-  const serpCount = refinedSerp.length;
+  const serpCount = partitioned.verified.filter(
+    (h) => h.sourceType === "serpapi_google"
+  ).length;
   const summaryText =
     serpCount > 0
       ? `Live-OSINT abgeschlossen: ${serpCount} relevante öffentliche Google-Treffer zu ${subjectName} ausgewertet.`

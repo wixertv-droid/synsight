@@ -11,7 +11,12 @@ import SystemRail, {
   type SystemRailSection,
 } from "@/components/layout/SystemRail";
 import InfoTooltip from "@/components/ui/InfoTooltip";
+import AiSummaryWithLinks from "@/components/analysis/intelligence/AiSummaryWithLinks";
 import { sanitizeAiSummary } from "@/lib/analysis/ai-summary-text";
+import {
+  POSSIBLE_CONFIDENCE_MIN,
+  VERIFIED_CONFIDENCE_MIN,
+} from "@/lib/analysis/osint/result-verifier";
 import {
   buildReportScorecard,
   buildStructuredAnalysisSummary,
@@ -81,6 +86,7 @@ export default function GoogleIntelligenceReport({
 }) {
   const report = normalizeIntelligenceReport(rawReport);
   const [queriesOpen, setQueriesOpen] = useState(false);
+  const [possibleOpen, setPossibleOpen] = useState(false);
   const [severityFilter, setSeverityFilter] = useState<"all" | HitSeverity>(
     "all"
   );
@@ -131,7 +137,17 @@ export default function GoogleIntelligenceReport({
       {} as Record<string, number>
     );
 
-    const filtered = liveHits.filter((hit) => {
+    const verifiedLive = liveHits.filter(
+      (hit) => (hit.identityConfidence ?? 0) >= VERIFIED_CONFIDENCE_MIN
+    );
+    const possibleLive = liveHits.filter((hit) => {
+      const score = hit.identityConfidence ?? 0;
+      return (
+        score >= POSSIBLE_CONFIDENCE_MIN && score < VERIFIED_CONFIDENCE_MIN
+      );
+    });
+
+    const filtered = verifiedLive.filter((hit) => {
       const severity = hit.severity ?? riskToSeverity(hit.risk);
       if (severityFilter !== "all" && severity !== severityFilter) return false;
       if (categoryFilter === "all") return true;
@@ -166,7 +182,7 @@ export default function GoogleIntelligenceReport({
       },
       {
         id: "rest",
-        title: "Weitere Treffer",
+        title: "Weitere verifizierte Treffer",
         hits: filtered.filter(
           (hit) => hit.severity !== "critical" && hit.severity !== "high"
         ),
@@ -176,6 +192,8 @@ export default function GoogleIntelligenceReport({
     return {
       enriched,
       liveHits,
+      verifiedLive,
+      possibleLive,
       profileHits,
       scorecard,
       analysisSummary,
@@ -198,6 +216,7 @@ export default function GoogleIntelligenceReport({
 
   const {
     liveHits,
+    possibleLive,
     profileHits,
     scorecard,
     analysisSummary,
@@ -311,8 +330,10 @@ export default function GoogleIntelligenceReport({
                   <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
                     KI-LAGEBILD
                   </p>
-                  <div className="mt-2 max-h-none overflow-visible whitespace-pre-line text-sm leading-relaxed text-white/55">
-                    {sanitizeAiSummary(report.aiSummary)}
+                  <div className="mt-2 max-h-none overflow-visible">
+                    <AiSummaryWithLinks
+                      text={sanitizeAiSummary(report.aiSummary)}
+                    />
                   </div>
                 </div>
               ) : null}
@@ -440,8 +461,8 @@ export default function GoogleIntelligenceReport({
                       CLEAR CHANNEL
                     </p>
                     <p className="mt-3 text-sm text-white/50">
-                      Keine Treffer für diesen Filter. Filter zurücksetzen oder
-                      Analyse erneut starten.
+                      Keine verifizierten Treffer (Confidence ≥ 70 %) für diesen
+                      Filter. Filter zurücksetzen oder Analyse erneut starten.
                     </p>
                   </div>
                 ) : (
@@ -460,6 +481,35 @@ export default function GoogleIntelligenceReport({
                     </section>
                   ))
                 )}
+
+                {possibleLive.length > 0 &&
+                severityFilter === "all" &&
+                categoryFilter === "all" ? (
+                  <section className="rounded-xl border border-white/[0.07] bg-white/[0.015]">
+                    <button
+                      type="button"
+                      onClick={() => setPossibleOpen((open) => !open)}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                      aria-expanded={possibleOpen}
+                    >
+                      <h3 className="font-mono text-[9px] tracking-[.16em] text-white/35">
+                        MÖGLICHE WEITERE TREFFER · {possibleLive.length}
+                      </h3>
+                      <span className="font-mono text-[10px] text-cyber-cyan/70">
+                        {possibleOpen ? "ZUKLAPPEN" : "AUFKLAPPEN"}
+                      </span>
+                    </button>
+                    {possibleOpen ? (
+                      <ul className="space-y-3 px-4 pb-4">
+                        {possibleLive.map((hit) => (
+                          <li key={hit.id}>
+                            <IntelligenceHitCard hit={hit} />
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </section>
+                ) : null}
 
                 {profileHits.length > 0 &&
                 severityFilter === "all" &&

@@ -262,6 +262,21 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
           </div>
         </section>
 
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-white/35">
+          <span>Quelle · {hit.source || "unbekannt"}</span>
+          <span className="text-white/15">·</span>
+          <span>
+            Erkennung ·{" "}
+            {new Intl.DateTimeFormat("de-DE", {
+              dateStyle: "short",
+              timeStyle: "short",
+              timeZone: "Europe/Berlin",
+            }).format(new Date(hit.fetchedAt))}
+          </span>
+          <span className="text-white/15">·</span>
+          <span>Confidence · {confidence} %</span>
+        </div>
+
         <div className="flex flex-wrap gap-2">
           {hasUrl ? (
             <a
@@ -270,7 +285,7 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
               rel="noopener noreferrer"
               className="rounded-lg border border-cyber-cyan/35 bg-cyber-cyan/[0.08] px-3 py-1.5 text-[11px] text-cyber-cyan"
             >
-              Quelle öffnen
+              Original öffnen
             </a>
           ) : null}
           <button

@@ -35,21 +35,17 @@ describe("sanitizeAiSummary", () => {
     expect(result).not.toMatch(/\(Ris/);
   });
 
-  it("removes banned Management/Befund headings", () => {
+  it("preserves Sprint-6B section headings and markdown links", () => {
     const input = [
-      "Management-Zusammenfassung",
+      "1. Management-Zusammenfassung",
+      "Kurzüberblick zur Person.",
       "",
-      "Befund",
-      "",
-      "Zu der Person wurden mehrere öffentliche Treffer gefunden. Das Lagebild ist überschaubar.",
-      "",
-      "Als Nächstes sollten kritische Treffer geprüft werden.",
+      "3. Bestätigte öffentliche Profile",
+      "- [Steam](https://steamcommunity.com/id/demo) — Profil",
     ].join("\n");
     const result = sanitizeAiSummary(input);
-    expect(result).not.toMatch(/Management-Zusammenfassung/i);
-    expect(result).not.toMatch(/^Befund$/im);
-    expect(result).toContain("mehrere öffentliche Treffer");
-    expect(result).toContain("kritische Treffer");
+    expect(result).toContain("Management-Zusammenfassung");
+    expect(result).toContain("[Steam](https://steamcommunity.com/id/demo)");
   });
 
   it("detects incomplete truncated summaries", () => {

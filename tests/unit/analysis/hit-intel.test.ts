@@ -43,9 +43,11 @@ describe("hit intel enrichment", () => {
     });
     expect(enriched.identityConfidence ?? 0).toBeGreaterThanOrEqual(70);
     expect(enriched.severity).toBe("critical");
-    expect(enriched.aiEvaluation?.reasons.some((r) => /Name/.test(r))).toBe(
-      true
-    );
+    expect(
+      enriched.aiEvaluation?.reasons.some((r) =>
+        /Vorname|Nachname|Name/.test(r)
+      )
+    ).toBe(true);
     expect(
       enriched.aiEvaluation?.reasons.some((r) => /Ort|Wohnort/.test(r))
     ).toBe(true);

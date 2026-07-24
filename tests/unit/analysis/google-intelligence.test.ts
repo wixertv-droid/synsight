@@ -52,8 +52,9 @@ function sampleIdentity(): IdentityView {
 }
 
 describe("buildGoogleQueriesFromIdentity", () => {
-  it("builds queries only from profile fields", () => {
+  it("builds at most 5 queries only from profile fields", () => {
     const queries = buildGoogleQueriesFromIdentity(sampleIdentity());
+    expect(queries.length).toBeLessThanOrEqual(5);
     const joined = queries.map((q) => q.query).join(" ");
     expect(joined).toContain("Anna Beispiel");
     expect(joined).toContain("anna@beispiel.de");

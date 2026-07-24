@@ -4,6 +4,10 @@ import {
   sanitizeAiSummary,
 } from "@/lib/analysis/ai-summary-text";
 import {
+  buildVerifiedGeminiPayload,
+  postProcessGeminiSummary,
+} from "@/lib/analysis/osint/gemini-summary-builder";
+import {
   markApiCredentialError,
   markApiCredentialSuccess,
   resolveGeminiCredentials,
@@ -72,23 +76,18 @@ function extractCandidateText(
 function generationConfigForModel(model: string): Record<string, unknown> {
   const isGemini3 = /gemini-3/i.test(model);
   const config: Record<string, unknown> = {
-    // Thinking + Antwort teilen sich das Limit — großzügig bemessen.
     maxOutputTokens: 8192,
   };
   if (isGemini3) {
-    // Default „medium“ Thinking frisst oft das sichtbare Lagebild weg.
     config.thinkingConfig = { thinkingLevel: "minimal" };
   } else {
-    config.temperature = 0.25;
+    config.temperature = 0.2;
   }
   return config;
 }
 
 /**
- * Optional Gemini summary — only summarizes verified hits.
- * Never invents findings. Returns null if API is unavailable.
- * Credentials: Admin DB first, then env GEMINI_API_KEY.
- * Costs: usageMetadata tokens × Admin Finanzen Token-Preise.
+ * Gemini KI-Lagebild — nur verifizierte Treffer (Confidence >= 70).
  */
 export async function summarizeWithGemini(
   report: Pick<
@@ -99,39 +98,11 @@ export async function summarizeWithGemini(
   const credentials = await resolveGeminiCredentials();
   if (!credentials) return null;
 
-  const verified = (report.hits ?? []).filter(
-    (hit) => hit.sourceType === "serpapi_google"
+  const { verifiedHits, prompt } = buildVerifiedGeminiPayload(
+    report.subjectName,
+    report.riskLevel,
+    report.hits ?? []
   );
-
-  const payload = {
-    subject: report.subjectName,
-    riskLevel: report.riskLevel,
-    hitCount: verified.length,
-    hits: verified.slice(0, 40).map((hit) => ({
-      title: hit.title,
-      url: hit.url,
-      snippet: hit.snippet,
-      category: hit.category,
-      risk: hit.risk,
-      source: hit.source,
-    })),
-  };
-
-  const prompt = `Du bist ein Sicherheitsberater für Privatpersonen. Schreibe ein VOLLSTÄNDIGES KI-Lagebild auf Deutsch.
-
-HARTE REGELN:
-- Nutze AUSSCHLIESSLICH die gelieferten Treffer. Erfinde nichts.
-- KEINE Überschriften, KEINE Labels. Verboten u. a.: „Management-Zusammenfassung“, „Befund“, „Lagebild“, „Empfehlung“, „Executive Summary“, Markdown, Sternchen.
-- Schreibe genau 3 Absätze, getrennt durch eine Leerzeile:
-  Absatz 1: Was wurde gefunden? (konkret, in ganzen Sätzen)
-  Absatz 2: Was bedeutet das für die Person?
-  Absatz 3: Was sollte als Nächstes getan werden?
-- 180–320 Wörter insgesamt. Jeder Absatz endet mit einem vollständigen Satz (. ! oder ?).
-- Niemals mitten im Wort oder Satz abbrechen. Wenn der Platz knapp wird: kürzer formulieren, aber fertig schreiben.
-- Wenn keine Treffer: klar sagen, dass nichts Relevantes gefunden wurde (trotzdem 3 kurze Absätze).
-
-Daten:
-${JSON.stringify(payload)}`;
 
   const models = [
     "gemini-3.6-flash",
@@ -184,20 +155,27 @@ ${JSON.stringify(payload)}`;
       }
 
       const sanitized = sanitizeAiSummary(text);
+      const linked = postProcessGeminiSummary(sanitized, verifiedHits);
       const finishReason = candidate?.finishReason ?? null;
       const truncatedByLimit =
         finishReason === "MAX_TOKENS" || finishReason === "LENGTH";
-      const complete = isCompleteAiSummary(sanitized);
+      // Structured OSINT summary: accept if long enough and not hard-truncated.
+      const complete =
+        !truncatedByLimit &&
+        (isCompleteAiSummary(linked) ||
+          (linked.length >= 200 &&
+            /Management-Zusammenfassung|digitale Spuren|Maßnahmen/i.test(
+              linked
+            )));
 
-      if (sanitized.length > (bestPartial?.length ?? 0)) {
-        bestPartial = sanitized;
+      if (linked.length > (bestPartial?.length ?? 0)) {
+        bestPartial = linked;
       }
 
-      // Unvollständige Antworten verwerfen und nächstes Modell versuchen.
-      if (truncatedByLimit || !complete) {
+      if (!complete) {
         lastError = truncatedByLimit
-          ? `MAX_TOKENS truncation (${sanitized.length} chars)`
-          : `incomplete summary (${sanitized.length} chars)`;
+          ? `MAX_TOKENS truncation (${linked.length} chars)`
+          : `incomplete summary (${linked.length} chars)`;
         continue;
       }
 
@@ -210,27 +188,29 @@ ${JSON.stringify(payload)}`;
         requestCount: attempts,
         success: true,
         detail: tokens
-          ? `KI-Lagebild · ${report.subjectName} · ${model} · ${tokens.promptTokenCount} in / ${tokens.candidatesTokenCount} out Tokens`
-          : `KI-Lagebild · ${report.subjectName} · Modell ${model}`,
+          ? `KI-Lagebild · ${report.subjectName} · ${model} · ${tokens.promptTokenCount} in / ${tokens.candidatesTokenCount} out · ${verifiedHits.length} verified hits`
+          : `KI-Lagebild · ${report.subjectName} · ${model}`,
         tokenUsage: tokens,
         metaJson: {
           model,
           attempts,
-          hitCount: verified.length,
+          verifiedHitCount: verifiedHits.length,
           subjectName: report.subjectName,
           finishReason,
-          charCount: sanitized.length,
+          charCount: linked.length,
         },
       });
-      return sanitized;
+      return linked;
     } catch (error) {
       lastError = error instanceof Error ? error.message : "gemini failed";
     }
   }
 
-  // Letzter Fallback: längstes brauchbares Fragment nur wenn es schon wie Text wirkt.
   if (bestPartial && bestPartial.length >= 160) {
-    const fallback = sanitizeAiSummary(bestPartial);
+    const fallback = postProcessGeminiSummary(
+      sanitizeAiSummary(bestPartial),
+      verifiedHits
+    );
     if (fallback.length >= 120) {
       await markApiCredentialSuccess("gemini");
       await recordApiUsageEvent({

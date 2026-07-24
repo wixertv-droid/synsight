@@ -2,6 +2,10 @@ import {
   extractSubjectTokens,
   textMatchesSubject,
 } from "@/lib/analysis/hit-quality";
+import {
+  buildSignalsFromIdentity,
+  scoreIdentityConfidence,
+} from "@/lib/analysis/osint/confidence-scorer";
 import type {
   IntelligenceHit,
   IntelligenceHitRisk,
@@ -12,10 +16,13 @@ export type HitSeverity = "critical" | "high" | "medium" | "low";
 
 export interface HitIntelContext {
   subjectName: string;
+  firstName?: string;
+  lastName?: string;
   location?: string | null;
   company?: string | null;
   emails?: string[];
   phones?: string[];
+  aliases?: string[];
 }
 
 export interface HitAiEvaluation {
@@ -162,7 +169,7 @@ function matchCount(text: string, values: string[]): string[] {
 }
 
 /**
- * Rule-based OSINT evaluation — only uses signals present in the hit + profile.
+ * Rule-based OSINT evaluation — Sprint 6B ConfidenceScorer.
  * Does not invent findings.
  */
 export function enrichHitIntel(
@@ -175,45 +182,40 @@ export function enrichHitIntel(
     text.toLowerCase().includes(token)
   );
   const location = (context.location ?? "").trim();
-  const company = (context.company ?? "").trim();
   const matchedEmails = matchCount(text, context.emails ?? []);
   const matchedPhones = matchCount(text, context.phones ?? []);
   const hasLocation =
     location.length >= 3 && text.toLowerCase().includes(location.toLowerCase());
-  const hasCompany =
-    company.length >= 3 && text.toLowerCase().includes(company.toLowerCase());
   const meta = getCategoryMeta(hit.category, hit.url, hit.title);
   const isSocial = meta.filterKey === "social";
   const isImage = meta.filterKey === "image";
   const isForum = meta.filterKey === "forum";
 
-  let confidence = 18;
-  if (hit.sourceType === "identity_profile") confidence = 96;
-  if (matchedNameTokens.length >= 2) confidence += 42;
-  else if (matchedNameTokens.length === 1) confidence += 18;
-  if (hasLocation) confidence += 16;
-  if (hasCompany) confidence += 12;
-  if (matchedEmails.length > 0) confidence += 28;
-  if (matchedPhones.length > 0) confidence += 28;
-  if (isSocial && matchedNameTokens.length > 0) confidence += 10;
-  if (hit.risk === "action") confidence += 6;
-  if (hit.relevance === "low" && matchedNameTokens.length < 2) confidence -= 20;
-  confidence = Math.max(8, Math.min(99, confidence));
+  const scored = scoreIdentityConfidence(
+    hit,
+    buildSignalsFromIdentity({
+      subjectName: context.subjectName,
+      firstName: context.firstName,
+      lastName: context.lastName,
+      location: context.location,
+      company: context.company,
+      emails: context.emails,
+      phones: context.phones,
+      aliases: context.aliases,
+    })
+  );
+  const confidence = scored.score;
 
-  const reasons: string[] = [];
-  if (matchedNameTokens.length >= 2) reasons.push("Name gefunden");
-  else if (matchedNameTokens.length === 1)
-    reasons.push("Namensbestandteil gefunden");
-  if (hasLocation) reasons.push("Wohnort / Ort gefunden");
-  if (hasCompany) reasons.push("Arbeitgeber / Firma gefunden");
-  if (matchedEmails.length > 0) reasons.push("E-Mail-Adresse gefunden");
-  if (matchedPhones.length > 0) reasons.push("Telefonnummer gefunden");
-  if (isSocial) reasons.push("Social-Media-Profil / Beitrag");
-  if (isImage) reasons.push("Öffentliches Bild / Foto");
+  const reasons: string[] = [...scored.positives];
+  if (isSocial && !reasons.some((r) => /Social/i.test(r))) {
+    reasons.push("Social-Media-Profil / Beitrag");
+  }
   if (isForum) reasons.push("Foren- oder Community-Eintrag");
   if (hit.isPublic) reasons.push("Öffentlich indexiert");
   if (reasons.length === 0) reasons.push("Über Profil-Suchanfrage gefunden");
-
+  for (const neg of scored.negatives) {
+    reasons.push(`⚠ ${neg}`);
+  }
   const dangers: string[] = [];
   if (hit.isPublic) {
     dangers.push("Profil oder Seite kann über Suchmaschinen gefunden werden");
@@ -245,7 +247,7 @@ export function enrichHitIntel(
   } else if (severity === "critical" || severity === "high") {
     recommendation =
       "Treffer öffnen, Inhalt prüfen und bei Bedarf Löschung oder Korrektur anstoßen.";
-  } else if (confidence < 45) {
+  } else if (confidence < 50) {
     recommendation =
       "Wahrscheinlich Namensgleichheit — beobachten, keine Sofortmaßnahme nötig.";
   } else {
@@ -266,18 +268,15 @@ export function enrichHitIntel(
             : 1;
 
   const headline =
-    confidence >= 75
-      ? "Treffer gehört mit hoher Wahrscheinlichkeit zu Ihrer Person."
-      : confidence >= 45
-        ? "Treffer könnte zu Ihrer Person gehören — Prüfung empfohlen."
-        : "Wahrscheinlich Namensgleichheit oder nur schwacher Bezug.";
+    confidence >= 90
+      ? "Treffer gehört mit sehr hoher Wahrscheinlichkeit zu Ihrer Person."
+      : confidence >= 70
+        ? "Treffer gehört mit hoher Wahrscheinlichkeit zu Ihrer Person."
+        : confidence >= 50
+          ? "Treffer könnte zu Ihrer Person gehören — Prüfung empfohlen."
+          : "Wahrscheinlich Namensgleichheit oder nur schwacher Bezug.";
 
-  const confidenceLabel =
-    confidence >= 75
-      ? "Sehr wahrscheinlich dieselbe Person"
-      : confidence >= 45
-        ? "Möglicher Bezug — manuell prüfen"
-        : "Wahrscheinlich Namensgleichheit";
+  const confidenceLabel = scored.label;
 
   const whyFoundPlain = buildWhyFoundPlain({
     subjectName: context.subjectName,
@@ -290,28 +289,28 @@ export function enrichHitIntel(
   });
 
   const whyRelevantPlain =
-    confidence >= 75
+    confidence >= 70
       ? "Mehrere Profilsignale (Name und weitere Merkmale) passen zu diesem Treffer."
-      : confidence >= 45
+      : confidence >= 50
         ? "Es gibt Überschneidungen mit Ihren Profildaten, aber keine vollständige Bestätigung."
         : "Der Bezug zu Ihrer Identität ist schwach — Fehlalarm möglich.";
 
   const belongsToYou =
-    confidence >= 75
+    confidence >= 70
       ? "Ja, sehr wahrscheinlich"
-      : confidence >= 45
+      : confidence >= 50
         ? "Unklar — prüfen"
         : "Eher Nein";
 
   const needsAction =
-    hit.shouldAct && confidence >= 40
+    hit.shouldAct && confidence >= 50
       ? "Ja — Maßnahme empfohlen"
       : hit.risk === "watch"
         ? "Beobachten"
         : "Nein — optional";
 
   const isDangerous =
-    hit.isProblematic && confidence >= 40
+    hit.isProblematic && confidence >= 50
       ? "Ja — erhöhte Aufmerksamkeit"
       : "Gering / unkritisch";
 
@@ -382,7 +381,7 @@ export function buildReportScorecard(
   hits: IntelligenceHit[]
 ): IntelligenceReportScorecard {
   const live = hits.filter((hit) => hit.sourceType === "serpapi_google");
-  const likely = live.filter((hit) => (hit.identityConfidence ?? 0) >= 60);
+  const likely = live.filter((hit) => (hit.identityConfidence ?? 0) >= 70);
   const critical = live.filter((hit) => hit.severity === "critical").length;
   const high = live.filter((hit) => hit.severity === "high").length;
 
@@ -435,7 +434,7 @@ export function buildStructuredAnalysisSummary(
   scorecard: IntelligenceReportScorecard
 ): string {
   const live = hits.filter((hit) => hit.sourceType === "serpapi_google");
-  const likely = live.filter((hit) => (hit.identityConfidence ?? 0) >= 60);
+  const likely = live.filter((hit) => (hit.identityConfidence ?? 0) >= 70);
   const byCat = (key: string) =>
     likely.filter((hit) => hit.filterCategory === key).length;
 
@@ -510,7 +509,7 @@ export function buildStructuredAnalysisSummary(
 
 export function isLikelyIdentityHit(hit: IntelligenceHit): boolean {
   return (
-    (hit.identityConfidence ?? 0) >= 60 || hit.sourceType === "identity_profile"
+    (hit.identityConfidence ?? 0) >= 70 || hit.sourceType === "identity_profile"
   );
 }
 

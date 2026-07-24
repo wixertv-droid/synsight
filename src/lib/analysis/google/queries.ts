@@ -1,115 +1,15 @@
 import type { IdentityView } from "@/lib/services/identity-service";
 import type { IntelligenceQueryPlan } from "@/lib/analysis/types";
-
-function clean(value: string | undefined | null): string {
-  return (value ?? "").trim();
-}
+import { planGoogleSearches } from "@/lib/analysis/osint/search-planner";
 
 /**
- * Build search queries solely from user-provided identity profile fields.
- * These are the queries SynSight will execute — never invented terms.
+ * Sprint 6B: max. 5 Suchanfragen über SearchPlanner.
+ * Keine künstlichen Kombinationen — nur vorhandene Profildaten.
  */
 export function buildGoogleQueriesFromIdentity(
   identity: IdentityView | null
 ): IntelligenceQueryPlan[] {
-  const first = clean(identity?.personal.firstName);
-  const last = clean(identity?.personal.lastName);
-  const fullName = first && last ? `${first} ${last}` : first || last || "";
-  const location = clean(identity?.personal.location);
-  const address = clean(identity?.personal.addressLine);
-  const company =
-    clean(identity?.personal.company) || clean(identity?.companies?.[0]) || "";
-
-  const emails = [...(identity?.emails ?? [])].map(clean).filter(Boolean);
-  const phones = [
-    clean(identity?.personal.phone),
-    ...(identity?.phoneNumbers ?? []).map(clean),
-  ].filter(Boolean);
-  const aliases = [
-    clean(identity?.aliases.publicAlias),
-    ...(identity?.aliases.nicknames ?? []),
-    ...(identity?.aliases.usernames ?? []),
-    ...(identity?.aliases.formerNames ?? []),
-    ...(identity?.aliases.gamingNames ?? []),
-  ]
-    .map(clean)
-    .filter(Boolean);
-
-  const queries: IntelligenceQueryPlan[] = [];
-
-  if (fullName) {
-    queries.push({
-      id: "q-name",
-      label: "Name",
-      query: location ? `"${fullName}" ${location}` : `"${fullName}"`,
-      help: "Klassische Namenssuche — erzeugt aus Vor- und Nachname im Profil.",
-    });
-  }
-
-  if (company && fullName) {
-    queries.push({
-      id: "q-company",
-      label: "Firma",
-      query: `"${fullName}" "${company}"`,
-      help: "Verknüpft Name und Unternehmen aus dem Profil.",
-    });
-  }
-
-  if (address || location) {
-    const place = address || location;
-    if (fullName) {
-      queries.push({
-        id: "q-place",
-        label: "Ort / Adresse",
-        query: `"${fullName}" "${place}"`,
-        help: "Kombination aus Name und hinterlegtem Ort oder Adresse.",
-      });
-    }
-  }
-
-  for (const email of emails.slice(0, 3)) {
-    queries.push({
-      id: `q-email-${email}`,
-      label: "E-Mail",
-      query: `"${email}"`,
-      help: "Prüft öffentliche Indexierung der hinterlegten E-Mail-Adresse.",
-    });
-  }
-
-  for (const phone of phones.slice(0, 2)) {
-    queries.push({
-      id: `q-phone-${phone}`,
-      label: "Telefon",
-      query: `"${phone}"`,
-      help: "Prüft öffentliche Erwähnung der hinterlegten Telefonnummer.",
-    });
-  }
-
-  for (const alias of aliases.slice(0, 3)) {
-    queries.push({
-      id: `q-alias-${alias}`,
-      label: "Alias",
-      query: `"${alias}"`,
-      help: "Sucht den hinterlegten Alias in öffentlichen Quellen.",
-    });
-  }
-
-  for (const site of [
-    ...(identity?.websites ?? []),
-    ...(identity?.domains ?? []),
-  ].slice(0, 3)) {
-    const host = site.replace(/^https?:\/\//, "").split("/")[0];
-    if (fullName && host) {
-      queries.push({
-        id: `q-site-${host}`,
-        label: "Website",
-        query: `site:${host} "${fullName}"`,
-        help: "Sucht den Namen auf der im Profil hinterlegten Domain.",
-      });
-    }
-  }
-
-  return queries;
+  return planGoogleSearches(identity);
 }
 
 export function buildMissingProfileHints(
@@ -128,16 +28,20 @@ export function buildMissingProfileHints(
   if (!identity?.personal.company && (identity?.companies.length ?? 0) === 0) {
     hints.push("Unternehmen angeben");
   }
-  if ((identity?.socialAccounts.length ?? 0) === 0) {
-    hints.push("Öffentliche Social-Profile verknüpfen");
+  if (!identity?.personal.location) {
+    hints.push("Wohnort angeben (erhöht Trefferqualität)");
   }
   if (
-    (identity?.websites.length ?? 0) + (identity?.domains.length ?? 0) ===
-    0
+    !identity?.aliases.publicAlias &&
+    (identity?.aliases.usernames.length ?? 0) === 0
   ) {
-    hints.push("Websites oder Domains eintragen");
+    hints.push("Alias / Benutzername hinterlegen");
   }
   return hints;
+}
+
+function clean(value: string | undefined | null): string {
+  return (value ?? "").trim();
 }
 
 export function resolveSubjectName(identity: IdentityView | null): string {
