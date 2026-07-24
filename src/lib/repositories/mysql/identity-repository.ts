@@ -217,11 +217,7 @@ export function createMysqlIdentityRepository(
             alias,
             aliasType: "former_name" as const,
           })),
-          ...input.aliases.nicknames.map((alias) => ({
-            userId,
-            alias,
-            aliasType: "nickname" as const,
-          })),
+          // Nicknames werden als Benutzernamen gespeichert (ein Feld)
           ...input.aliases.usernames.map((alias) => ({
             userId,
             alias,

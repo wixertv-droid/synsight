@@ -400,9 +400,10 @@ export default function OnboardingFlow({
                   }
                 />
                 <FormField
-                  label="Spitznamen"
+                  label="Benutzernamen"
                   name="nicknames"
                   hint="KOMMAGETRENNT"
+                  info="Online-Benutzernamen und Spitznamen (z. B. Foren, Social Media)."
                   value={identity.nicknames}
                   onChange={(event) =>
                     setIdentity({ ...identity, nicknames: event.target.value })

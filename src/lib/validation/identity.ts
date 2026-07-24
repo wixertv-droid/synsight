@@ -69,13 +69,40 @@ export const identityProfileSchema = z.object({
       .default([]),
     company: z.string().trim().max(150).optional().default(""),
   }),
-  aliases: z.object({
-    publicAlias: z.string().trim().max(100).optional().default(""),
-    nicknames: z.array(z.string().trim().min(1).max(150)).max(30).default([]),
-    formerNames: z.array(z.string().trim().min(1).max(150)).max(30).default([]),
-    usernames: z.array(z.string().trim().min(1).max(150)).max(30).default([]),
-    gamingNames: z.array(z.string().trim().min(1).max(150)).max(30).default([]),
-  }),
+  aliases: z
+    .object({
+      publicAlias: z.string().trim().max(100).optional().default(""),
+      /** @deprecated merged into usernames — kept for API/backfill compatibility */
+      nicknames: z.array(z.string().trim().min(1).max(150)).max(30).default([]),
+      formerNames: z
+        .array(z.string().trim().min(1).max(150))
+        .max(30)
+        .default([]),
+      usernames: z.array(z.string().trim().min(1).max(150)).max(30).default([]),
+      gamingNames: z
+        .array(z.string().trim().min(1).max(150))
+        .max(30)
+        .default([]),
+    })
+    .transform((aliases) => {
+      const seen = new Set<string>();
+      const usernames: string[] = [];
+      for (const value of [...aliases.usernames, ...aliases.nicknames]) {
+        const cleaned = value.trim();
+        if (!cleaned) continue;
+        const key = cleaned.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        usernames.push(cleaned);
+      }
+      return {
+        publicAlias: aliases.publicAlias,
+        nicknames: [] as string[],
+        formerNames: aliases.formerNames,
+        usernames: usernames.slice(0, 30),
+        gamingNames: aliases.gamingNames,
+      };
+    }),
   emails: z
     .array(z.string().trim().toLowerCase().email("Ungültige E-Mail-Adresse."))
     .max(20)

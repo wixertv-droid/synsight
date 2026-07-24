@@ -30,7 +30,7 @@ const HELP = {
   personal:
     "Diese Angaben sind freiwillig. Sie helfen später dabei, Treffer besser zuzuordnen — zum Beispiel bei Namensgleichheiten.",
   aliases:
-    "Nicknames und frühere Namen können in öffentlichen Quellen auftauchen. Alles freiwillig und jederzeit änderbar.",
+    "Benutzernamen, Aliase und frühere Namen können in öffentlichen Quellen auftauchen. Alles freiwillig und jederzeit änderbar.",
   emails:
     "Zusätzliche E-Mail-Adressen, die mit Ihnen in Verbindung stehen könnten. Ihre Login-E-Mail bleibt unverändert.",
   phones:
@@ -480,15 +480,15 @@ export default function IdentityProfilePanel({
             }
           />
           <StringListEditor
-            label="Nicknames"
-            values={form.aliases.nicknames}
-            onChange={(nicknames) =>
+            label="Benutzernamen"
+            values={form.aliases.usernames}
+            onChange={(usernames) =>
               setForm((current) => ({
                 ...current,
-                aliases: { ...current.aliases, nicknames },
+                aliases: { ...current.aliases, usernames, nicknames: [] },
               }))
             }
-            placeholder="Nickname hinzufügen"
+            placeholder="Benutzername hinzufügen"
           />
           <StringListEditor
             label="Frühere Namen"
@@ -500,17 +500,6 @@ export default function IdentityProfilePanel({
               }))
             }
             placeholder="Früherer Name"
-          />
-          <StringListEditor
-            label="Benutzernamen"
-            values={form.aliases.usernames}
-            onChange={(usernames) =>
-              setForm((current) => ({
-                ...current,
-                aliases: { ...current.aliases, usernames },
-              }))
-            }
-            placeholder="Benutzername"
           />
           <StringListEditor
             label="Gamertags"

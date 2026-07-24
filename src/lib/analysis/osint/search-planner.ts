@@ -27,8 +27,8 @@ function unique(values: string[]): string[] {
   return out;
 }
 
-function orGroup(values: string[], quoted = true): string {
-  const parts = unique(values).slice(0, 6);
+function orGroup(values: string[], quoted = true, limit = 8): string {
+  const parts = unique(values).slice(0, limit);
   if (parts.length === 0) return "";
   if (parts.length === 1) return quoted ? `"${parts[0]}"` : parts[0];
   return `(${parts.map((v) => (quoted ? `"${v}"` : v)).join(" OR ")})`;
@@ -70,6 +70,11 @@ export function planScoredGoogleSearches(
   const emails = unique(fp.emails);
   const phones = unique(fp.phones);
   const aliases = unique([
+    // Alle Benutzernamen + Alias (nicht nur publicAlias)
+    ...(identity?.aliases.usernames ?? []),
+    ...(identity?.aliases.nicknames ?? []),
+    ...(identity?.aliases.gamingNames ?? []),
+    identity?.aliases.publicAlias ?? "",
     ...fp.aliases,
     ...fp.socialHandles.map((h) => h.username).filter(Boolean),
   ]);
@@ -138,24 +143,24 @@ export function planScoredGoogleSearches(
     });
   }
 
-  // 4. Username / Alias Social Vector (Google)
+  // 4. Username / Alias Social Vector (Google) — alle Benutzernamen
   if (aliases.length > 0) {
-    const aliasGroup = orGroup(aliases);
+    const aliasGroup = orGroup(aliases, true, 8);
     push({
       id: "v-alias-social",
       label: "Alias Social",
       query: `${aliasGroup} (site:instagram.com OR site:tiktok.com OR site:twitter.com OR site:x.com OR site:github.com OR site:reddit.com OR site:pinterest.com)`,
-      help: "Vector 4 · Alias auf Social-Plattformen (Google).",
+      help: "Vector 4 · Alle Benutzernamen auf Social-Plattformen (Google).",
       searchScore: 90,
       engine: "google",
       vector: "alias_social",
     });
-    // Extra: bare alias sweep for forums / niches
+    // Extra: bare username sweep for forums / niches
     push({
       id: "v-alias-general",
-      label: "Alias Sweep",
+      label: "Username Sweep",
       query: aliasGroup,
-      help: "Vector 4b · Alias/Username allgemein (Google).",
+      help: "Vector 4b · Alle Benutzernamen allgemein (Google).",
       searchScore: 84,
       engine: "google",
       vector: "alias_general",

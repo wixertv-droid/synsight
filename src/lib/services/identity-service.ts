@@ -4,6 +4,20 @@ import type { IdentityProfileInput } from "@/lib/validation/identity";
 import type { ProcessedProfileImage } from "@/lib/media/image-pipeline";
 import { removeStoredProfileImage } from "@/lib/media/image-pipeline";
 
+function uniqueStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    const cleaned = value.trim();
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(cleaned);
+  }
+  return out;
+}
+
 export interface IdentityView {
   personal: {
     firstName: string;
@@ -47,9 +61,9 @@ function computeCompleteness(view: Omit<IdentityView, "completenessPercent">) {
     Boolean(view.personal.addressLine || view.personal.location),
     view.personal.previousLocations.length > 0,
     Boolean(view.aliases.publicAlias) ||
-      view.aliases.nicknames.length > 0 ||
       view.aliases.usernames.length > 0 ||
-      view.aliases.gamingNames.length > 0,
+      view.aliases.gamingNames.length > 0 ||
+      view.aliases.formerNames.length > 0,
     view.emails.length > 0,
     view.socialAccounts.length > 0,
     view.websites.length > 0 || view.domains.length > 0,
@@ -75,15 +89,19 @@ function toView(snapshot: IdentitySnapshot): IdentityView {
     },
     aliases: {
       publicAlias: snapshot.profile.publicAlias ?? "",
-      nicknames: snapshot.aliases
-        .filter((item) => item.aliasType === "nickname")
-        .map((item) => item.alias),
+      // Nicknames und Benutzernamen sind dasselbe — zusammengeführt anzeigen
+      nicknames: [],
       formerNames: snapshot.aliases
         .filter((item) => item.aliasType === "former_name")
         .map((item) => item.alias),
-      usernames: snapshot.aliases
-        .filter((item) => item.aliasType === "username")
-        .map((item) => item.alias),
+      usernames: uniqueStrings([
+        ...snapshot.aliases
+          .filter(
+            (item) =>
+              item.aliasType === "username" || item.aliasType === "nickname"
+          )
+          .map((item) => item.alias),
+      ]),
       gamingNames: snapshot.aliases
         .filter((item) => item.aliasType === "gaming_name")
         .map((item) => item.alias),

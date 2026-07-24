@@ -102,10 +102,11 @@ export function createMysqlOnboardingRepository(
             alias,
             aliasType: "former_name" as const,
           })),
+          // Onboarding „Benutzernamen“ (früher Spitznamen) als username speichern
           ...payload.identity.nicknames.map((alias) => ({
             userId,
             alias,
-            aliasType: "nickname" as const,
+            aliasType: "username" as const,
           })),
           ...payload.additionalData.oldUsernames.map((alias) => ({
             userId,

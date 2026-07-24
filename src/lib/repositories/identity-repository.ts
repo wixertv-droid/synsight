@@ -110,13 +110,7 @@ export function createInMemoryIdentityRepository(
             aliasType: "former_name" as const,
             createdAt: now,
           })),
-          ...input.aliases.nicknames.map((alias) => ({
-            id: id++,
-            userId,
-            alias,
-            aliasType: "nickname" as const,
-            createdAt: now,
-          })),
+          // Nicknames werden als Benutzernamen gespeichert (ein Feld)
           ...input.aliases.usernames.map((alias) => ({
             id: id++,
             userId,

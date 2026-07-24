@@ -62,6 +62,11 @@ describe("identity-service", () => {
     const loaded = await getIdentityForUser(1);
     expect(loaded?.socialAccounts[0]?.platform).toBe("GitHub");
     expect(loaded?.aliases.gamingNames).toContain("am90");
+    // Nicknames werden in Benutzernamen zusammengeführt
+    expect(loaded?.aliases.nicknames).toEqual([]);
+    expect(loaded?.aliases.usernames).toEqual(
+      expect.arrayContaining(["alex", "alexm"])
+    );
   });
 
   it("persists uploaded image metadata immediately across reloads", async () => {

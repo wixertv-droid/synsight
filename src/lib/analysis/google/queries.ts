@@ -36,9 +36,10 @@ export function buildMissingProfileHints(
   }
   if (
     !identity?.aliases.publicAlias &&
-    (identity?.aliases.usernames.length ?? 0) === 0
+    (identity?.aliases.usernames.length ?? 0) === 0 &&
+    (identity?.aliases.gamingNames.length ?? 0) === 0
   ) {
-    hints.push("Alias / Benutzername hinterlegen");
+    hints.push("Benutzername / Alias hinterlegen");
   }
   return hints;
 }
