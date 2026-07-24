@@ -88,8 +88,8 @@ describe("digital exposure helpers", () => {
           "You need a search subscription and API credits to use the API, please purchase a search subscription.",
       })
     );
-    expect(message).toMatch(/Search-Abo/i);
-    expect(message).toMatch(/API-Credits/i);
+    expect(message).toMatch(/aktives Search-Abo/i);
+    expect(message).toMatch(/Not Active/i);
     expect(message).toMatch(/app\.dehashed\.com\/subscriptions/);
   });
 });

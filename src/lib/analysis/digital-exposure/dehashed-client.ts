@@ -216,8 +216,9 @@ export function formatDehashedHttpError(
       lower.includes("purchase a search"))
   ) {
     return (
-      "DeHashed Account hat kein aktives Search-Abo bzw. keine API-Credits. " +
-      "Bitte unter https://app.dehashed.com/subscriptions ein Search-Abo + Credits buchen, " +
+      "DeHashed verlangt ein aktives Search-Abo (Status „Active“) plus API-Credits. " +
+      "Credits allein reichen nicht, solange Search auf „Not Active“ steht. " +
+      "Bitte unter https://app.dehashed.com/subscriptions das Search-Abo aktivieren, " +
       "danach erneut „API TESTEN“."
     );
   }
