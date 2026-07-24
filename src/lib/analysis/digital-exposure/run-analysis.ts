@@ -236,6 +236,16 @@ export async function runDigitalLeakExposureScan(
     );
   }
 
+  // Ensure scan tables exist before first insert (migrate may have been skipped)
+  const { ensureDigitalExposureSchema } =
+    await import("@/lib/analysis/digital-exposure/ensure-schema");
+  const schemaOk = await ensureDigitalExposureSchema(true);
+  if (!schemaOk) {
+    throw new Error(
+      "Digital-Leak-Datenbanktabellen fehlen. Bitte auf dem Server `npm run db:ensure-catalog` ausführen."
+    );
+  }
+
   const scanId = await createDigitalExposureScan({
     userId: options.userId,
     subjectName,
