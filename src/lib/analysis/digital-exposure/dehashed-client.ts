@@ -21,6 +21,19 @@ export interface DehashedBreachSummary {
   hasPasswordExposure: boolean;
   hasHashedPasswordExposure: boolean;
   dataClasses: string[];
+  /** Sprint 6D — presence/masked attributes only */
+  attributes: Array<{
+    key: string;
+    label: string;
+    present: boolean;
+    maskedValue?: string | null;
+  }>;
+  hashType: string | null;
+  collection: string | null;
+  obtainedFrom: string | null;
+  sourceDate: string | null;
+  firstSeen: string | null;
+  lastSeen: string | null;
 }
 
 export interface DehashedSearchResult {
@@ -119,6 +132,55 @@ function hasNonEmptyField(value: unknown): boolean {
   return asStringList(value).length > 0;
 }
 
+function firstString(value: unknown): string | null {
+  const list = asStringList(value);
+  return list[0] ?? null;
+}
+
+function maskSoft(value: string, kind: "email" | "phone" | "generic"): string {
+  if (kind === "email" && value.includes("@")) {
+    const [local, domain] = value.split("@");
+    const keep = Math.min(2, local.length);
+    return `${local.slice(0, keep)}${"*".repeat(Math.max(2, local.length - keep))}@${domain}`;
+  }
+  if (kind === "phone") {
+    const digits = value.replace(/\D+/g, "");
+    if (digits.length < 6) return "***";
+    return `${digits.slice(0, 3)}${"*".repeat(Math.max(3, digits.length - 5))}${digits.slice(-2)}`;
+  }
+  if (value.length <= 3) return "***";
+  return `${value.slice(0, 2)}${"*".repeat(Math.min(8, value.length - 2))}`;
+}
+
+function pickDate(row: Record<string, unknown>): string | null {
+  for (const key of [
+    "obtained_from",
+    "breach_date",
+    "date",
+    "created",
+    "created_at",
+  ]) {
+    const value = firstString(row[key]);
+    if (value && /\d{4}/.test(value)) return value.slice(0, 32);
+  }
+  return null;
+}
+
+type Attr = DehashedBreachSummary["attributes"][number];
+
+function pushAttr(
+  attrs: Attr[],
+  labels: Set<string>,
+  key: string,
+  label: string,
+  present: boolean,
+  maskedValue?: string | null
+) {
+  if (!present) return;
+  attrs.push({ key, label, present: true, maskedValue: maskedValue ?? null });
+  labels.add(label);
+}
+
 /**
  * Map raw DeHashed entries → breach summaries.
  * Password / hashed_password values are NEVER copied — only boolean exposure flags.
@@ -135,6 +197,7 @@ export function summarizeDehashedEntries(
     const databaseName =
       (typeof row.database_name === "string" && row.database_name.trim()) ||
       (typeof row.db_name === "string" && row.db_name.trim()) ||
+      (typeof row.database === "string" && row.database.trim()) ||
       "Unbekannte Quelle";
 
     const hasEmail = hasNonEmptyField(row.email);
@@ -145,17 +208,180 @@ export function summarizeDehashedEntries(
     const hasPasswordExposure = hasNonEmptyField(row.password);
     const hasHashedPasswordExposure = hasNonEmptyField(row.hashed_password);
 
-    const dataClasses = new Set<string>();
-    if (hasEmail) dataClasses.add("E-Mail-Adresse");
-    if (hasPhone) dataClasses.add("Telefonnummer");
-    if (hasUsername) dataClasses.add("Benutzername");
-    if (hasNonEmptyField(row.name)) dataClasses.add("Name");
-    if (hasNonEmptyField(row.ip_address)) dataClasses.add("IP-Adresse");
-    if (hasPasswordExposure)
-      dataClasses.add("Passwort vorhanden (nicht gespeichert)");
-    if (hasHashedPasswordExposure) {
-      dataClasses.add("Passwort-Hash vorhanden (nicht gespeichert)");
+    const labels = new Set<string>();
+    const attributes: Attr[] = [];
+
+    const emailRaw = firstString(row.email);
+    pushAttr(
+      attributes,
+      labels,
+      "email",
+      "E-Mail-Adresse",
+      hasEmail,
+      emailRaw ? maskSoft(emailRaw, "email") : null
+    );
+
+    const phoneRaw = firstString(row.phone) ?? firstString(row.phone_number);
+    pushAttr(
+      attributes,
+      labels,
+      "phone",
+      "Telefonnummer",
+      hasPhone,
+      phoneRaw ? maskSoft(phoneRaw, "phone") : null
+    );
+
+    const usernameRaw = firstString(row.username);
+    pushAttr(
+      attributes,
+      labels,
+      "username",
+      "Benutzername",
+      hasUsername,
+      usernameRaw ? maskSoft(usernameRaw, "generic") : null
+    );
+
+    const nameRaw = firstString(row.name);
+    pushAttr(
+      attributes,
+      labels,
+      "name",
+      "Name",
+      Boolean(nameRaw),
+      nameRaw ? maskSoft(nameRaw, "generic") : null
+    );
+
+    const firstName = firstString(row.first_name) ?? firstString(row.firstname);
+    pushAttr(
+      attributes,
+      labels,
+      "first_name",
+      "Vorname",
+      Boolean(firstName),
+      firstName ? maskSoft(firstName, "generic") : null
+    );
+
+    const lastName = firstString(row.last_name) ?? firstString(row.lastname);
+    pushAttr(
+      attributes,
+      labels,
+      "last_name",
+      "Nachname",
+      Boolean(lastName),
+      lastName ? maskSoft(lastName, "generic") : null
+    );
+
+    const alias =
+      firstString(row.alias) ??
+      firstString(row.nickname) ??
+      firstString(row.screen_name);
+    pushAttr(
+      attributes,
+      labels,
+      "alias",
+      "Alias",
+      Boolean(alias),
+      alias ? maskSoft(alias, "generic") : null
+    );
+
+    const address = firstString(row.address) ?? firstString(row.address_1);
+    pushAttr(
+      attributes,
+      labels,
+      "address",
+      "Straße / Anschrift",
+      Boolean(address),
+      address ? maskSoft(address, "generic") : null
+    );
+
+    const zip =
+      firstString(row.zip) ??
+      firstString(row.zip_code) ??
+      firstString(row.postal_code);
+    pushAttr(attributes, labels, "zip", "PLZ", Boolean(zip), zip);
+
+    const city = firstString(row.city) ?? firstString(row.town);
+    pushAttr(attributes, labels, "city", "Ort", Boolean(city), city);
+
+    const country =
+      firstString(row.country) ??
+      firstString(row.country_code) ??
+      firstString(row.nation);
+    pushAttr(attributes, labels, "country", "Land", Boolean(country), country);
+
+    const dob =
+      firstString(row.dob) ??
+      firstString(row.date_of_birth) ??
+      firstString(row.birth_date);
+    pushAttr(
+      attributes,
+      labels,
+      "dob",
+      "Geburtsdatum",
+      Boolean(dob),
+      dob ? "***" : null
+    );
+
+    const ip = firstString(row.ip_address) ?? firstString(row.ip);
+    pushAttr(
+      attributes,
+      labels,
+      "ip_address",
+      "IP-Adresse",
+      Boolean(ip),
+      ip ? maskSoft(ip, "generic") : null
+    );
+
+    const company =
+      firstString(row.company) ??
+      firstString(row.organization) ??
+      firstString(row.employer);
+    pushAttr(
+      attributes,
+      labels,
+      "company",
+      "Unternehmen",
+      Boolean(company),
+      company
+    );
+
+    const domain =
+      firstString(row.domain) ??
+      firstString(row.url) ??
+      firstString(row.website);
+    pushAttr(attributes, labels, "domain", "Domain", Boolean(domain), domain);
+
+    pushAttr(
+      attributes,
+      labels,
+      "password",
+      "Passwort vorhanden",
+      hasPasswordExposure,
+      null
+    );
+    pushAttr(
+      attributes,
+      labels,
+      "hashed_password",
+      "Passwort-Hash vorhanden",
+      hasHashedPasswordExposure,
+      null
+    );
+
+    const hashType =
+      firstString(row.hash_type) ??
+      firstString(row.hashed_password_type) ??
+      firstString(row.password_hash_type);
+    if (hashType) {
+      pushAttr(attributes, labels, "hash_type", "Hashtyp", true, hashType);
     }
+
+    const collection =
+      firstString(row.collection) ??
+      firstString(row.source) ??
+      firstString(row.leak_name);
+    const obtainedFrom = firstString(row.obtained_from);
+    const sourceDate = pickDate(row);
 
     const existing = byDb.get(databaseName);
     if (!existing) {
@@ -167,7 +393,14 @@ export function summarizeDehashedEntries(
         hasUsername,
         hasPasswordExposure,
         hasHashedPasswordExposure,
-        dataClasses: [...dataClasses],
+        dataClasses: [...labels],
+        attributes,
+        hashType,
+        collection,
+        obtainedFrom,
+        sourceDate,
+        firstSeen: sourceDate,
+        lastSeen: sourceDate,
       });
       continue;
     }
@@ -180,8 +413,23 @@ export function summarizeDehashedEntries(
       existing.hasPasswordExposure || hasPasswordExposure;
     existing.hasHashedPasswordExposure =
       existing.hasHashedPasswordExposure || hasHashedPasswordExposure;
-    for (const item of dataClasses) {
+    existing.hashType = existing.hashType || hashType;
+    existing.collection = existing.collection || collection;
+    existing.obtainedFrom = existing.obtainedFrom || obtainedFrom;
+    existing.sourceDate = existing.sourceDate || sourceDate;
+    if (sourceDate) {
+      existing.firstSeen = existing.firstSeen || sourceDate;
+      existing.lastSeen = sourceDate;
+    }
+    for (const item of labels) {
       if (!existing.dataClasses.includes(item)) existing.dataClasses.push(item);
+    }
+    for (const attr of attributes) {
+      const prev = existing.attributes.find((a) => a.key === attr.key);
+      if (!prev) existing.attributes.push(attr);
+      else if (!prev.maskedValue && attr.maskedValue) {
+        prev.maskedValue = attr.maskedValue;
+      }
     }
   }
 

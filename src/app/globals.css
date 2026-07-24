@@ -408,6 +408,28 @@ body::before {
     0 0 8px rgba(207, 248, 255, 0.95),
     0 0 24px rgba(112, 231, 255, 0.72),
     0 0 52px rgba(41, 182, 246, 0.4);
+  animation: mission-head-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mission-energy-flow {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes mission-head-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: translateY(-50%) scaleY(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scaleY(1.15);
+  }
 }
 
 .launch-confirmation {

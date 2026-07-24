@@ -107,6 +107,25 @@ export const osintGuidance = {
   risk: "Risk fasst die Gesamteinschätzung aus Trefferzahl, Confidence und Threat-Matrix zusammen. Mittel/Hoch bedeutet priorisierte Prüfung, nicht automatische Schuld.",
 } as const;
 
+/** Sprint 6D — Digital Leak Fachbegriffe */
+export const leakGuidance = {
+  credentialStuffing:
+    "Credential Stuffing nutzt geleakte Benutzername/Passwort-Kombinationen automatisiert an anderen Diensten. Einzigartige Passwörter und 2FA reduzieren das Risiko stark.",
+  passwordHash:
+    "Ein Passwort-Hash ist eine Einweg-Transformation des Passworts. Auch ohne Klartext kann ein Hash offline angegriffen werden — Passwortwechsel bleibt Pflicht.",
+  exposure:
+    "Exposure beschreibt, welche Identitätsmerkmale in bekannten Leak-Quellen auftauchen (E-Mail, Telefon, Alias, Hash-Hinweise usw.).",
+  leak: "Ein Leak / Breach ist eine bestätigte Datenquelle, in der Identifikatoren aus Sicherheitsvorfällen auftauchen. SynSight zeigt nur DeHashed-Metadaten, keine Passwortwerte.",
+  collection:
+    "Eine Collection ist eine zusammengestellte Leak-Sammlung. Mehrere Collections können dieselben Identifikatoren mehrfach enthalten.",
+  threatLevel:
+    "Threat Level fasst die belegte Bedrohungslage aus Leak-Anzahl, Passwort-Hinweisen und Identitätsmerkmalen zusammen (LOW / MEDIUM / HIGH).",
+  confidence:
+    "Confidence gibt an, wie sicher ein Leak-Treffer dem geprüften Identifikator zugeordnet ist. DeHashed-Treffer gelten als hoch verifiziert.",
+  identityExposure:
+    "Identity Exposure (0–100) misst, wie stark persönliche Merkmale in Leaks exponiert sind — unabhängig von einer moralischen Bewertung.",
+} as const;
+
 export const analysisGuidance: Record<
   string,
   { what: string; why: string; result: string }

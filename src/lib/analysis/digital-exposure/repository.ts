@@ -5,12 +5,20 @@ import {
   digitalExposureResults,
   digitalExposureScans,
 } from "@/lib/database/schema";
-import type {
-  DigitalExposureFinding,
-  DigitalExposureReport,
-  DigitalExposureScanStatus,
+import {
+  AI_SUMMARY_FINDING_TITLE,
+  type DigitalExposureAttribute,
+  type DigitalExposureFinding,
+  type DigitalExposureReport,
+  type DigitalExposureScanStatus,
 } from "@/lib/analysis/digital-exposure/types";
 import { buildGeminiPrepPayload } from "@/lib/analysis/digital-exposure/gemini-prep";
+import {
+  buildActionPlan,
+  buildManagementOverview,
+  buildThreatMatrix,
+  extractAiSummary,
+} from "@/lib/analysis/digital-exposure/report-metrics";
 import { ensureDigitalExposureSchema } from "@/lib/analysis/digital-exposure/ensure-schema";
 
 function mysqlNow(): string {
@@ -30,14 +38,74 @@ export function readMysqlInsertId(result: unknown): number {
   return 0;
 }
 
+interface PackedFindingMeta {
+  v: 2;
+  labels: string[];
+  attributes?: DigitalExposureAttribute[];
+  recordCount?: number;
+  confidence?: number;
+  hashType?: string | null;
+  collection?: string | null;
+  firstSeen?: string | null;
+  lastSeen?: string | null;
+  obtainedFrom?: string | null;
+}
+
+function packFindingMeta(finding: DigitalExposureFinding): unknown {
+  const meta: PackedFindingMeta = {
+    v: 2,
+    labels: finding.dataClasses,
+    attributes: finding.attributes,
+    recordCount: finding.recordCount,
+    confidence: finding.confidence,
+    hashType: finding.hashType,
+    collection: finding.collection,
+    firstSeen: finding.firstSeen,
+    lastSeen: finding.lastSeen,
+    obtainedFrom: finding.obtainedFrom,
+  };
+  return meta;
+}
+
 function mapFinding(
   row: typeof digitalExposureResults.$inferSelect
 ): DigitalExposureFinding {
-  const dataClasses = Array.isArray(row.dataClassesJson)
-    ? (row.dataClassesJson as unknown[]).filter(
+  const raw = row.dataClassesJson;
+  let dataClasses: string[] = [];
+  let attributes: DigitalExposureAttribute[] | undefined;
+  let recordCount: number | undefined;
+  let confidence: number | undefined;
+  let hashType: string | null | undefined;
+  let collection: string | null | undefined;
+  let firstSeen: string | null | undefined;
+  let lastSeen: string | null | undefined;
+  let obtainedFrom: string | null | undefined;
+
+  if (Array.isArray(raw)) {
+    dataClasses = raw.filter(
+      (item): item is string => typeof item === "string"
+    );
+  } else if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const packed = raw as PackedFindingMeta;
+    if (Array.isArray(packed.labels)) {
+      dataClasses = packed.labels.filter(
         (item): item is string => typeof item === "string"
-      )
-    : [];
+      );
+    }
+    if (Array.isArray(packed.attributes)) {
+      attributes = packed.attributes;
+    }
+    recordCount =
+      typeof packed.recordCount === "number" ? packed.recordCount : undefined;
+    confidence =
+      typeof packed.confidence === "number" ? packed.confidence : undefined;
+    hashType = packed.hashType ?? null;
+    collection = packed.collection ?? null;
+    firstSeen = packed.firstSeen ?? null;
+    lastSeen = packed.lastSeen ?? null;
+    obtainedFrom = packed.obtainedFrom ?? null;
+  }
+
   return {
     type: row.type as DigitalExposureFinding["type"],
     title: row.title,
@@ -49,6 +117,56 @@ function mapFinding(
     sourceUrl: row.sourceUrl,
     identifierMasked: row.identifierMasked,
     dataClasses,
+    attributes,
+    recordCount,
+    confidence,
+    hashType,
+    collection,
+    firstSeen,
+    lastSeen,
+    obtainedFrom,
+  };
+}
+
+function assembleReport(
+  scan: typeof digitalExposureScans.$inferSelect,
+  findings: DigitalExposureFinding[]
+): DigitalExposureReport {
+  const subjectName = scan.subjectName ?? "Unbekannt";
+  const riskScore = scan.riskScore;
+  const aiSummary = extractAiSummary(findings);
+  const managementOverview = buildManagementOverview(findings, riskScore);
+  const threatMatrix = buildThreatMatrix(findings, riskScore);
+  const actions = buildActionPlan(findings, managementOverview);
+
+  return {
+    scanId: scan.id,
+    moduleKey: "digital_leak_exposure",
+    subjectName,
+    status: scan.status as DigitalExposureScanStatus,
+    riskScore,
+    summary: scan.summary ?? managementOverview.headline,
+    emailCount: scan.emailCount,
+    phoneCount: scan.phoneCount,
+    findingCount: findings.filter(
+      (f) => f.type !== "SOURCE" && f.title !== AI_SUMMARY_FINDING_TITLE
+    ).length,
+    startedAt: scan.startedAt,
+    completedAt: scan.completedAt,
+    findings,
+    geminiPrep: buildGeminiPrepPayload({
+      subjectName,
+      riskScore,
+      findings,
+      managementOverview,
+      threatMatrix,
+    }),
+    aiSummary,
+    managementOverview,
+    actions,
+    threatMatrix,
+    apiConfigured: true,
+    providerLabel: "DeHashed",
   };
 }
 
@@ -80,7 +198,6 @@ export async function createDigitalExposureScan(input: {
 
   let insertId = readMysqlInsertId(result);
 
-  // Fallback: some drizzle/mysql2 shapes omit insertId on the tuple — re-read row
   if (!Number.isFinite(insertId) || insertId <= 0) {
     const rows = await db
       .select({ id: digitalExposureScans.id })
@@ -140,7 +257,9 @@ export async function completeDigitalExposureScan(input: {
       completedAt: mysqlNow(),
       riskScore: Math.max(0, Math.min(100, input.riskScore)),
       summary: input.summary.slice(0, 4000),
-      findingCount: input.findings.length,
+      findingCount: input.findings.filter(
+        (f) => f.type !== "SOURCE" && f.title !== AI_SUMMARY_FINDING_TITLE
+      ).length,
     })
     .where(eq(digitalExposureScans.id, input.scanId));
 
@@ -151,14 +270,17 @@ export async function completeDigitalExposureScan(input: {
       scanId: input.scanId,
       type: finding.type,
       title: finding.title.slice(0, 255),
-      description: finding.description.slice(0, 4000) || null,
+      description:
+        finding.title === AI_SUMMARY_FINDING_TITLE
+          ? finding.description.slice(0, 60000) || null
+          : finding.description.slice(0, 4000) || null,
       riskLevel: finding.riskLevel,
       sourceName: finding.sourceName?.slice(0, 255) ?? null,
       sourceDate: finding.sourceDate?.slice(0, 32) ?? null,
       recommendation: finding.recommendation?.slice(0, 2000) ?? null,
       sourceUrl: finding.sourceUrl?.slice(0, 500) ?? null,
       identifierMasked: finding.identifierMasked?.slice(0, 255) ?? null,
-      dataClassesJson: finding.dataClasses,
+      dataClassesJson: packFindingMeta(finding),
     }))
   );
 }
@@ -188,31 +310,8 @@ export async function getLatestDigitalExposureReport(
       .where(eq(digitalExposureResults.scanId, scan.id));
 
     const findings = rows.map(mapFinding);
-    const subjectName = scan.subjectName ?? "Unbekannt";
-
-    return {
-      scanId: scan.id,
-      moduleKey: "digital_leak_exposure",
-      subjectName,
-      status: scan.status as DigitalExposureScanStatus,
-      riskScore: scan.riskScore,
-      summary: scan.summary ?? "",
-      emailCount: scan.emailCount,
-      phoneCount: scan.phoneCount,
-      findingCount: scan.findingCount,
-      startedAt: scan.startedAt,
-      completedAt: scan.completedAt,
-      findings,
-      geminiPrep: buildGeminiPrepPayload({
-        subjectName,
-        riskScore: scan.riskScore,
-        findings,
-      }),
-      apiConfigured: true,
-      providerLabel: "DeHashed",
-    };
+    return assembleReport(scan, findings);
   } catch (error) {
-    // Missing tables / transient DB errors must never crash Results SSR
     console.error("[getLatestDigitalExposureReport] failed", error);
     return null;
   }

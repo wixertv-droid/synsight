@@ -10,15 +10,22 @@ import {
 import { maskEmail, maskPhone } from "@/lib/analysis/digital-exposure/mask";
 import { buildGeminiPrepPayload } from "@/lib/analysis/digital-exposure/gemini-prep";
 import {
+  buildActionPlan,
+  buildManagementOverview,
+  buildProfessionalSummary,
+  buildThreatMatrix,
+} from "@/lib/analysis/digital-exposure/report-metrics";
+import {
   completeDigitalExposureScan,
   createDigitalExposureScan,
   failDigitalExposureScan,
   writeApiUsageLog,
 } from "@/lib/analysis/digital-exposure/repository";
-import type {
-  DigitalExposureFinding,
-  DigitalExposureReport,
-  DigitalExposureRiskLevel,
+import {
+  AI_SUMMARY_FINDING_TITLE,
+  type DigitalExposureFinding,
+  type DigitalExposureReport,
+  type DigitalExposureRiskLevel,
 } from "@/lib/analysis/digital-exposure/types";
 import { recordApiUsageEvent } from "@/lib/services/finance-service";
 
@@ -62,19 +69,29 @@ function findingsFromEmailBreach(
 ): DigitalExposureFinding[] {
   const masked = maskEmail(email);
   const risk = riskForBreach(breach);
+  const confidence =
+    breach.hasPasswordExposure || breach.hasHashedPasswordExposure ? 98 : 92;
   const findings: DigitalExposureFinding[] = [
     {
       type: "BREACH",
-      title: `Datenleck · ${breach.databaseName}`,
-      description: `Bestätigter DeHashed-Treffer in „${breach.databaseName}“ (${breach.recordCount} Datensatz/Datensätze). Keine Passwortwerte gespeichert.`,
+      title: breach.databaseName,
+      description: `Bestätigter DeHashed-Treffer in „${breach.databaseName}“ (${breach.recordCount} Datensatz/Datensätze). Alle angezeigten Merkmale stammen aus der API — keine Passwortwerte gespeichert.`,
       riskLevel: risk,
       sourceName: breach.databaseName,
-      sourceDate: null,
+      sourceDate: breach.sourceDate,
       recommendation:
         "Betroffene Konten prüfen, Passwörter ändern und Zwei-Faktor-Authentifizierung aktivieren.",
       sourceUrl: DEHASHED_URL,
       identifierMasked: masked,
-      dataClasses: breach.dataClasses.slice(0, 40),
+      dataClasses: breach.dataClasses.slice(),
+      attributes: breach.attributes,
+      recordCount: breach.recordCount,
+      confidence,
+      hashType: breach.hashType,
+      collection: breach.collection,
+      firstSeen: breach.firstSeen,
+      lastSeen: breach.lastSeen,
+      obtainedFrom: breach.obtainedFrom,
     },
     {
       type: "EMAIL",
@@ -82,7 +99,7 @@ function findingsFromEmailBreach(
       description: `Adresse in Leak „${breach.databaseName}“ gefunden.`,
       riskLevel: risk === "high" ? "high" : "medium",
       sourceName: breach.databaseName,
-      sourceDate: null,
+      sourceDate: breach.sourceDate,
       recommendation:
         "E-Mail auf Phishing prüfen und Wiederverwendung von Passwörtern vermeiden.",
       sourceUrl: DEHASHED_URL,
@@ -90,6 +107,11 @@ function findingsFromEmailBreach(
       dataClasses: breach.dataClasses.filter((c) =>
         /e-mail|email|benutzername/i.test(c)
       ),
+      attributes: breach.attributes.filter((a) =>
+        ["email", "username", "alias"].includes(a.key)
+      ),
+      recordCount: breach.recordCount,
+      confidence,
     },
   ];
 
@@ -101,12 +123,18 @@ function findingsFromEmailBreach(
         "Im Leak war ein Passwort bzw. Passwort-Hash gemeldet. Es werden keine Passwortwerte oder Hashes gespeichert oder angezeigt.",
       riskLevel: "high",
       sourceName: breach.databaseName,
-      sourceDate: null,
+      sourceDate: breach.sourceDate,
       recommendation:
         "Passwörter bei betroffenen Diensten sofort ändern und nicht wiederverwenden.",
       sourceUrl: DEHASHED_URL,
       identifierMasked: masked,
-      dataClasses: breach.dataClasses.filter((c) => /passwort/i.test(c)),
+      dataClasses: breach.dataClasses.filter((c) => /passwort|hash/i.test(c)),
+      attributes: breach.attributes.filter((a) =>
+        ["password", "hashed_password", "hash_type"].includes(a.key)
+      ),
+      recordCount: breach.recordCount,
+      confidence: 99,
+      hashType: breach.hashType,
     });
   }
 
@@ -119,19 +147,29 @@ function findingsFromPhoneBreach(
 ): DigitalExposureFinding[] {
   const masked = maskPhone(phone);
   const risk = riskForBreach(breach);
+  const confidence =
+    breach.hasPasswordExposure || breach.hasHashedPasswordExposure ? 98 : 92;
   const findings: DigitalExposureFinding[] = [
     {
       type: "BREACH",
-      title: `Datenleck · ${breach.databaseName}`,
-      description: `Bestätigter DeHashed-Treffer zur Telefonnummer in „${breach.databaseName}“.`,
+      title: breach.databaseName,
+      description: `Bestätigter DeHashed-Treffer zur Telefonnummer in „${breach.databaseName}“ (${breach.recordCount} Datensatz/Datensätze).`,
       riskLevel: risk,
       sourceName: breach.databaseName,
-      sourceDate: null,
+      sourceDate: breach.sourceDate,
       recommendation:
         "Nummer auf Spam-Listen prüfen und sparsam veröffentlichen.",
       sourceUrl: DEHASHED_URL,
       identifierMasked: masked,
-      dataClasses: breach.dataClasses.slice(0, 40),
+      dataClasses: breach.dataClasses.slice(),
+      attributes: breach.attributes,
+      recordCount: breach.recordCount,
+      confidence,
+      hashType: breach.hashType,
+      collection: breach.collection,
+      firstSeen: breach.firstSeen,
+      lastSeen: breach.lastSeen,
+      obtainedFrom: breach.obtainedFrom,
     },
     {
       type: "PHONE",
@@ -139,12 +177,15 @@ function findingsFromPhoneBreach(
       description: `Nummer in Leak „${breach.databaseName}“ gefunden.`,
       riskLevel: risk === "high" ? "high" : "medium",
       sourceName: breach.databaseName,
-      sourceDate: null,
+      sourceDate: breach.sourceDate,
       recommendation:
         "Bei verdächtigen Anrufen Rufnummer-Sperre und Anbieter-Portale nutzen.",
       sourceUrl: DEHASHED_URL,
       identifierMasked: masked,
       dataClasses: breach.dataClasses.filter((c) => /telefon/i.test(c)),
+      attributes: breach.attributes.filter((a) => a.key === "phone"),
+      recordCount: breach.recordCount,
+      confidence,
     },
   ];
 
@@ -156,12 +197,18 @@ function findingsFromPhoneBreach(
         "Im zugehörigen Leak waren Passwort-Daten gemeldet (Werte werden nicht gespeichert).",
       riskLevel: "high",
       sourceName: breach.databaseName,
-      sourceDate: null,
+      sourceDate: breach.sourceDate,
       recommendation:
         "Passwörter bei betroffenen Diensten ändern und 2FA aktivieren.",
       sourceUrl: DEHASHED_URL,
       identifierMasked: masked,
-      dataClasses: breach.dataClasses.filter((c) => /passwort/i.test(c)),
+      dataClasses: breach.dataClasses.filter((c) => /passwort|hash/i.test(c)),
+      attributes: breach.attributes.filter((a) =>
+        ["password", "hashed_password", "hash_type"].includes(a.key)
+      ),
+      recordCount: breach.recordCount,
+      confidence: 99,
+      hashType: breach.hashType,
     });
   }
 
@@ -183,23 +230,9 @@ function scoreFindings(findings: DigitalExposureFinding[]): number {
   return Math.max(0, Math.min(100, score));
 }
 
-function buildSummary(
-  findings: DigitalExposureFinding[],
-  emailCount: number,
-  phoneCount: number
-): string {
-  const breaches = findings.filter((f) => f.type === "BREACH").length;
-  const passwordHits = findings.filter(
-    (f) => f.type === "PASSWORD_EXPOSURE"
-  ).length;
-  if (breaches === 0 && passwordHits === 0) {
-    return `Keine bekannten Datenlecks zu den geprüften Identifikatoren gefunden (${emailCount} E-Mail, ${phoneCount} Telefon).`;
-  }
-  return `Es wurden ${breaches} bestätigte Datenleck-Ereignisse gefunden${
-    passwordHits > 0
-      ? `, davon ${passwordHits} mit Passwort-Exposure-Hinweis`
-      : ""
-  }. Nur echte DeHashed-Treffer — keine Vermutungen, keine Passwortwerte.`;
+function buildSummary(findings: DigitalExposureFinding[]): string {
+  const riskScore = scoreFindings(findings.filter((f) => f.type !== "SOURCE"));
+  return buildProfessionalSummary(buildManagementOverview(findings, riskScore));
 }
 
 export class DigitalExposureUnavailableError extends Error {
@@ -437,7 +470,45 @@ export async function runDigitalLeakExposureScan(
     const riskScore = scoreFindings(
       findings.filter((f) => f.type !== "SOURCE")
     );
-    const summary = buildSummary(findings, emails.length, phones.length);
+    const managementOverview = buildManagementOverview(findings, riskScore);
+    const threatMatrix = buildThreatMatrix(findings, riskScore);
+    const actions = buildActionPlan(findings, managementOverview);
+    const summary = buildSummary(findings);
+    const geminiPrep = buildGeminiPrepPayload({
+      subjectName,
+      riskScore,
+      findings,
+      managementOverview,
+      threatMatrix,
+    });
+
+    let aiSummary: string | null = null;
+    try {
+      const { summarizeDigitalExposureWithGemini } =
+        await import("@/lib/analysis/digital-exposure/gemini-prep");
+      aiSummary = await summarizeDigitalExposureWithGemini(geminiPrep, {
+        userId: options.userId,
+        analysisId: scanId,
+      });
+    } catch (error) {
+      console.error("[digital-exposure] gemini summary failed", error);
+      aiSummary = null;
+    }
+
+    if (aiSummary) {
+      findings.push({
+        type: "SOURCE",
+        title: AI_SUMMARY_FINDING_TITLE,
+        description: aiSummary.slice(0, 60000),
+        riskLevel: "low",
+        sourceName: "Gemini Digital Forensics",
+        sourceDate: null,
+        recommendation: null,
+        sourceUrl: null,
+        identifierMasked: null,
+        dataClasses: [],
+      });
+    }
 
     await completeDigitalExposureScan({
       scanId,
@@ -456,15 +527,17 @@ export async function runDigitalLeakExposureScan(
       summary,
       emailCount: emails.length,
       phoneCount: phones.length,
-      findingCount: findings.filter((f) => f.type !== "SOURCE").length,
+      findingCount: findings.filter(
+        (f) => f.type !== "SOURCE" && f.title !== AI_SUMMARY_FINDING_TITLE
+      ).length,
       startedAt: new Date().toISOString(),
       completedAt: new Date().toISOString(),
       findings,
-      geminiPrep: buildGeminiPrepPayload({
-        subjectName,
-        riskScore,
-        findings,
-      }),
+      geminiPrep,
+      aiSummary,
+      managementOverview,
+      actions,
+      threatMatrix,
       apiConfigured: true,
       providerLabel: "DeHashed",
     };

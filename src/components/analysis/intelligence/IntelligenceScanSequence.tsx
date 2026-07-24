@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { IntelligenceScanStep } from "@/lib/analysis/types";
+import MissionProgressBar from "@/components/analysis/intelligence/MissionProgressBar";
 
 const TERMINAL_LINES = [
   "Building Identity Fingerprint…",
@@ -270,22 +271,12 @@ export default function IntelligenceScanSequence({
           </div>
         </div>
 
-        {/* Mission-Progress wie LaunchScreen / Startseite */}
-        <div className="mission-progress relative mt-5 h-[7px] overflow-hidden rounded-[2px] bg-white/[0.065]">
-          <div
-            className="mission-progress-fill relative h-full transition-[width] duration-200 ease-out"
-            style={{ width: `${progress}%` }}
-          >
-            <span className="mission-progress-head absolute right-0 top-1/2 h-3 w-[2px] -translate-y-1/2 bg-[#cff8ff]" />
-          </div>
-        </div>
-        <div className="mt-2 flex justify-between font-mono text-[8px] tracking-[.12em] text-white/35">
-          <span>PIPELINE</span>
-          <span className="text-sky-300/80">
-            {String(progress).padStart(3, "0")}%
-            {!apiReady && progress >= 94 ? " · WARTE AUF ENGINE" : ""}
-          </span>
-        </div>
+        {/* Landingpage-identischer Mission-Progress — nur Balken, Theater unverändert */}
+        <MissionProgressBar
+          progress={progress}
+          leftLabel="PIPELINE"
+          rightLabel={`${String(progress).padStart(3, "0")}%${!apiReady && progress >= 94 ? " · WARTE AUF ENGINE" : ""}`}
+        />
       </div>
 
       <div className="relative grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
