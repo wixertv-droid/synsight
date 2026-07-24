@@ -2,7 +2,11 @@
  * Clears in-memory repository state between tests.
  * Safe when DATABASE_URL is unset and repositories use globalThis stores.
  */
+import { resetDigitalLeakCatalogEnsureForTests } from "@/lib/credits/ensure-digital-leak-catalog";
+
 export function resetInMemoryStores(): void {
+  resetDigitalLeakCatalogEnsureForTests();
+
   const g = globalThis as typeof globalThis & {
     __synsightUsers?: Map<unknown, unknown>;
     __synsightNextUserId?: number;

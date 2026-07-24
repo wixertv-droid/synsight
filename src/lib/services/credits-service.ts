@@ -1,5 +1,6 @@
 import { formatEuroFromCents, totalCredits } from "@/lib/credits/pricing";
 import { getCreditsRepository, getPricingRepository } from "@/lib/repositories";
+import { ensureDigitalLeakCatalog } from "@/lib/credits/ensure-digital-leak-catalog";
 
 function startOfMonthIso(): string {
   const now = new Date();
@@ -163,6 +164,7 @@ export async function consumeCredits(
   analysisKey: string,
   requestId?: string
 ) {
+  await ensureDigitalLeakCatalog();
   const price = await getPricingRepository().findAnalysisByKey(analysisKey);
   if (!price || !price.isActive) {
     return { status: "unknown_analysis" as const };

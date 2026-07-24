@@ -270,4 +270,43 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("dehashed");
     expect(sql).toMatch(/is_active` = 0/);
   });
+
+  it("checksum mismatch on an applied migration aborts before later files", () => {
+    const migrate = readFileSync(
+      path.join(process.cwd(), "database", "migrate.ts"),
+      "utf8"
+    );
+    expect(migrate).toContain("Checksum mismatch");
+    expect(migrate).toContain("Refusing to continue");
+    // Ordered loop: a throw on 020 prevents apply of 021/022
+    expect(migrate).toMatch(/for \(const name of files\)/);
+  });
+
+  it("ships runtime ensure so catalog heals without migrate", () => {
+    const ensure = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/lib/credits/ensure-digital-leak-catalog.ts"
+      ),
+      "utf8"
+    );
+    const pricingService = readFileSync(
+      path.join(process.cwd(), "src/lib/services/pricing-service.ts"),
+      "utf8"
+    );
+    const financeService = readFileSync(
+      path.join(process.cwd(), "src/lib/services/finance-service.ts"),
+      "utf8"
+    );
+    const instrumentation = readFileSync(
+      path.join(process.cwd(), "src/instrumentation.ts"),
+      "utf8"
+    );
+    expect(ensure).toContain("ensureDigitalLeakCatalog");
+    expect(ensure).toContain("digital_leak_exposure");
+    expect(ensure).toContain("dehashed");
+    expect(pricingService).toContain("ensureDigitalLeakCatalog");
+    expect(financeService).toContain("ensureDigitalLeakCatalog");
+    expect(instrumentation).toContain("ensureDigitalLeakCatalog");
+  });
 });

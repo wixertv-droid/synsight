@@ -1,7 +1,11 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import type { SynSightDatabase } from "@/lib/database/client";
 import { analysisPricing, creditPackages } from "@/lib/database/schema";
-import { REPLACED_ANALYSIS_KEYS } from "@/lib/credits/pricing";
+import {
+  DEFAULT_ANALYSIS_PRICES,
+  REPLACED_ANALYSIS_KEYS,
+  isAnalysisActiveByDefault,
+} from "@/lib/credits/pricing";
 import {
   createInMemoryPricingRepository,
   type ManagedCreditPackageRecord,
@@ -53,6 +57,36 @@ export function createMysqlPricingRepository(
       return row;
     },
     async resetAnalyses(adminId) {
+      // Insert any DEFAULT_ANALYSIS_PRICES rows missing from DB (e.g. deploy
+      // without migrate), then restore system-default field values.
+      for (const [index, entry] of DEFAULT_ANALYSIS_PRICES.entries()) {
+        const sortOrder =
+          entry.key === "digital_leak_exposure" ? 25 : (index + 1) * 10;
+        await db
+          .insert(analysisPricing)
+          .values({
+            analysisKey: entry.key,
+            label: entry.label,
+            description: entry.description,
+            credits: entry.credits,
+            sortOrder,
+            isActive: isAnalysisActiveByDefault(entry.key),
+            isSystemDefault: true,
+            defaultLabel: entry.label,
+            defaultDescription: entry.description,
+            defaultCredits: entry.credits,
+            updatedByAdminId: adminId,
+          })
+          .onDuplicateKeyUpdate({
+            set: {
+              isSystemDefault: true,
+              defaultLabel: entry.label,
+              defaultDescription: entry.description,
+              defaultCredits: entry.credits,
+            },
+          });
+      }
+
       await db
         .update(analysisPricing)
         .set({

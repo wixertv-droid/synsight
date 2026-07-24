@@ -1,11 +1,16 @@
 /**
  * Next.js instrumentation hook.
  *
- * This intentionally activates no external service. It is the stable seam
- * for a future OpenTelemetry SDK and Sentry server adapter.
+ * Stable seam for observability adapters, plus a best-effort catalog self-heal
+ * so Digital Leak / DeHashed appear even when `db:migrate` was skipped.
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("@/lib/observability");
+    void import("@/lib/credits/ensure-digital-leak-catalog")
+      .then((mod) => mod.ensureDigitalLeakCatalog())
+      .catch(() => {
+        /* tables may be missing until migrate — catalog ensure retries on read */
+      });
   }
 }

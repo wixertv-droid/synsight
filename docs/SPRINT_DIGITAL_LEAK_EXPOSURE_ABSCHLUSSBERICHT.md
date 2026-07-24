@@ -67,16 +67,21 @@ pm2 restart synsight
 Danach Admin → APIs: **DeHashed.com** Account-E-Mail + API-Key speichern und **API TESTEN**
 (Auth läuft über Header `DeHashed-Api-Key` gegen `POST /v2/search`).
 
-**Wichtig:** Nach Deploy **immer** `npm run db:migrate` ausführen (Migrationen `020`–`022`).
-Ohne Migration fehlt die Karte „Digital Leak & Exposure Scan“ im Analysecenter,
-während Telefon/E-Mail weiterhin angezeigt werden.
+**Wichtig:** Nach Deploy **immer** `npm run db:migrate` ausführen (Migrationen `020`–`022`
+für Schema-Tabellen `digital_exposure_*`). Zusätzlich schreibt `ensureDigitalLeakCatalog`
+beim App-Start und bei Katalog-/API-Kosten-Reads die Pricing-/Cost-Zeilen nach — so
+erscheinen Digital Leak & DeHashed auch, wenn Migrate vergessen wurde oder ein
+Checksum-Mismatch auf `020` spätere Migrationen blockiert.
 
-Prüfen nach Migrate:
+Prüfen nach Deploy (auch ohne manuellen Migrate für Katalog-Daten):
 
 - Analysecenter QUICK: **Digital Leak & Exposure Scan** (8 SynCredits), **kein** Telefon/E-Mail
 - Ergebniscenter: Tab Digital Leak & Exposure
 - Admin → Preisverwaltung: `digital_leak_exposure` aktiv
 - Admin → Finanzen → API-Kosten: Provider `dehashed`
+
+Schema-Tabellen für den Scan selbst (`digital_exposure_scans` / `_results`) erfordern
+weiterhin erfolgreiches `db:migrate` (020).
 
 ## Offene Punkte
 

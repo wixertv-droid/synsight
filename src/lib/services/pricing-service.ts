@@ -1,4 +1,5 @@
 import type { AuthenticatedUser } from "@/lib/auth/types";
+import { ensureDigitalLeakCatalog } from "@/lib/credits/ensure-digital-leak-catalog";
 import { formatEuroFromCents } from "@/lib/credits/pricing";
 import {
   getAuditRepository,
@@ -32,6 +33,7 @@ function presentPackage(pack: {
 }
 
 export async function getPublicPricingCatalog() {
+  await ensureDigitalLeakCatalog();
   const repository = getPricingRepository();
   const [analyses, packages] = await Promise.all([
     repository.listAnalyses(true),
@@ -50,6 +52,7 @@ export async function getPublicPricingCatalog() {
 }
 
 export async function getAnalysisQuote(userId: number, analysisKey: string) {
+  await ensureDigitalLeakCatalog();
   const pricing = await getPricingRepository().findAnalysisByKey(analysisKey);
   if (!pricing || !pricing.isActive) return null;
   const account = await getCreditsRepository().ensureAccount(userId);
@@ -65,6 +68,7 @@ export async function getAnalysisQuote(userId: number, analysisKey: string) {
 
 export async function getAdminPricingCatalog(actor: AuthenticatedUser) {
   assertAdmin(actor);
+  await ensureDigitalLeakCatalog();
   const repository = getPricingRepository();
   const [analyses, packages] = await Promise.all([
     repository.listAnalyses(false),
@@ -157,6 +161,7 @@ export async function resetPricingDefaults(input: {
   ipAddress?: string | null;
 }) {
   assertAdmin(input.actor);
+  await ensureDigitalLeakCatalog();
   const adminId = Number(input.actor.id);
   const repository = getPricingRepository();
   if (input.scope === "analyses" || input.scope === "all") {

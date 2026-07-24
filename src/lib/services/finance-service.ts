@@ -1,5 +1,6 @@
 import { desc, eq, gte, sql } from "drizzle-orm";
 import type { AuthenticatedUser } from "@/lib/auth/types";
+import { ensureDigitalLeakCatalog } from "@/lib/credits/ensure-digital-leak-catalog";
 import { getDatabase } from "@/lib/database/client";
 import {
   apiCostSettings,
@@ -214,6 +215,7 @@ export async function listApiCostSettings(
   actor: AuthenticatedUser
 ): Promise<ApiCostSettingPublic[]> {
   assertAdmin(actor);
+  await ensureDigitalLeakCatalog();
   const db = getDatabase();
   if (!db) return [];
   const rows = await db.select().from(apiCostSettings);

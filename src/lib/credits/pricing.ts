@@ -1,6 +1,11 @@
 /**
  * Central SynCredits price book.
  * Change amounts here (or later via admin DB) without touching UI call sites.
+ *
+ * MySQL note: `DEFAULT_ANALYSIS_PRICES` seeds the in-memory repository and is
+ * the source for `ensureDigitalLeakCatalog` / admin reset inserts. It is NOT
+ * automatically written to production MariaDB except via those ensure/reset
+ * paths or SQL migrations 009/020/022.
  */
 
 export type AnalysisKey =
