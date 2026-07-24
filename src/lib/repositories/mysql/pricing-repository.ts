@@ -1,6 +1,7 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import type { SynSightDatabase } from "@/lib/database/client";
 import { analysisPricing, creditPackages } from "@/lib/database/schema";
+import { REPLACED_ANALYSIS_KEYS } from "@/lib/credits/pricing";
 import {
   createInMemoryPricingRepository,
   type ManagedCreditPackageRecord,
@@ -62,6 +63,17 @@ export function createMysqlPricingRepository(
           updatedByAdminId: adminId,
         })
         .where(eq(analysisPricing.isSystemDefault, true));
+
+      // Keep modules replaced by digital_leak_exposure inactive after reset
+      await db
+        .update(analysisPricing)
+        .set({
+          isActive: false,
+          updatedByAdminId: adminId,
+        })
+        .where(
+          inArray(analysisPricing.analysisKey, [...REPLACED_ANALYSIS_KEYS])
+        );
     },
     async listManagedPackages(activeOnly = true) {
       let query = db.select().from(creditPackages).$dynamic();

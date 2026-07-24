@@ -27,15 +27,42 @@ describe("database-backed pricing service", () => {
     process.env.CREDITS_CHECKOUT_MODE = "instant";
   });
 
-  it("provides all requested analysis prices", async () => {
+  it("provides active analysis prices without replaced phone/email modules", async () => {
     const catalog = await getPublicPricingCatalog();
-    expect(catalog.analyses).toHaveLength(13);
+    expect(catalog.analyses).toHaveLength(12);
     expect(
-      catalog.analyses.find((row) => row.key === "phone_analysis")?.credits
-    ).toBe(6);
+      catalog.analyses.find((row) => row.key === "digital_leak_exposure")
+        ?.credits
+    ).toBe(8);
+    expect(
+      catalog.analyses.find((row) => row.key === "phone_analysis")
+    ).toBeUndefined();
+    expect(
+      catalog.analyses.find((row) => row.key === "email_analysis")
+    ).toBeUndefined();
     expect(
       catalog.analyses.find((row) => row.key === "alias_analysis")?.credits
     ).toBe(8);
+  });
+
+  it("keeps phone/email inactive after pricing reset", async () => {
+    await resetPricingDefaults({ actor: admin, scope: "analyses" });
+    const publicCatalog = await getPublicPricingCatalog();
+    const adminCatalog = await getAdminPricingCatalog(admin);
+    expect(
+      publicCatalog.analyses.some((row) => row.key === "digital_leak_exposure")
+    ).toBe(true);
+    expect(
+      publicCatalog.analyses.some((row) => row.key === "phone_analysis")
+    ).toBe(false);
+    expect(
+      adminCatalog.analyses.find((row) => row.analysisKey === "phone_analysis")
+        ?.isActive
+    ).toBe(false);
+    expect(
+      adminCatalog.analyses.find((row) => row.analysisKey === "email_analysis")
+        ?.isActive
+    ).toBe(false);
   });
 
   it("uses admin-updated analysis price immediately for consumption", async () => {

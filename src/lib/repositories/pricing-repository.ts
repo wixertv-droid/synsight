@@ -1,6 +1,8 @@
 import {
   DEFAULT_ANALYSIS_PRICES,
   DEFAULT_CREDIT_PACKAGES,
+  isAnalysisActiveByDefault,
+  isReplacedAnalysisKey,
 } from "@/lib/credits/pricing";
 
 export interface AnalysisPricingRecord {
@@ -83,7 +85,7 @@ function analyses(): AnalysisPricingRecord[] {
         description: entry.description,
         credits: entry.credits,
         sortOrder: (index + 1) * 10,
-        isActive: true,
+        isActive: isAnalysisActiveByDefault(entry.key),
         isSystemDefault: true,
         defaultLabel: entry.label,
         defaultDescription: entry.description,
@@ -162,7 +164,7 @@ export function createInMemoryPricingRepository(): PricingRepository {
         row.label = row.defaultLabel ?? row.label;
         row.description = row.defaultDescription;
         row.credits = row.defaultCredits;
-        row.isActive = true;
+        row.isActive = !isReplacedAnalysisKey(row.analysisKey);
         row.updatedByAdminId = adminId;
       }
     },

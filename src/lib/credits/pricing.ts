@@ -115,6 +115,23 @@ export const DEFAULT_ANALYSIS_PRICES: readonly AnalysisPrice[] = [
   },
 ] as const;
 
+/**
+ * Replaced by `digital_leak_exposure` — stay in catalog for admin/history
+ * but must not appear active in Analyse-/Ergebniscenter.
+ */
+export const REPLACED_ANALYSIS_KEYS = [
+  "phone_analysis",
+  "email_analysis",
+] as const satisfies readonly AnalysisKey[];
+
+export function isReplacedAnalysisKey(key: string): boolean {
+  return (REPLACED_ANALYSIS_KEYS as readonly string[]).includes(key);
+}
+
+export function isAnalysisActiveByDefault(key: string): boolean {
+  return !isReplacedAnalysisKey(key);
+}
+
 /** Static package catalog — DB seed mirrors these values. */
 export interface CreditPackageDefinition {
   code: string;

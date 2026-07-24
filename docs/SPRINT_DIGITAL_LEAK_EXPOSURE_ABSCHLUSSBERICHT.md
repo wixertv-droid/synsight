@@ -67,6 +67,17 @@ pm2 restart synsight
 Danach Admin → APIs: **DeHashed.com** Account-E-Mail + API-Key speichern und **API TESTEN**
 (Auth läuft über Header `DeHashed-Api-Key` gegen `POST /v2/search`).
 
+**Wichtig:** Nach Deploy **immer** `npm run db:migrate` ausführen (Migrationen `020`–`022`).
+Ohne Migration fehlt die Karte „Digital Leak & Exposure Scan“ im Analysecenter,
+während Telefon/E-Mail weiterhin angezeigt werden.
+
+Prüfen nach Migrate:
+
+- Analysecenter QUICK: **Digital Leak & Exposure Scan** (8 SynCredits), **kein** Telefon/E-Mail
+- Ergebniscenter: Tab Digital Leak & Exposure
+- Admin → Preisverwaltung: `digital_leak_exposure` aktiv
+- Admin → Finanzen → API-Kosten: Provider `dehashed`
+
 ## Offene Punkte
 
 1. Gemini-Zusammenfassung: Facts-Payload vorbereitet, noch Stub.

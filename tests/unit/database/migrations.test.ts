@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–021 migration files", () => {
+  it("ships ordered 001–022 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -31,6 +31,7 @@ describe("database migrations workflow", () => {
       "019_serpapi_starter_pricing.sql",
       "020_digital_leak_exposure.sql",
       "021_dehashed_provider.sql",
+      "022_ensure_digital_leak_catalog.sql",
     ]);
   });
 
@@ -256,5 +257,17 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("dehashed");
     expect(sql).toContain("DeHashed.com");
     expect(sql).toContain("haveibeenpwned");
+  });
+
+  it("re-ensures digital leak catalog in 022", () => {
+    const sql = readFileSync(
+      path.join(dir, "022_ensure_digital_leak_catalog.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("digital_leak_exposure");
+    expect(sql).toContain("phone_analysis");
+    expect(sql).toContain("email_analysis");
+    expect(sql).toContain("dehashed");
+    expect(sql).toMatch(/is_active` = 0/);
   });
 });

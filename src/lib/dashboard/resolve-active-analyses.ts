@@ -1,4 +1,5 @@
 import type { AnalysisKey } from "@/lib/credits/pricing";
+import { isReplacedAnalysisKey } from "@/lib/credits/pricing";
 import {
   analysisModules,
   type AnalysisModule,
@@ -26,6 +27,9 @@ function inferTier(credits: number): AnalysisTier {
  * Inactive / removed analyses never appear on dashboard or Analyse Center.
  * Labels, descriptions and credits come from admin; UI enrichment (icons,
  * beginner copy) is merged when a known key exists.
+ *
+ * When `digital_leak_exposure` is active, legacy phone/email modules stay
+ * hidden even if they were reactivated by an admin reset.
  */
 export function resolveActiveAnalyses(
   catalog: CatalogAnalysisEntry[]
@@ -33,8 +37,12 @@ export function resolveActiveAnalyses(
   const enrichment = new Map(
     analysisModules.map((module) => [module.id, module])
   );
+  const hasDigitalLeak = catalog.some(
+    (entry) => entry.key === "digital_leak_exposure"
+  );
 
   return catalog
+    .filter((entry) => !(hasDigitalLeak && isReplacedAnalysisKey(entry.key)))
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label))
     .map((entry) => {

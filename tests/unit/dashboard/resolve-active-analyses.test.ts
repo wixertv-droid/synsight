@@ -32,4 +32,45 @@ describe("resolveActiveAnalyses", () => {
   it("returns empty when admin deactivated everything", () => {
     expect(resolveActiveAnalyses([])).toEqual([]);
   });
+
+  it("hides phone/email when digital leak exposure is present", () => {
+    const resolved = resolveActiveAnalyses([
+      {
+        key: "google_search",
+        label: "Google Suche",
+        description: "OSINT",
+        credits: 2,
+        sortOrder: 10,
+      },
+      {
+        key: "digital_leak_exposure",
+        label: "Digital Leak & Exposure Scan",
+        description: "Leaks",
+        credits: 8,
+        sortOrder: 20,
+      },
+      {
+        key: "phone_analysis",
+        label: "Telefonnummer",
+        description: "Legacy",
+        credits: 6,
+        sortOrder: 30,
+      },
+      {
+        key: "email_analysis",
+        label: "Email Analyse",
+        description: "Legacy",
+        credits: 6,
+        sortOrder: 40,
+      },
+    ]);
+
+    expect(resolved.map((row) => row.id)).toEqual([
+      "google_search",
+      "digital_leak_exposure",
+    ]);
+    expect(
+      resolved.find((row) => row.id === "digital_leak_exposure")?.credits
+    ).toBe(8);
+  });
 });
