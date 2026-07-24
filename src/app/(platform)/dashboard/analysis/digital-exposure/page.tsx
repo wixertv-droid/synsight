@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import DigitalExposurePageClient from "@/components/analysis/digital-exposure/DigitalExposurePageClient";
-import { isHibpConfiguredAndActive } from "@/lib/analysis/digital-exposure/hibp-client";
+import { isDehashedConfiguredAndActive } from "@/lib/analysis/digital-exposure/dehashed-client";
 import { resolveSubjectName } from "@/lib/analysis/google/queries";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getIdentityForUser } from "@/lib/services/identity-service";
@@ -22,7 +22,7 @@ export default async function DigitalExposureAnalysisPage() {
     ? await getIdentityForUser(userId)
     : null;
   const subjectName = resolveSubjectName(identity);
-  const apiAvailable = await isHibpConfiguredAndActive();
+  const apiAvailable = await isDehashedConfiguredAndActive();
 
   return (
     <Suspense

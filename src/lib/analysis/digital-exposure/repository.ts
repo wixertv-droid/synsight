@@ -150,7 +150,7 @@ export async function getLatestDigitalExposureReport(
       findings,
     }),
     apiConfigured: true,
-    providerLabel: "Have I Been Pwned",
+    providerLabel: "DeHashed",
   };
 }
 

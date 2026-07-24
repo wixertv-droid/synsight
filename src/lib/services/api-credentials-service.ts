@@ -408,10 +408,10 @@ export async function testApiCredentialConnection(input: {
     };
   }
 
-  if (provider === "haveibeenpwned") {
-    const { testHibpConnection } =
-      await import("@/lib/analysis/digital-exposure/hibp-client");
-    return testHibpConnection({ secret: input.secret });
+  if (provider === "dehashed") {
+    const { testDehashedConnection } =
+      await import("@/lib/analysis/digital-exposure/dehashed-client");
+    return testDehashedConnection({ secret: input.secret });
   }
 
   return {
@@ -419,7 +419,7 @@ export async function testApiCredentialConnection(input: {
     ok: false,
     message: "Live-Test für diesen Anbieter ist noch nicht freigeschaltet.",
     detail:
-      "Gemini und Have I Been Pwned können hier getestet werden. Suchanbieter (SerpAPI) unter Website → APIs & Integrationen.",
+      "Gemini und DeHashed.com können hier getestet werden. Suchanbieter (SerpAPI) unter Website → APIs & Integrationen.",
     latencyMs: Date.now() - started,
   };
 }

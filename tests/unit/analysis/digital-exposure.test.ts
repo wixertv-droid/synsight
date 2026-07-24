@@ -5,6 +5,7 @@ import {
   stripHtml,
 } from "@/lib/analysis/digital-exposure/mask";
 import { buildGeminiPrepPayload } from "@/lib/analysis/digital-exposure/gemini-prep";
+import { summarizeDehashedEntries } from "@/lib/analysis/digital-exposure/dehashed-client";
 import type { DigitalExposureFinding } from "@/lib/analysis/digital-exposure/types";
 
 describe("digital exposure helpers", () => {
@@ -20,6 +21,32 @@ describe("digital exposure helpers", () => {
     expect(stripHtml("<p>Adobe <em>Leak</em></p>")).toBe("Adobe Leak");
   });
 
+  it("summarizes DeHashed entries without storing password values", () => {
+    const summaries = summarizeDehashedEntries([
+      {
+        email: ["max@example.de"],
+        password: ["super-secret-should-never-appear"],
+        hashed_password: ["abc123hash"],
+        database_name: "Adobe",
+        username: ["max"],
+      },
+      {
+        email: ["max@example.de"],
+        phone: ["+4917612345678"],
+        database_name: "Adobe",
+      },
+    ]);
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0].databaseName).toBe("Adobe");
+    expect(summaries[0].recordCount).toBe(2);
+    expect(summaries[0].hasPasswordExposure).toBe(true);
+    expect(summaries[0].hasHashedPasswordExposure).toBe(true);
+    expect(JSON.stringify(summaries)).not.toContain(
+      "super-secret-should-never-appear"
+    );
+    expect(JSON.stringify(summaries)).not.toContain("abc123hash");
+  });
+
   it("builds facts-only Gemini payload without inventing data", () => {
     const findings: DigitalExposureFinding[] = [
       {
@@ -30,9 +57,12 @@ describe("digital exposure helpers", () => {
         sourceName: "Adobe",
         sourceDate: "2013-10-04",
         recommendation: "Passwort ändern",
-        sourceUrl: "https://haveibeenpwned.com/",
+        sourceUrl: "https://dehashed.com/",
         identifierMasked: "ma***@example.de",
-        dataClasses: ["Email addresses", "Passwords"],
+        dataClasses: [
+          "E-Mail-Adresse",
+          "Passwort vorhanden (nicht gespeichert)",
+        ],
       },
     ];
     const payload = buildGeminiPrepPayload({

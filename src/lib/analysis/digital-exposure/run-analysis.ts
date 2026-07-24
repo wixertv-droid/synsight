@@ -1,16 +1,13 @@
 import type { IdentityView } from "@/lib/services/identity-service";
 import { resolveSubjectName } from "@/lib/analysis/google/queries";
 import {
-  fetchHibpBreachesForEmail,
-  isHibpConfiguredAndActive,
-  resolveHibpCredentials,
-  type HibpBreach,
-} from "@/lib/analysis/digital-exposure/hibp-client";
-import {
-  maskEmail,
-  maskPhone,
-  stripHtml,
-} from "@/lib/analysis/digital-exposure/mask";
+  isDehashedConfiguredAndActive,
+  resolveDehashedCredentials,
+  searchDehashedByEmail,
+  searchDehashedByPhone,
+  type DehashedBreachSummary,
+} from "@/lib/analysis/digital-exposure/dehashed-client";
+import { maskEmail, maskPhone } from "@/lib/analysis/digital-exposure/mask";
 import { buildGeminiPrepPayload } from "@/lib/analysis/digital-exposure/gemini-prep";
 import {
   completeDigitalExposureScan,
@@ -23,6 +20,8 @@ import type {
   DigitalExposureRiskLevel,
 } from "@/lib/analysis/digital-exposure/types";
 import { recordApiUsageEvent } from "@/lib/services/finance-service";
+
+const DEHASHED_URL = "https://dehashed.com/";
 
 function collectEmails(identity: IdentityView | null): string[] {
   if (!identity) return [];
@@ -46,80 +45,122 @@ function collectPhones(identity: IdentityView | null): string[] {
   return [...set];
 }
 
-function includesPasswordClass(dataClasses: string[]): boolean {
-  return dataClasses.some((item) =>
-    /password|passwort|pwd|credential/i.test(item)
-  );
-}
-
-function riskForBreach(breach: HibpBreach): DigitalExposureRiskLevel {
-  if (includesPasswordClass(breach.dataClasses) || breach.isSensitive) {
+function riskForBreach(
+  breach: DehashedBreachSummary
+): DigitalExposureRiskLevel {
+  if (breach.hasPasswordExposure || breach.hasHashedPasswordExposure) {
     return "high";
   }
-  if (breach.pwnCount && breach.pwnCount > 1_000_000) return "high";
+  if (breach.recordCount >= 5) return "high";
   return "medium";
 }
 
-function findingsFromBreach(
+function findingsFromEmailBreach(
   email: string,
-  breach: HibpBreach
+  breach: DehashedBreachSummary
 ): DigitalExposureFinding[] {
   const masked = maskEmail(email);
   const risk = riskForBreach(breach);
-  const cleanDescription = stripHtml(breach.description).slice(0, 600);
-  const sourceUrl = breach.domain
-    ? `https://haveibeenpwned.com/Breach/${encodeURIComponent(breach.name)}`
-    : "https://haveibeenpwned.com/";
-
   const findings: DigitalExposureFinding[] = [
     {
       type: "BREACH",
-      title: `Datenleck · ${breach.title}`,
-      description:
-        cleanDescription ||
-        `Bestätigtes Datenleck „${breach.title}“ laut Have I Been Pwned.`,
+      title: `Datenleck · ${breach.databaseName}`,
+      description: `Bestätigter DeHashed-Treffer in „${breach.databaseName}“ (${breach.recordCount} Datensatz/Datensätze). Keine Passwortwerte gespeichert.`,
       riskLevel: risk,
-      sourceName: breach.title,
-      sourceDate: breach.breachDate,
+      sourceName: breach.databaseName,
+      sourceDate: null,
       recommendation:
         "Betroffene Konten prüfen, Passwörter ändern und Zwei-Faktor-Authentifizierung aktivieren.",
-      sourceUrl,
+      sourceUrl: DEHASHED_URL,
       identifierMasked: masked,
       dataClasses: breach.dataClasses.slice(0, 40),
     },
     {
       type: "EMAIL",
       title: "E-Mail Exposure",
-      description: `Adresse in bestätigtem Leak „${breach.title}“ gefunden.`,
+      description: `Adresse in Leak „${breach.databaseName}“ gefunden.`,
       riskLevel: risk === "high" ? "high" : "medium",
-      sourceName: breach.title,
-      sourceDate: breach.breachDate,
+      sourceName: breach.databaseName,
+      sourceDate: null,
       recommendation:
         "E-Mail auf Phishing prüfen und Wiederverwendung von Passwörtern vermeiden.",
-      sourceUrl,
+      sourceUrl: DEHASHED_URL,
       identifierMasked: masked,
       dataClasses: breach.dataClasses.filter((c) =>
-        /email|e-mail|username|account/i.test(c)
+        /e-mail|email|benutzername/i.test(c)
       ),
     },
   ];
 
-  if (includesPasswordClass(breach.dataClasses)) {
+  if (breach.hasPasswordExposure || breach.hasHashedPasswordExposure) {
     findings.push({
       type: "PASSWORD_EXPOSURE",
       title: "Passwort Exposure",
       description:
-        "Im Leak waren Passwort-bezogene Datenklassen gemeldet (Hash/Credential-Metadaten). Es werden keine Passwortwerte gespeichert oder angezeigt.",
+        "Im Leak war ein Passwort bzw. Passwort-Hash gemeldet. Es werden keine Passwortwerte oder Hashes gespeichert oder angezeigt.",
       riskLevel: "high",
-      sourceName: breach.title,
-      sourceDate: breach.breachDate,
+      sourceName: breach.databaseName,
+      sourceDate: null,
       recommendation:
         "Passwörter bei betroffenen Diensten sofort ändern und nicht wiederverwenden.",
-      sourceUrl,
+      sourceUrl: DEHASHED_URL,
       identifierMasked: masked,
-      dataClasses: breach.dataClasses.filter((c) =>
-        /password|passwort|pwd|credential/i.test(c)
-      ),
+      dataClasses: breach.dataClasses.filter((c) => /passwort/i.test(c)),
+    });
+  }
+
+  return findings;
+}
+
+function findingsFromPhoneBreach(
+  phone: string,
+  breach: DehashedBreachSummary
+): DigitalExposureFinding[] {
+  const masked = maskPhone(phone);
+  const risk = riskForBreach(breach);
+  const findings: DigitalExposureFinding[] = [
+    {
+      type: "BREACH",
+      title: `Datenleck · ${breach.databaseName}`,
+      description: `Bestätigter DeHashed-Treffer zur Telefonnummer in „${breach.databaseName}“.`,
+      riskLevel: risk,
+      sourceName: breach.databaseName,
+      sourceDate: null,
+      recommendation:
+        "Nummer auf Spam-Listen prüfen und sparsam veröffentlichen.",
+      sourceUrl: DEHASHED_URL,
+      identifierMasked: masked,
+      dataClasses: breach.dataClasses.slice(0, 40),
+    },
+    {
+      type: "PHONE",
+      title: "Telefon Exposure",
+      description: `Nummer in Leak „${breach.databaseName}“ gefunden.`,
+      riskLevel: risk === "high" ? "high" : "medium",
+      sourceName: breach.databaseName,
+      sourceDate: null,
+      recommendation:
+        "Bei verdächtigen Anrufen Rufnummer-Sperre und Anbieter-Portale nutzen.",
+      sourceUrl: DEHASHED_URL,
+      identifierMasked: masked,
+      dataClasses: breach.dataClasses.filter((c) => /telefon/i.test(c)),
+    },
+  ];
+
+  if (breach.hasPasswordExposure || breach.hasHashedPasswordExposure) {
+    findings.push({
+      type: "PASSWORD_EXPOSURE",
+      title: "Passwort Exposure",
+      description:
+        "Im zugehörigen Leak waren Passwort-Daten gemeldet (Werte werden nicht gespeichert).",
+      riskLevel: "high",
+      sourceName: breach.databaseName,
+      sourceDate: null,
+      recommendation:
+        "Passwörter bei betroffenen Diensten ändern und 2FA aktivieren.",
+      sourceUrl: DEHASHED_URL,
+      identifierMasked: masked,
+      dataClasses: breach.dataClasses.filter((c) => /passwort/i.test(c)),
     });
   }
 
@@ -157,7 +198,7 @@ function buildSummary(
     passwordHits > 0
       ? `, davon ${passwordHits} mit Passwort-Exposure-Hinweis`
       : ""
-  }. Nur verifizierte HIBP-Treffer — keine Vermutungen.`;
+  }. Nur echte DeHashed-Treffer — keine Vermutungen, keine Passwortwerte.`;
 }
 
 export class DigitalExposureUnavailableError extends Error {
@@ -171,14 +212,14 @@ export async function runDigitalLeakExposureScan(
   identity: IdentityView | null,
   options: { userId: number }
 ): Promise<DigitalExposureReport> {
-  const configured = await isHibpConfiguredAndActive();
+  const configured = await isDehashedConfiguredAndActive();
   if (!configured) {
     throw new DigitalExposureUnavailableError(
       "Digital Leak & Exposure Scan ist aktuell nicht verfügbar. Bitte wenden Sie sich an den Administrator."
     );
   }
 
-  const credentials = await resolveHibpCredentials();
+  const credentials = await resolveDehashedCredentials();
   if (!credentials) {
     throw new DigitalExposureUnavailableError(
       "Digital Leak & Exposure Scan ist aktuell nicht verfügbar. Bitte wenden Sie sich an den Administrator."
@@ -206,54 +247,51 @@ export async function runDigitalLeakExposureScan(
 
   for (const email of emails) {
     try {
-      const { breaches } = await fetchHibpBreachesForEmail(
-        email,
-        credentials.apiKey
-      );
+      const result = await searchDehashedByEmail(email, credentials.apiKey);
       await writeApiUsageLog({
-        provider: "haveibeenpwned",
-        requestType: "breachedaccount",
+        provider: "dehashed",
+        requestType: "search_email",
         userId: options.userId,
         analysisId: scanId,
         analysisKey: "digital_leak_exposure",
         success: true,
-        detail: `email=${maskEmail(email)} · breaches=${breaches.length}`,
+        detail: `email=${maskEmail(email)} · breaches=${result.breaches.length}`,
       });
       await recordApiUsageEvent({
-        providerCode: "haveibeenpwned",
-        eventType: "breachedaccount",
+        providerCode: "dehashed",
+        eventType: "search_email",
         referenceKey: `scan:${scanId}`,
         userId: options.userId,
         analysisId: scanId,
         success: true,
-        detail: `breaches=${breaches.length}`,
+        detail: `breaches=${result.breaches.length}`,
         metaJson: { identifierMasked: maskEmail(email) },
       });
 
-      if (breaches.length === 0) {
+      if (result.breaches.length === 0) {
         findings.push({
           type: "EMAIL",
           title: "E-Mail Exposure",
           description:
             "Keine bekannten Datenlecks zu diesem Identifikator gefunden.",
           riskLevel: "low",
-          sourceName: "Have I Been Pwned",
+          sourceName: "DeHashed",
           sourceDate: null,
           recommendation: null,
-          sourceUrl: "https://haveibeenpwned.com/",
+          sourceUrl: DEHASHED_URL,
           identifierMasked: maskEmail(email),
           dataClasses: [],
         });
       } else {
-        for (const breach of breaches) {
-          findings.push(...findingsFromBreach(email, breach));
+        for (const breach of result.breaches) {
+          findings.push(...findingsFromEmailBreach(email, breach));
         }
       }
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "HIBP error";
+      const detail = error instanceof Error ? error.message : "DeHashed error";
       await writeApiUsageLog({
-        provider: "haveibeenpwned",
-        requestType: "breachedaccount",
+        provider: "dehashed",
+        requestType: "search_email",
         userId: options.userId,
         analysisId: scanId,
         analysisKey: "digital_leak_exposure",
@@ -261,8 +299,8 @@ export async function runDigitalLeakExposureScan(
         detail: detail.slice(0, 500),
       });
       await recordApiUsageEvent({
-        providerCode: "haveibeenpwned",
-        eventType: "breachedaccount",
+        providerCode: "dehashed",
+        eventType: "search_email",
         referenceKey: `scan:${scanId}`,
         userId: options.userId,
         analysisId: scanId,
@@ -272,39 +310,88 @@ export async function runDigitalLeakExposureScan(
       throw error;
     }
 
-    // HIBP rate guidance: small pause between account lookups
-    await new Promise((resolve) => setTimeout(resolve, 1600));
+    await new Promise((resolve) => setTimeout(resolve, 400));
   }
 
   for (const phone of phones) {
-    // No phone breach provider is wired yet — report honest "no known leaks"
-    // from available APIs without inventing findings.
-    findings.push({
-      type: "PHONE",
-      title: "Telefon Exposure",
-      description:
-        "Keine bekannten Leaks gefunden (über verfügbare Leak-APIs; HIBP prüft E-Mail-Accounts).",
-      riskLevel: "low",
-      sourceName: null,
-      sourceDate: null,
-      recommendation:
-        "Telefonnummer sparsam veröffentlichen und bei Spam-Verdacht Anbieter-Portale prüfen.",
-      sourceUrl: null,
-      identifierMasked: maskPhone(phone),
-      dataClasses: [],
-    });
+    try {
+      const result = await searchDehashedByPhone(phone, credentials.apiKey);
+      await writeApiUsageLog({
+        provider: "dehashed",
+        requestType: "search_phone",
+        userId: options.userId,
+        analysisId: scanId,
+        analysisKey: "digital_leak_exposure",
+        success: true,
+        detail: `phone=${maskPhone(phone)} · breaches=${result.breaches.length}`,
+      });
+      await recordApiUsageEvent({
+        providerCode: "dehashed",
+        eventType: "search_phone",
+        referenceKey: `scan:${scanId}`,
+        userId: options.userId,
+        analysisId: scanId,
+        success: true,
+        detail: `breaches=${result.breaches.length}`,
+        metaJson: { identifierMasked: maskPhone(phone) },
+      });
+
+      if (result.breaches.length === 0) {
+        findings.push({
+          type: "PHONE",
+          title: "Telefon Exposure",
+          description:
+            "Keine bekannten Datenlecks zu diesem Identifikator gefunden.",
+          riskLevel: "low",
+          sourceName: "DeHashed",
+          sourceDate: null,
+          recommendation:
+            "Telefonnummer sparsam veröffentlichen und bei Spam-Verdacht Anbieter-Portale prüfen.",
+          sourceUrl: DEHASHED_URL,
+          identifierMasked: maskPhone(phone),
+          dataClasses: [],
+        });
+      } else {
+        for (const breach of result.breaches) {
+          findings.push(...findingsFromPhoneBreach(phone, breach));
+        }
+      }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "DeHashed error";
+      await writeApiUsageLog({
+        provider: "dehashed",
+        requestType: "search_phone",
+        userId: options.userId,
+        analysisId: scanId,
+        analysisKey: "digital_leak_exposure",
+        success: false,
+        detail: detail.slice(0, 500),
+      });
+      await recordApiUsageEvent({
+        providerCode: "dehashed",
+        eventType: "search_phone",
+        referenceKey: `scan:${scanId}`,
+        userId: options.userId,
+        analysisId: scanId,
+        success: false,
+        detail: detail.slice(0, 500),
+      });
+      throw error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
   }
 
   findings.push({
     type: "SOURCE",
     title: "Quellenbasis",
     description:
-      "Auswertung über Have I Been Pwned (verifizierte Breaches). Es werden ausschließlich Metadaten gespeichert — keine Passwörter.",
+      "Auswertung über DeHashed.com Search API. Es werden ausschließlich Metadaten gespeichert — keine Passwörter und keine Passwort-Hashes.",
     riskLevel: "low",
-    sourceName: "Have I Been Pwned",
+    sourceName: "DeHashed",
     sourceDate: null,
     recommendation: null,
-    sourceUrl: "https://haveibeenpwned.com/",
+    sourceUrl: DEHASHED_URL,
     identifierMasked: null,
     dataClasses: [],
   });
@@ -339,6 +426,6 @@ export async function runDigitalLeakExposureScan(
       findings,
     }),
     apiConfigured: true,
-    providerLabel: "Have I Been Pwned",
+    providerLabel: "DeHashed",
   };
 }

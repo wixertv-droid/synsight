@@ -184,8 +184,8 @@ export default function AdminApiCredentialsView() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-mono text-[9px] tracking-[.12em] text-cyber-cyan/55">
-                      {row.provider === "haveibeenpwned"
-                        ? "HAVE I BEEN PWNED (HIBP)"
+                      {row.provider === "dehashed"
+                        ? "DEHASHED.COM"
                         : row.provider.toUpperCase()}
                     </p>
                     {row.configured ? (
@@ -263,7 +263,7 @@ export default function AdminApiCredentialsView() {
                         {busy ? "Bitte warten…" : "Schlüssel speichern"}
                       </button>
                       {row.provider === "gemini" ||
-                      row.provider === "haveibeenpwned" ? (
+                      row.provider === "dehashed" ? (
                         <button
                           type="button"
                           disabled={

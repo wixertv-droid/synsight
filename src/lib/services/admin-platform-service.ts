@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 export const ADMIN_API_PROVIDERS = [
   "gemini",
   "openai",
-  "haveibeenpwned",
+  "dehashed",
   "virustotal",
   "hunter_io",
   "opencorporates",
@@ -135,8 +135,8 @@ export async function listAdminApiCredentials(
       return {
         provider,
         label:
-          provider === "haveibeenpwned"
-            ? "Have I Been Pwned"
+          provider === "dehashed"
+            ? "DeHashed.com"
             : provider.replace(/_/g, " "),
         isActive: false,
         configured: false,

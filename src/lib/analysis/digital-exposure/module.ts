@@ -14,15 +14,15 @@ export const digitalLeakExposureModule: IntelligenceModuleDefinition = {
       atMs: 0,
     },
     {
-      id: "hibp",
-      label: "Have I Been Pwned Abfrage",
-      terminal: "HIBP · breachedaccount · verified only",
+      id: "dehashed",
+      label: "DeHashed.com Abfrage",
+      terminal: "DEHASHED · search email+phone · metadata only",
       atMs: 1600,
     },
     {
       id: "phone",
       label: "Telefon-Exposure Prüfung",
-      terminal: "PHONE · public leak sources · no invention",
+      terminal: "PHONE · dehashed phone query · no invention",
       atMs: 3600,
     },
     {

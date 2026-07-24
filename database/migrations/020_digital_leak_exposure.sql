@@ -94,7 +94,7 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 INSERT IGNORE INTO `api_cost_settings`
   (`provider_code`, `label`, `cost_per_request_eur`, `notes`)
 VALUES
-  ('haveibeenpwned', 'Have I Been Pwned', 0.000000, 'HIBP breachedaccount lookup — optional cost override');
+  ('dehashed', 'DeHashed.com', 0.000000, 'DeHashed Search API — optional cost override');
 
 -- Pricing: new combined analysis; deactivate separate phone/email modules
 INSERT INTO `analysis_pricing`

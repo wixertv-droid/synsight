@@ -61,14 +61,14 @@ export const analysisModules: AnalysisModule[] = [
     description:
       "Überprüfung öffentlich bekannter Datenlecks, kompromittierter Identifikatoren und digitaler Sicherheitsrisiken anhand hinterlegter E-Mail-Adressen und Telefonnummern.",
     whatYouGet: [
-      "Bestätigte Leak-Treffer (HIBP)",
+      "Bestätigte Leak-Treffer (DeHashed)",
       "Passwort-Exposure-Hinweise ohne Passwortwerte",
       "Exposure Risk Score und Empfehlungen",
     ],
     duration: "ca. 15–45 Sek.",
     tier: "quick",
     badge: "Neu",
-    help: "Ersetzt die getrennten Telefon- und E-Mail-Analysen durch eine gemeinsame Exposure-Prüfung. Benötigt konfigurierte HIBP-API.",
+    help: "Ersetzt die getrennten Telefon- und E-Mail-Analysen durch eine gemeinsame Exposure-Prüfung. Benötigt konfigurierte DeHashed.com API.",
     icon: "M12 3l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z",
     accent: "from-rose-400/15 to-transparent",
   },

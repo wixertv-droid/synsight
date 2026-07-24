@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–020 migration files", () => {
+  it("ships ordered 001–021 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -30,6 +30,7 @@ describe("database migrations workflow", () => {
       "018_gemini_token_billing.sql",
       "019_serpapi_starter_pricing.sql",
       "020_digital_leak_exposure.sql",
+      "021_dehashed_provider.sql",
     ]);
   });
 
@@ -243,7 +244,17 @@ describe("database migrations workflow", () => {
     );
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS `api_usage_logs`");
     expect(sql).toContain("digital_leak_exposure");
-    expect(sql).toContain("haveibeenpwned");
+    expect(sql).toContain("dehashed");
     expect(sql).not.toMatch(/password_hash|password_value|plain.?password/i);
+  });
+
+  it("switches provider to DeHashed in 021", () => {
+    const sql = readFileSync(
+      path.join(dir, "021_dehashed_provider.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("dehashed");
+    expect(sql).toContain("DeHashed.com");
+    expect(sql).toContain("haveibeenpwned");
   });
 });
