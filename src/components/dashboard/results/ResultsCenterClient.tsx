@@ -125,12 +125,17 @@ export default function ResultsCenterClient({
     DEFAULT_REPORT_RETENTION_DAYS
   );
 
-  const [activeTab, setActiveTab] = useState(() =>
-    tabs.some((tab) => tab.id === requestedTab) ? requestedTab : tabs[0].id
-  );
-  const [report, setReport] = useState<IntelligenceReport | null>(() =>
-    normalizeIntelligenceReport(initialGoogleReport)
-  );
+  const [activeTab, setActiveTab] = useState(() => {
+    if (tabs.some((tab) => tab.id === requestedTab)) return requestedTab;
+    return tabs[0]?.id ?? "google_search";
+  });
+  const [report, setReport] = useState<IntelligenceReport | null>(() => {
+    try {
+      return normalizeIntelligenceReport(initialGoogleReport);
+    } catch {
+      return null;
+    }
+  });
   const [exposureReport, setExposureReport] =
     useState<DigitalExposureReport | null>(initialExposureReport);
   const [scanning, setScanning] = useState(false);
@@ -170,7 +175,8 @@ export default function ResultsCenterClient({
   }, [retentionFromUrl, searchParams]);
 
   const activeModule = useMemo(
-    () => tabs.find((tab) => tab.id === activeTab) ?? tabs[0],
+    () =>
+      tabs.find((tab) => tab.id === activeTab) ?? tabs[0] ?? FALLBACK_TABS[0]!,
     [activeTab, tabs]
   );
 

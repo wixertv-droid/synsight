@@ -6,6 +6,7 @@ import {
 import {
   DEFAULT_ANALYSIS_PRICES,
   formatEuroFromCents,
+  isAnalysisActiveByDefault,
   isReplacedAnalysisKey,
 } from "@/lib/credits/pricing";
 import {
@@ -75,38 +76,57 @@ function normalizePublicAnalyses(
 }
 
 export async function getPublicPricingCatalog() {
-  await ensureDigitalLeakCatalog(false);
-  const repository = getPricingRepository();
-  let analyses = await repository.listAnalyses(true);
-  let mapped = analyses.map((entry) => ({
-    key: entry.analysisKey,
-    label: entry.label,
-    description: entry.description ?? "",
-    credits: entry.credits,
-    sortOrder: entry.sortOrder,
-  }));
-
-  const needsRepair =
-    !mapped.some((row) => row.key === "digital_leak_exposure") ||
-    mapped.some((row) => isReplacedAnalysisKey(row.key));
-
-  if (needsRepair) {
-    await ensureDigitalLeakCatalog(true);
-    analyses = await repository.listAnalyses(true);
-    mapped = analyses.map((entry) => ({
+  try {
+    await ensureDigitalLeakCatalog(false);
+    const repository = getPricingRepository();
+    let analyses = await repository.listAnalyses(true);
+    let mapped = analyses.map((entry) => ({
       key: entry.analysisKey,
       label: entry.label,
       description: entry.description ?? "",
       credits: entry.credits,
       sortOrder: entry.sortOrder,
     }));
-  }
 
-  const packages = await repository.listManagedPackages(true);
-  return {
-    analyses: normalizePublicAnalyses(mapped),
-    packages: packages.map(presentPackage),
-  };
+    const needsRepair =
+      !mapped.some((row) => row.key === "digital_leak_exposure") ||
+      mapped.some((row) => isReplacedAnalysisKey(row.key));
+
+    if (needsRepair) {
+      await ensureDigitalLeakCatalog(true);
+      analyses = await repository.listAnalyses(true);
+      mapped = analyses.map((entry) => ({
+        key: entry.analysisKey,
+        label: entry.label,
+        description: entry.description ?? "",
+        credits: entry.credits,
+        sortOrder: entry.sortOrder,
+      }));
+    }
+
+    const packages = await repository.listManagedPackages(true);
+    return {
+      analyses: normalizePublicAnalyses(mapped),
+      packages: packages.map(presentPackage),
+    };
+  } catch (error) {
+    console.error("[getPublicPricingCatalog] failed — using defaults", error);
+    return {
+      analyses: normalizePublicAnalyses(
+        DEFAULT_ANALYSIS_PRICES.filter((row) =>
+          isAnalysisActiveByDefault(row.key)
+        ).map((row, index) => ({
+          key: row.key,
+          label: row.label,
+          description: row.description,
+          credits: row.credits,
+          sortOrder:
+            row.key === "digital_leak_exposure" ? 25 : (index + 1) * 10,
+        }))
+      ),
+      packages: [],
+    };
+  }
 }
 
 export async function getAnalysisQuote(userId: number, analysisKey: string) {

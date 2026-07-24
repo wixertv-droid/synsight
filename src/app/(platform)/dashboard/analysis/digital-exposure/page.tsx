@@ -7,6 +7,8 @@ import { getIdentityForUser } from "@/lib/services/identity-service";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Digital Leak & Exposure Scan — SynSight",
   description:
@@ -18,11 +20,24 @@ export default async function DigitalExposureAnalysisPage() {
   if (!user) redirect("/login");
 
   const userId = Number.parseInt(user.id, 10);
-  const identity = Number.isFinite(userId)
-    ? await getIdentityForUser(userId)
-    : null;
-  const subjectName = resolveSubjectName(identity);
-  const apiAvailable = await isDehashedConfiguredAndActive();
+  let subjectName = "Unbekannt";
+  let apiAvailable = false;
+
+  try {
+    const identity = Number.isFinite(userId)
+      ? await getIdentityForUser(userId)
+      : null;
+    subjectName = resolveSubjectName(identity);
+  } catch (error) {
+    console.error("[DigitalExposurePage] identity failed", error);
+  }
+
+  try {
+    apiAvailable = await isDehashedConfiguredAndActive();
+  } catch (error) {
+    console.error("[DigitalExposurePage] dehashed check failed", error);
+    apiAvailable = false;
+  }
 
   return (
     <Suspense

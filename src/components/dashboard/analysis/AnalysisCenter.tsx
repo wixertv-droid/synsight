@@ -12,7 +12,13 @@ import { getPublicPricingCatalog } from "@/lib/services/pricing-service";
 import Link from "next/link";
 
 export default async function AnalysisCenter() {
-  const catalog = await getPublicPricingCatalog();
+  let catalog: Awaited<ReturnType<typeof getPublicPricingCatalog>>;
+  try {
+    catalog = await getPublicPricingCatalog();
+  } catch (error) {
+    console.error("[AnalysisCenter] catalog failed", error);
+    catalog = { analyses: [], packages: [] };
+  }
   const modules = resolveActiveAnalyses(catalog.analyses);
 
   const premium = modules.filter((module) => module.tier === "premium");

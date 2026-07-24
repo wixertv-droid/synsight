@@ -192,7 +192,16 @@ async function runEnsure(): Promise<boolean> {
     );
   }
 
-  const verified = await verifyDigitalLeakCatalog();
+  const verified = await verifyDigitalLeakCatalog().catch((error) => {
+    console.error("[ensureDigitalLeakCatalog] verify threw", error);
+    return {
+      ok: false,
+      digitalLeakActive: false,
+      phoneEmailInactive: false,
+      dehashedCostPresent: false,
+      detail: "verify threw",
+    } satisfies EnsureCatalogResult;
+  });
   if (!verified.digitalLeakActive || !verified.phoneEmailInactive) {
     console.error(
       "[ensureDigitalLeakCatalog] verify failed after write",
