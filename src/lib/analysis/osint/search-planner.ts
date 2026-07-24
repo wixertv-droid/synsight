@@ -1,110 +1,126 @@
 import type { IdentityView } from "@/lib/services/identity-service";
 import type { IntelligenceQueryPlan } from "@/lib/analysis/types";
+import { buildIdentityFingerprint } from "@/lib/analysis/osint/identity-fingerprint";
+
+export interface ScoredSearchPlan extends IntelligenceQueryPlan {
+  searchScore: number;
+}
 
 function clean(value: string | undefined | null): string {
   return (value ?? "").trim();
 }
 
 /**
- * SearchPlanner — max. 5 Queries, feste Priorität, nur vorhandene Profildaten.
- * Keine künstlichen Kombinationen, keine Duplikate.
+ * Phase 2 — SearchPlanner mit Search Score.
+ * Max. 5 Queries, sortiert nach Priorität, nur vorhandene Daten.
+ *
+ * Scores: Telefon 100 · Mail 95 · Name+Ort 90 · Name+Firma 80 · Alias 70 · Domain 65
  */
 export function planGoogleSearches(
   identity: IdentityView | null
 ): IntelligenceQueryPlan[] {
-  const first = clean(identity?.personal.firstName);
-  const last = clean(identity?.personal.lastName);
-  const fullName = first && last ? `${first} ${last}` : first || last || "";
-  const location = clean(identity?.personal.location);
-  const company =
-    clean(identity?.personal.company) || clean(identity?.companies?.[0]) || "";
-  const email = [...(identity?.emails ?? [])].map(clean).find(Boolean) || "";
-  const phone =
-    [
-      clean(identity?.personal.phone),
-      ...(identity?.phoneNumbers ?? []).map(clean),
-    ].find(Boolean) || "";
-  const alias =
-    [
-      clean(identity?.aliases.publicAlias),
-      ...(identity?.aliases.usernames ?? []),
-      ...(identity?.aliases.nicknames ?? []),
-      ...(identity?.aliases.gamingNames ?? []),
-      ...(identity?.aliases.formerNames ?? []),
-    ]
-      .map(clean)
-      .find(Boolean) || "";
+  return planScoredGoogleSearches(identity).map((plan) => ({
+    id: plan.id,
+    label: plan.label,
+    query: plan.query,
+    help: plan.help,
+  }));
+}
 
-  const planned: IntelligenceQueryPlan[] = [];
+export function planScoredGoogleSearches(
+  identity: IdentityView | null
+): ScoredSearchPlan[] {
+  const fp = buildIdentityFingerprint(identity);
+  const fullName =
+    fp.firstName && fp.lastName
+      ? `${fp.firstName} ${fp.lastName}`
+      : fp.subjectName !== "Unbekannt"
+        ? fp.subjectName
+        : "";
+  const candidates: ScoredSearchPlan[] = [];
   const seen = new Set<string>();
 
-  function push(plan: IntelligenceQueryPlan) {
+  function push(plan: ScoredSearchPlan) {
     const key = plan.query.toLowerCase().replace(/\s+/g, " ").trim();
-    if (!key || seen.has(key) || planned.length >= 5) return;
+    if (!key || seen.has(key)) return;
     seen.add(key);
-    planned.push(plan);
+    candidates.push(plan);
   }
 
-  // 1. Name + Wohnort
-  if (fullName && location) {
+  if (fp.phones[0]) {
+    push({
+      id: "q-phone",
+      label: "Telefon",
+      query: `"${fp.phones[0]}"`,
+      help: "Search Score 100 — Telefonnummer aus dem Profil.",
+      searchScore: 100,
+    });
+  }
+  if (fp.emails[0]) {
+    push({
+      id: "q-email",
+      label: "E-Mail",
+      query: `"${fp.emails[0]}"`,
+      help: "Search Score 95 — E-Mail aus dem Profil.",
+      searchScore: 95,
+    });
+  }
+  if (fullName && fp.location) {
     push({
       id: "q-name-location",
       label: "Name + Wohnort",
-      query: `"${fullName}" ${location}`,
-      help: "Priorität 1: Name mit Wohnort aus dem Profil.",
+      query: `"${fullName}" ${fp.location}`,
+      help: "Search Score 90 — Name mit Wohnort.",
+      searchScore: 90,
     });
   } else if (fullName) {
     push({
       id: "q-name",
       label: "Name",
       query: `"${fullName}"`,
-      help: "Name ohne Wohnort — Wohnort fehlt im Profil.",
+      help: "Search Score 85 — Name ohne Wohnort.",
+      searchScore: 85,
     });
   }
-
-  // 2. Name + Firma
-  if (fullName && company) {
+  if (fullName && fp.company) {
     push({
       id: "q-name-company",
       label: "Name + Firma",
-      query: `"${fullName}" "${company}"`,
-      help: "Priorität 2: Name mit Unternehmen aus dem Profil.",
+      query: `"${fullName}" "${fp.company}"`,
+      help: "Search Score 80 — Name mit Firma.",
+      searchScore: 80,
     });
   }
-
-  // 3. E-Mail
-  if (email) {
-    push({
-      id: "q-email",
-      label: "E-Mail",
-      query: `"${email}"`,
-      help: "Priorität 3: hinterlegte E-Mail-Adresse.",
-    });
-  }
-
-  // 4. Telefon
-  if (phone) {
-    push({
-      id: "q-phone",
-      label: "Telefon",
-      query: `"${phone}"`,
-      help: "Priorität 4: hinterlegte Telefonnummer.",
-    });
-  }
-
-  // 5. Alias / Benutzername
-  if (alias) {
+  if (fp.aliases[0]) {
     push({
       id: "q-alias",
       label: "Alias",
-      query: `"${alias}"`,
-      help: "Priorität 5: Alias / Benutzername aus dem Profil.",
+      query: `"${fp.aliases[0]}"`,
+      help: "Search Score 70 — Alias / Benutzername.",
+      searchScore: 70,
+    });
+  }
+  if (fp.domains[0] && fullName) {
+    push({
+      id: "q-domain",
+      label: "Domain",
+      query: `site:${fp.domains[0]} "${fullName}"`,
+      help: "Search Score 65 — Domain aus dem Profil.",
+      searchScore: 65,
     });
   }
 
-  return planned.slice(0, 5);
+  return candidates.sort((a, b) => b.searchScore - a.searchScore).slice(0, 5);
 }
 
 export function normalizeSearchCacheKey(query: string): string {
   return query.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/** @deprecated use planGoogleSearches — kept for identity helpers */
+export function resolvePlannerIdentity(identity: IdentityView | null) {
+  return {
+    first: clean(identity?.personal.firstName),
+    last: clean(identity?.personal.lastName),
+  };
 }

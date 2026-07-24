@@ -38,6 +38,11 @@ import {
   dedupeHitsByUrl,
   verifyAndPartitionHits,
 } from "@/lib/analysis/osint/result-verifier";
+import { buildIdentityFingerprint } from "@/lib/analysis/osint/identity-fingerprint";
+import { aggregateProfiles } from "@/lib/analysis/osint/profile-aggregator";
+import { evaluateThreatMatrix } from "@/lib/analysis/osint/threat-evaluator";
+import { buildConcreteRecommendations } from "@/lib/analysis/osint/recommendation-engine";
+import { planScoredGoogleSearches } from "@/lib/analysis/osint/search-planner";
 
 async function mapPool<T, R>(
   items: T[],
@@ -281,7 +286,12 @@ export async function runGoogleIntelligenceAnalysis(
   const expiresAt = computeExpiresAt(generatedAt, retentionDays);
 
   const subjectName = resolveSubjectName(identity);
-  const queries = buildGoogleQueriesFromIdentity(identity);
+  const fingerprint = buildIdentityFingerprint(identity);
+  const scoredPlans = planScoredGoogleSearches(identity);
+  const queries =
+    scoredPlans.length > 0
+      ? scoredPlans
+      : buildGoogleQueriesFromIdentity(identity);
   const apiConfigured = await isGoogleSearchConfigured();
   const serpHits: IntelligenceHit[] = [];
   let hitSeq = 0;
@@ -441,7 +451,8 @@ export async function runGoogleIntelligenceAnalysis(
     )
   );
 
-  const partitioned = verifyAndPartitionHits(enrichedAll);
+  const { aggregatedHits, profiles } = aggregateProfiles(enrichedAll);
+  const partitioned = verifyAndPartitionHits(aggregatedHits);
   const hits = partitioned.displayHits;
   const buckets = summarizeBuckets(
     hits.filter((h) => h.sourceType === "serpapi_google")
@@ -449,6 +460,7 @@ export async function runGoogleIntelligenceAnalysis(
   const { riskScore, riskLevel } = computeOverallRisk(hits);
   const managementOverview = buildManagementOverview(hits);
   const scorecard = buildReportScorecard(hits);
+  const threatMatrix = evaluateThreatMatrix(hits);
   const analysisSummary = buildStructuredAnalysisSummary(
     subjectName,
     hits,
@@ -460,26 +472,28 @@ export async function runGoogleIntelligenceAnalysis(
   ).length;
   const summaryText =
     serpCount > 0
-      ? `Live-OSINT abgeschlossen: ${serpCount} relevante öffentliche Google-Treffer zu ${subjectName} ausgewertet.`
+      ? `Enterprise OSINT abgeschlossen: ${serpCount} verifizierte öffentliche Treffer zu ${subjectName} (Fingerprint ${fingerprint.hash}).`
       : queries.length > 0
-        ? `Live-OSINT abgeschlossen: Zu den Profil-Suchanfragen wurden keine relevanten öffentlichen Google-Treffer gefunden.`
-        : `Live-OSINT abgeschlossen: Für eine Suche fehlen noch Identitätsdaten im Profil.`;
+        ? `Enterprise OSINT abgeschlossen: Keine verifizierten öffentlichen Treffer zu den priorisierten Suchen gefunden.`
+        : `Enterprise OSINT abgeschlossen: Für eine Suche fehlen noch Identitätsdaten im Profil.`;
 
   const dataSourceLabel = apiConfigured
-    ? "SerpAPI Google Search · Identitätsprofil"
+    ? "SerpAPI Google Search · Identity Fingerprint"
     : "Identitätsprofil · öffentliche Verknüpfungen";
 
   const criticalHits = hits.filter(
     (h) => h.risk === "action" || h.risk === "review"
   ).length;
 
-  const recommendations = await buildReportRecommendations(hits, identity);
+  const concrete = buildConcreteRecommendations(partitioned.verified, profiles);
+  const fallbackRecs = await buildReportRecommendations(hits, identity);
+  const recommendations = concrete.length > 0 ? concrete : fallbackRecs;
   const missingProfileHints = buildMissingProfileHints(identity);
 
   const priority =
-    criticalHits >= 3
+    criticalHits >= 3 || threatMatrix.overall >= 70
       ? "Jetzt"
-      : criticalHits >= 1
+      : criticalHits >= 1 || threatMatrix.overall >= 40
         ? "Diese Woche"
         : serpCount > 0
           ? "Beobachten"
@@ -496,15 +510,27 @@ export async function runGoogleIntelligenceAnalysis(
     profileCompleteness: identity?.completenessPercent ?? 0,
     dataSourceLabel,
     apiConfigured,
-    riskScore,
-    riskLevel,
+    riskScore: Math.max(riskScore, threatMatrix.overall),
+    riskLevel:
+      threatMatrix.overall >= 70
+        ? "high"
+        : threatMatrix.overall >= 40
+          ? "medium"
+          : riskLevel,
     summaryText,
     aiSummary: null,
     analysisSummary,
     scorecard,
+    threatMatrix,
+    fingerprintHash: fingerprint.hash,
     managementOverview,
     buckets,
-    queries,
+    queries: queries.map(({ id, label, query, help }) => ({
+      id,
+      label,
+      query,
+      help,
+    })),
     hits,
     recommendations,
     executive: {
@@ -513,9 +539,14 @@ export async function runGoogleIntelligenceAnalysis(
       recommendedActions: recommendations
         .filter((r) => r.priority !== "Optional")
         .map((r) => r.title),
-      overallRisk: riskLevel,
+      overallRisk:
+        threatMatrix.overall >= 70
+          ? "high"
+          : threatMatrix.overall >= 40
+            ? "medium"
+            : riskLevel,
       priority,
-      narrative: `${subjectName}: ${serpCount} verifizierte Google-Treffer, ${profileHits.length} Profil-Verknüpfungen. Gesamtrisiko: ${riskLevel}.`,
+      narrative: `${subjectName}: ${serpCount} verifizierte Treffer, Threat-Gesamt ${threatMatrix.overall}/100, Fingerprint ${fingerprint.hash}.`,
     },
     missingProfileHints,
   };

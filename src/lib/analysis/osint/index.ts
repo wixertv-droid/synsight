@@ -1,4 +1,8 @@
-export { planGoogleSearches, normalizeSearchCacheKey } from "./search-planner";
+export {
+  planGoogleSearches,
+  normalizeSearchCacheKey,
+  planScoredGoogleSearches,
+} from "./search-planner";
 export {
   getCachedSearchResults,
   setCachedSearchResults,
@@ -9,6 +13,7 @@ export {
   buildSignalsFromIdentity,
   type IdentitySignals,
   type ConfidenceBreakdown,
+  type ConfidenceCheck,
 } from "./confidence-scorer";
 export {
   classifyOsintCategory,
@@ -33,3 +38,18 @@ export {
   buildVerifiedGeminiPayload,
   postProcessGeminiSummary,
 } from "./gemini-summary-builder";
+export {
+  buildIdentityFingerprint,
+  type IdentityFingerprint,
+} from "./identity-fingerprint";
+export {
+  aggregateProfiles,
+  dedupeExactUrls,
+  type AggregatedProfile,
+} from "./profile-aggregator";
+export {
+  evaluateThreatMatrix,
+  detectSensitiveCategories,
+  type ThreatMatrix,
+} from "./threat-evaluator";
+export { buildConcreteRecommendations } from "./recommendation-engine";

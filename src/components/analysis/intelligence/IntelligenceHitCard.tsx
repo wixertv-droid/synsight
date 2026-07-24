@@ -265,17 +265,51 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-white/35">
           <span>Quelle · {hit.source || "unbekannt"}</span>
           <span className="text-white/15">·</span>
+          <span>Kategorie · {hit.displayCategory ?? meta.label}</span>
+          <span className="text-white/15">·</span>
+          <span>Confidence · {confidence} %</span>
+          <span className="text-white/15">·</span>
           <span>
-            Erkennung ·{" "}
+            Zuletzt ·{" "}
             {new Intl.DateTimeFormat("de-DE", {
               dateStyle: "short",
               timeStyle: "short",
               timeZone: "Europe/Berlin",
-            }).format(new Date(hit.fetchedAt))}
+            }).format(new Date(hit.lastSeenAt ?? hit.fetchedAt))}
           </span>
           <span className="text-white/15">·</span>
-          <span>Confidence · {confidence} %</span>
+          <span>
+            Erstmals ·{" "}
+            {new Intl.DateTimeFormat("de-DE", {
+              dateStyle: "short",
+              timeStyle: "short",
+              timeZone: "Europe/Berlin",
+            }).format(new Date(hit.firstSeenAt ?? hit.fetchedAt))}
+          </span>
+          {hit.pageCount && hit.pageCount > 1 ? (
+            <>
+              <span className="text-white/15">·</span>
+              <span>{hit.pageCount} Seiten aggregiert</span>
+            </>
+          ) : null}
         </div>
+
+        {hit.confidenceChecks && hit.confidenceChecks.length > 0 ? (
+          <ul className="flex flex-wrap gap-2">
+            {hit.confidenceChecks.map((check) => (
+              <li
+                key={check.label}
+                className={`rounded border px-2 py-0.5 font-mono text-[9px] ${
+                  check.found
+                    ? "border-emerald-400/25 text-emerald-100/75"
+                    : "border-white/10 text-white/30"
+                }`}
+              >
+                {check.found ? "✓" : "✗"} {check.label}
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <div className="flex flex-wrap gap-2">
           {hasUrl ? (

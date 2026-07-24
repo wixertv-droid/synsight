@@ -41,9 +41,9 @@ export default async function AnalysisCenter() {
       <DashboardSectionHeader
         eyebrow="Command Center / Analyse"
         title="Analyse Center"
-        description="Wählen Sie gezielt, was geprüft werden soll. Angezeigt werden nur Analysen, die in der Administration aktiv sind — inkl. aktueller Preise und Bezeichnungen."
+        description="Wählen Sie gezielt, was geprüft werden soll. Angezeigt werden nur freigeschaltete Analysen inkl. aktueller Preise und Bezeichnungen."
         helpLabel="Wie funktioniert das Analyse Center?"
-        helpText="Jede Karte entspricht einem aktiven Eintrag in der Admin-Preisverwaltung. Wird eine Analyse dort deaktiviert, verschwindet sie hier und in der Dashboard-Preisliste."
+        helpText="Jede Karte entspricht einer freigeschalteten Analyse. Deaktivierte Module erscheinen hier nicht."
       />
 
       <DashboardPageRail sections={railSections}>
@@ -180,19 +180,17 @@ export default async function AnalysisCenter() {
           className="glass hardware-panel scroll-mt-24 rounded-[1.4rem] border border-white/[0.08] p-5 md:p-6"
         >
           <p className="font-mono text-[9px] tracking-[.17em] text-cyber-cyan/50">
-            SYNC MIT ADMIN
+            AKTIVE MODULE
           </p>
           <div className="mt-4 grid gap-3 text-[12px] text-white/40 md:grid-cols-3">
             <p className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-4">
-              Name, Beschreibung und SynCredits kommen aus der Preisverwaltung.
+              Name, Beschreibung und SynCredits werden zentral gepflegt.
             </p>
             <p className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-4">
-              „Aktiv“ aus = Analyse verschwindet im Analyse Center und in der
-              Dashboard-Preisliste.
+              Deaktivierte Analysen erscheinen hier und in der Preisliste nicht.
             </p>
             <p className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-4">
-              Neue Analysen im Admin erscheinen hier automatisch, sobald sie
-              aktiv sind.
+              Neue freigeschaltete Analysen werden automatisch angezeigt.
             </p>
           </div>
         </section>

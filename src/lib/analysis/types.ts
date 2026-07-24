@@ -54,6 +54,12 @@ export interface IntelligenceHit {
   riskPercent?: number;
   identityConfidence?: number;
   identityConfidenceLabel?: string;
+  /** Explainable confidence checklist (Sprint 6C) */
+  confidenceChecks?: Array<{ label: string; found: boolean }>;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  pageCount?: number;
+  aggregatedHost?: string;
   whyFoundPlain?: string;
   whyRelevantPlain?: string;
   belongsToYou?: string;
@@ -152,6 +158,18 @@ export interface IntelligenceReport {
   analysisSummary?: string | null;
   scorecard?: IntelligenceReportScorecard | null;
   managementOverview: IntelligenceCategoryStats;
+  /** Sprint 6C multi-dimensional threat scores */
+  threatMatrix?: {
+    identityRisk: number;
+    socialEngineeringRisk: number;
+    privacyRisk: number;
+    reputationRisk: number;
+    leakRisk: number;
+    fraudRisk: number;
+    impersonationRisk: number;
+    overall: number;
+  } | null;
+  fingerprintHash?: string | null;
   buckets: IntelligenceSummaryBuckets;
   queries: IntelligenceQueryPlan[];
   hits: IntelligenceHit[];

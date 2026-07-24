@@ -157,7 +157,8 @@ export default function DashboardSidebar({
               </Link>
             );
           })}
-          {user.role === "admin" ? (
+          {user.role === "admin" &&
+          !pathname.startsWith("/dashboard/analysis") ? (
             <AdminMainSidebarLinks onNavigate={onClose} />
           ) : null}
         </nav>

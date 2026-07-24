@@ -75,8 +75,10 @@ describe("SearchPlanner", () => {
   it("plans at most 5 queries in priority order without duplicates", () => {
     const plans = planGoogleSearches(identity());
     expect(plans.length).toBeLessThanOrEqual(5);
-    expect(plans[0]?.query).toContain("Anna Beispiel");
-    expect(plans[0]?.query).toContain("Berlin");
+    const joined = plans.map((p) => p.query).join(" ");
+    expect(joined).toContain("Anna Beispiel");
+    expect(joined).toContain("Berlin");
+    expect(plans[0]?.label).toBe("Telefon");
     expect(plans.some((p) => p.query.includes("SynSight"))).toBe(true);
     expect(plans.some((p) => p.query.includes("anna@beispiel.de"))).toBe(true);
     expect(

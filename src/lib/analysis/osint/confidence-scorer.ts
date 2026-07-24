@@ -14,11 +14,17 @@ export interface IdentitySignals {
   countryHints?: string[];
 }
 
+export interface ConfidenceCheck {
+  label: string;
+  found: boolean;
+}
+
 export interface ConfidenceBreakdown {
   score: number;
   label: string;
   positives: string[];
   negatives: string[];
+  checks: ConfidenceCheck[];
 }
 
 function includesInsensitive(hay: string, needle: string): boolean {
@@ -39,7 +45,7 @@ function phoneMatches(text: string, phones: string[]): string[] {
 }
 
 /**
- * ConfidenceScorer / IdentityMatcher — Sprint 6B Gewichtung.
+ * ConfidenceEngine — nachvollziehbare Checks + Score.
  */
 export function scoreIdentityConfidence(
   hit: Pick<
@@ -54,6 +60,7 @@ export function scoreIdentityConfidence(
       label: "Sehr hohe Übereinstimmung (Profil-Verknüpfung)",
       positives: ["Direkt aus dem Identitätsprofil"],
       negatives: [],
+      checks: [{ label: "Profil-Verknüpfung", found: true }],
     };
   }
 
@@ -69,9 +76,12 @@ export function scoreIdentityConfidence(
   let score = 0;
   const positives: string[] = [];
   const negatives: string[] = [];
+  const checks: ConfidenceCheck[] = [];
 
   const hasFirst = first.length >= 2 && includesInsensitive(text, first);
   const hasLast = last.length >= 2 && includesInsensitive(text, last);
+  checks.push({ label: "Vorname gefunden", found: hasFirst });
+  checks.push({ label: "Nachname gefunden", found: hasLast });
 
   if (hasFirst) {
     score += 25;
@@ -82,18 +92,25 @@ export function scoreIdentityConfidence(
     positives.push("Nachname stimmt");
   }
 
-  if (location.length >= 3 && includesInsensitive(text, location)) {
+  const hasLocation =
+    location.length >= 3 && includesInsensitive(text, location);
+  checks.push({ label: "Wohnort gefunden", found: hasLocation });
+  if (hasLocation) {
     score += 20;
     positives.push("Wohnort stimmt");
   }
 
-  if (company.length >= 3 && includesInsensitive(text, company)) {
+  const hasCompany = company.length >= 3 && includesInsensitive(text, company);
+  checks.push({ label: "Firma gefunden", found: hasCompany });
+  if (hasCompany) {
     score += 20;
     positives.push("Firma stimmt");
   }
 
   const matchedPhones = phoneMatches(text, phones);
-  if (matchedPhones.length > 0) {
+  const hasPhone = matchedPhones.length > 0;
+  checks.push({ label: "Telefon gefunden", found: hasPhone });
+  if (hasPhone) {
     score += 40;
     positives.push("Telefon stimmt");
   }
@@ -101,7 +118,9 @@ export function scoreIdentityConfidence(
   const matchedEmails = emails.filter((email) =>
     includesInsensitive(text, email)
   );
-  if (matchedEmails.length > 0) {
+  const hasEmail = matchedEmails.length > 0;
+  checks.push({ label: "Mail gefunden", found: hasEmail });
+  if (hasEmail) {
     score += 50;
     positives.push("E-Mail stimmt");
   }
@@ -109,7 +128,9 @@ export function scoreIdentityConfidence(
   const matchedAliases = aliases.filter((alias) =>
     includesInsensitive(text, alias)
   );
-  if (matchedAliases.length > 0) {
+  const hasAlias = matchedAliases.length > 0;
+  checks.push({ label: "Alias gefunden", found: hasAlias });
+  if (hasAlias) {
     score += 35;
     positives.push("Alias stimmt");
   }
@@ -118,6 +139,7 @@ export function scoreIdentityConfidence(
   if (meta.filterKey === "image") {
     score += 10;
     positives.push("Profilbild / Medien");
+    checks.push({ label: "Profilbild vorhanden", found: true });
   }
   if (
     meta.filterKey === "social" &&
@@ -125,9 +147,9 @@ export function scoreIdentityConfidence(
   ) {
     score += 15;
     positives.push("Social-Media-Link passt");
+    checks.push({ label: "Social Handle passt", found: true });
   }
 
-  // Soft: only Nachname ohne Vorname
   if (hasLast && !hasFirst && first.length >= 2) {
     score -= 40;
     negatives.push("Nur Nachname gleich");
@@ -136,10 +158,7 @@ export function scoreIdentityConfidence(
     negatives.push("Vorname unterschiedlich / fehlt");
   }
 
-  // Cap and label
   score = Math.max(0, Math.min(100, score));
-
-  // Soft floor when both names match strongly
   if (hasFirst && hasLast && score < 50) {
     score = Math.max(score, 55);
   }
@@ -153,7 +172,7 @@ export function scoreIdentityConfidence(
           ? "Möglicher Treffer"
           : "Geringe Übereinstimmung";
 
-  return { score, label, positives, negatives };
+  return { score, label, positives, negatives, checks };
 }
 
 export function buildSignalsFromIdentity(input: {

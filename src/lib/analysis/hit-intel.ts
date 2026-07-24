@@ -330,6 +330,7 @@ export function enrichHitIntel(
     riskPercent,
     identityConfidence: confidence,
     identityConfidenceLabel: confidenceLabel,
+    confidenceChecks: scored.checks,
     whyFoundPlain,
     whyRelevantPlain,
     belongsToYou,

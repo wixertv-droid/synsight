@@ -92,7 +92,13 @@ function generationConfigForModel(model: string): Record<string, unknown> {
 export async function summarizeWithGemini(
   report: Pick<
     IntelligenceReport,
-    "subjectName" | "hits" | "summaryText" | "riskLevel" | "executive"
+    | "subjectName"
+    | "hits"
+    | "summaryText"
+    | "riskLevel"
+    | "executive"
+    | "fingerprintHash"
+    | "threatMatrix"
   >
 ): Promise<string | null> {
   const credentials = await resolveGeminiCredentials();
@@ -101,7 +107,11 @@ export async function summarizeWithGemini(
   const { verifiedHits, prompt } = buildVerifiedGeminiPayload(
     report.subjectName,
     report.riskLevel,
-    report.hits ?? []
+    report.hits ?? [],
+    {
+      fingerprintHash: report.fingerprintHash ?? undefined,
+      threatMatrix: report.threatMatrix ?? undefined,
+    }
   );
 
   const models = [
@@ -164,7 +174,7 @@ export async function summarizeWithGemini(
         !truncatedByLimit &&
         (isCompleteAiSummary(linked) ||
           (linked.length >= 200 &&
-            /Management-Zusammenfassung|digitale Spuren|Maßnahmen/i.test(
+            /Management-Zusammenfassung|Digitales Kurzprofil|Quellenübersicht|Handlungsempfehlungen/i.test(
               linked
             )));
 

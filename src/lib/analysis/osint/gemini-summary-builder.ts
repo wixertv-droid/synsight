@@ -6,6 +6,9 @@ import {
 } from "@/lib/analysis/osint/source-link-builder";
 import { aggregateByOsintCategory } from "@/lib/analysis/osint/result-classifier";
 import { VERIFIED_CONFIDENCE_MIN } from "@/lib/analysis/osint/result-verifier";
+import type { AggregatedProfile } from "@/lib/analysis/osint/profile-aggregator";
+import type { ThreatMatrix } from "@/lib/analysis/osint/threat-evaluator";
+import { detectSensitiveCategories } from "@/lib/analysis/osint/threat-evaluator";
 
 export interface GeminiHitPayload {
   title: string;
@@ -17,30 +20,25 @@ export interface GeminiHitPayload {
   confidence: number;
   confidenceLabel: string;
   severity: string;
+  checks?: Array<{ label: string; found: boolean }>;
+  pageCount?: number;
 }
 
 /**
- * GeminiSummaryBuilder — Prompt + Payload nur aus verifizierten Treffern (>=70).
+ * GeminiSummaryBuilder — Fakten-only Senior OSINT Analyst Prompt.
  */
 export function buildVerifiedGeminiPayload(
   subjectName: string,
   riskLevel: string,
-  hits: IntelligenceHit[]
+  hits: IntelligenceHit[],
+  options?: {
+    profiles?: AggregatedProfile[];
+    threatMatrix?: ThreatMatrix | null;
+    fingerprintHash?: string;
+  }
 ): {
   verifiedHits: IntelligenceHit[];
-  payload: {
-    subject: string;
-    riskLevel: string;
-    hitCount: number;
-    categories: Array<{
-      label: string;
-      count: number;
-      avgConfidence: number;
-      riskLevel: string;
-    }>;
-    sources: Array<{ platform: string; url: string; title: string }>;
-    hits: GeminiHitPayload[];
-  };
+  payload: Record<string, unknown>;
   prompt: string;
 } {
   const verifiedHits = hits.filter(
@@ -62,6 +60,17 @@ export function buildVerifiedGeminiPayload(
     title: link.title,
   }));
 
+  const sensitive = detectSensitiveCategories(verifiedHits);
+  const hasPublicEmail = verifiedHits.some((h) =>
+    /@|e-?mail/i.test(`${h.title} ${h.snippet}`)
+  );
+  const hasPublicPhone = verifiedHits.some((h) =>
+    /\+?\d[\d\s/-]{6,}|telefon/i.test(`${h.title} ${h.snippet}`)
+  );
+  const hasPublicAddress = verifiedHits.some((h) =>
+    /straße|strasse|plz|\b\d{5}\b|adresse/i.test(`${h.title} ${h.snippet}`)
+  );
+
   const payloadHits: GeminiHitPayload[] = verifiedHits
     .slice(0, 40)
     .map((hit) => ({
@@ -74,71 +83,97 @@ export function buildVerifiedGeminiPayload(
       confidence: hit.identityConfidence ?? 0,
       confidenceLabel: hit.identityConfidenceLabel ?? "",
       severity: hit.severity ?? "low",
+      checks: hit.confidenceChecks,
+      pageCount: hit.pageCount,
+    }));
+
+  const profiles = (options?.profiles ?? [])
+    .filter((p) => p.maxConfidence >= VERIFIED_CONFIDENCE_MIN)
+    .map((p) => ({
+      platform: p.platform,
+      host: p.host,
+      url: p.url,
+      pageCount: p.pageCount,
+      category: p.category,
+      confidence: p.maxConfidence,
     }));
 
   const sourceBlock = formatSourceMarkdown(buildSourceLinks(verifiedHits));
 
-  const prompt = `Du bist ein OSINT-Sicherheitsanalyst für Privatpersonen. Erstelle ein strukturiertes KI-Lagebild auf Deutsch.
+  const payload = {
+    subject: subjectName,
+    riskLevel,
+    fingerprintHash: options?.fingerprintHash ?? null,
+    hitCount: verifiedHits.length,
+    categories,
+    profiles,
+    sensitiveFindings: sensitive,
+    publicContact: {
+      email: hasPublicEmail,
+      phone: hasPublicPhone,
+      address: hasPublicAddress,
+    },
+    threatMatrix: options?.threatMatrix ?? null,
+    sources,
+    hits: payloadHits,
+  };
 
-HARTE REGELN:
-- Nutze AUSSCHLIESSLICH die gelieferten verifizierten Treffer (Confidence >= ${VERIFIED_CONFIDENCE_MIN} %).
-- Erfinde keine Profile, URLs, Plattformen, Telefonnummern oder E-Mails.
-- Jede genannte Plattform/Quelle MUSS mit einer echten URL aus den Daten belegt sein.
-- Schreibe Plattformnamen als Markdown-Links: [Plattform](https://…).
-- Keine Vermutungen, keine Halluzinationen, keine „könnte“-Behauptungen ohne Treffer.
-- Wenn keine Treffer: klar sagen, dass keine verifizierten Spuren gefunden wurden.
+  const prompt = `Du bist Senior OSINT Intelligence Analyst eines Cyber Security Unternehmens.
 
-AUSGABESTRUKTUR (genau diese 7 Abschnitte, mit Überschriften):
+Du schreibst einen professionellen Intelligence Report.
+Du beschreibst ausschließlich nachweisbare Fakten.
+Du erfindest nichts. Du ergänzt nichts. Du interpretierst nichts.
+Du bewertest keine Moral. Du beschönigst keine Ergebnisse.
+Du verschweigst keine kompromittierenden Inhalte.
+Du formulierst präzise, sachlich und professionell.
+Jede Aussage muss direkt aus den gelieferten Daten ableitbar sein.
+Wenn Daten fehlen, schreibe ausdrücklich, dass hierzu keine öffentlichen Informationen gefunden wurden.
+Schreibe wie ein Ermittlungs- oder Intelligence-Bericht.
+Nicht wie Werbung. Nicht wie ChatGPT. Nicht wie ein Blogartikel.
 
-1. Management-Zusammenfassung
-(maximal 8 Zeilen Fließtext)
+VERBOTENE FORMULIERUNGEN (außer sie stehen wörtlich in den Daten):
+vermutlich, könnte, wahrscheinlich, scheint, möglicherweise, eventuell, man kann annehmen.
 
-2. Identifizierte digitale Spuren
-Gruppiert nach Kategorien aus den Daten. Jede Kategorie mit Anzahl. Quellen als Markdown-Links.
+Wenn in den Daten Pornografie, Datingportale, Escort, Leaks, Betrug, Inkasso, beleidigende Foren oder ähnliche Inhalte belegt sind: klar benennen. Nicht relativieren. Nicht entschuldigen.
 
-3. Bestätigte öffentliche Profile
-Nur Profile mit Link. Format: - [Plattform](URL) — Kurzbeschreibung
+Plattformnamen als Markdown-Links schreiben: [Plattform](https://…).
+Jede wichtige Aussage braucht mindestens eine Quelle aus den Daten.
+
+AUSGABESTRUKTUR (genau diese Abschnitte):
+
+1. Digitales Kurzprofil
+Nur die öffentlich auffindbare digitale Identität. Keine Aussagen über Charakter, Persönlichkeit, Politik, Religion oder private Beziehungen. Keine psychologischen Einschätzungen.
+
+2. Management-Zusammenfassung
+Maximal 8 Zeilen. Enthalten:
+- Anzahl relevanter Treffer
+- Aufschlüsselung nach Kategorien (Profile, Foren, Dokumente, …)
+- Öffentliche Telefonnummer: Ja/Nein
+- Öffentliche Mail: Ja/Nein
+- Öffentliche Anschrift: Ja/Nein
+
+3. Öffentliche Profile
+Aggregierte Profile mit Link. Format: - [Plattform](URL) — Fakten (Seitenzahl falls vorhanden)
 
 4. Öffentliche Erwähnungen
-Foren/Presse/Web mit Link. Format wie oben.
+Foren/Presse/Web mit Link.
 
-5. Mögliche Risiken
-Ampel: Grün / Gelb / Rot — jeweils 1–3 Stichpunkte, nur belegt.
+5. Erkannte Risiken
+Nur belegte Risiken. Nutze die threatMatrix-Werte und sensitiveFindings. Ampel optional, aber faktenbasiert.
 
-6. Empfohlene Maßnahmen
-Priorität Hoch:
-Priorität Mittel:
-Priorität Niedrig:
+6. Handlungsempfehlungen
+Konkret, auf einzelne Quellen bezogen. Nicht „Profil entfernen.“ sondern warum und was genau.
 
-7. Nicht eindeutig bestätigte Treffer
-Nur wenn in den Daten keine weiteren vorhanden sind: „Keine.“
-(Hinweis: Unsichere Treffer unter 70 % werden dem Modell bewusst NICHT übergeben.)
+7. Quellenübersicht
+Vollständige Liste klickbarer Quellen.
 
-BEKANNTE QUELLEN (zum Verlinken nutzen):
+BEKANNTE QUELLEN:
 ${sourceBlock}
 
-DATEN (JSON):
-${JSON.stringify({
-  subject: subjectName,
-  riskLevel,
-  hitCount: verifiedHits.length,
-  categories,
-  sources,
-  hits: payloadHits,
-})}`;
+DATEN (JSON — einzige erlaubte Faktenbasis):
+${JSON.stringify(payload)}`;
 
-  return {
-    verifiedHits,
-    payload: {
-      subject: subjectName,
-      riskLevel,
-      hitCount: verifiedHits.length,
-      categories,
-      sources,
-      hits: payloadHits,
-    },
-    prompt,
-  };
+  return { verifiedHits, payload, prompt };
 }
 
 export function postProcessGeminiSummary(

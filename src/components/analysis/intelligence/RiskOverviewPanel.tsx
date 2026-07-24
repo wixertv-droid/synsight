@@ -65,7 +65,7 @@ export default function RiskOverviewPanel({
               TREFFER-VERTEILUNG · SIGNAL MATRIX
             </p>
             <span className="font-mono text-[7px] tracking-[.12em] text-white/25">
-              HUD // JARVIS
+              HUD // RISK
             </span>
           </div>
 
@@ -192,6 +192,47 @@ export default function RiskOverviewPanel({
           </p>
         </div>
       </div>
+
+      {report.threatMatrix ? (
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.015] p-4 md:p-5 lg:col-span-2">
+          <p className="font-mono text-[8px] tracking-[.14em] text-white/35">
+            THREAT MATRIX · 7 DIMENSIONEN
+          </p>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {(
+              [
+                ["Identitätsrisiko", report.threatMatrix.identityRisk],
+                [
+                  "Social Engineering",
+                  report.threatMatrix.socialEngineeringRisk,
+                ],
+                ["Datenschutz", report.threatMatrix.privacyRisk],
+                ["Reputation", report.threatMatrix.reputationRisk],
+                ["Leak", report.threatMatrix.leakRisk],
+                ["Betrug", report.threatMatrix.fraudRisk],
+                ["Impersonation", report.threatMatrix.impersonationRisk],
+                ["Gesamt", report.threatMatrix.overall],
+              ] as const
+            ).map(([label, value]) => (
+              <li
+                key={label}
+                className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2"
+              >
+                <div className="flex items-center justify-between gap-2 font-mono text-[9px] text-white/40">
+                  <span>{label}</span>
+                  <span className="text-sky-200/80">{value}</span>
+                </div>
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div
+                    className="h-full rounded-full bg-sky-400/70"
+                    style={{ width: `${Math.max(4, Math.min(100, value))}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }

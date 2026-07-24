@@ -199,6 +199,16 @@ export function normalizeIntelligenceReport(
         : null,
     scorecard: normalizeScorecard(source.scorecard),
     managementOverview: normalizeOverview(source.managementOverview),
+    threatMatrix:
+      source.threatMatrix &&
+      typeof source.threatMatrix === "object" &&
+      !Array.isArray(source.threatMatrix)
+        ? (source.threatMatrix as IntelligenceReport["threatMatrix"])
+        : null,
+    fingerprintHash:
+      typeof source.fingerprintHash === "string"
+        ? source.fingerprintHash
+        : null,
     buckets: normalizeBuckets(source.buckets),
     queries,
     hits,
