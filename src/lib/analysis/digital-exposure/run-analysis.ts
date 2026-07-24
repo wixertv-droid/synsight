@@ -12,6 +12,7 @@ import { buildGeminiPrepPayload } from "@/lib/analysis/digital-exposure/gemini-p
 import {
   completeDigitalExposureScan,
   createDigitalExposureScan,
+  failDigitalExposureScan,
   writeApiUsageLog,
 } from "@/lib/analysis/digital-exposure/repository";
 import type {
@@ -255,187 +256,222 @@ export async function runDigitalLeakExposureScan(
 
   const findings: DigitalExposureFinding[] = [];
 
-  for (const email of emails) {
-    try {
-      const result = await searchDehashedByEmail(email, credentials.apiKey);
-      await writeApiUsageLog({
-        provider: "dehashed",
-        requestType: "search_email",
-        userId: options.userId,
-        analysisId: scanId,
-        analysisKey: "digital_leak_exposure",
-        success: true,
-        detail: `email=${maskEmail(email)} · breaches=${result.breaches.length}`,
-      });
-      await recordApiUsageEvent({
-        providerCode: "dehashed",
-        eventType: "search_email",
-        referenceKey: `scan:${scanId}`,
-        userId: options.userId,
-        analysisId: scanId,
-        success: true,
-        detail: `breaches=${result.breaches.length}`,
-        metaJson: { identifierMasked: maskEmail(email) },
-      });
+  try {
+    for (const email of emails) {
+      try {
+        const result = await searchDehashedByEmail(email, credentials.apiKey);
+        await writeApiUsageLog({
+          provider: "dehashed",
+          requestType: "search_email",
+          userId: options.userId,
+          analysisId: scanId,
+          analysisKey: "digital_leak_exposure",
+          success: true,
+          detail: `email=${maskEmail(email)} · breaches=${result.breaches.length}`,
+        });
+        await recordApiUsageEvent({
+          providerCode: "dehashed",
+          eventType: "search_email",
+          referenceKey: `scan:${scanId}`,
+          userId: options.userId,
+          analysisId: scanId,
+          success: true,
+          detail: `breaches=${result.breaches.length}`,
+          metaJson: { identifierMasked: maskEmail(email) },
+        });
 
-      if (result.breaches.length === 0) {
+        if (result.breaches.length === 0) {
+          findings.push({
+            type: "EMAIL",
+            title: "E-Mail Exposure",
+            description:
+              "Keine bekannten Datenlecks zu diesem Identifikator gefunden.",
+            riskLevel: "low",
+            sourceName: "DeHashed",
+            sourceDate: null,
+            recommendation: null,
+            sourceUrl: DEHASHED_URL,
+            identifierMasked: maskEmail(email),
+            dataClasses: [],
+          });
+        } else {
+          for (const breach of result.breaches) {
+            findings.push(...findingsFromEmailBreach(email, breach));
+          }
+        }
+      } catch (error) {
+        const detail =
+          error instanceof Error ? error.message : "DeHashed error";
+        await writeApiUsageLog({
+          provider: "dehashed",
+          requestType: "search_email",
+          userId: options.userId,
+          analysisId: scanId,
+          analysisKey: "digital_leak_exposure",
+          success: false,
+          detail: detail.slice(0, 500),
+        });
+        await recordApiUsageEvent({
+          providerCode: "dehashed",
+          eventType: "search_email",
+          referenceKey: `scan:${scanId}`,
+          userId: options.userId,
+          analysisId: scanId,
+          success: false,
+          detail: detail.slice(0, 500),
+        });
+        // Continue with remaining identifiers — one bad lookup must not abort all
         findings.push({
           type: "EMAIL",
-          title: "E-Mail Exposure",
-          description:
-            "Keine bekannten Datenlecks zu diesem Identifikator gefunden.",
-          riskLevel: "low",
+          title: "E-Mail Abfrage fehlgeschlagen",
+          description: `DeHashed-Abfrage für diesen Identifikator ist fehlgeschlagen: ${detail.slice(0, 180)}`,
+          riskLevel: "medium",
           sourceName: "DeHashed",
           sourceDate: null,
-          recommendation: null,
+          recommendation:
+            "Später erneut prüfen. Admin-API-Test kann trotz einzelner Query-Fehler grün sein.",
           sourceUrl: DEHASHED_URL,
           identifierMasked: maskEmail(email),
           dataClasses: [],
         });
-      } else {
-        for (const breach of result.breaches) {
-          findings.push(...findingsFromEmailBreach(email, breach));
-        }
       }
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : "DeHashed error";
-      await writeApiUsageLog({
-        provider: "dehashed",
-        requestType: "search_email",
-        userId: options.userId,
-        analysisId: scanId,
-        analysisKey: "digital_leak_exposure",
-        success: false,
-        detail: detail.slice(0, 500),
-      });
-      await recordApiUsageEvent({
-        providerCode: "dehashed",
-        eventType: "search_email",
-        referenceKey: `scan:${scanId}`,
-        userId: options.userId,
-        analysisId: scanId,
-        success: false,
-        detail: detail.slice(0, 500),
-      });
-      throw error;
+
+      await new Promise((resolve) => setTimeout(resolve, 400));
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 400));
-  }
+    for (const phone of phones) {
+      try {
+        const result = await searchDehashedByPhone(phone, credentials.apiKey);
+        await writeApiUsageLog({
+          provider: "dehashed",
+          requestType: "search_phone",
+          userId: options.userId,
+          analysisId: scanId,
+          analysisKey: "digital_leak_exposure",
+          success: true,
+          detail: `phone=${maskPhone(phone)} · breaches=${result.breaches.length}`,
+        });
+        await recordApiUsageEvent({
+          providerCode: "dehashed",
+          eventType: "search_phone",
+          referenceKey: `scan:${scanId}`,
+          userId: options.userId,
+          analysisId: scanId,
+          success: true,
+          detail: `breaches=${result.breaches.length}`,
+          metaJson: { identifierMasked: maskPhone(phone) },
+        });
 
-  for (const phone of phones) {
-    try {
-      const result = await searchDehashedByPhone(phone, credentials.apiKey);
-      await writeApiUsageLog({
-        provider: "dehashed",
-        requestType: "search_phone",
-        userId: options.userId,
-        analysisId: scanId,
-        analysisKey: "digital_leak_exposure",
-        success: true,
-        detail: `phone=${maskPhone(phone)} · breaches=${result.breaches.length}`,
-      });
-      await recordApiUsageEvent({
-        providerCode: "dehashed",
-        eventType: "search_phone",
-        referenceKey: `scan:${scanId}`,
-        userId: options.userId,
-        analysisId: scanId,
-        success: true,
-        detail: `breaches=${result.breaches.length}`,
-        metaJson: { identifierMasked: maskPhone(phone) },
-      });
-
-      if (result.breaches.length === 0) {
+        if (result.breaches.length === 0) {
+          findings.push({
+            type: "PHONE",
+            title: "Telefon Exposure",
+            description:
+              "Keine bekannten Datenlecks zu diesem Identifikator gefunden.",
+            riskLevel: "low",
+            sourceName: "DeHashed",
+            sourceDate: null,
+            recommendation:
+              "Telefonnummer sparsam veröffentlichen und bei Spam-Verdacht Anbieter-Portale prüfen.",
+            sourceUrl: DEHASHED_URL,
+            identifierMasked: maskPhone(phone),
+            dataClasses: [],
+          });
+        } else {
+          for (const breach of result.breaches) {
+            findings.push(...findingsFromPhoneBreach(phone, breach));
+          }
+        }
+      } catch (error) {
+        const detail =
+          error instanceof Error ? error.message : "DeHashed error";
+        await writeApiUsageLog({
+          provider: "dehashed",
+          requestType: "search_phone",
+          userId: options.userId,
+          analysisId: scanId,
+          analysisKey: "digital_leak_exposure",
+          success: false,
+          detail: detail.slice(0, 500),
+        });
+        await recordApiUsageEvent({
+          providerCode: "dehashed",
+          eventType: "search_phone",
+          referenceKey: `scan:${scanId}`,
+          userId: options.userId,
+          analysisId: scanId,
+          success: false,
+          detail: detail.slice(0, 500),
+        });
         findings.push({
           type: "PHONE",
-          title: "Telefon Exposure",
-          description:
-            "Keine bekannten Datenlecks zu diesem Identifikator gefunden.",
-          riskLevel: "low",
+          title: "Telefon Abfrage fehlgeschlagen",
+          description: `DeHashed-Abfrage für diesen Identifikator ist fehlgeschlagen: ${detail.slice(0, 180)}`,
+          riskLevel: "medium",
           sourceName: "DeHashed",
           sourceDate: null,
-          recommendation:
-            "Telefonnummer sparsam veröffentlichen und bei Spam-Verdacht Anbieter-Portale prüfen.",
+          recommendation: "Später erneut prüfen.",
           sourceUrl: DEHASHED_URL,
           identifierMasked: maskPhone(phone),
           dataClasses: [],
         });
-      } else {
-        for (const breach of result.breaches) {
-          findings.push(...findingsFromPhoneBreach(phone, breach));
-        }
       }
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : "DeHashed error";
-      await writeApiUsageLog({
-        provider: "dehashed",
-        requestType: "search_phone",
-        userId: options.userId,
-        analysisId: scanId,
-        analysisKey: "digital_leak_exposure",
-        success: false,
-        detail: detail.slice(0, 500),
-      });
-      await recordApiUsageEvent({
-        providerCode: "dehashed",
-        eventType: "search_phone",
-        referenceKey: `scan:${scanId}`,
-        userId: options.userId,
-        analysisId: scanId,
-        success: false,
-        detail: detail.slice(0, 500),
-      });
-      throw error;
+
+      await new Promise((resolve) => setTimeout(resolve, 400));
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 400));
-  }
+    findings.push({
+      type: "SOURCE",
+      title: "Quellenbasis",
+      description:
+        "Auswertung über DeHashed.com Search API. Es werden ausschließlich Metadaten gespeichert — keine Passwörter und keine Passwort-Hashes.",
+      riskLevel: "low",
+      sourceName: "DeHashed",
+      sourceDate: null,
+      recommendation: null,
+      sourceUrl: DEHASHED_URL,
+      identifierMasked: null,
+      dataClasses: [],
+    });
 
-  findings.push({
-    type: "SOURCE",
-    title: "Quellenbasis",
-    description:
-      "Auswertung über DeHashed.com Search API. Es werden ausschließlich Metadaten gespeichert — keine Passwörter und keine Passwort-Hashes.",
-    riskLevel: "low",
-    sourceName: "DeHashed",
-    sourceDate: null,
-    recommendation: null,
-    sourceUrl: DEHASHED_URL,
-    identifierMasked: null,
-    dataClasses: [],
-  });
+    const riskScore = scoreFindings(
+      findings.filter((f) => f.type !== "SOURCE")
+    );
+    const summary = buildSummary(findings, emails.length, phones.length);
 
-  const riskScore = scoreFindings(findings.filter((f) => f.type !== "SOURCE"));
-  const summary = buildSummary(findings, emails.length, phones.length);
-
-  await completeDigitalExposureScan({
-    scanId,
-    status: "completed",
-    riskScore,
-    summary,
-    findings,
-  });
-
-  return {
-    scanId,
-    moduleKey: "digital_leak_exposure",
-    subjectName,
-    status: "completed",
-    riskScore,
-    summary,
-    emailCount: emails.length,
-    phoneCount: phones.length,
-    findingCount: findings.filter((f) => f.type !== "SOURCE").length,
-    startedAt: new Date().toISOString(),
-    completedAt: new Date().toISOString(),
-    findings,
-    geminiPrep: buildGeminiPrepPayload({
-      subjectName,
+    await completeDigitalExposureScan({
+      scanId,
+      status: "completed",
       riskScore,
+      summary,
       findings,
-    }),
-    apiConfigured: true,
-    providerLabel: "DeHashed",
-  };
+    });
+
+    return {
+      scanId,
+      moduleKey: "digital_leak_exposure",
+      subjectName,
+      status: "completed",
+      riskScore,
+      summary,
+      emailCount: emails.length,
+      phoneCount: phones.length,
+      findingCount: findings.filter((f) => f.type !== "SOURCE").length,
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      findings,
+      geminiPrep: buildGeminiPrepPayload({
+        subjectName,
+        riskScore,
+        findings,
+      }),
+      apiConfigured: true,
+      providerLabel: "DeHashed",
+    };
+  } catch (error) {
+    const detail =
+      error instanceof Error ? error.message : "Scan fehlgeschlagen";
+    await failDigitalExposureScan(scanId, detail);
+    throw error;
+  }
 }

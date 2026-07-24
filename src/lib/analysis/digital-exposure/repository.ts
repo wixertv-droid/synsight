@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getDatabase } from "@/lib/database/client";
 import {
   apiUsageLogs,
@@ -15,6 +15,19 @@ import { ensureDigitalExposureSchema } from "@/lib/analysis/digital-exposure/ens
 
 function mysqlNow(): string {
   return new Date().toISOString().slice(0, 23).replace("T", " ");
+}
+
+/** Drizzle mysql2 insert returns [ResultSetHeader, FieldPacket[]]. */
+export function readMysqlInsertId(result: unknown): number {
+  if (!result) return 0;
+  if (Array.isArray(result)) {
+    const header = result[0] as { insertId?: number | bigint } | undefined;
+    return Number(header?.insertId ?? 0);
+  }
+  if (typeof result === "object" && result !== null && "insertId" in result) {
+    return Number((result as { insertId?: number | bigint }).insertId ?? 0);
+  }
+  return 0;
 }
 
 function mapFinding(
@@ -65,13 +78,48 @@ export async function createDigitalExposureScan(input: {
     findingCount: 0,
   });
 
-  const insertId = Number(
-    (result as { insertId?: number | bigint }).insertId ?? 0
-  );
+  let insertId = readMysqlInsertId(result);
+
+  // Fallback: some drizzle/mysql2 shapes omit insertId on the tuple — re-read row
   if (!Number.isFinite(insertId) || insertId <= 0) {
-    throw new Error("digital_exposure_scans insert failed");
+    const rows = await db
+      .select({ id: digitalExposureScans.id })
+      .from(digitalExposureScans)
+      .where(
+        and(
+          eq(digitalExposureScans.userId, input.userId),
+          eq(digitalExposureScans.status, "running")
+        )
+      )
+      .orderBy(desc(digitalExposureScans.id))
+      .limit(1);
+    insertId = Number(rows[0]?.id ?? 0);
+  }
+
+  if (!Number.isFinite(insertId) || insertId <= 0) {
+    throw new Error("digital_exposure_scans insert failed (no insertId)");
   }
   return insertId;
+}
+
+export async function failDigitalExposureScan(
+  scanId: number,
+  detail: string
+): Promise<void> {
+  const db = getDatabase();
+  if (!db || !scanId) return;
+  try {
+    await db
+      .update(digitalExposureScans)
+      .set({
+        status: "failed",
+        completedAt: mysqlNow(),
+        summary: detail.slice(0, 4000),
+      })
+      .where(eq(digitalExposureScans.id, scanId));
+  } catch (error) {
+    console.error("[digital_exposure_scans] fail update failed", error);
+  }
 }
 
 export async function completeDigitalExposureScan(input: {
