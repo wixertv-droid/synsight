@@ -164,7 +164,7 @@ export async function consumeCredits(
   analysisKey: string,
   requestId?: string
 ) {
-  await ensureDigitalLeakCatalog();
+  await ensureDigitalLeakCatalog(false);
   const price = await getPricingRepository().findAnalysisByKey(analysisKey);
   if (!price || !price.isActive) {
     return { status: "unknown_analysis" as const };

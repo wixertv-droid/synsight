@@ -9,6 +9,7 @@
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx database/migrate.ts",
+    "db:ensure-catalog": "tsx database/ensure-catalog.ts",
     "db:seed": "tsx database/seeds/seed.ts",
     "db:status": "tsx database/status.ts",
     "test": "vitest run",

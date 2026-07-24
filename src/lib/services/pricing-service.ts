@@ -1,6 +1,13 @@
 import type { AuthenticatedUser } from "@/lib/auth/types";
-import { ensureDigitalLeakCatalog } from "@/lib/credits/ensure-digital-leak-catalog";
-import { formatEuroFromCents } from "@/lib/credits/pricing";
+import {
+  ensureDigitalLeakCatalog,
+  verifyDigitalLeakCatalog,
+} from "@/lib/credits/ensure-digital-leak-catalog";
+import {
+  DEFAULT_ANALYSIS_PRICES,
+  formatEuroFromCents,
+  isReplacedAnalysisKey,
+} from "@/lib/credits/pricing";
 import {
   getAuditRepository,
   getCreditsRepository,
@@ -32,27 +39,78 @@ function presentPackage(pack: {
   };
 }
 
+const DIGITAL_LEAK_DEFAULT = DEFAULT_ANALYSIS_PRICES.find(
+  (row) => row.key === "digital_leak_exposure"
+)!;
+
+/**
+ * After DB ensure: drop replaced phone/email; inject digital_leak if still missing.
+ * Injection is a last-resort UI safety net — ensure should have written the row.
+ */
+function normalizePublicAnalyses(
+  analyses: Array<{
+    key: string;
+    label: string;
+    description: string;
+    credits: number;
+    sortOrder: number;
+  }>
+) {
+  const withoutLegacy = analyses.filter(
+    (row) => !isReplacedAnalysisKey(row.key)
+  );
+  if (withoutLegacy.some((row) => row.key === "digital_leak_exposure")) {
+    return withoutLegacy;
+  }
+  return [
+    ...withoutLegacy,
+    {
+      key: DIGITAL_LEAK_DEFAULT.key,
+      label: DIGITAL_LEAK_DEFAULT.label,
+      description: DIGITAL_LEAK_DEFAULT.description,
+      credits: DIGITAL_LEAK_DEFAULT.credits,
+      sortOrder: 25,
+    },
+  ].sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
+}
+
 export async function getPublicPricingCatalog() {
-  await ensureDigitalLeakCatalog();
+  await ensureDigitalLeakCatalog(false);
   const repository = getPricingRepository();
-  const [analyses, packages] = await Promise.all([
-    repository.listAnalyses(true),
-    repository.listManagedPackages(true),
-  ]);
-  return {
-    analyses: analyses.map((entry) => ({
+  let analyses = await repository.listAnalyses(true);
+  let mapped = analyses.map((entry) => ({
+    key: entry.analysisKey,
+    label: entry.label,
+    description: entry.description ?? "",
+    credits: entry.credits,
+    sortOrder: entry.sortOrder,
+  }));
+
+  const needsRepair =
+    !mapped.some((row) => row.key === "digital_leak_exposure") ||
+    mapped.some((row) => isReplacedAnalysisKey(row.key));
+
+  if (needsRepair) {
+    await ensureDigitalLeakCatalog(true);
+    analyses = await repository.listAnalyses(true);
+    mapped = analyses.map((entry) => ({
       key: entry.analysisKey,
       label: entry.label,
       description: entry.description ?? "",
       credits: entry.credits,
       sortOrder: entry.sortOrder,
-    })),
+    }));
+  }
+
+  const packages = await repository.listManagedPackages(true);
+  return {
+    analyses: normalizePublicAnalyses(mapped),
     packages: packages.map(presentPackage),
   };
 }
 
 export async function getAnalysisQuote(userId: number, analysisKey: string) {
-  await ensureDigitalLeakCatalog();
+  await ensureDigitalLeakCatalog(false);
   const pricing = await getPricingRepository().findAnalysisByKey(analysisKey);
   if (!pricing || !pricing.isActive) return null;
   const account = await getCreditsRepository().ensureAccount(userId);
@@ -68,15 +126,52 @@ export async function getAnalysisQuote(userId: number, analysisKey: string) {
 
 export async function getAdminPricingCatalog(actor: AuthenticatedUser) {
   assertAdmin(actor);
-  await ensureDigitalLeakCatalog();
+  await ensureDigitalLeakCatalog(true);
   const repository = getPricingRepository();
   const [analyses, packages] = await Promise.all([
     repository.listAnalyses(false),
     repository.listManagedPackages(false),
   ]);
+
+  const hasLeak = analyses.some(
+    (row) => row.analysisKey === "digital_leak_exposure"
+  );
+  const normalized = hasLeak
+    ? analyses.map((row) =>
+        isReplacedAnalysisKey(row.analysisKey)
+          ? { ...row, isActive: false }
+          : row.analysisKey === "digital_leak_exposure"
+            ? { ...row, isActive: true }
+            : row
+      )
+    : [
+        ...analyses.map((row) =>
+          isReplacedAnalysisKey(row.analysisKey)
+            ? { ...row, isActive: false }
+            : row
+        ),
+        {
+          id: -1,
+          analysisKey: DIGITAL_LEAK_DEFAULT.key,
+          label: DIGITAL_LEAK_DEFAULT.label,
+          description: DIGITAL_LEAK_DEFAULT.description,
+          credits: DIGITAL_LEAK_DEFAULT.credits,
+          sortOrder: 25,
+          isActive: true,
+          isSystemDefault: true,
+          defaultLabel: DIGITAL_LEAK_DEFAULT.label,
+          defaultDescription: DIGITAL_LEAK_DEFAULT.description,
+          defaultCredits: DIGITAL_LEAK_DEFAULT.credits,
+          updatedByAdminId: null,
+        },
+      ];
+
   return {
-    analyses,
+    analyses: normalized.sort(
+      (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)
+    ),
     packages: packages.map(presentPackage),
+    catalogHealth: await verifyDigitalLeakCatalog(),
   };
 }
 

@@ -8,7 +8,7 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("@/lib/observability");
     void import("@/lib/credits/ensure-digital-leak-catalog")
-      .then((mod) => mod.ensureDigitalLeakCatalog())
+      .then((mod) => mod.ensureDigitalLeakCatalog(true))
       .catch(() => {
         /* tables may be missing until migrate — catalog ensure retries on read */
       });

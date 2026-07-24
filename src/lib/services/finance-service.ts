@@ -215,11 +215,41 @@ export async function listApiCostSettings(
   actor: AuthenticatedUser
 ): Promise<ApiCostSettingPublic[]> {
   assertAdmin(actor);
-  await ensureDigitalLeakCatalog();
+  await ensureDigitalLeakCatalog(false);
   const db = getDatabase();
-  if (!db) return [];
+  if (!db) {
+    return [
+      {
+        id: -1,
+        providerCode: "dehashed",
+        label: "DeHashed.com",
+        costPerRequestEur: 0,
+        billingMode: "per_request",
+        costPer1mInputTokensEur: 0,
+        costPer1mOutputTokensEur: 0,
+        currency: "EUR",
+        isActive: true,
+        notes: "DeHashed Search API — optional cost override",
+      },
+    ];
+  }
   const rows = await db.select().from(apiCostSettings);
-  return rows.map((row) => mapApiCostSetting(row));
+  const mapped = rows.map((row) => mapApiCostSetting(row));
+  if (!mapped.some((row) => row.providerCode === "dehashed")) {
+    mapped.push({
+      id: -1,
+      providerCode: "dehashed",
+      label: "DeHashed.com",
+      costPerRequestEur: 0,
+      billingMode: "per_request",
+      costPer1mInputTokensEur: 0,
+      costPer1mOutputTokensEur: 0,
+      currency: "EUR",
+      isActive: true,
+      notes: "DeHashed Search API — optional cost override",
+    });
+  }
+  return mapped.sort((a, b) => a.providerCode.localeCompare(b.providerCode));
 }
 
 function normalizeBillingMode(value: unknown): ApiBillingMode {

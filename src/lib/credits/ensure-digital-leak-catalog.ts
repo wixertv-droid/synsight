@@ -7,114 +7,205 @@
  * a checksum mismatch on a rewritten 020 — the live DB stays on the 009 catalog
  * (phone/email active, no digital_leak_exposure, no dehashed cost row).
  *
- * `DEFAULT_ANALYSIS_PRICES` alone does not write MySQL (only the in-memory
- * repository). This ensure upserts the required rows on first catalog/cost
- * read (and optionally at boot) so deploy without migrate still activates
- * digital_leak_exposure, deactivates phone/email, and shows dehashed costs.
+ * This module upserts required rows on every catalog/cost read (with a short
+ * process cache) using raw SQL so Drizzle boolean quirks cannot block activation.
  */
-import { eq, inArray } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { getDatabase } from "@/lib/database/client";
 import { analysisPricing, apiCostSettings } from "@/lib/database/schema";
-import {
-  DEFAULT_ANALYSIS_PRICES,
-  REPLACED_ANALYSIS_KEYS,
-  isAnalysisActiveByDefault,
-} from "@/lib/credits/pricing";
+import { eq } from "drizzle-orm";
 
-const DEHASHED_COST = {
-  providerCode: "dehashed",
-  label: "DeHashed.com",
-  costPerRequestEur: "0.000000",
-  notes: "DeHashed Search API — optional cost override",
-} as const;
+const DIGITAL_LEAK_KEY = "digital_leak_exposure";
+const DIGITAL_LEAK_LABEL = "Digital Leak & Exposure Scan";
+const DIGITAL_LEAK_DESCRIPTION =
+  "Öffentlich bekannte Datenlecks und kompromittierte Identifikatoren (E-Mail & Telefon).";
+const DIGITAL_LEAK_CREDITS = 8;
 
-let ensurePromise: Promise<void> | null = null;
+let ensurePromise: Promise<boolean> | null = null;
+let lastSuccessAt = 0;
+const SUCCESS_TTL_MS = 30_000;
 
-export async function ensureDigitalLeakCatalog(): Promise<void> {
-  if (!ensurePromise) {
-    ensurePromise = runEnsure().catch((error) => {
-      ensurePromise = null;
-      console.error("[ensureDigitalLeakCatalog] failed", error);
-    });
-  }
-  await ensurePromise;
-}
+export type EnsureCatalogResult = {
+  ok: boolean;
+  digitalLeakActive: boolean;
+  phoneEmailInactive: boolean;
+  dehashedCostPresent: boolean;
+  detail?: string;
+};
 
 /** Test helper — clears the process-level once-lock. */
 export function resetDigitalLeakCatalogEnsureForTests(): void {
   ensurePromise = null;
+  lastSuccessAt = 0;
 }
 
-async function runEnsure(): Promise<void> {
-  const db = getDatabase();
-  if (!db) return;
-
-  for (const [index, entry] of DEFAULT_ANALYSIS_PRICES.entries()) {
-    // Match migration 020/022 sort for digital_leak (between google=10 and legacy phone=20).
-    const sortOrder =
-      entry.key === "digital_leak_exposure" ? 25 : (index + 1) * 10;
-    const isActive = isAnalysisActiveByDefault(entry.key);
-    const existing = await db
-      .select({ id: analysisPricing.id })
-      .from(analysisPricing)
-      .where(eq(analysisPricing.analysisKey, entry.key))
-      .limit(1);
-
-    if (!existing[0]) {
-      await db.insert(analysisPricing).values({
-        analysisKey: entry.key,
-        label: entry.label,
-        description: entry.description,
-        credits: entry.credits,
-        sortOrder,
-        isActive,
-        isSystemDefault: true,
-        defaultLabel: entry.label,
-        defaultDescription: entry.description,
-        defaultCredits: entry.credits,
-      });
-      continue;
-    }
-
-    // Force Digital Leak active + system defaults without clobbering other
-    // admin-tuned prices (only touch the replacement module's activation).
-    if (entry.key === "digital_leak_exposure") {
-      await db
-        .update(analysisPricing)
-        .set({
-          label: entry.label,
-          description: entry.description,
-          credits: entry.credits,
-          sortOrder: 25,
-          isActive: true,
-          isSystemDefault: true,
-          defaultLabel: entry.label,
-          defaultDescription: entry.description,
-          defaultCredits: entry.credits,
-        })
-        .where(eq(analysisPricing.analysisKey, entry.key));
-    }
+/**
+ * Ensure Digital Leak is active, phone/email inactive, DeHashed cost row present.
+ * @param force Bypass short success TTL and re-run writes.
+ */
+export async function ensureDigitalLeakCatalog(
+  force = false
+): Promise<boolean> {
+  if (
+    !force &&
+    lastSuccessAt > 0 &&
+    Date.now() - lastSuccessAt < SUCCESS_TTL_MS
+  ) {
+    return true;
   }
 
-  await db
-    .update(analysisPricing)
-    .set({ isActive: false })
-    .where(inArray(analysisPricing.analysisKey, [...REPLACED_ANALYSIS_KEYS]));
+  if (force) {
+    ensurePromise = null;
+  }
 
-  await db
-    .insert(apiCostSettings)
-    .values({
-      providerCode: DEHASHED_COST.providerCode,
-      label: DEHASHED_COST.label,
-      costPerRequestEur: DEHASHED_COST.costPerRequestEur,
-      notes: DEHASHED_COST.notes,
-      isActive: true,
+  if (!ensurePromise) {
+    ensurePromise = runEnsure()
+      .then((ok) => {
+        if (ok) lastSuccessAt = Date.now();
+        else ensurePromise = null;
+        return ok;
+      })
+      .catch((error) => {
+        ensurePromise = null;
+        console.error("[ensureDigitalLeakCatalog] failed", error);
+        return false;
+      });
+  }
+
+  return ensurePromise;
+}
+
+export async function verifyDigitalLeakCatalog(): Promise<EnsureCatalogResult> {
+  const db = getDatabase();
+  if (!db) {
+    return {
+      ok: false,
+      digitalLeakActive: false,
+      phoneEmailInactive: false,
+      dehashedCostPresent: false,
+      detail: "DATABASE_URL nicht gesetzt",
+    };
+  }
+
+  const leakRows = await db
+    .select({
+      isActive: analysisPricing.isActive,
     })
-    .onDuplicateKeyUpdate({
-      set: {
-        label: DEHASHED_COST.label,
-        notes: DEHASHED_COST.notes,
-        isActive: true,
-      },
-    });
+    .from(analysisPricing)
+    .where(eq(analysisPricing.analysisKey, DIGITAL_LEAK_KEY))
+    .limit(1);
+
+  const legacyRows = await db
+    .select({
+      analysisKey: analysisPricing.analysisKey,
+      isActive: analysisPricing.isActive,
+    })
+    .from(analysisPricing)
+    .where(
+      sql`${analysisPricing.analysisKey} IN ('phone_analysis', 'email_analysis')`
+    );
+
+  const costRows = await db
+    .select({ id: apiCostSettings.id })
+    .from(apiCostSettings)
+    .where(eq(apiCostSettings.providerCode, "dehashed"))
+    .limit(1);
+
+  const digitalLeakActive = Boolean(leakRows[0]?.isActive);
+  const phoneEmailInactive = legacyRows.every((row) => !row.isActive);
+  const dehashedCostPresent = Boolean(costRows[0]);
+  const ok = digitalLeakActive && phoneEmailInactive && dehashedCostPresent;
+
+  return {
+    ok,
+    digitalLeakActive,
+    phoneEmailInactive,
+    dehashedCostPresent,
+    detail: ok
+      ? "Katalog OK"
+      : `leakActive=${digitalLeakActive} legacyOff=${phoneEmailInactive} dehashedCost=${dehashedCostPresent}`,
+  };
+}
+
+async function runEnsure(): Promise<boolean> {
+  const db = getDatabase();
+  if (!db) return false;
+
+  // 1) Pricing catalog — independent of api_cost_settings
+  try {
+    await db.execute(sql`
+      INSERT INTO analysis_pricing
+        (analysis_key, label, description, credits, sort_order,
+         is_active, is_system_default, default_label,
+         default_description, default_credits)
+      VALUES
+        (
+          ${DIGITAL_LEAK_KEY},
+          ${DIGITAL_LEAK_LABEL},
+          ${DIGITAL_LEAK_DESCRIPTION},
+          ${DIGITAL_LEAK_CREDITS},
+          25,
+          1,
+          1,
+          ${DIGITAL_LEAK_LABEL},
+          ${DIGITAL_LEAK_DESCRIPTION},
+          ${DIGITAL_LEAK_CREDITS}
+        )
+      ON DUPLICATE KEY UPDATE
+        label = VALUES(label),
+        description = VALUES(description),
+        credits = VALUES(credits),
+        sort_order = VALUES(sort_order),
+        is_active = 1,
+        is_system_default = 1,
+        default_label = VALUES(default_label),
+        default_description = VALUES(default_description),
+        default_credits = VALUES(default_credits)
+    `);
+
+    await db.execute(sql`
+      UPDATE analysis_pricing
+      SET is_active = 0
+      WHERE analysis_key IN ('phone_analysis', 'email_analysis')
+    `);
+  } catch (error) {
+    console.error("[ensureDigitalLeakCatalog] pricing upsert failed", error);
+    return false;
+  }
+
+  // 2) DeHashed cost row — must not block pricing heal
+  try {
+    await db.execute(sql`
+      INSERT INTO api_cost_settings
+        (provider_code, label, cost_per_request_eur, notes, is_active)
+      VALUES
+        ('dehashed', 'DeHashed.com', 0.000000, 'DeHashed Search API — optional cost override', 1)
+      ON DUPLICATE KEY UPDATE
+        label = VALUES(label),
+        notes = VALUES(notes),
+        is_active = 1
+    `);
+  } catch (error) {
+    console.error(
+      "[ensureDigitalLeakCatalog] dehashed cost upsert failed",
+      error
+    );
+  }
+
+  const verified = await verifyDigitalLeakCatalog();
+  if (!verified.digitalLeakActive || !verified.phoneEmailInactive) {
+    console.error(
+      "[ensureDigitalLeakCatalog] verify failed after write",
+      verified.detail
+    );
+    return false;
+  }
+
+  if (!verified.dehashedCostPresent) {
+    console.warn(
+      "[ensureDigitalLeakCatalog] pricing OK but dehashed cost row missing"
+    );
+  }
+
+  return true;
 }
