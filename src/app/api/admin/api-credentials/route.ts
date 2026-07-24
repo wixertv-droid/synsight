@@ -69,6 +69,7 @@ export async function PUT(request: Request) {
       provider: parsed.data.provider,
       secret: parsed.data.secret,
       engineId: parsed.data.engineId,
+      accountEmail: parsed.data.accountEmail,
     });
     const credentials = await listAdminApiCredentials(access.user);
     return NextResponse.json(apiSuccess({ result, credentials }));
@@ -80,6 +81,7 @@ export async function PUT(request: Request) {
       label: parsed.data.label,
       secret: parsed.data.secret,
       engineId: parsed.data.engineId,
+      accountEmail: parsed.data.accountEmail,
       isActive: parsed.data.isActive,
     });
 
@@ -88,6 +90,15 @@ export async function PUT(request: Request) {
     if (error instanceof Error && error.message === "SECRET_REQUIRED") {
       return NextResponse.json(
         apiError("VALIDATION_ERROR", "API-Schlüssel ist erforderlich."),
+        { status: 400 }
+      );
+    }
+    if (error instanceof Error && error.message === "ACCOUNT_EMAIL_REQUIRED") {
+      return NextResponse.json(
+        apiError(
+          "VALIDATION_ERROR",
+          "DeHashed Account-E-Mail ist erforderlich."
+        ),
         { status: 400 }
       );
     }

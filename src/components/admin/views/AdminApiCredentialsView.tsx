@@ -4,15 +4,19 @@ import { useCallback, useEffect, useState } from "react";
 import AdminSearchProviderPanel from "@/components/admin/views/AdminSearchProviderPanel";
 import type { ApiCredentialSummary } from "@/lib/services/admin-platform-service";
 
+type Draft = {
+  label: string;
+  secret: string;
+  accountEmail: string;
+};
+
 export default function AdminApiCredentialsView() {
   const [rows, setRows] = useState<ApiCredentialSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyProvider, setBusyProvider] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"ok" | "err">("ok");
-  const [drafts, setDrafts] = useState<
-    Record<string, { label: string; secret: string }>
-  >({});
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -21,11 +25,12 @@ export default function AdminApiCredentialsView() {
       const body = await response.json();
       if (body.success) {
         setRows(body.data.credentials);
-        const next: Record<string, { label: string; secret: string }> = {};
+        const next: Record<string, Draft> = {};
         for (const row of body.data.credentials as ApiCredentialSummary[]) {
           next[row.provider] = {
             label: row.label,
             secret: "",
+            accountEmail: row.accountEmail ?? "",
           };
         }
         setDrafts(next);
@@ -42,10 +47,11 @@ export default function AdminApiCredentialsView() {
   async function save(provider: string) {
     const draft = drafts[provider];
     if (!draft) return;
-    if (
-      !draft.secret.trim() &&
-      !rows.find((r) => r.provider === provider)?.configured
-    ) {
+    const row = rows.find((item) => item.provider === provider);
+    if (!draft.secret.trim() && !row?.configured) return;
+    if (provider === "dehashed" && !draft.accountEmail.trim()) {
+      setMessageTone("err");
+      setMessage("Bitte DeHashed Account-E-Mail eintragen.");
       return;
     }
     setBusyProvider(provider);
@@ -59,6 +65,10 @@ export default function AdminApiCredentialsView() {
           provider,
           label: draft.label.trim() || provider,
           secret: draft.secret.trim() || undefined,
+          accountEmail:
+            provider === "dehashed"
+              ? draft.accountEmail.trim() || undefined
+              : undefined,
           isActive: true,
         }),
       });
@@ -69,7 +79,11 @@ export default function AdminApiCredentialsView() {
         return;
       }
       setMessageTone("ok");
-      setMessage("API-Schlüssel gespeichert.");
+      setMessage(
+        provider === "dehashed"
+          ? "DeHashed Account-E-Mail und API-Key gespeichert."
+          : "API-Schlüssel gespeichert."
+      );
       await load();
     } finally {
       setBusyProvider(null);
@@ -96,12 +110,21 @@ export default function AdminApiCredentialsView() {
     }
   }
 
-  async function testGemini(provider: string) {
+  async function testConnection(provider: string) {
     const draft = drafts[provider];
     const row = rows.find((item) => item.provider === provider);
     if (!draft?.secret.trim() && !row?.configured) {
       setMessageTone("err");
       setMessage("Bitte zuerst einen API-Schlüssel speichern.");
+      return;
+    }
+    if (
+      provider === "dehashed" &&
+      !draft?.accountEmail.trim() &&
+      !row?.accountEmail
+    ) {
+      setMessageTone("err");
+      setMessage("Bitte zuerst die DeHashed Account-E-Mail speichern.");
       return;
     }
     setBusyProvider(provider);
@@ -114,6 +137,10 @@ export default function AdminApiCredentialsView() {
           action: "test",
           provider,
           secret: draft?.secret.trim() || undefined,
+          accountEmail:
+            provider === "dehashed"
+              ? draft?.accountEmail.trim() || undefined
+              : undefined,
         }),
       });
       const body = await response.json();
@@ -151,7 +178,7 @@ export default function AdminApiCredentialsView() {
             KI & OSINT-Dienste
           </h2>
           <p className="mt-2 text-sm text-white/45">
-            Optionale API-Schlüssel für Zusammenfassungen und spätere Module.
+            Optionale API-Schlüssel für Zusammenfassungen und Leak-Suchen.
             Suchanfragen laufen über den Suchanbieter oben (SerpAPI).
           </p>
         </div>
@@ -175,6 +202,7 @@ export default function AdminApiCredentialsView() {
               const draft = drafts[row.provider] ?? {
                 label: row.label,
                 secret: "",
+                accountEmail: row.accountEmail ?? "",
               };
               const busy = busyProvider === row.provider;
               return (
@@ -205,22 +233,11 @@ export default function AdminApiCredentialsView() {
                   </div>
                   <p className="mt-2 text-sm text-white/55">
                     {row.configured
-                      ? "Konfiguriert"
+                      ? row.provider === "dehashed" && row.accountEmail
+                        ? `Konfiguriert · ${row.accountEmail}`
+                        : "Konfiguriert"
                       : "Noch nicht konfiguriert"}
                   </p>
-                  {row.provider === "dehashed" ? (
-                    <p className="mt-1 text-[11px] leading-relaxed text-white/35">
-                      Google-Pipeline nutzt HTTP Basic Auth: Server-Env{" "}
-                      <span className="font-mono text-white/50">
-                        DEHASHED_EMAIL
-                      </span>{" "}
-                      + API-Key (hier oder{" "}
-                      <span className="font-mono text-white/50">
-                        DEHASHED_API_KEY
-                      </span>
-                      ).
-                    </p>
-                  ) : null}
                   <form
                     className="mt-3 space-y-2"
                     onSubmit={(event) => {
@@ -244,6 +261,25 @@ export default function AdminApiCredentialsView() {
                       placeholder="Bezeichnung"
                       className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/80 outline-none focus:border-cyber-cyan/35"
                     />
+                    {row.provider === "dehashed" ? (
+                      <input
+                        name={`email-${row.provider}`}
+                        type="email"
+                        autoComplete="off"
+                        value={draft.accountEmail}
+                        onChange={(event) =>
+                          setDrafts((current) => ({
+                            ...current,
+                            [row.provider]: {
+                              ...draft,
+                              accountEmail: event.target.value,
+                            },
+                          }))
+                        }
+                        placeholder="DeHashed Account-E-Mail"
+                        className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/80 outline-none focus:border-cyber-cyan/35"
+                      />
+                    ) : null}
                     <input
                       name={`secret-${row.provider}`}
                       type="password"
@@ -260,7 +296,7 @@ export default function AdminApiCredentialsView() {
                       }
                       placeholder={
                         row.configured
-                          ? "Neuer Schlüssel (optional)"
+                          ? "Neuer API-Schlüssel (optional)"
                           : "API-Schlüssel"
                       }
                       className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/80 outline-none focus:border-cyber-cyan/35"
@@ -269,11 +305,15 @@ export default function AdminApiCredentialsView() {
                       <button
                         type="submit"
                         disabled={
-                          busy || (!draft.secret.trim() && !row.configured)
+                          busy ||
+                          (!draft.secret.trim() && !row.configured) ||
+                          (row.provider === "dehashed" &&
+                            !draft.accountEmail.trim() &&
+                            !row.accountEmail)
                         }
                         className="rounded-lg border border-cyber-cyan/30 px-3 py-1.5 text-xs text-cyber-cyan disabled:opacity-40"
                       >
-                        {busy ? "Bitte warten…" : "Schlüssel speichern"}
+                        {busy ? "Bitte warten…" : "Speichern"}
                       </button>
                       {row.provider === "gemini" ||
                       row.provider === "dehashed" ? (
@@ -282,7 +322,7 @@ export default function AdminApiCredentialsView() {
                           disabled={
                             busy || (!row.configured && !draft.secret.trim())
                           }
-                          onClick={() => void testGemini(row.provider)}
+                          onClick={() => void testConnection(row.provider)}
                           className="rounded-lg border border-emerald-300/30 px-3 py-1.5 text-xs text-emerald-100/80 disabled:opacity-40"
                         >
                           {busy ? "Teste…" : "API TESTEN"}

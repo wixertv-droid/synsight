@@ -25,6 +25,7 @@ export const adminApiCredentialSchema = z.discriminatedUnion("action", [
       .regex(/^[a-zA-Z0-9:_-]+$/)
       .optional()
       .nullable(),
+    accountEmail: z.string().trim().email().max(254).optional().nullable(),
     isActive: z.boolean().default(true),
   }),
   z.object({
@@ -44,5 +45,6 @@ export const adminApiCredentialSchema = z.discriminatedUnion("action", [
       .regex(/^[a-zA-Z0-9:_-]+$/)
       .optional()
       .nullable(),
+    accountEmail: z.string().trim().email().max(254).optional().nullable(),
   }),
 ]);

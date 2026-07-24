@@ -41,6 +41,8 @@ export interface ApiCredentialSummary {
   isActive: boolean;
   configured: boolean;
   engineId: string | null;
+  /** DeHashed account email (Basic Auth username), stored in config_json */
+  accountEmail: string | null;
   lastSuccessAt: string | null;
   lastErrorAt: string | null;
   lastErrorMessage: string | null;
@@ -120,6 +122,39 @@ function readEngineId(configJson: unknown): string | null {
   return typeof engine === "string" && engine.trim() ? engine.trim() : null;
 }
 
+function readAccountEmail(configJson: unknown): string | null {
+  let value: unknown = configJson;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const email = (value as { email?: unknown }).email;
+  return typeof email === "string" && email.includes("@") ? email.trim() : null;
+}
+
+function asConfigObject(configJson: unknown): Record<string, unknown> {
+  if (!configJson) return {};
+  if (typeof configJson === "string") {
+    try {
+      const parsed = JSON.parse(configJson) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+    return {};
+  }
+  if (typeof configJson === "object" && !Array.isArray(configJson)) {
+    return { ...(configJson as Record<string, unknown>) };
+  }
+  return {};
+}
+
 export async function listAdminApiCredentials(
   actor: AuthenticatedUser
 ): Promise<ApiCredentialSummary[]> {
@@ -141,6 +176,7 @@ export async function listAdminApiCredentials(
         isActive: false,
         configured: false,
         engineId: null,
+        accountEmail: null,
         lastSuccessAt: null,
         lastErrorAt: null,
         lastErrorMessage: null,
@@ -162,6 +198,7 @@ export async function listAdminApiCredentials(
       isActive: row.isActive,
       configured: true,
       engineId: readEngineId(row.configJson),
+      accountEmail: readAccountEmail(row.configJson),
       lastSuccessAt: row.lastSuccessAt,
       lastErrorAt: row.lastErrorAt,
       lastErrorMessage: row.lastErrorMessage,
@@ -177,6 +214,7 @@ export async function upsertAdminApiCredential(
     label: string;
     secret?: string | null;
     engineId?: string | null;
+    accountEmail?: string | null;
     isActive: boolean;
   }
 ): Promise<ApiCredentialSummary> {
@@ -206,7 +244,19 @@ export async function upsertAdminApiCredential(
   const engineId =
     incomingEngineId || readEngineId(current?.configJson) || null;
 
-  const configJson = current?.configJson ?? (engineId ? { engineId } : null);
+  const incomingEmail = input.accountEmail?.trim() || "";
+  const accountEmail =
+    incomingEmail || readAccountEmail(current?.configJson) || null;
+
+  if (input.provider === "dehashed" && !accountEmail) {
+    throw new Error("ACCOUNT_EMAIL_REQUIRED");
+  }
+
+  const configJson: Record<string, unknown> = {
+    ...asConfigObject(current?.configJson),
+  };
+  if (engineId) configJson.engineId = engineId;
+  if (accountEmail) configJson.email = accountEmail;
 
   if (db) {
     await db
@@ -236,6 +286,7 @@ export async function upsertAdminApiCredential(
     isActive: input.isActive,
     configured: true,
     engineId,
+    accountEmail,
     lastSuccessAt: null,
     lastErrorAt: null,
     lastErrorMessage: null,
@@ -273,6 +324,7 @@ export async function setAdminApiCredentialActive(
     isActive,
     configured: true,
     engineId: readEngineId(row.configJson),
+    accountEmail: readAccountEmail(row.configJson),
     lastSuccessAt: row.lastSuccessAt,
     lastErrorAt: row.lastErrorAt,
     lastErrorMessage: row.lastErrorMessage,

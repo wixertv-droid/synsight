@@ -75,12 +75,7 @@ function readConfigEmail(configJson: unknown): string | null {
 }
 
 async function resolveDehashedBasicAuth(): Promise<DehashedCredentials | null> {
-  const envEmail = process.env.DEHASHED_EMAIL?.trim() || "";
-  const envKey =
-    process.env.DEHASHED_API_KEY?.trim() ||
-    process.env.DEHASHED_API_TOKEN?.trim() ||
-    "";
-
+  // 1) Admin-DB zuerst (Account-E-Mail + API-Key)
   const db = getDatabase();
   if (db) {
     try {
@@ -92,15 +87,13 @@ async function resolveDehashedBasicAuth(): Promise<DehashedCredentials | null> {
       const row = rows[0];
       if (row?.isActive) {
         const decrypted = tryDecrypt(row.encryptedSecret);
-        if (decrypted.ok && decrypted.value.trim()) {
-          const email = envEmail || readConfigEmail(row.configJson) || "";
-          if (email) {
-            return {
-              email,
-              apiKey: decrypted.value.trim(),
-              source: "database",
-            };
-          }
+        const email = readConfigEmail(row.configJson) || "";
+        if (decrypted.ok && decrypted.value.trim() && email) {
+          return {
+            email,
+            apiKey: decrypted.value.trim(),
+            source: "database",
+          };
         }
       }
     } catch (error) {
@@ -108,6 +101,12 @@ async function resolveDehashedBasicAuth(): Promise<DehashedCredentials | null> {
     }
   }
 
+  // 2) Optionaler Env-Fallback (nur wenn Admin noch nicht gesetzt)
+  const envEmail = process.env.DEHASHED_EMAIL?.trim() || "";
+  const envKey =
+    process.env.DEHASHED_API_KEY?.trim() ||
+    process.env.DEHASHED_API_TOKEN?.trim() ||
+    "";
   if (envEmail && envKey) {
     return { email: envEmail, apiKey: envKey, source: "env" };
   }

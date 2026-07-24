@@ -296,6 +296,7 @@ export async function testApiCredentialConnection(input: {
   provider: string;
   secret?: string | null;
   engineId?: string | null;
+  accountEmail?: string | null;
 }): Promise<ApiCredentialTestResult> {
   const started = Date.now();
   const provider = input.provider;
@@ -411,7 +412,10 @@ export async function testApiCredentialConnection(input: {
   if (provider === "dehashed") {
     const { testDehashedConnection } =
       await import("@/lib/analysis/digital-exposure/dehashed-client");
-    return testDehashedConnection({ secret: input.secret });
+    return testDehashedConnection({
+      secret: input.secret,
+      accountEmail: input.accountEmail,
+    });
   }
 
   return {

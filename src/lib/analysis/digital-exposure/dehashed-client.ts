@@ -284,50 +284,115 @@ export async function searchDehashedByPhone(
   };
 }
 
-/** Admin connectivity probe — authenticated search with size=1. */
+/** Admin connectivity probe — Basic Auth like production Google pipeline. */
 export async function testDehashedConnection(input: {
   secret?: string | null;
+  accountEmail?: string | null;
 }): Promise<ApiCredentialTestResult> {
   const started = Date.now();
   let apiKey = input.secret?.trim() || "";
+  let accountEmail = input.accountEmail?.trim() || "";
   let source = "draft";
 
-  if (!apiKey) {
-    const resolved = await resolveDehashedCredentials();
-    if (!resolved) {
+  if (!apiKey || !accountEmail) {
+    const db = getDatabase();
+    if (db) {
+      try {
+        const rows = await db
+          .select()
+          .from(apiCredentials)
+          .where(eq(apiCredentials.provider, DEHASHED_PROVIDER))
+          .limit(1);
+        const row = rows[0];
+        if (row?.isActive) {
+          if (!apiKey) {
+            const decrypted = tryDecrypt(row.encryptedSecret);
+            if (decrypted.ok) {
+              apiKey = decrypted.value.trim();
+              source = "database";
+            }
+          }
+          if (!accountEmail) {
+            let cfg: unknown = row.configJson;
+            if (typeof cfg === "string") {
+              try {
+                cfg = JSON.parse(cfg) as unknown;
+              } catch {
+                cfg = null;
+              }
+            }
+            const email =
+              cfg &&
+              typeof cfg === "object" &&
+              !Array.isArray(cfg) &&
+              typeof (cfg as { email?: unknown }).email === "string"
+                ? String((cfg as { email: string }).email).trim()
+                : "";
+            if (email.includes("@")) accountEmail = email;
+          }
+        }
+      } catch (error) {
+        console.error("[dehashed] test resolve failed", error);
+      }
+    }
+  }
+
+  if (!apiKey || !accountEmail) {
+    return {
+      provider: DEHASHED_PROVIDER,
+      ok: false,
+      message: "✕ API Verbindung fehlgeschlagen",
+      detail: "Bitte DeHashed Account-E-Mail und API-Key im Admin speichern.",
+      latencyMs: Date.now() - started,
+    };
+  }
+
+  try {
+    const basic = Buffer.from(`${accountEmail}:${apiKey}`, "utf8").toString(
+      "base64"
+    );
+    const response = await fetch(
+      `https://api.dehashed.com/search?query=${encodeURIComponent(
+        'email:"synsight-api-probe@example.invalid"'
+      )}&size=1`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Basic ${basic}`,
+          "User-Agent": "SynSight-OSINT/1.0",
+        },
+        cache: "no-store",
+      }
+    );
+    const latencyMs = Date.now() - started;
+    const bodyText = await response.text().catch(() => "");
+
+    if (!response.ok) {
+      const detail = `HTTP ${response.status}${bodyText ? ` · ${bodyText.slice(0, 120)}` : ""}`;
+      await markDehashedStatus(false, detail);
+      console.error("[dehashed] admin test failed", detail);
       return {
         provider: DEHASHED_PROVIDER,
         ok: false,
         message: "✕ API Verbindung fehlgeschlagen",
-        detail: "Kein DeHashed.com API-Key hinterlegt.",
-        latencyMs: Date.now() - started,
+        detail,
+        latencyMs,
       };
     }
-    apiKey = resolved.apiKey;
-    source = resolved.source;
-  }
 
-  try {
-    const result = await dehashedSearch(
-      apiKey,
-      'email:"synsight-api-probe@example.invalid"',
-      1
-    );
-    const latencyMs = Date.now() - started;
     await markDehashedStatus(true);
     return {
       provider: DEHASHED_PROVIDER,
       ok: true,
       message: "✓ DeHashed.com API Verbindung erfolgreich",
-      detail: `Quelle=${source} · ${latencyMs} ms${
-        result.balance != null ? ` · Balance=${result.balance}` : ""
-      }`,
+      detail: `Quelle=${source} · Basic Auth · ${latencyMs} ms`,
       latencyMs,
     };
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Netzwerkfehler";
     await markDehashedStatus(false, detail);
-    console.error("[dehashed] admin test failed", detail);
+    console.error("[dehashed] admin test error", detail);
     return {
       provider: DEHASHED_PROVIDER,
       ok: false,
