@@ -122,7 +122,17 @@ export default function ResultsCenterClient({
   const [error, setError] = useState<string | null>(null);
   const [scanDone, setScanDone] = useState(false);
   const [retentionDays, setRetentionDays] = useState<ReportRetentionDays>(
-    DEFAULT_REPORT_RETENTION_DAYS
+    () => {
+      // Prefer URL (from Analyse-Start) so Scan denselben Wert speichert
+      if (typeof window !== "undefined") {
+        const fromUrl = new URLSearchParams(window.location.search).get(
+          "retention"
+        );
+        if (fromUrl != null) return parseRetentionDays(fromUrl);
+        return readStoredRetention();
+      }
+      return retentionFromUrl;
+    }
   );
   const scanStartedRef = useRef(false);
 
@@ -174,10 +184,22 @@ export default function ResultsCenterClient({
     );
 
     try {
+      // Retention zur Laufzeit nochmals auflösen (URL/Storage), falls State noch Default war
+      const effectiveRetention = parseRetentionDays(
+        searchParams.get("retention") ??
+          (typeof window !== "undefined"
+            ? window.localStorage.getItem(REPORT_RETENTION_STORAGE_KEY)
+            : null),
+        retentionDays
+      );
+      if (effectiveRetention !== retentionDays) {
+        setRetentionDays(effectiveRetention);
+      }
+
       const response = await fetch("/api/analysis/google/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ retentionDays }),
+        body: JSON.stringify({ retentionDays: effectiveRetention }),
       });
       // API fertig → Balken darf auf 100 % (nach Mindestanimation)
       setScanApiReady(true);
@@ -258,7 +280,7 @@ export default function ResultsCenterClient({
       setError("Verbindung zum Server nicht möglich.");
       finishScanAttempt();
     }
-  }, [finishScanAttempt, retentionDays]);
+  }, [finishScanAttempt, retentionDays, searchParams]);
 
   useEffect(() => {
     if (

@@ -55,6 +55,32 @@ export function computeExpiresAt(
   return expires.toISOString();
 }
 
+/** Drizzle `timestamp({ mode: "string" })` expects MySQL datetime, not ISO `T`/`Z`. */
+export function toMysqlTimestamp(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid timestamp: ${String(value)}`);
+  }
+  return date.toISOString().slice(0, 23).replace("T", " ");
+}
+
+/** Normalize DB/ISO/Date values to ISO strings for the report payload. */
+export function normalizeExpiresAtValue(value: unknown): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+  if (typeof value !== "string" || !value.trim()) return null;
+  const trimmed = value.trim();
+  // MySQL DATETIME from drizzle string mode: "YYYY-MM-DD HH:mm:ss[.sss]"
+  if (/^\d{4}-\d{2}-\d{2} /.test(trimmed)) {
+    const asUtc = new Date(`${trimmed.replace(" ", "T")}Z`);
+    return Number.isNaN(asUtc.getTime()) ? null : asUtc.toISOString();
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 export function isReportExpired(input: {
   expiresAt?: string | null;
   generatedAt?: string;
@@ -62,8 +88,9 @@ export function isReportExpired(input: {
   now?: Date;
 }): boolean {
   const now = input.now ?? new Date();
-  if (input.expiresAt) {
-    const expires = new Date(input.expiresAt);
+  const expiresAtIso = normalizeExpiresAtValue(input.expiresAt ?? null);
+  if (expiresAtIso) {
+    const expires = new Date(expiresAtIso);
     if (!Number.isNaN(expires.getTime())) {
       return expires.getTime() <= now.getTime();
     }

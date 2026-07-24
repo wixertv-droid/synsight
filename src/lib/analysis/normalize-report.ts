@@ -174,12 +174,18 @@ export function normalizeIntelligenceReport(
       typeof source.retentionDays === "number" && source.retentionDays >= 0
         ? source.retentionDays
         : 30,
-    expiresAt:
-      typeof source.expiresAt === "string"
-        ? source.expiresAt
-        : source.expiresAt === null
+    expiresAt: (() => {
+      if (source.expiresAt === null || source.expiresAt === undefined) {
+        return null;
+      }
+      if (typeof source.expiresAt === "string") return source.expiresAt;
+      if (source.expiresAt instanceof Date) {
+        return Number.isNaN(source.expiresAt.getTime())
           ? null
-          : null,
+          : source.expiresAt.toISOString();
+      }
+      return null;
+    })(),
     profileCompleteness: Number(source.profileCompleteness) || 0,
     dataSourceLabel:
       typeof source.dataSourceLabel === "string"

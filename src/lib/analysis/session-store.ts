@@ -2,7 +2,11 @@ import { eq, and } from "drizzle-orm";
 import { getDatabase } from "@/lib/database/client";
 import { intelligenceReports } from "@/lib/database/schema";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
-import { isReportExpired } from "@/lib/analysis/retention";
+import {
+  isReportExpired,
+  normalizeExpiresAtValue,
+  toMysqlTimestamp,
+} from "@/lib/analysis/retention";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 
 const memoryReports = new Map<string, IntelligenceReport>();
@@ -56,12 +60,24 @@ export async function saveIntelligenceReport(
   report: IntelligenceReport
 ): Promise<void> {
   const normalized = normalizeIntelligenceReport(report);
-  if (!normalized) return;
+  if (!normalized) {
+    throw new Error("intelligence_reports: report payload invalid");
+  }
 
+  // Keep ISO in JSON / memory; convert only for the DB timestamp column
   memoryReports.set(storeKey(userId, normalized.moduleKey), normalized);
 
   const db = getDatabase();
-  if (!db) return;
+  if (!db) {
+    throw new Error(
+      "intelligence_reports: database not configured — report would be lost on reload"
+    );
+  }
+
+  const expiresAtMysql =
+    normalized.expiresAt == null
+      ? null
+      : toMysqlTimestamp(normalized.expiresAt);
 
   try {
     const reportJson = JSON.parse(
@@ -77,7 +93,7 @@ export async function saveIntelligenceReport(
         riskLevel: normalized.riskLevel,
         hitCount: normalized.hits.length,
         retentionDays: normalized.retentionDays,
-        expiresAt: normalized.expiresAt,
+        expiresAt: expiresAtMysql,
         reportJson,
       })
       .onDuplicateKeyUpdate({
@@ -87,12 +103,15 @@ export async function saveIntelligenceReport(
           riskLevel: normalized.riskLevel,
           hitCount: normalized.hits.length,
           retentionDays: normalized.retentionDays,
-          expiresAt: normalized.expiresAt,
+          expiresAt: expiresAtMysql,
           reportJson,
         },
       });
   } catch (error) {
     console.error("[intelligence-reports] save failed", error);
+    // Do not keep a false "saved" memory-only state if DB write failed
+    memoryReports.delete(storeKey(userId, normalized.moduleKey));
+    throw error;
   }
 }
 
@@ -125,12 +144,12 @@ export async function getIntelligenceReport(
     const report = normalizeIntelligenceReport(row.reportJson);
     if (!report) return null;
 
-    // Prefer DB retention columns when present
+    // Prefer DB retention columns when present (normalize MySQL/Date → ISO)
     if (typeof row.retentionDays === "number") {
       report.retentionDays = row.retentionDays;
     }
     if (row.expiresAt !== undefined) {
-      report.expiresAt = row.expiresAt;
+      report.expiresAt = normalizeExpiresAtValue(row.expiresAt);
     }
 
     const valid = forgetIfExpired(userId, moduleKey, report);

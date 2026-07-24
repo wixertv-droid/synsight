@@ -9,7 +9,9 @@ import type { IntelligenceHit } from "@/lib/analysis/types";
 import {
   computeExpiresAt,
   isReportExpired,
+  normalizeExpiresAtValue,
   parseRetentionDays,
+  toMysqlTimestamp,
 } from "@/lib/analysis/retention";
 
 function hit(
@@ -108,6 +110,15 @@ describe("report retention", () => {
     expect(parseRetentionDays(999)).toBe(30);
     expect(computeExpiresAt("2026-07-01T00:00:00.000Z", 0)).toBeNull();
     expect(computeExpiresAt("2026-07-01T00:00:00.000Z", 1)).toBe(
+      "2026-07-02T00:00:00.000Z"
+    );
+    expect(toMysqlTimestamp("2026-07-02T00:00:00.000Z")).toBe(
+      "2026-07-02 00:00:00.000"
+    );
+    expect(normalizeExpiresAtValue("2026-07-02 00:00:00.000")).toBe(
+      "2026-07-02T00:00:00.000Z"
+    );
+    expect(normalizeExpiresAtValue(new Date("2026-07-02T00:00:00.000Z"))).toBe(
       "2026-07-02T00:00:00.000Z"
     );
   });
