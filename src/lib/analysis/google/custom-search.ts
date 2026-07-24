@@ -15,10 +15,12 @@ export interface FetchGoogleSearchOptions {
   recordFinance?: boolean;
   userId?: number | null;
   referenceKey?: string | null;
+  /** SerpAPI engine — google (default) or bing */
+  engine?: "google" | "bing";
 }
 
 /**
- * Live Google search via the active SearchProvider (SerpAPI).
+ * Live search via the active SearchProvider (SerpAPI Google/Bing).
  */
 export async function isGoogleSearchConfigured(): Promise<boolean> {
   return isSearchProviderConfigured("serpapi");
@@ -33,5 +35,6 @@ export async function fetchGoogleSearch(
     userId: options?.userId,
     referenceKey: options?.referenceKey,
     eventType: "search",
+    engine: options?.engine ?? "google",
   });
 }

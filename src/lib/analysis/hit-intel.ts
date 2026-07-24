@@ -11,6 +11,7 @@ import type {
   IntelligenceHitRisk,
   IntelligenceReportScorecard,
 } from "@/lib/analysis/types";
+import { isLiveSerpSource } from "@/lib/analysis/types";
 
 export type HitSeverity = "critical" | "high" | "medium" | "low";
 
@@ -381,7 +382,7 @@ function buildWhyFoundPlain(input: {
 export function buildReportScorecard(
   hits: IntelligenceHit[]
 ): IntelligenceReportScorecard {
-  const live = hits.filter((hit) => hit.sourceType === "serpapi_google");
+  const live = hits.filter((hit) => isLiveSerpSource(hit.sourceType));
   const likely = live.filter((hit) => (hit.identityConfidence ?? 0) >= 70);
   const critical = live.filter((hit) => hit.severity === "critical").length;
   const high = live.filter((hit) => hit.severity === "high").length;
@@ -434,7 +435,7 @@ export function buildStructuredAnalysisSummary(
   hits: IntelligenceHit[],
   scorecard: IntelligenceReportScorecard
 ): string {
-  const live = hits.filter((hit) => hit.sourceType === "serpapi_google");
+  const live = hits.filter((hit) => isLiveSerpSource(hit.sourceType));
   const likely = live.filter((hit) => (hit.identityConfidence ?? 0) >= 70);
   const byCat = (key: string) =>
     likely.filter((hit) => hit.filterCategory === key).length;

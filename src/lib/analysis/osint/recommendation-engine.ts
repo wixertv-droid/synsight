@@ -2,6 +2,7 @@ import type {
   IntelligenceHit,
   IntelligenceRecommendation,
 } from "@/lib/analysis/types";
+import { isLiveSerpSource } from "@/lib/analysis/types";
 import type { AggregatedProfile } from "@/lib/analysis/osint/profile-aggregator";
 import { detectSensitiveCategories } from "@/lib/analysis/osint/threat-evaluator";
 
@@ -14,8 +15,7 @@ export function buildConcreteRecommendations(
 ): IntelligenceRecommendation[] {
   const recs: IntelligenceRecommendation[] = [];
   const verified = hits.filter(
-    (h) =>
-      h.sourceType === "serpapi_google" && (h.identityConfidence ?? 0) >= 70
+    (h) => isLiveSerpSource(h.sourceType) && (h.identityConfidence ?? 0) >= 70
   );
   const sensitive = detectSensitiveCategories(verified);
 

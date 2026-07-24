@@ -76,4 +76,46 @@ describe("SerpApiProvider", () => {
     expect(health.ok).toBe(false);
     expect(health.message).toBe("Ungültiger API-Key");
   });
+
+  it("disables Google SafeSearch (safe=off)", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      expect(String(url)).toContain("safe=off");
+      expect(String(url)).toContain("engine=google");
+      return {
+        ok: true,
+        json: async () => ({ organic_results: [] }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new SerpApiProvider("test-key");
+    await provider.search("test query");
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it("uses Bing engine with safeSearch=Off", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      const href = String(url);
+      expect(href).toContain("engine=bing");
+      expect(href).toMatch(/safeSearch=Off/i);
+      return {
+        ok: true,
+        json: async () => ({
+          organic_results: [
+            {
+              title: "JoyClub",
+              link: "https://www.joyclub.de/profile/x",
+              snippet: "Profil",
+            },
+          ],
+        }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new SerpApiProvider("test-key");
+    const hits = await provider.search('"Max Mustermann" joyclub', {
+      engine: "bing",
+    });
+    expect(hits).toHaveLength(1);
+    expect(hits[0].title).toBe("JoyClub");
+  });
 });

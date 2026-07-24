@@ -20,7 +20,9 @@ import type {
   IntelligenceHit,
   IntelligenceRecommendation,
   IntelligenceReport,
+  SerpSearchEngine,
 } from "@/lib/analysis/types";
+import { isLiveSerpSource } from "@/lib/analysis/types";
 import {
   fetchGoogleSearch,
   isGoogleSearchConfigured,
@@ -87,6 +89,8 @@ function inferCategory(query: string, label: string): string {
   if (label === "Name + Wohnort" || label === "Name") return "name";
   if (label === "Name + Firma") return "company";
   if (label === "Ort / Adresse") return "address";
+  if (label === "Adult / Nische") return "adult";
+  if (label === "Foren / Leaks") return "forum";
   return "general";
 }
 
@@ -300,13 +304,16 @@ export async function runGoogleIntelligenceAnalysis(
 
   if (apiConfigured) {
     const batches = await mapPool(queries, 2, async (plan) => {
+      const engine: SerpSearchEngine =
+        plan.engine === "bing" ? "bing" : "google";
       try {
         const { getCachedSearchResults, setCachedSearchResults } =
           await import("@/lib/analysis/osint/search-cache");
-        const cached = getCachedSearchResults(plan.query);
+        const cached = getCachedSearchResults(plan.query, engine);
         if (cached) {
           return {
             plan,
+            engine,
             items: cached,
             ok: true as const,
             fromCache: true as const,
@@ -317,10 +324,12 @@ export async function runGoogleIntelligenceAnalysis(
           recordFinance: false,
           userId: options?.userId ?? null,
           referenceKey: `${analysisRef}:${plan.id}`,
+          engine,
         });
-        setCachedSearchResults(plan.query, items);
+        setCachedSearchResults(plan.query, items, engine);
         return {
           plan,
+          engine,
           items,
           ok: true as const,
           fromCache: false as const,
@@ -329,6 +338,7 @@ export async function runGoogleIntelligenceAnalysis(
         console.error("[google-analysis] query failed", plan.id, error);
         return {
           plan,
+          engine,
           items: [] as Awaited<ReturnType<typeof fetchGoogleSearch>>,
           ok: false as const,
           fromCache: false as const,
@@ -341,17 +351,19 @@ export async function runGoogleIntelligenceAnalysis(
     ).length;
     const plannedCount = batches.length;
 
-    for (const { plan, items } of batches) {
+    for (const { plan, engine, items } of batches) {
       for (const item of items) {
         if (!item.title || !item.link) continue;
         try {
           const category = inferCategory(plan.query, plan.label);
+          const sourceType =
+            engine === "bing" ? "serpapi_bing" : "serpapi_google";
           const classification = classifyHitContent({
             title: item.title,
             snippet: item.snippet,
             url: item.link,
             category,
-            sourceType: "serpapi_google",
+            sourceType,
           });
 
           const hit: IntelligenceHit = {
@@ -363,12 +375,12 @@ export async function runGoogleIntelligenceAnalysis(
             category,
             fetchedAt: generatedAt,
             source: item.displayLink || safeHostname(item.link),
-            sourceType: "serpapi_google",
+            sourceType,
             visibility: "public_index",
             relevance: classification.relevance,
             risk: classification.risk,
             status: "verified",
-            whyFound: `Gefunden über die Profil-Suchanfrage „${plan.query}".`,
+            whyFound: `Gefunden über ${engine === "bing" ? "Bing" : "Google"} („${plan.query}").`,
             whyRelevant:
               classification.relevance === "relevant"
                 ? "Der Treffer enthält personenbezogene Signale aus Ihrem Profil."
@@ -393,6 +405,12 @@ export async function runGoogleIntelligenceAnalysis(
 
     // SerpAPI: nur erfolgreiche Suchen kosten ($0.025 ≈ €0.023 Starter).
     if (serpSuccessCount > 0) {
+      const googleCount = batches.filter(
+        (b) => b.ok && !b.fromCache && b.engine === "google"
+      ).length;
+      const bingCount = batches.filter(
+        (b) => b.ok && !b.fromCache && b.engine === "bing"
+      ).length;
       await recordApiUsageEvent({
         providerCode: "serpapi",
         eventType: "google_analysis",
@@ -400,23 +418,27 @@ export async function runGoogleIntelligenceAnalysis(
         userId: options?.userId ?? null,
         requestCount: serpSuccessCount,
         success: true,
-        detail: `Google-Analyse · ${subjectName} · ${serpSuccessCount} SerpAPI-Calls / ${plannedCount} Queries`,
+        detail: `Hybrid-Analyse · ${subjectName} · ${serpSuccessCount} SerpAPI-Calls (G:${googleCount}/B:${bingCount}) / ${plannedCount} Queries`,
         metaJson: {
           subjectName,
           analysisRef,
           requestCount: plannedCount,
           billableCount: serpSuccessCount,
           successCount: serpSuccessCount,
+          googleCount,
+          bingCount,
           failedCount: batches.filter((batch) => !batch.ok).length,
           cacheHits: batches.filter((batch) => batch.fromCache).length,
           hitCount: serpHits.length,
           unitPriceUsd: 0.025,
           unitPriceEurNote: "$0.025 × 0.92 ≈ €0.023",
           maxQueries: 5,
+          safeSearch: "off",
           queries: queries.map((plan) => ({
             id: plan.id,
             label: plan.label,
             query: plan.query,
+            engine: plan.engine ?? "google",
           })),
         },
       });
@@ -455,7 +477,7 @@ export async function runGoogleIntelligenceAnalysis(
   const partitioned = verifyAndPartitionHits(aggregatedHits);
   const hits = partitioned.displayHits;
   const buckets = summarizeBuckets(
-    hits.filter((h) => h.sourceType === "serpapi_google")
+    hits.filter((h) => isLiveSerpSource(h.sourceType))
   );
   const { riskScore, riskLevel } = computeOverallRisk(hits);
   const managementOverview = buildManagementOverview(hits);
@@ -467,8 +489,8 @@ export async function runGoogleIntelligenceAnalysis(
     scorecard
   );
 
-  const serpCount = partitioned.verified.filter(
-    (h) => h.sourceType === "serpapi_google"
+  const serpCount = partitioned.verified.filter((h) =>
+    isLiveSerpSource(h.sourceType)
   ).length;
   const summaryText =
     serpCount > 0
@@ -478,7 +500,7 @@ export async function runGoogleIntelligenceAnalysis(
         : `Enterprise OSINT abgeschlossen: Für eine Suche fehlen noch Identitätsdaten im Profil.`;
 
   const dataSourceLabel = apiConfigured
-    ? "SerpAPI Google Search · Identity Fingerprint"
+    ? "SerpAPI Hybrid (Google+Bing, SafeSearch off) · Identity Fingerprint"
     : "Identitätsprofil · öffentliche Verknüpfungen";
 
   const criticalHits = hits.filter(
@@ -525,11 +547,12 @@ export async function runGoogleIntelligenceAnalysis(
     fingerprintHash: fingerprint.hash,
     managementOverview,
     buckets,
-    queries: queries.map(({ id, label, query, help }) => ({
+    queries: queries.map(({ id, label, query, help, engine }) => ({
       id,
       label,
       query,
       help,
+      engine: engine ?? "google",
     })),
     hits,
     recommendations,
@@ -565,7 +588,7 @@ async function buildReportRecommendations(
   identity: IdentityView | null
 ): Promise<IntelligenceRecommendation[]> {
   const actionHits = hits.filter(
-    (h) => h.shouldAct && h.sourceType === "serpapi_google"
+    (h) => h.shouldAct && isLiveSerpSource(h.sourceType)
   );
   const recs: IntelligenceRecommendation[] = [];
 

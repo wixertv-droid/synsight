@@ -6,7 +6,16 @@ export type AnalysisModuleKey = "google_search" | string;
 export type IntelligenceHitRisk = "none" | "watch" | "review" | "action";
 export type IntelligenceRelevance = "relevant" | "neutral" | "low" | "stale";
 
-export type IntelligenceHitSource = "serpapi_google" | "identity_profile";
+export type SerpSearchEngine = "google" | "bing";
+
+export type IntelligenceHitSource =
+  "serpapi_google" | "serpapi_bing" | "identity_profile";
+
+export function isLiveSerpSource(
+  sourceType: IntelligenceHitSource | undefined
+): boolean {
+  return sourceType === "serpapi_google" || sourceType === "serpapi_bing";
+}
 
 export interface IntelligenceScanStep {
   id: string;
@@ -21,6 +30,8 @@ export interface IntelligenceQueryPlan {
   label: string;
   query: string;
   help: string;
+  /** SerpAPI engine — google (default) or bing */
+  engine?: SerpSearchEngine;
 }
 
 export interface IntelligenceHit {

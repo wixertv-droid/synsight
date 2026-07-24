@@ -82,6 +82,16 @@ describe("Sprint 6C enterprise OSINT", () => {
     );
     expect(plans[0]?.label).toBe("Telefon");
     expect(plans[0]?.searchScore).toBe(100);
+    expect(plans[0]?.engine).toBe("google");
+  });
+
+  it("includes Bing adult and forum plans in hybrid strategy", () => {
+    const plans = planScoredGoogleSearches(identity());
+    expect(plans.some((p) => p.engine === "bing")).toBe(true);
+    expect(plans.some((p) => p.id === "b-adult-niche")).toBe(true);
+    expect(
+      plans.every((p) => p.engine === "google" || p.engine === "bing")
+    ).toBe(true);
   });
 
   it("aggregates same-host pages into one profile", () => {
@@ -109,7 +119,10 @@ describe("Sprint 6C enterprise OSINT", () => {
       profiles.some((p) => p.host === "nexusmods.com" && p.pageCount === 2)
     ).toBe(true);
     expect(
-      aggregatedHits.filter((h) => h.sourceType === "serpapi_google")
+      aggregatedHits.filter(
+        (h) =>
+          h.sourceType === "serpapi_google" || h.sourceType === "serpapi_bing"
+      )
     ).toHaveLength(2);
   });
 

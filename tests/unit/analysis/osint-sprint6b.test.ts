@@ -72,21 +72,21 @@ function hit(partial: Partial<IntelligenceHit>): IntelligenceHit {
 }
 
 describe("SearchPlanner", () => {
-  it("plans at most 5 queries in priority order without duplicates", () => {
+  it("plans at most 5 hybrid queries in priority order without duplicates", () => {
     const plans = planGoogleSearches(identity());
     expect(plans.length).toBeLessThanOrEqual(5);
     const joined = plans.map((p) => p.query).join(" ");
     expect(joined).toContain("Anna Beispiel");
     expect(joined).toContain("Berlin");
     expect(plans[0]?.label).toBe("Telefon");
-    expect(plans.some((p) => p.query.includes("SynSight"))).toBe(true);
     expect(plans.some((p) => p.query.includes("anna@beispiel.de"))).toBe(true);
     expect(
       plans.some(
         (p) => p.query.includes("170 1234567") || p.query.includes("+49")
       )
     ).toBe(true);
-    const keys = plans.map((p) => p.query.toLowerCase());
+    expect(plans.some((p) => p.engine === "bing")).toBe(true);
+    const keys = plans.map((p) => `${p.engine}:${p.query.toLowerCase()}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
 });

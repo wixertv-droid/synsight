@@ -1,4 +1,4 @@
-import type { IntelligenceHit } from "@/lib/analysis/types";
+import { isLiveSerpSource, type IntelligenceHit } from "@/lib/analysis/types";
 
 export interface ThreatMatrix {
   identityRisk: number;
@@ -19,7 +19,7 @@ function clamp(value: number): number {
  * ThreatEvaluator — einzelne Risikodimensionen aus belegten Treffern.
  */
 export function evaluateThreatMatrix(hits: IntelligenceHit[]): ThreatMatrix {
-  const live = hits.filter((h) => h.sourceType === "serpapi_google");
+  const live = hits.filter((h) => isLiveSerpSource(h.sourceType));
   const verified = live.filter((h) => (h.identityConfidence ?? 0) >= 70);
   const blob = verified
     .map((h) => `${h.title} ${h.snippet} ${h.url}`.toLowerCase())

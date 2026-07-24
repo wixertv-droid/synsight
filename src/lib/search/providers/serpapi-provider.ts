@@ -128,13 +128,33 @@ export class SerpApiProvider implements SearchProvider {
     options?: SearchProviderSearchOptions
   ): Promise<NormalizedSearchHit[]> {
     if (!query.trim()) return [];
-    const { body } = await this.request({
-      engine: "google",
-      q: query.trim(),
-      num: String(Math.min(Math.max(options?.num ?? 10, 1), 20)),
-      hl: options?.language || "de",
-      gl: options?.country || "de",
-    });
+    const engine = options?.engine === "bing" ? "bing" : "google";
+    const num = String(Math.min(Math.max(options?.num ?? 10, 1), 20));
+    const q = query.trim();
+
+    // Google SafeSearch und Bing Adult-Filter bewusst AUS —
+    // OSINT muss auch sensible / erotische Treffer erfassen können.
+    const { body } =
+      engine === "bing"
+        ? await this.request({
+            engine: "bing",
+            q,
+            count: num,
+            cc: options?.country || "de",
+            mkt: options?.language
+              ? `${options.language}-${(options.country || "DE").toUpperCase()}`
+              : "de-DE",
+            safeSearch: "Off",
+          })
+        : await this.request({
+            engine: "google",
+            q,
+            num,
+            hl: options?.language || "de",
+            gl: options?.country || "de",
+            safe: "off",
+          });
+
     return this.normalizeResults(body);
   }
 
@@ -212,6 +232,7 @@ export class SerpApiProvider implements SearchProvider {
         num: "3",
         hl: "de",
         gl: "de",
+        safe: "off",
       });
       const hits = this.normalizeResults(body);
       const apiVersion =

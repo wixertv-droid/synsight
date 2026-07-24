@@ -1,4 +1,5 @@
 import type { IntelligenceHit } from "@/lib/analysis/types";
+import { isLiveSerpSource } from "@/lib/analysis/types";
 import {
   buildSourceLinks,
   formatSourceMarkdown,
@@ -43,7 +44,7 @@ export function buildVerifiedGeminiPayload(
 } {
   const verifiedHits = hits.filter(
     (hit) =>
-      hit.sourceType === "serpapi_google" &&
+      isLiveSerpSource(hit.sourceType) &&
       (hit.identityConfidence ?? 0) >= VERIFIED_CONFIDENCE_MIN
   );
 
@@ -183,7 +184,7 @@ export function postProcessGeminiSummary(
   const links = buildSourceLinks(
     hits.filter(
       (hit) =>
-        hit.sourceType === "serpapi_google" &&
+        isLiveSerpSource(hit.sourceType) &&
         (hit.identityConfidence ?? 0) >= VERIFIED_CONFIDENCE_MIN
     )
   );

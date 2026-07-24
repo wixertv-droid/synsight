@@ -22,8 +22,8 @@ export const googleIntelligenceModule: IntelligenceModuleDefinition = {
     },
     {
       id: "phase3",
-      label: "Google Open-Source Intelligence",
-      terminal: "PHASE 3 · serpapi.collect · parallel=2",
+      label: "Hybrid OSINT · Google + Bing",
+      terminal: "PHASE 3 · serpapi.hybrid · safe=off · parallel=2",
       atMs: 2600,
     },
     {

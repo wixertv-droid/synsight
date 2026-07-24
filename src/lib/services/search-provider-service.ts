@@ -466,6 +466,7 @@ export async function searchViaActiveProvider(
     userId?: number | null;
     referenceKey?: string | null;
     eventType?: string;
+    engine?: "google" | "bing";
   }
 ): Promise<
   Array<{
@@ -478,18 +479,20 @@ export async function searchViaActiveProvider(
   const apiKey = await resolveSearchProviderApiKey("serpapi");
   if (!apiKey || !query.trim()) return [];
 
+  const engine = options?.engine === "bing" ? "bing" : "google";
   const provider = new SerpApiProvider(apiKey);
   const started = Date.now();
-  const referenceKey = options?.referenceKey ?? `serpapi-search:${Date.now()}`;
+  const referenceKey =
+    options?.referenceKey ?? `serpapi-${engine}:${Date.now()}`;
   try {
-    const hits = await provider.search(query, { num: 10 });
+    const hits = await provider.search(query, { num: 10, engine });
     await recordSearchProviderRequest({
       provider: "serpapi",
       ok: true,
       latencyMs: Date.now() - started,
-      apiVersion: "serpapi",
+      apiVersion: `serpapi/${engine}`,
       eventType: options?.eventType ?? "search",
-      query,
+      query: `[${engine}] ${query}`,
       referenceKey,
       userId: options?.userId ?? null,
       requestCount: 1,
@@ -510,7 +513,7 @@ export async function searchViaActiveProvider(
       latencyMs: Date.now() - started,
       errorMessage: message,
       eventType: options?.eventType ?? "search_error",
-      query,
+      query: `[${engine}] ${query}`,
       referenceKey,
       userId: options?.userId ?? null,
       requestCount: 1,

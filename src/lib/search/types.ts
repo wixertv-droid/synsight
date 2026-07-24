@@ -24,10 +24,14 @@ export interface SearchProviderHealth {
   googleSearchOnline?: boolean;
 }
 
+export type SerpSearchEngine = "google" | "bing";
+
 export interface SearchProviderSearchOptions {
   num?: number;
   language?: string;
   country?: string;
+  /** SerpAPI engine — google (default) or bing for uncensored niche/adult footprint. */
+  engine?: SerpSearchEngine;
 }
 
 export interface SearchProvider {

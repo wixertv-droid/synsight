@@ -1,4 +1,5 @@
 import type { GoogleSearchItem } from "@/lib/analysis/google/custom-search";
+import type { SerpSearchEngine } from "@/lib/analysis/types";
 import { normalizeSearchCacheKey } from "@/lib/analysis/osint/search-planner";
 
 const TTL_MS = 60 * 60 * 1000; // 1 Stunde — gleiche Query in Session wiederverwenden
@@ -12,9 +13,10 @@ interface CacheEntry {
 const memory = new Map<string, CacheEntry>();
 
 export function getCachedSearchResults(
-  query: string
+  query: string,
+  engine: SerpSearchEngine = "google"
 ): GoogleSearchItem[] | null {
-  const key = normalizeSearchCacheKey(query);
+  const key = normalizeSearchCacheKey(query, engine);
   const entry = memory.get(key);
   if (!entry) return null;
   if (Date.now() - entry.storedAt > TTL_MS) {
@@ -26,9 +28,10 @@ export function getCachedSearchResults(
 
 export function setCachedSearchResults(
   query: string,
-  items: GoogleSearchItem[]
+  items: GoogleSearchItem[],
+  engine: SerpSearchEngine = "google"
 ): void {
-  const key = normalizeSearchCacheKey(query);
+  const key = normalizeSearchCacheKey(query, engine);
   if (memory.size >= MAX_ENTRIES) {
     const oldest = memory.keys().next().value;
     if (oldest) memory.delete(oldest);
