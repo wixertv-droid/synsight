@@ -25,10 +25,8 @@ export function createInMemoryOnboardingRepository(): OnboardingRepository {
         publicAlias: payload.identity.publicAlias || null,
         phone: payload.identity.phoneNumbers[0] || null,
         company,
-        region:
-          [payload.identity.city, payload.identity.country]
-            .filter(Boolean)
-            .join(", ") || "EU",
+        location: payload.identity.city || null,
+        region: payload.identity.country || "EU",
       });
     },
   };

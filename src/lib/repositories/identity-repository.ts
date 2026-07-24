@@ -87,6 +87,12 @@ export function createInMemoryIdentityRepository(
         publicAlias: input.aliases.publicAlias || null,
       };
 
+      const previous = store.get(userId);
+      const preservedPublicProfiles = (previous?.traces ?? []).filter(
+        (trace) => trace.traceType === "public_profile"
+      );
+      const preservedImages = previous?.images ?? [];
+
       const now = new Date().toISOString();
       let id = 1;
       const snapshot: IdentitySnapshot = {
@@ -171,20 +177,28 @@ export function createInMemoryIdentityRepository(
             value,
             createdAt: now,
           })),
+          ...preservedPublicProfiles.map((trace) => ({
+            ...trace,
+            id: id++,
+            createdAt: now,
+          })),
         ],
-        images: input.images.map((image) => ({
-          id: id++,
-          userId,
-          imageType: image.imageType,
-          storagePath: image.storagePath,
-          originalPath: image.originalPath ?? null,
-          analysisPath: image.analysisPath ?? null,
-          thumbnailPath: image.thumbnailPath ?? null,
-          contentHash: image.contentHash ?? null,
-          mimeType: image.mimeType ?? null,
-          byteSize: image.byteSize ?? null,
-          uploadedAt: now,
-        })),
+        // Bilder nur über Image-APIs — bestehende behalten
+        images: preservedImages.length
+          ? preservedImages
+          : input.images.map((image) => ({
+              id: id++,
+              userId,
+              imageType: image.imageType,
+              storagePath: image.storagePath,
+              originalPath: image.originalPath ?? null,
+              analysisPath: image.analysisPath ?? null,
+              thumbnailPath: image.thumbnailPath ?? null,
+              contentHash: image.contentHash ?? null,
+              mimeType: image.mimeType ?? null,
+              byteSize: image.byteSize ?? null,
+              uploadedAt: now,
+            })),
       };
 
       store.set(userId, snapshot);

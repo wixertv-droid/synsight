@@ -57,10 +57,8 @@ export function createMysqlOnboardingRepository(
             publicAlias: payload.identity.publicAlias || null,
             phone: payload.identity.phoneNumbers[0] || null,
             company: payload.additionalData.companies[0] || null,
-            region:
-              [payload.identity.city, payload.identity.country]
-                .filter(Boolean)
-                .join(", ") || "EU",
+            location: payload.identity.city || null,
+            region: payload.identity.country || "EU",
             onboardingStep: 4,
             onboardingCompletedAt: mysqlDate(),
           })

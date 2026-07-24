@@ -68,10 +68,14 @@ export function planScoredGoogleSearches(
 
   const locations = unique([
     fp.location,
-    fp.region,
+    ...fp.previousLocations,
     ...(identity?.personal.previousLocations ?? []),
   ]);
-  const companies = unique([fp.company, ...(identity?.companies ?? [])]);
+  const companies = unique([
+    fp.company,
+    ...fp.companies,
+    ...(identity?.companies ?? []),
+  ]);
   const emails = unique(fp.emails);
   const phones = unique(fp.phones);
   const aliases = unique([

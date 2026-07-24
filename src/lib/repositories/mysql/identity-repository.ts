@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { SynSightDatabase } from "@/lib/database/client";
 import {
   digitalTraces,
@@ -18,20 +18,23 @@ import {
   type IdentitySnapshot,
 } from "../identity-repository";
 import { createProfileRepository } from "./profile-repository";
+import {
+  normalizeBirthDate,
+  parseJsonStringArray,
+} from "../profile-field-utils";
 
 function mapProfile(row: typeof profiles.$inferSelect): Profile {
-  const previous = row.previousLocations;
   return {
     userId: row.userId,
     firstName: row.firstName,
     lastName: row.lastName,
-    birthDate: row.birthDate ?? null,
+    birthDate: normalizeBirthDate(row.birthDate),
     gender: row.gender ?? null,
     phone: row.phone,
     company: row.company,
     location: row.location ?? null,
     addressLine: row.addressLine ?? null,
-    previousLocations: Array.isArray(previous) ? previous : [],
+    previousLocations: parseJsonStringArray(row.previousLocations),
     region: row.region,
     locale: row.locale,
     publicAlias: row.publicAlias,
@@ -155,7 +158,7 @@ export function createMysqlIdentityRepository(
             company: input.personal.company || input.companies[0] || null,
             location: input.personal.location || null,
             addressLine: input.personal.addressLine || null,
-            previousLocations: input.personal.previousLocations,
+            previousLocations: [...input.personal.previousLocations],
             publicAlias: input.aliases.publicAlias || null,
             region: "EU",
             locale: "de-DE",
@@ -176,7 +179,7 @@ export function createMysqlIdentityRepository(
               company: input.personal.company || input.companies[0] || null,
               location: input.personal.location || null,
               addressLine: input.personal.addressLine || null,
-              previousLocations: input.personal.previousLocations,
+              previousLocations: [...input.personal.previousLocations],
               publicAlias: input.aliases.publicAlias || null,
             },
           });
@@ -194,13 +197,21 @@ export function createMysqlIdentityRepository(
           transaction
             .delete(socialAccounts)
             .where(eq(socialAccounts.userId, userId)),
+          // public_profile-Traces aus Onboarding behalten
           transaction
             .delete(digitalTraces)
-            .where(eq(digitalTraces.userId, userId)),
-          transaction
-            .delete(profileImages)
-            .where(eq(profileImages.userId, userId)),
+            .where(
+              and(
+                eq(digitalTraces.userId, userId),
+                inArray(digitalTraces.traceType, [
+                  "website",
+                  "domain",
+                  "company",
+                ])
+              )
+            ),
         ]);
+        // Profilbilder werden nur über Image-APIs geändert — nicht hier löschen.
 
         const aliasRows = [
           ...(input.aliases.publicAlias
@@ -276,31 +287,7 @@ export function createMysqlIdentityRepository(
         if (traceRows.length) {
           await transaction.insert(digitalTraces).values(traceRows);
         }
-
-        if (input.images.length) {
-          for (const image of input.images) {
-            assertOwnedImagePath(userId, image.storagePath);
-            if (image.originalPath)
-              assertOwnedImagePath(userId, image.originalPath);
-            if (image.analysisPath)
-              assertOwnedImagePath(userId, image.analysisPath);
-            if (image.thumbnailPath)
-              assertOwnedImagePath(userId, image.thumbnailPath);
-          }
-          await transaction.insert(profileImages).values(
-            input.images.map((image) => ({
-              userId,
-              imageType: image.imageType,
-              storagePath: image.storagePath,
-              originalPath: image.originalPath ?? null,
-              analysisPath: image.analysisPath ?? null,
-              thumbnailPath: image.thumbnailPath ?? null,
-              contentHash: image.contentHash ?? null,
-              mimeType: image.mimeType ?? null,
-              byteSize: image.byteSize ?? null,
-            }))
-          );
-        }
+        // Bilder: nur über upsertImage / deleteImage — hier unverändert lassen.
       });
 
       const snapshot = await this.getSnapshot(userId);

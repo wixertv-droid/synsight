@@ -7,19 +7,23 @@ import {
   type ProfileRepository,
 } from "../profile-repository";
 
+import {
+  normalizeBirthDate,
+  parseJsonStringArray,
+} from "../profile-field-utils";
+
 function mapProfile(row: typeof profiles.$inferSelect): Profile {
-  const previous = row.previousLocations;
   return {
     userId: row.userId,
     firstName: row.firstName,
     lastName: row.lastName,
-    birthDate: row.birthDate ?? null,
+    birthDate: normalizeBirthDate(row.birthDate),
     gender: row.gender ?? null,
     phone: row.phone,
     company: row.company,
     location: row.location ?? null,
     addressLine: row.addressLine ?? null,
-    previousLocations: Array.isArray(previous) ? previous : [],
+    previousLocations: parseJsonStringArray(row.previousLocations),
     region: row.region,
     locale: row.locale,
     publicAlias: row.publicAlias,
@@ -95,6 +99,9 @@ export function createMysqlProfileRepository(
           publicAlias: patch.publicAlias ?? null,
           phone: patch.phone ?? null,
           company: patch.company ?? null,
+          ...(patch.location !== undefined
+            ? { location: patch.location || null }
+            : {}),
           region: patch.region ?? "EU",
           onboardingStep: 4,
           onboardingCompletedAt: patch.onboardingCompletedAt ?? mysqlDate(),

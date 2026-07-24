@@ -12,7 +12,9 @@ export interface IdentityFingerprint {
   lastName: string;
   location: string;
   region: string;
+  previousLocations: string[];
   company: string;
+  companies: string[];
   phones: string[];
   emails: string[];
   aliases: string[];
@@ -36,9 +38,16 @@ export function buildIdentityFingerprint(
       ? `${firstName} ${lastName}`
       : firstName || lastName || "Unbekannt";
   const location = clean(identity?.personal.location);
-  const region = clean(identity?.personal.addressLine) || location;
+  const previousLocations = [...(identity?.personal.previousLocations ?? [])]
+    .map(clean)
+    .filter(Boolean);
+  const region = location || previousLocations[0] || "";
+  const addressLine = clean(identity?.personal.addressLine);
   const company =
     clean(identity?.personal.company) || clean(identity?.companies?.[0]) || "";
+  const companies = [company, ...(identity?.companies ?? []).map(clean)].filter(
+    Boolean
+  );
   const phones = [
     clean(identity?.personal.phone),
     ...(identity?.phoneNumbers ?? []).map(clean),
@@ -80,8 +89,11 @@ export function buildIdentityFingerprint(
     firstName,
     lastName,
     location,
+    previousLocations,
+    addressLine,
     region,
     company,
+    companies: [...new Set(companies)],
     phones,
     emails,
     aliases,
@@ -103,7 +115,9 @@ export function buildIdentityFingerprint(
     lastName,
     location,
     region,
+    previousLocations: [...new Set(previousLocations)],
     company,
+    companies: [...new Set(companies)],
     phones,
     emails,
     aliases,
