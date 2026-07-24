@@ -11,7 +11,11 @@ export interface ScoredSearchPlan extends IntelligenceQueryPlan {
   vector: string;
 }
 
-const MAX_QUERIES = 12;
+/** Recon Matrix — etwas Luft für 1 Bing-Adult-Query je Alias */
+const MAX_QUERIES = 15;
+
+const ADULT_SITE_DORK =
+  '(site:joyclub.de OR site:einfachgeiler.com OR site:amarotic.com OR site:onlyfans.com OR "amateur")';
 
 function unique(values: string[]): string[] {
   const seen = new Set<string>();
@@ -35,8 +39,9 @@ function orGroup(values: string[], quoted = true, limit = 8): string {
 }
 
 /**
- * OSINT Reconnaissance Matrix — Google + Bing Dorks aus allen Profildaten.
- * Ziel: 8–12 fokussierte Abfragen, priorisiert, ohne unnötige Leersuchen.
+ * OSINT Reconnaissance Matrix — Google + Bing Dorks.
+ * Alias-Queries immer exakt quoted (`"Alias"`) — kein Fuzzy.
+ * Pro Alias: eigene Bing-Adult-Query (safeSearch=Off).
  */
 export function planGoogleSearches(
   identity: IdentityView | null
@@ -70,7 +75,6 @@ export function planScoredGoogleSearches(
   const emails = unique(fp.emails);
   const phones = unique(fp.phones);
   const aliases = unique([
-    // Alle Benutzernamen + Alias (nicht nur publicAlias)
     ...(identity?.aliases.usernames ?? []),
     ...(identity?.aliases.nicknames ?? []),
     ...(identity?.aliases.gamingNames ?? []),
@@ -90,7 +94,7 @@ export function planScoredGoogleSearches(
     candidates.push(plan);
   }
 
-  // 1. Direct Identifiers Vector (Google)
+  // 1. Direct Identifiers
   const idParts = [
     ...emails.map((e) => `"${e}"`),
     ...phones.map((p) => `"${p}"`),
@@ -107,7 +111,7 @@ export function planScoredGoogleSearches(
     });
   }
 
-  // 2. Exact Identity & Location Vector (Google)
+  // 2. Identity + Location
   if (fullName && locations.length > 0) {
     push({
       id: "v-identity-location",
@@ -130,7 +134,7 @@ export function planScoredGoogleSearches(
     });
   }
 
-  // 3. Exact Identity & Professional Vector (Google)
+  // 3. Identity + Professional
   if (fullName && companies.length > 0) {
     push({
       id: "v-identity-professional",
@@ -143,31 +147,30 @@ export function planScoredGoogleSearches(
     });
   }
 
-  // 4. Username / Alias Social Vector (Google) — alle Benutzernamen
+  // 4. Alias Social — exakt quoted
   if (aliases.length > 0) {
     const aliasGroup = orGroup(aliases, true, 8);
     push({
       id: "v-alias-social",
       label: "Alias Social",
       query: `${aliasGroup} (site:instagram.com OR site:tiktok.com OR site:twitter.com OR site:x.com OR site:github.com OR site:reddit.com OR site:pinterest.com)`,
-      help: "Vector 4 · Alle Benutzernamen auf Social-Plattformen (Google).",
+      help: "Vector 4 · Exakte Benutzernamen auf Social-Plattformen (Google).",
       searchScore: 90,
       engine: "google",
       vector: "alias_social",
     });
-    // Extra: bare username sweep for forums / niches
     push({
       id: "v-alias-general",
       label: "Username Sweep",
       query: aliasGroup,
-      help: "Vector 4b · Alle Benutzernamen allgemein (Google).",
+      help: "Vector 4b · Exakte Benutzernamen allgemein (Google).",
       searchScore: 84,
       engine: "google",
       vector: "alias_general",
     });
   }
 
-  // 5. Business & Professional Vector (Google)
+  // 5. Business
   if (fullName) {
     push({
       id: "v-business",
@@ -180,26 +183,20 @@ export function planScoredGoogleSearches(
     });
   }
 
-  // 6. Adult & Niche Footprint (Bing, safeSearch=Off)
-  if (fullName || aliases.length > 0) {
-    const adultSubject =
-      aliases.length > 0 && fullName
-        ? `(${orGroup(aliases)} OR "${fullName}")`
-        : aliases.length > 0
-          ? orGroup(aliases)
-          : `"${fullName}"`;
+  // 6. HARTE REGEL — je Alias eine eigene Bing-Adult-Query (exakt quoted)
+  for (const [index, alias] of aliases.slice(0, 6).entries()) {
     push({
-      id: "v-adult-niche",
-      label: "Adult / Niche",
-      query: `${adultSubject} (site:joyclub.de OR site:kaufmich.com OR site:fetlife.com OR site:onlyfans.com OR site:fansly.com)`,
-      help: "Vector 6 · Adult/Nischen-Footprint (Bing, safeSearch=Off).",
-      searchScore: 87,
+      id: `v-adult-alias-${index + 1}`,
+      label: `Adult Alias · ${alias}`,
+      query: `"${alias}" ${ADULT_SITE_DORK}`,
+      help: `Vector 6.${index + 1} · Exakter Alias „${alias}“ Adult/Nische (Bing, safeSearch=Off).`,
+      searchScore: 94 - index,
       engine: "bing",
-      vector: "adult_niche",
+      vector: "adult_alias",
     });
   }
 
-  // 7. Public Records & Document Leaks (Google)
+  // 7. Public Records
   if (fullName) {
     push({
       id: "v-docs-leaks",
@@ -212,20 +209,30 @@ export function planScoredGoogleSearches(
     });
   }
 
-  // 8. Forums / Mentions (Bing uncensored)
-  if (fullName) {
+  // 8. Forums (name — location-aware scoring filtert Namensvettern später)
+  if (fullName && locations.length > 0) {
     push({
       id: "v-forum-leak",
       label: "Foren / Mentions",
-      query: `"${fullName}" (forum OR profil OR leak OR "geleakt" OR community)`,
-      help: "Vector 8 · Foren & Erwähnungen (Bing, safeSearch=Off).",
+      query: `"${fullName}" ${orGroup(locations, true, 4)} (forum OR profil OR community)`,
+      help: "Vector 8 · Foren mit Namens+Ort-Anker (Bing).",
       searchScore: 78,
+      engine: "bing",
+      vector: "forum_mentions",
+    });
+  } else if (fullName) {
+    push({
+      id: "v-forum-leak",
+      label: "Foren / Mentions",
+      query: `"${fullName}" (forum OR profil OR community)`,
+      help: "Vector 8 · Foren & Erwähnungen (Bing).",
+      searchScore: 76,
       engine: "bing",
       vector: "forum_mentions",
     });
   }
 
-  // 9. Own domains / websites
+  // 9. Domains
   if (domains.length > 0 && fullName) {
     push({
       id: "v-domains",
@@ -241,25 +248,15 @@ export function planScoredGoogleSearches(
     });
   }
 
-  // 10. Phone-only deep dive when many phones
-  if (phones.length > 1) {
-    push({
-      id: "v-phones-extra",
-      label: "Phone Sweep",
-      query: phones
-        .slice(0, 4)
-        .map((p) => `"${p}"`)
-        .join(" OR "),
-      help: "Vector 10 · Weitere Telefonnummern (Google).",
-      searchScore: 96,
-      engine: "google",
-      vector: "phones_extra",
-    });
-  }
-
-  return candidates
-    .sort((a, b) => b.searchScore - a.searchScore)
-    .slice(0, MAX_QUERIES);
+  // Priorität: Adult-Alias-Queries und Core behalten, Rest nach Score kappen
+  const adultAlias = candidates.filter((c) => c.vector === "adult_alias");
+  const rest = candidates
+    .filter((c) => c.vector !== "adult_alias")
+    .sort((a, b) => b.searchScore - a.searchScore);
+  const budget = Math.max(0, MAX_QUERIES - adultAlias.length);
+  return [...adultAlias, ...rest.slice(0, budget)].sort(
+    (a, b) => b.searchScore - a.searchScore
+  );
 }
 
 export function normalizeSearchCacheKey(

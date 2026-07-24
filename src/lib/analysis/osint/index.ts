@@ -12,6 +12,8 @@ export {
 export {
   scoreIdentityConfidence,
   buildSignalsFromIdentity,
+  exactAliasMatch,
+  findForeignMajorCities,
   type IdentitySignals,
   type ConfidenceBreakdown,
   type ConfidenceCheck,

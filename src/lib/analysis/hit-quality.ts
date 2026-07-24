@@ -2,6 +2,7 @@ import type {
   IntelligenceHit,
   IntelligenceRelevance,
 } from "@/lib/analysis/types";
+import { exactAliasMatch } from "@/lib/analysis/osint/score-engine";
 
 /** Domains / URL patterns that rarely contain useful identity OSINT. */
 const JUNK_HOST_PATTERNS = [
@@ -114,12 +115,13 @@ export function refineSerpHits(
     phones?: string[];
     aliases?: string[];
     location?: string | null;
+    locations?: string[];
   }
 ): IntelligenceHit[] {
   const subjectTokens = extractSubjectTokens(subjectName);
   const emails = (options?.emails ?? []).map((e) => e.toLowerCase());
   const aliases = (options?.aliases ?? [])
-    .map((a) => a.trim().toLowerCase())
+    .map((a) => a.trim())
     .filter((a) => a.length >= 2);
   const location = (options?.location ?? "").trim().toLowerCase();
   const phoneDigits = (options?.phones ?? [])
@@ -145,7 +147,10 @@ export function refineSerpHits(
     const digitHay = subjectText.replace(/\D+/g, "");
     const matchesSubject = textMatchesSubject(subjectText, subjectTokens);
     const matchesEmail = emails.some((email) => lower.includes(email));
-    const matchesAlias = aliases.some((alias) => lower.includes(alias));
+    // Exakter Alias-Match — kein Fuzzy (Luder-Anja ≠ Luna)
+    const matchesAlias = aliases.some((alias) =>
+      exactAliasMatch(subjectText, alias)
+    );
     const matchesPhone = phoneDigits.some((digits) =>
       digitHay.includes(digits)
     );
@@ -165,8 +170,8 @@ export function refineSerpHits(
       matchesAlias ||
       matchesNameLocation;
 
+    // Alias-Treffer niemals verwerfen — auch ohne echten Namen
     if (!matchesSubject && !sensitive) {
-      // Keep only if still moderately useful (social/company watch)
       if (!(hit.relevance === "neutral" && hit.risk === "watch")) {
         continue;
       }
@@ -174,15 +179,17 @@ export function refineSerpHits(
 
     let relevance: IntelligenceRelevance = hit.relevance;
     let whyRelevant = hit.whyRelevant;
-    if (matchesSubject && hit.relevance === "low") {
+    if (matchesAlias) {
+      relevance = "relevant";
+      whyRelevant =
+        "Exakter Benutzername/Alias gefunden — auch ohne Vor-/Nachname hochrelevant.";
+    } else if (matchesSubject && hit.relevance === "low") {
       relevance = "neutral";
       whyRelevant =
         "Der Treffer bezieht sich erkennbar auf Ihren Namen oder Profilbezug.";
-    }
-    if (!matchesSubject && sensitive) {
-      whyRelevant = matchesAlias
-        ? "Alias-/Username-Match — auch bei abweichendem Namen relevant."
-        : matchesEmail || matchesPhone
+    } else if (!matchesSubject && sensitive) {
+      whyRelevant =
+        matchesEmail || matchesPhone
           ? "Kontaktdaten-Match — auch ohne klaren Namensmatch relevant."
           : "Standort-/Identitäts-Signale — auch ohne vollständigen Namensmatch relevant.";
     }
@@ -191,7 +198,7 @@ export function refineSerpHits(
       ...hit,
       relevance,
       whyRelevant,
-      canIgnore: hit.canIgnore && !sensitive,
+      canIgnore: hit.canIgnore && !sensitive && !matchesAlias,
     });
   }
 

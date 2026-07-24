@@ -52,9 +52,9 @@ function sampleIdentity(): IdentityView {
 }
 
 describe("buildGoogleQueriesFromIdentity", () => {
-  it("builds OSINT recon matrix (8–12) from all profile fields", () => {
+  it("builds OSINT recon matrix (up to 15) from all profile fields", () => {
     const queries = buildGoogleQueriesFromIdentity(sampleIdentity());
-    expect(queries.length).toBeLessThanOrEqual(12);
+    expect(queries.length).toBeLessThanOrEqual(15);
     expect(queries.length).toBeGreaterThanOrEqual(7);
     const joined = queries.map((q) => q.query).join(" ");
     expect(joined).toContain("Anna Beispiel");

@@ -72,9 +72,9 @@ function hit(partial: Partial<IntelligenceHit>): IntelligenceHit {
 }
 
 describe("SearchPlanner", () => {
-  it("plans at most 12 hybrid recon queries without duplicates", () => {
+  it("plans at most 15 hybrid recon queries without duplicates", () => {
     const plans = planGoogleSearches(identity());
-    expect(plans.length).toBeLessThanOrEqual(12);
+    expect(plans.length).toBeLessThanOrEqual(15);
     expect(plans.length).toBeGreaterThanOrEqual(7);
     const joined = plans.map((p) => p.query).join(" ");
     expect(joined).toContain("Anna Beispiel");

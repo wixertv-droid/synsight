@@ -5,7 +5,7 @@ import {
 import {
   buildSignalsFromIdentity,
   scoreIdentityConfidence,
-} from "@/lib/analysis/osint/confidence-scorer";
+} from "@/lib/analysis/osint/score-engine";
 import type {
   IntelligenceHit,
   IntelligenceHitRisk,
@@ -20,6 +20,7 @@ export interface HitIntelContext {
   firstName?: string;
   lastName?: string;
   location?: string | null;
+  locations?: string[];
   company?: string | null;
   emails?: string[];
   phones?: string[];
@@ -199,6 +200,7 @@ export function enrichHitIntel(
       firstName: context.firstName,
       lastName: context.lastName,
       location: context.location,
+      locations: context.locations,
       company: context.company,
       emails: context.emails,
       phones: context.phones,

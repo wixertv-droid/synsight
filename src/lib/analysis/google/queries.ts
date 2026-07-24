@@ -3,8 +3,15 @@ import type { IntelligenceQueryPlan } from "@/lib/analysis/types";
 import { planGoogleSearches } from "@/lib/analysis/osint/search-strategy";
 
 /**
- * OSINT Reconnaissance Matrix — 8–12 fokussierte Google/Bing-Dorks
- * aus allen Identity-Profildaten (siehe search-strategy / search-planner).
+ * OSINT Query-Matrix (Search Strategy).
+ *
+ * Harte Regeln:
+ * - Alias-/Username-Suchen immer exakt quoted (`"Alias"`) — kein Fuzzy
+ * - Pro hinterlegtem Alias: eigene Bing-Adult-Query (safeSearch=Off)
+ *   Format: `"{alias}" (site:joyclub.de OR site:einfachgeiler.com OR … OR "amateur")`
+ * - Namensvettern werden in der Score-Engine (fremde Großstadt −40) gefiltert
+ *
+ * Implementierung: search-planner / search-strategy (max. 15 Queries).
  */
 export function buildGoogleQueriesFromIdentity(
   identity: IdentityView | null

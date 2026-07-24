@@ -109,9 +109,11 @@ function inferCategory(query: string, label: string): string {
   if (label === "Name + Firma" || label === "Business Profiles")
     return "company";
   if (label === "Ort / Adresse") return "address";
-  if (label === "Adult / Niche") return "adult";
+  if (label === "Adult / Niche" || label.startsWith("Adult Alias"))
+    return "adult";
   if (label === "Foren / Mentions" || label === "Foren / Leaks") return "forum";
   if (label === "Public Records") return "document";
+  if (label === "Username Sweep" || label === "Alias Social") return "alias";
   return "general";
 }
 
@@ -453,7 +455,7 @@ export async function runGoogleIntelligenceAnalysis(
           hitCount: serpHits.length,
           unitPriceUsd: 0.025,
           unitPriceEurNote: "$0.025 × 0.92 ≈ €0.023",
-          maxQueries: 12,
+          maxQueries: 15,
           safeSearch: "off",
           concurrency: 4,
           queries: queries.map((plan) => ({
@@ -473,6 +475,11 @@ export async function runGoogleIntelligenceAnalysis(
     phones: fingerprint.phones,
     aliases: fingerprint.aliases,
     location: fingerprint.location || fingerprint.region,
+    locations: [
+      fingerprint.location,
+      fingerprint.region,
+      ...(identity?.personal.previousLocations ?? []),
+    ],
   });
   const intelContext = {
     subjectName,
@@ -480,6 +487,11 @@ export async function runGoogleIntelligenceAnalysis(
     lastName: identity?.personal.lastName ?? "",
     location:
       identity?.personal.location || identity?.personal.addressLine || "",
+    locations: [
+      identity?.personal.location || "",
+      identity?.personal.addressLine || "",
+      ...(identity?.personal.previousLocations ?? []),
+    ].filter(Boolean),
     company: identity?.personal.company || identity?.companies?.[0] || "",
     emails: identity?.emails ?? [],
     phones: [

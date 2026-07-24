@@ -74,9 +74,20 @@ describe("Sprint 6C enterprise OSINT", () => {
     expect(fp.phones[0]).toContain("170");
   });
 
-  it("scores recon matrix with Direct Identifiers first and max 12", () => {
+  it("includes Bing adult and forum vectors in recon strategy", () => {
     const plans = planScoredGoogleSearches(identity());
-    expect(plans.length).toBeLessThanOrEqual(12);
+    expect(plans.some((p) => p.engine === "bing")).toBe(true);
+    expect(plans.some((p) => p.vector === "adult_alias")).toBe(true);
+    expect(
+      plans.every((p) => p.engine === "google" || p.engine === "bing")
+    ).toBe(true);
+    expect(plans.some((p) => p.query.includes("linkedin.com"))).toBe(true);
+    expect(plans.some((p) => p.query.includes("filetype:pdf"))).toBe(true);
+  });
+
+  it("scores recon matrix with Direct Identifiers first and max 15", () => {
+    const plans = planScoredGoogleSearches(identity());
+    expect(plans.length).toBeLessThanOrEqual(15);
     expect(plans.length).toBeGreaterThanOrEqual(7);
     expect(plans[0]?.searchScore).toBeGreaterThanOrEqual(
       plans[plans.length - 1]?.searchScore ?? 0
@@ -84,17 +95,6 @@ describe("Sprint 6C enterprise OSINT", () => {
     expect(plans[0]?.label).toBe("Direct Identifiers");
     expect(plans[0]?.searchScore).toBe(100);
     expect(plans[0]?.engine).toBe("google");
-  });
-
-  it("includes Bing adult and forum vectors in recon strategy", () => {
-    const plans = planScoredGoogleSearches(identity());
-    expect(plans.some((p) => p.engine === "bing")).toBe(true);
-    expect(plans.some((p) => p.id === "v-adult-niche")).toBe(true);
-    expect(
-      plans.every((p) => p.engine === "google" || p.engine === "bing")
-    ).toBe(true);
-    expect(plans.some((p) => p.query.includes("linkedin.com"))).toBe(true);
-    expect(plans.some((p) => p.query.includes("filetype:pdf"))).toBe(true);
   });
 
   it("aggregates same-host pages into one profile", () => {
