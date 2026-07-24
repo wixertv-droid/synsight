@@ -83,6 +83,16 @@ export function buildProfileModuleReadiness(
       ]),
     },
     {
+      key: "digital_leak_exposure",
+      label: "Digital Leak & Exposure",
+      ...score([
+        {
+          ok: hasEmail(view) || hasPhone(view),
+          label: "E-Mail oder Telefon",
+        },
+      ]),
+    },
+    {
       key: "phone_analysis",
       label: "Telefon Analyse",
       ...score([{ ok: hasPhone(view), label: "Telefonnummer" }]),

@@ -134,7 +134,10 @@ export async function listAdminApiCredentials(
     if (!row) {
       return {
         provider,
-        label: provider.replace(/_/g, " "),
+        label:
+          provider === "haveibeenpwned"
+            ? "Have I Been Pwned"
+            : provider.replace(/_/g, " "),
         isActive: false,
         configured: false,
         engineId: null,

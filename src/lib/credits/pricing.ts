@@ -5,6 +5,7 @@
 
 export type AnalysisKey =
   | "google_search"
+  | "digital_leak_exposure"
   | "phone_analysis"
   | "website_analysis"
   | "domain_analysis"
@@ -32,6 +33,13 @@ export const DEFAULT_ANALYSIS_PRICES: readonly AnalysisPrice[] = [
     label: "Google Suche",
     credits: 2,
     description: "Öffentliche Webtreffer zu Identitätssignalen.",
+  },
+  {
+    key: "digital_leak_exposure",
+    label: "Digital Leak & Exposure Scan",
+    credits: 8,
+    description:
+      "Öffentlich bekannte Datenlecks und kompromittierte Identifikatoren (E-Mail & Telefon).",
   },
   {
     key: "phone_analysis",

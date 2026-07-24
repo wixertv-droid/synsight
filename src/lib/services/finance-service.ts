@@ -332,6 +332,7 @@ export async function recordApiUsageEvent(input: {
   eventType: string;
   referenceKey?: string | null;
   userId?: number | null;
+  analysisId?: number | null;
   requestCount?: number;
   success?: boolean;
   detail?: string | null;
@@ -424,6 +425,7 @@ export async function recordApiUsageEvent(input: {
       eventType: input.eventType,
       referenceKey: input.referenceKey ?? null,
       userId: input.userId ?? null,
+      analysisId: input.analysisId ?? null,
       requestCount,
       unitCostEur: unitCost.toFixed(6),
       totalCostEur: totalCost.toFixed(6),

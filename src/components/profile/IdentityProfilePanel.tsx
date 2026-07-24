@@ -190,6 +190,7 @@ export default function IdentityProfilePanel({
   const [openCards, setOpenCards] = useState<Record<string, boolean>>({
     stammdaten: true,
     google: true,
+    exposure: false,
     phone: false,
     email: false,
     web: false,
@@ -682,6 +683,57 @@ export default function IdentityProfilePanel({
             }
             placeholder="example.org"
           />
+        </div>
+      </CollapsibleCard>
+
+      {/* Digital Leak & Exposure */}
+      <CollapsibleCard
+        id="exposure"
+        title="Digital Leak & Exposure Scan"
+        subtitle="E-Mail- und Telefon-Identifikatoren für Leak-Prüfung"
+        open={openCards.exposure}
+        onToggle={() => toggle("exposure")}
+        badge={
+          byKey.digital_leak_exposure ? (
+            <ReadyBadge
+              ready={byKey.digital_leak_exposure.ready}
+              filled={byKey.digital_leak_exposure.filled}
+              total={byKey.digital_leak_exposure.total}
+            />
+          ) : null
+        }
+      >
+        {byKey.digital_leak_exposure?.missing.length ? (
+          <p className="mb-4 rounded-lg border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2 font-mono text-[10px] text-amber-100/70">
+            FEHLT · {byKey.digital_leak_exposure.missing.join(" · ")}
+          </p>
+        ) : (
+          <p className="mb-4 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.05] px-3 py-2 font-mono text-[10px] text-emerald-200/75">
+            E-MAIL ODER TELEFON VORHANDEN — BEREIT FÜR EXPOSURE SCAN
+          </p>
+        )}
+        <div className="space-y-5">
+          <StringListEditor
+            label="E-MAIL-ADRESSEN"
+            values={form.emails}
+            onChange={(emails) =>
+              setForm((current) => ({ ...current, emails }))
+            }
+            placeholder="name@domain.de"
+          />
+          <StringListEditor
+            label="TELEFONNUMMERN"
+            values={form.phoneNumbers}
+            onChange={(phoneNumbers) =>
+              setForm((current) => ({ ...current, phoneNumbers }))
+            }
+            placeholder="+49 …"
+          />
+          {form.personal.phone ? (
+            <p className="font-mono text-[10px] text-emerald-200/70">
+              HAUPTTELEFON AUS STAMMDATEN · {form.personal.phone}
+            </p>
+          ) : null}
         </div>
       </CollapsibleCard>
 

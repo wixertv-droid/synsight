@@ -408,12 +408,18 @@ export async function testApiCredentialConnection(input: {
     };
   }
 
+  if (provider === "haveibeenpwned") {
+    const { testHibpConnection } =
+      await import("@/lib/analysis/digital-exposure/hibp-client");
+    return testHibpConnection({ secret: input.secret });
+  }
+
   return {
     provider,
     ok: false,
     message: "Live-Test für diesen Anbieter ist noch nicht freigeschaltet.",
     detail:
-      "Gemini kann hier getestet werden. Suchanbieter (SerpAPI) unter Website → APIs & Integrationen.",
+      "Gemini und Have I Been Pwned können hier getestet werden. Suchanbieter (SerpAPI) unter Website → APIs & Integrationen.",
     latencyMs: Date.now() - started,
   };
 }

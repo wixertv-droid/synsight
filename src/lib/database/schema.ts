@@ -1292,6 +1292,7 @@ export const apiUsageEvents = mysqlTable(
     eventType: varchar("event_type", { length: 64 }).notNull(),
     referenceKey: varchar("reference_key", { length: 128 }),
     userId: bigint("user_id", { mode: "number", unsigned: true }),
+    analysisId: bigint("analysis_id", { mode: "number", unsigned: true }),
     requestCount: int("request_count", { unsigned: true }).notNull().default(1),
     unitCostEur: decimal("unit_cost_eur", { precision: 12, scale: 6 })
       .notNull()
@@ -1313,6 +1314,96 @@ export const apiUsageEvents = mysqlTable(
     ),
     index("api_usage_events_created_idx").on(table.createdAt),
     index("api_usage_events_reference_idx").on(table.referenceKey),
+    index("api_usage_events_analysis_id_idx").on(table.analysisId),
+  ]
+);
+
+export const digitalExposureScans = mysqlTable(
+  "digital_exposure_scans",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 32 }).notNull().default("pending"),
+    startedAt: timestamp("started_at", { mode: "string", fsp: 3 }),
+    completedAt: timestamp("completed_at", { mode: "string", fsp: 3 }),
+    riskScore: int("risk_score", { unsigned: true }).notNull().default(0),
+    summary: text("summary"),
+    subjectName: varchar("subject_name", { length: 255 }),
+    emailCount: int("email_count", { unsigned: true }).notNull().default(0),
+    phoneCount: int("phone_count", { unsigned: true }).notNull().default(0),
+    findingCount: int("finding_count", { unsigned: true }).notNull().default(0),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("digital_exposure_scans_user_id_idx").on(table.userId),
+    index("digital_exposure_scans_created_at_idx").on(table.createdAt),
+  ]
+);
+
+export const digitalExposureResults = mysqlTable(
+  "digital_exposure_results",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    scanId: bigint("scan_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => digitalExposureScans.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 32 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    riskLevel: varchar("risk_level", { length: 16 }).notNull().default("low"),
+    sourceName: varchar("source_name", { length: 255 }),
+    sourceDate: varchar("source_date", { length: 32 }),
+    recommendation: text("recommendation"),
+    sourceUrl: varchar("source_url", { length: 500 }),
+    identifierMasked: varchar("identifier_masked", { length: 255 }),
+    dataClassesJson: json("data_classes_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("digital_exposure_results_scan_id_idx").on(table.scanId),
+    index("digital_exposure_results_type_idx").on(table.type),
+  ]
+);
+
+export const apiUsageLogs = mysqlTable(
+  "api_usage_logs",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    provider: varchar("provider", { length: 64 }).notNull(),
+    requestType: varchar("request_type", { length: 64 }).notNull(),
+    costEur: decimal("cost_eur", { precision: 14, scale: 6 })
+      .notNull()
+      .default("0"),
+    userId: bigint("user_id", { mode: "number", unsigned: true }),
+    analysisId: bigint("analysis_id", { mode: "number", unsigned: true }),
+    analysisKey: varchar("analysis_key", { length: 64 }),
+    success: boolean("success").notNull().default(true),
+    detail: varchar("detail", { length: 500 }),
+    metaJson: json("meta_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("api_usage_logs_provider_created_idx").on(
+      table.provider,
+      table.createdAt
+    ),
+    index("api_usage_logs_user_id_idx").on(table.userId),
+    index("api_usage_logs_analysis_id_idx").on(table.analysisId),
+    index("api_usage_logs_created_at_idx").on(table.createdAt),
   ]
 );
 

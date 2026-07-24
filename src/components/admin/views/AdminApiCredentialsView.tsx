@@ -184,7 +184,9 @@ export default function AdminApiCredentialsView() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-mono text-[9px] tracking-[.12em] text-cyber-cyan/55">
-                      {row.provider.toUpperCase()}
+                      {row.provider === "haveibeenpwned"
+                        ? "HAVE I BEEN PWNED (HIBP)"
+                        : row.provider.toUpperCase()}
                     </p>
                     {row.configured ? (
                       <button
@@ -260,7 +262,8 @@ export default function AdminApiCredentialsView() {
                       >
                         {busy ? "Bitte warten…" : "Schlüssel speichern"}
                       </button>
-                      {row.provider === "gemini" ? (
+                      {row.provider === "gemini" ||
+                      row.provider === "haveibeenpwned" ? (
                         <button
                           type="button"
                           disabled={
@@ -269,7 +272,7 @@ export default function AdminApiCredentialsView() {
                           onClick={() => void testGemini(row.provider)}
                           className="rounded-lg border border-emerald-300/30 px-3 py-1.5 text-xs text-emerald-100/80 disabled:opacity-40"
                         >
-                          {busy ? "Teste…" : "Verbindung testen"}
+                          {busy ? "Teste…" : "API TESTEN"}
                         </button>
                       ) : null}
                     </div>

@@ -14,7 +14,9 @@ export default function AnalysisTypeCard({
   const resultsHref =
     module.id === "google_search"
       ? "/dashboard/analysis/google?start=1"
-      : `/dashboard/results#${module.id}`;
+      : module.id === "digital_leak_exposure"
+        ? "/dashboard/analysis/digital-exposure?start=1"
+        : `/dashboard/results#${module.id}`;
 
   return (
     <article

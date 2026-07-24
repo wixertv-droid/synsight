@@ -98,6 +98,12 @@ export const analysisGuidance: Record<
     why: "Viele Menschen finden über Suchmaschinen schnell persönliche Informationen – auch über Sie.",
     result: "Die wichtigsten Treffer in verständlicher Form.",
   },
+  digital_leak_exposure: {
+    what: "Prüft hinterlegte E-Mail-Adressen und Telefonnummern auf bekannte Datenlecks.",
+    why: "Kompromittierte Identifikatoren sind ein häufiges Einfallstor für Account-Übernahmen.",
+    result:
+      "Exposure-Report mit Risiko-Score und konkreten Schutzempfehlungen.",
+  },
   phone_analysis: {
     what: "Prüft, ob Ihre Telefonnummer in öffentlichen Quellen auffindbar ist.",
     why: "Sichtbare Nummern erleichtern Spam, Betrug und unerwünschte Kontakte.",
