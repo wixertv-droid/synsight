@@ -117,6 +117,7 @@ export async function summarizeWithGemini(
   >,
   options?: {
     dehashedLeaks?: import("@/lib/analysis/osint/dehashed-provider").DehashedLeakDetail[];
+    userId?: number | null;
   }
 ): Promise<string | null> {
   const credentials = await resolveGeminiCredentials();
@@ -225,6 +226,7 @@ export async function summarizeWithGemini(
         providerCode: "gemini",
         eventType: "summarize",
         referenceKey: `gemini:${report.subjectName}:${Date.now()}`,
+        userId: options?.userId ?? null,
         requestCount: attempts,
         success: true,
         detail: tokens
@@ -258,6 +260,7 @@ export async function summarizeWithGemini(
         providerCode: "gemini",
         eventType: "summarize_partial",
         referenceKey: `gemini-partial:${report.subjectName}:${Date.now()}`,
+        userId: options?.userId ?? null,
         requestCount: Math.max(1, attempts),
         success: true,
         detail: `KI-Lagebild (Teilantwort) · ${report.subjectName}`,
@@ -279,6 +282,7 @@ export async function summarizeWithGemini(
       providerCode: "gemini",
       eventType: "summarize_safety_fallback",
       referenceKey: `gemini-safety:${report.subjectName}:${Date.now()}`,
+      userId: options?.userId ?? null,
       requestCount: Math.max(1, attempts),
       success: true,
       detail: `KI-Lagebild Safety-Fallback · ${report.subjectName}`,
@@ -301,6 +305,7 @@ export async function summarizeWithGemini(
     providerCode: "gemini",
     eventType: "summarize_error",
     referenceKey: `gemini-error:${Date.now()}`,
+    userId: options?.userId ?? null,
     requestCount: Math.max(1, attempts),
     success: false,
     detail: lastError.slice(0, 500),

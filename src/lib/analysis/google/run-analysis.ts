@@ -330,6 +330,8 @@ export async function runGoogleIntelligenceAnalysis(
   let serpSuccessCount = 0;
   let dehashedHits: IntelligenceHit[] = [];
   let dehashedLeaksForGemini: DehashedLeakDetail[] = [];
+  let dehashedAttempted = false;
+  let dehashedHttpOk = false;
 
   // DeHashed parallel zur Serp-Pipeline (Fehler → [] — Serp läuft weiter)
   const dehashedTask = searchDehashedForIdentity(identity, { generatedAt });
@@ -382,6 +384,8 @@ export async function runGoogleIntelligenceAnalysis(
     ]);
     dehashedHits = dehashedResult.hits;
     dehashedLeaksForGemini = dehashedResult.leaksForGemini;
+    dehashedAttempted = dehashedResult.attempted;
+    dehashedHttpOk = dehashedResult.httpOk;
 
     serpSuccessCount = batches.filter(
       (batch) => batch.ok && !batch.fromCache
@@ -485,17 +489,25 @@ export async function runGoogleIntelligenceAnalysis(
     const dehashedResult = await dehashedTask;
     dehashedHits = dehashedResult.hits;
     dehashedLeaksForGemini = dehashedResult.leaksForGemini;
+    dehashedAttempted = dehashedResult.attempted;
+    dehashedHttpOk = dehashedResult.httpOk;
   }
 
-  if (dehashedHits.length > 0) {
+  if (dehashedAttempted) {
     void recordApiUsageEvent({
       providerCode: "dehashed",
       eventType: "google_analysis_leak_search",
       referenceKey: analysisRef,
       userId: options?.userId ?? null,
       requestCount: 1,
-      success: true,
-      detail: `leaks=${dehashedHits.length}`,
+      success: dehashedHttpOk,
+      detail: dehashedHttpOk
+        ? `leaks=${dehashedHits.length}`
+        : "dehashed request failed or empty auth response",
+      metaJson: {
+        leakHits: dehashedHits.length,
+        httpOk: dehashedHttpOk,
+      },
     });
   }
 
@@ -650,6 +662,7 @@ export async function runGoogleIntelligenceAnalysis(
   try {
     draft.aiSummary = await summarizeWithGemini(draft, {
       dehashedLeaks: dehashedLeaksForGemini,
+      userId: options?.userId ?? null,
     });
   } catch (error) {
     console.error("[google-analysis] gemini summary failed", error);

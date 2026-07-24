@@ -17,7 +17,7 @@ export const googleIntelligenceModule: IntelligenceModuleDefinition = {
     {
       id: "phase2",
       label: "Search Strategy wird berechnet",
-      terminal: "PHASE 2 · recon_matrix · max=12 · google+bing",
+      terminal: "PHASE 2 · recon_matrix · max=15 · google+bing",
       atMs: 1200,
     },
     {

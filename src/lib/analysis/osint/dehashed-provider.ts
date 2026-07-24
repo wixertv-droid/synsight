@@ -35,6 +35,10 @@ export interface DehashedLeakDetail {
 export interface DehashedSearchOutput {
   hits: IntelligenceHit[];
   leaksForGemini: DehashedLeakDetail[];
+  /** True when an HTTP call to DeHashed was attempted. */
+  attempted: boolean;
+  /** True when DeHashed responded HTTP 2xx. */
+  httpOk: boolean;
 }
 
 interface DehashedCredentials {
@@ -152,7 +156,7 @@ function mapEntriesToHitsAndLeaks(
   entries: unknown[],
   query: string,
   generatedAt: string
-): DehashedSearchOutput {
+): Pick<DehashedSearchOutput, "hits" | "leaksForGemini"> {
   const hits: IntelligenceHit[] = [];
   const leaksForGemini: DehashedLeakDetail[] = [];
   let seq = 0;
@@ -258,7 +262,12 @@ export async function searchDehashedForIdentity(
   identity: IdentityView | null,
   options?: { generatedAt?: string }
 ): Promise<DehashedSearchOutput> {
-  const empty: DehashedSearchOutput = { hits: [], leaksForGemini: [] };
+  const empty: DehashedSearchOutput = {
+    hits: [],
+    leaksForGemini: [],
+    attempted: false,
+    httpOk: false,
+  };
 
   try {
     const credentials = await resolveDehashedApiKey();
@@ -296,7 +305,7 @@ export async function searchDehashedForIdentity(
         body.slice(0, 200)
       );
       // 401 / 429 / empty balance / etc. → graceful empty
-      return empty;
+      return { ...empty, attempted: true, httpOk: false };
     }
 
     const json = (await response.json().catch(() => null)) as {
@@ -306,9 +315,13 @@ export async function searchDehashedForIdentity(
 
     const entries = Array.isArray(json?.entries) ? json.entries : [];
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
-    return mapEntriesToHitsAndLeaks(entries, query, generatedAt);
+    return {
+      ...mapEntriesToHitsAndLeaks(entries, query, generatedAt),
+      attempted: true,
+      httpOk: true,
+    };
   } catch (error) {
     console.error("[dehashed-provider] search failed", error);
-    return empty;
+    return { ...empty, attempted: true, httpOk: false };
   }
 }
