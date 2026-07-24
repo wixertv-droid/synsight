@@ -118,6 +118,7 @@ export default function ResultsCenterClient({
     normalizeIntelligenceReport(initialGoogleReport)
   );
   const [scanning, setScanning] = useState(false);
+  const [scanApiReady, setScanApiReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scanDone, setScanDone] = useState(false);
   const [retentionDays, setRetentionDays] = useState<ReportRetentionDays>(
@@ -150,6 +151,7 @@ export default function ResultsCenterClient({
   const finishScanAttempt = useCallback(
     (options?: { clearScanParam?: boolean }) => {
       setScanning(false);
+      setScanApiReady(false);
       setScanDone(true);
       if (options?.clearScanParam !== false) {
         router.replace("/dashboard/results?tab=google_search", {
@@ -163,6 +165,7 @@ export default function ResultsCenterClient({
   const runGoogleScan = useCallback(async () => {
     setError(null);
     setScanning(true);
+    setScanApiReady(false);
     const scanStart = Date.now();
     const minScanMs = Math.max(
       googleIntelligenceModule.minScanMs,
@@ -176,6 +179,8 @@ export default function ResultsCenterClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ retentionDays }),
       });
+      // API fertig → Balken darf auf 100 % (nach Mindestanimation)
+      setScanApiReady(true);
       let body: {
         success?: boolean;
         data?: { report?: unknown };
@@ -189,9 +194,10 @@ export default function ResultsCenterClient({
 
       const elapsed = Date.now() - scanStart;
       const waitMs = Math.max(0, minScanMs - elapsed);
-      if (waitMs > 0) {
-        await new Promise((resolve) => window.setTimeout(resolve, waitMs));
-      }
+      // Kurze Pause bei 100 %, damit der Mission-Balken sichtbar abschließt
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, waitMs > 0 ? waitMs : 500)
+      );
 
       if (!response.ok || !body.success) {
         // Gateway timeout: analysis may still finish server-side and save the report
@@ -435,6 +441,7 @@ export default function ResultsCenterClient({
                     minDurationMs={googleIntelligenceModule.minScanMs}
                     running={scanning}
                     subjectName={subjectName}
+                    apiReady={scanApiReady}
                     onComplete={() => undefined}
                   />
                 ) : null}

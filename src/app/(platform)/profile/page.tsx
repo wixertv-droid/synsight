@@ -24,13 +24,14 @@ export default async function ProfilePage() {
   return (
     <main className="mx-auto max-w-5xl">
       <div className="mb-8">
-        <span className="hud-label">Konto / Identität</span>
+        <span className="hud-label">Command Center / Cyber Identity</span>
         <h1 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-white md:text-4xl">
-          Mein Identitätsprofil
+          Cyber Security Identitätsprofil
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/30">
-          Ergänzen Sie freiwillig Angaben zu Ihrer digitalen Identität. Es gibt
-          keinen Zwang — Sie können jederzeit speichern und später fortfahren.
+          Stammdaten und modulweise Signale für jede Analyseart. Karten
+          aufklappen, fehlende Angaben ergänzen — Sidebar und Fortschritt
+          bleiben erhalten.
         </p>
       </div>
       <IdentityProfilePanel initial={identity} />

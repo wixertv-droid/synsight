@@ -32,12 +32,15 @@ export default function IntelligenceScanSequence({
   running,
   onComplete,
   subjectName,
+  apiReady = false,
 }: {
   steps: IntelligenceScanStep[];
   minDurationMs: number;
   running: boolean;
   onComplete: () => void;
   subjectName: string;
+  /** true sobald die Analyse-API fertig ist — erst dann darf der Balken 100 % erreichen */
+  apiReady?: boolean;
 }) {
   const safeSteps = useMemo(() => (Array.isArray(steps) ? steps : []), [steps]);
   const [elapsed, setElapsed] = useState(0);
@@ -98,17 +101,18 @@ export default function IntelligenceScanSequence({
   }, [elapsed, safeSteps]);
 
   useEffect(() => {
-    if (!running) return;
+    if (!running || !apiReady) return;
     const targetMs = Math.max(
       minDurationMs,
       safeSteps.at(-1)?.atMs ?? minDurationMs
     );
+    // Erst abschließen wenn Mindestanimation UND API fertig sind
     if (elapsed >= targetMs) {
       const timer = window.setTimeout(onComplete, 400);
       return () => window.clearTimeout(timer);
     }
     return undefined;
-  }, [elapsed, minDurationMs, onComplete, running, safeSteps]);
+  }, [apiReady, elapsed, minDurationMs, onComplete, running, safeSteps]);
 
   useEffect(() => {
     if (!running) return;
@@ -222,7 +226,13 @@ export default function IntelligenceScanSequence({
     minDurationMs,
     safeSteps.at(-1)?.atMs ?? minDurationMs
   );
-  const progress = Math.min(100, Math.round((elapsed / targetMs) * 100));
+  // Bis API fertig: max. 94 % — 100 % erst wenn Analyse wirklich durch ist
+  const timeProgress = Math.min(100, Math.round((elapsed / targetMs) * 100));
+  const progress = !apiReady
+    ? Math.min(94, timeProgress)
+    : timeProgress >= 94 || elapsed >= targetMs
+      ? 100
+      : timeProgress;
 
   if (!running) return null;
 
@@ -255,19 +265,26 @@ export default function IntelligenceScanSequence({
             </p>
           </div>
           <div className="font-mono text-[10px] text-emerald-300/80">
-            STATUS · RUNNING · {(elapsed / 1000).toFixed(1)}s
+            STATUS · {apiReady ? "FINALIZING" : "RUNNING"} ·{" "}
+            {(elapsed / 1000).toFixed(1)}s
           </div>
         </div>
 
-        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+        {/* Mission-Progress wie LaunchScreen / Startseite */}
+        <div className="mission-progress relative mt-5 h-[7px] overflow-hidden rounded-[2px] bg-white/[0.065]">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-sky-600/80 via-sky-400 to-cyan-300 transition-[width] duration-150"
+            className="mission-progress-fill relative h-full transition-[width] duration-200 ease-out"
             style={{ width: `${progress}%` }}
-          />
+          >
+            <span className="mission-progress-head absolute right-0 top-1/2 h-3 w-[2px] -translate-y-1/2 bg-[#cff8ff]" />
+          </div>
         </div>
         <div className="mt-2 flex justify-between font-mono text-[8px] tracking-[.12em] text-white/35">
           <span>PIPELINE</span>
-          <span className="text-sky-300/80">{progress}%</span>
+          <span className="text-sky-300/80">
+            {String(progress).padStart(3, "0")}%
+            {!apiReady && progress >= 94 ? " · WARTE AUF ENGINE" : ""}
+          </span>
         </div>
       </div>
 
