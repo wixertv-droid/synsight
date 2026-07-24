@@ -208,6 +208,19 @@ export default function AdminApiCredentialsView() {
                       ? "Konfiguriert"
                       : "Noch nicht konfiguriert"}
                   </p>
+                  {row.provider === "dehashed" ? (
+                    <p className="mt-1 text-[11px] leading-relaxed text-white/35">
+                      Google-Pipeline nutzt HTTP Basic Auth: Server-Env{" "}
+                      <span className="font-mono text-white/50">
+                        DEHASHED_EMAIL
+                      </span>{" "}
+                      + API-Key (hier oder{" "}
+                      <span className="font-mono text-white/50">
+                        DEHASHED_API_KEY
+                      </span>
+                      ).
+                    </p>
+                  ) : null}
                   <form
                     className="mt-3 space-y-2"
                     onSubmit={(event) => {

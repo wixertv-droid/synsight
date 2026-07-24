@@ -34,6 +34,10 @@ import {
   resolveSubjectName,
 } from "@/lib/analysis/google/queries";
 import { summarizeWithGemini } from "@/lib/analysis/gemini-summary";
+import {
+  searchDehashedForIdentity,
+  type DehashedLeakDetail,
+} from "@/lib/analysis/osint/dehashed-provider";
 import type { IdentityView } from "@/lib/services/identity-service";
 import { recordApiUsageEvent } from "@/lib/services/finance-service";
 import {
@@ -324,50 +328,60 @@ export async function runGoogleIntelligenceAnalysis(
   let hitSeq = 0;
   const analysisRef = `google-analysis:${options?.userId ?? "anon"}:${Date.now()}`;
   let serpSuccessCount = 0;
+  let dehashedHits: IntelligenceHit[] = [];
+  let dehashedLeaksForGemini: DehashedLeakDetail[] = [];
+
+  // DeHashed parallel zur Serp-Pipeline (Fehler → [] — Serp läuft weiter)
+  const dehashedTask = searchDehashedForIdentity(identity, { generatedAt });
 
   if (apiConfigured) {
-    const batches = await mapPool(queries, 4, async (plan) => {
-      const engine: SerpSearchEngine =
-        plan.engine === "bing" ? "bing" : "google";
-      try {
-        const { getCachedSearchResults, setCachedSearchResults } =
-          await import("@/lib/analysis/osint/search-cache");
-        const cached = getCachedSearchResults(plan.query, engine);
-        if (cached) {
+    const [batches, dehashedResult] = await Promise.all([
+      mapPool(queries, 4, async (plan) => {
+        const engine: SerpSearchEngine =
+          plan.engine === "bing" ? "bing" : "google";
+        try {
+          const { getCachedSearchResults, setCachedSearchResults } =
+            await import("@/lib/analysis/osint/search-cache");
+          const cached = getCachedSearchResults(plan.query, engine);
+          if (cached) {
+            return {
+              plan,
+              engine,
+              items: cached,
+              ok: true as const,
+              fromCache: true as const,
+            };
+          }
+          const items = await fetchGoogleSearch(plan.query, {
+            // One finance event for the whole analysis (see below).
+            recordFinance: false,
+            userId: options?.userId ?? null,
+            referenceKey: `${analysisRef}:${plan.id}`,
+            engine,
+          });
+          setCachedSearchResults(plan.query, items, engine);
           return {
             plan,
             engine,
-            items: cached,
+            items,
             ok: true as const,
-            fromCache: true as const,
+            fromCache: false as const,
+          };
+        } catch (error) {
+          console.error("[google-analysis] query failed", plan.id, error);
+          return {
+            plan,
+            engine,
+            items: [] as Awaited<ReturnType<typeof fetchGoogleSearch>>,
+            ok: false as const,
+            fromCache: false as const,
           };
         }
-        const items = await fetchGoogleSearch(plan.query, {
-          // One finance event for the whole analysis (see below).
-          recordFinance: false,
-          userId: options?.userId ?? null,
-          referenceKey: `${analysisRef}:${plan.id}`,
-          engine,
-        });
-        setCachedSearchResults(plan.query, items, engine);
-        return {
-          plan,
-          engine,
-          items,
-          ok: true as const,
-          fromCache: false as const,
-        };
-      } catch (error) {
-        console.error("[google-analysis] query failed", plan.id, error);
-        return {
-          plan,
-          engine,
-          items: [] as Awaited<ReturnType<typeof fetchGoogleSearch>>,
-          ok: false as const,
-          fromCache: false as const,
-        };
-      }
-    });
+      }),
+      dehashedTask,
+    ]);
+    dehashedHits = dehashedResult.hits;
+    dehashedLeaksForGemini = dehashedResult.leaksForGemini;
 
     serpSuccessCount = batches.filter(
       (batch) => batch.ok && !batch.fromCache
@@ -467,6 +481,22 @@ export async function runGoogleIntelligenceAnalysis(
         },
       });
     }
+  } else {
+    const dehashedResult = await dehashedTask;
+    dehashedHits = dehashedResult.hits;
+    dehashedLeaksForGemini = dehashedResult.leaksForGemini;
+  }
+
+  if (dehashedHits.length > 0) {
+    void recordApiUsageEvent({
+      providerCode: "dehashed",
+      eventType: "google_analysis_leak_search",
+      referenceKey: analysisRef,
+      userId: options?.userId ?? null,
+      requestCount: 1,
+      success: true,
+      detail: `leaks=${dehashedHits.length}`,
+    });
   }
 
   const profileHits = profileLinkedHits(identity, generatedAt, hitSeq);
@@ -507,7 +537,7 @@ export async function runGoogleIntelligenceAnalysis(
     ].filter(Boolean),
   };
   const enrichedAll = dedupeHitsByUrl(
-    [...refinedSerp, ...profileHits].map((hit) =>
+    [...refinedSerp, ...dehashedHits, ...profileHits].map((hit) =>
       enrichHitIntel(hit, intelContext)
     )
   );
@@ -539,8 +569,12 @@ export async function runGoogleIntelligenceAnalysis(
         : `Enterprise OSINT abgeschlossen: Für eine Suche fehlen noch Identitätsdaten im Profil.`;
 
   const dataSourceLabel = apiConfigured
-    ? "SerpAPI Hybrid (Google+Bing, SafeSearch off) · Identity Fingerprint"
-    : "Identitätsprofil · öffentliche Verknüpfungen";
+    ? dehashedHits.length > 0
+      ? "SerpAPI Hybrid (Google+Bing) · DeHashed Leaks · Identity Fingerprint"
+      : "SerpAPI Hybrid (Google+Bing, SafeSearch off) · Identity Fingerprint"
+    : dehashedHits.length > 0
+      ? "DeHashed Leaks · Identitätsprofil"
+      : "Identitätsprofil · öffentliche Verknüpfungen";
 
   const criticalHits = hits.filter(
     (h) => h.risk === "action" || h.risk === "review"
@@ -614,7 +648,9 @@ export async function runGoogleIntelligenceAnalysis(
   };
 
   try {
-    draft.aiSummary = await summarizeWithGemini(draft);
+    draft.aiSummary = await summarizeWithGemini(draft, {
+      dehashedLeaks: dehashedLeaksForGemini,
+    });
   } catch (error) {
     console.error("[google-analysis] gemini summary failed", error);
     draft.aiSummary = null;

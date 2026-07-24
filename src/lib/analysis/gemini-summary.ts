@@ -114,7 +114,10 @@ export async function summarizeWithGemini(
     | "executive"
     | "fingerprintHash"
     | "threatMatrix"
-  >
+  >,
+  options?: {
+    dehashedLeaks?: import("@/lib/analysis/osint/dehashed-provider").DehashedLeakDetail[];
+  }
 ): Promise<string | null> {
   const credentials = await resolveGeminiCredentials();
   if (!credentials) return null;
@@ -126,6 +129,7 @@ export async function summarizeWithGemini(
     {
       fingerprintHash: report.fingerprintHash ?? undefined,
       threatMatrix: report.threatMatrix ?? undefined,
+      dehashedLeaks: options?.dehashedLeaks,
     }
   );
 

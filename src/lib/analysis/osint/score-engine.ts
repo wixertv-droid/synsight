@@ -206,6 +206,20 @@ export function scoreIdentityConfidence(
     };
   }
 
+  // HARTE REGEL — DeHashed Leak = 100 % verifizierte Bedrohung
+  if (hit.sourceType === "dehashed_leak") {
+    return {
+      score: 100,
+      label: "Verifiziertes Datenleck (DeHashed)",
+      positives: ["DeHashed Leak (+100)", "Kategorie: Datenleck / Breach"],
+      negatives: [],
+      checks: [
+        { label: "DeHashed Leak", found: true },
+        { label: "Verifizierte Bedrohung", found: true },
+      ],
+    };
+  }
+
   const text = `${hit.title} ${hit.snippet} ${hit.url}`;
   const first = (signals.firstName ?? "").trim();
   const last = (signals.lastName ?? "").trim();

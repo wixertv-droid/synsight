@@ -9,12 +9,19 @@ export type IntelligenceRelevance = "relevant" | "neutral" | "low" | "stale";
 export type SerpSearchEngine = "google" | "bing";
 
 export type IntelligenceHitSource =
-  "serpapi_google" | "serpapi_bing" | "identity_profile";
+  "serpapi_google" | "serpapi_bing" | "identity_profile" | "dehashed_leak";
 
 export function isLiveSerpSource(
   sourceType: IntelligenceHitSource | undefined
 ): boolean {
   return sourceType === "serpapi_google" || sourceType === "serpapi_bing";
+}
+
+/** Live external intelligence sources (SERP + verified leak providers). */
+export function isLiveIntelSource(
+  sourceType: IntelligenceHitSource | undefined
+): boolean {
+  return isLiveSerpSource(sourceType) || sourceType === "dehashed_leak";
 }
 
 export interface IntelligenceScanStep {

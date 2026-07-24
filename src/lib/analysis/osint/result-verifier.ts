@@ -22,6 +22,10 @@ export function verifyAndPartitionHits(hits: IntelligenceHit[]): {
       verified.push(hit);
       continue;
     }
+    if (hit.sourceType === "dehashed_leak") {
+      verified.push(hit);
+      continue;
+    }
     const score = hit.identityConfidence ?? 0;
     if (score >= VERIFIED_CONFIDENCE_MIN) {
       verified.push(hit);
