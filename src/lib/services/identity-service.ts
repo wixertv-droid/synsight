@@ -149,7 +149,19 @@ export async function saveIdentityForUser(
   userId: number,
   input: IdentityProfileInput
 ): Promise<IdentityView> {
-  const snapshot = await getIdentityRepository().save(userId, input);
+  const usernames = uniqueStrings([
+    ...(input.aliases.usernames ?? []),
+    ...(input.aliases.nicknames ?? []),
+  ]);
+  const normalized: IdentityProfileInput = {
+    ...input,
+    aliases: {
+      ...input.aliases,
+      nicknames: [],
+      usernames,
+    },
+  };
+  const snapshot = await getIdentityRepository().save(userId, normalized);
   return toView(snapshot);
 }
 
