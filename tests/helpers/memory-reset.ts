@@ -3,9 +3,11 @@
  * Safe when DATABASE_URL is unset and repositories use globalThis stores.
  */
 import { resetDigitalLeakCatalogEnsureForTests } from "@/lib/credits/ensure-digital-leak-catalog";
+import { resetDigitalExposureSchemaEnsureForTests } from "@/lib/analysis/digital-exposure/ensure-schema";
 
 export function resetInMemoryStores(): void {
   resetDigitalLeakCatalogEnsureForTests();
+  resetDigitalExposureSchemaEnsureForTests();
 
   const g = globalThis as typeof globalThis & {
     __synsightUsers?: Map<unknown, unknown>;

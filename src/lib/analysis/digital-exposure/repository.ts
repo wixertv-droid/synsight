@@ -11,6 +11,7 @@ import type {
   DigitalExposureScanStatus,
 } from "@/lib/analysis/digital-exposure/types";
 import { buildGeminiPrepPayload } from "@/lib/analysis/digital-exposure/gemini-prep";
+import { ensureDigitalExposureSchema } from "@/lib/analysis/digital-exposure/ensure-schema";
 
 function mysqlNow(): string {
   return new Date().toISOString().slice(0, 23).replace("T", " ");
@@ -46,6 +47,12 @@ export async function createDigitalExposureScan(input: {
 }): Promise<number> {
   const db = getDatabase();
   if (!db) throw new Error("database not configured");
+  const ok = await ensureDigitalExposureSchema(true);
+  if (!ok) {
+    throw new Error(
+      "Digital-Leak-Tabellen fehlen — bitte db:migrate bzw. db:ensure-catalog ausführen."
+    );
+  }
 
   const result = await db.insert(digitalExposureScans).values({
     userId: input.userId,
@@ -76,6 +83,7 @@ export async function completeDigitalExposureScan(input: {
 }): Promise<void> {
   const db = getDatabase();
   if (!db) throw new Error("database not configured");
+  await ensureDigitalExposureSchema(false);
 
   await db
     .update(digitalExposureScans)
@@ -113,45 +121,53 @@ export async function getLatestDigitalExposureReport(
   const db = getDatabase();
   if (!db) return null;
 
-  const scans = await db
-    .select()
-    .from(digitalExposureScans)
-    .where(eq(digitalExposureScans.userId, userId))
-    .orderBy(desc(digitalExposureScans.createdAt))
-    .limit(1);
+  try {
+    await ensureDigitalExposureSchema(false);
 
-  const scan = scans[0];
-  if (!scan) return null;
+    const scans = await db
+      .select()
+      .from(digitalExposureScans)
+      .where(eq(digitalExposureScans.userId, userId))
+      .orderBy(desc(digitalExposureScans.createdAt))
+      .limit(1);
 
-  const rows = await db
-    .select()
-    .from(digitalExposureResults)
-    .where(eq(digitalExposureResults.scanId, scan.id));
+    const scan = scans[0];
+    if (!scan) return null;
 
-  const findings = rows.map(mapFinding);
-  const subjectName = scan.subjectName ?? "Unbekannt";
+    const rows = await db
+      .select()
+      .from(digitalExposureResults)
+      .where(eq(digitalExposureResults.scanId, scan.id));
 
-  return {
-    scanId: scan.id,
-    moduleKey: "digital_leak_exposure",
-    subjectName,
-    status: scan.status as DigitalExposureScanStatus,
-    riskScore: scan.riskScore,
-    summary: scan.summary ?? "",
-    emailCount: scan.emailCount,
-    phoneCount: scan.phoneCount,
-    findingCount: scan.findingCount,
-    startedAt: scan.startedAt,
-    completedAt: scan.completedAt,
-    findings,
-    geminiPrep: buildGeminiPrepPayload({
+    const findings = rows.map(mapFinding);
+    const subjectName = scan.subjectName ?? "Unbekannt";
+
+    return {
+      scanId: scan.id,
+      moduleKey: "digital_leak_exposure",
       subjectName,
+      status: scan.status as DigitalExposureScanStatus,
       riskScore: scan.riskScore,
+      summary: scan.summary ?? "",
+      emailCount: scan.emailCount,
+      phoneCount: scan.phoneCount,
+      findingCount: scan.findingCount,
+      startedAt: scan.startedAt,
+      completedAt: scan.completedAt,
       findings,
-    }),
-    apiConfigured: true,
-    providerLabel: "DeHashed",
-  };
+      geminiPrep: buildGeminiPrepPayload({
+        subjectName,
+        riskScore: scan.riskScore,
+        findings,
+      }),
+      apiConfigured: true,
+      providerLabel: "DeHashed",
+    };
+  } catch (error) {
+    // Missing tables / transient DB errors must never crash Results SSR
+    console.error("[getLatestDigitalExposureReport] failed", error);
+    return null;
+  }
 }
 
 export async function writeApiUsageLog(input: {
@@ -168,6 +184,7 @@ export async function writeApiUsageLog(input: {
   const db = getDatabase();
   if (!db) return;
   try {
+    await ensureDigitalExposureSchema(false);
     await db.insert(apiUsageLogs).values({
       provider: input.provider,
       requestType: input.requestType,

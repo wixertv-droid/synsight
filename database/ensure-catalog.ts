@@ -1,5 +1,5 @@
 /**
- * Force-apply Digital Leak / DeHashed catalog rows without full migrate.
+ * Force-apply Digital Leak catalog rows + scan tables without full migrate.
  *
  * Usage:
  *   DATABASE_URL='mysql://synsight:...@localhost:3306/synsight' npm run db:ensure-catalog
@@ -25,7 +25,7 @@ async function main() {
   });
   try {
     const [result] = await connection.query(sql);
-    console.log("Digital Leak catalog repair applied.");
+    console.log("Digital Leak catalog + schema repair applied.");
     console.log(result);
   } finally {
     await connection.end();

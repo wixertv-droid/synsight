@@ -35,9 +35,15 @@ export default async function ResultsCenter() {
   const googleReport = Number.isFinite(userId)
     ? await getIntelligenceReport(userId, "google_search")
     : null;
-  const exposureReport = Number.isFinite(userId)
-    ? await getLatestDigitalExposureReport(userId)
-    : null;
+  let exposureReport = null;
+  if (Number.isFinite(userId)) {
+    try {
+      exposureReport = await getLatestDigitalExposureReport(userId);
+    } catch (error) {
+      console.error("[ResultsCenter] digital exposure load failed", error);
+      exposureReport = null;
+    }
+  }
 
   const tabs: ResultsTabModule[] = [
     ...modules.map((module) => ({

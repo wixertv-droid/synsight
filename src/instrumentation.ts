@@ -10,7 +10,12 @@ export async function register() {
     void import("@/lib/credits/ensure-digital-leak-catalog")
       .then((mod) => mod.ensureDigitalLeakCatalog(true))
       .catch(() => {
-        /* tables may be missing until migrate — catalog ensure retries on read */
+        /* pricing heal retries on read */
+      });
+    void import("@/lib/analysis/digital-exposure/ensure-schema")
+      .then((mod) => mod.ensureDigitalExposureSchema(true))
+      .catch(() => {
+        /* DDL heal retries on scan/read */
       });
   }
 }
