@@ -256,7 +256,7 @@ export async function resetPricingDefaults(input: {
   ipAddress?: string | null;
 }) {
   assertAdmin(input.actor);
-  await ensureDigitalLeakCatalog();
+  await ensureDigitalLeakCatalog(true);
   const adminId = Number(input.actor.id);
   const repository = getPricingRepository();
   if (input.scope === "analyses" || input.scope === "all") {
