@@ -2,6 +2,7 @@ export {
   planGoogleSearches,
   normalizeSearchCacheKey,
   planScoredGoogleSearches,
+  OSINT_MAX_QUERIES,
 } from "./search-planner";
 export {
   getCachedSearchResults,
@@ -14,7 +15,7 @@ export {
   type IdentitySignals,
   type ConfidenceBreakdown,
   type ConfidenceCheck,
-} from "./confidence-scorer";
+} from "./score-engine";
 export {
   classifyOsintCategory,
   aggregateByOsintCategory,

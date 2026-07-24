@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { AuthenticatedUser } from "@/lib/auth/types";
+import { GEMINI_OSINT_SAFETY_SETTINGS } from "@/lib/analysis/gemini-safety";
 import { getDatabase } from "@/lib/database/client";
 import { apiCredentials } from "@/lib/database/schema";
 import {
@@ -362,6 +363,7 @@ export async function testApiCredentialConnection(input: {
             body: JSON.stringify({
               contents: [{ parts: [{ text: "Antworten Sie nur mit OK." }] }],
               generationConfig: { temperature: 0, maxOutputTokens: 8 },
+              safetySettings: GEMINI_OSINT_SAFETY_SETTINGS,
             }),
           }
         );

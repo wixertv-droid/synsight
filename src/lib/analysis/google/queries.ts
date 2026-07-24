@@ -1,10 +1,10 @@
 import type { IdentityView } from "@/lib/services/identity-service";
 import type { IntelligenceQueryPlan } from "@/lib/analysis/types";
-import { planGoogleSearches } from "@/lib/analysis/osint/search-planner";
+import { planGoogleSearches } from "@/lib/analysis/osint/search-strategy";
 
 /**
- * Sprint 6B: max. 5 Suchanfragen über SearchPlanner.
- * Keine künstlichen Kombinationen — nur vorhandene Profildaten.
+ * OSINT Reconnaissance Matrix — 8–12 fokussierte Google/Bing-Dorks
+ * aus allen Identity-Profildaten (siehe search-strategy / search-planner).
  */
 export function buildGoogleQueriesFromIdentity(
   identity: IdentityView | null
@@ -28,7 +28,10 @@ export function buildMissingProfileHints(
   if (!identity?.personal.company && (identity?.companies.length ?? 0) === 0) {
     hints.push("Unternehmen angeben");
   }
-  if (!identity?.personal.location) {
+  if (
+    !identity?.personal.location &&
+    (identity?.personal.previousLocations.length ?? 0) === 0
+  ) {
     hints.push("Wohnort angeben (erhöht Trefferqualität)");
   }
   if (

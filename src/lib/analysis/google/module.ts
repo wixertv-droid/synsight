@@ -17,13 +17,13 @@ export const googleIntelligenceModule: IntelligenceModuleDefinition = {
     {
       id: "phase2",
       label: "Search Strategy wird berechnet",
-      terminal: "PHASE 2 · search_planner · max=5 · scored",
+      terminal: "PHASE 2 · recon_matrix · max=12 · google+bing",
       atMs: 1200,
     },
     {
       id: "phase3",
-      label: "Hybrid OSINT · Google + Bing",
-      terminal: "PHASE 3 · serpapi.hybrid · safe=off · parallel=2",
+      label: "OSINT Recon · Google + Bing Vectors",
+      terminal: "PHASE 3 · serpapi.hybrid · safe=off · parallel=4",
       atMs: 2600,
     },
     {

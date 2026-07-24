@@ -8,18 +8,35 @@ import { buildIdentityFingerprint } from "@/lib/analysis/osint/identity-fingerpr
 export interface ScoredSearchPlan extends IntelligenceQueryPlan {
   searchScore: number;
   engine: SerpSearchEngine;
+  vector: string;
 }
 
-function clean(value: string | undefined | null): string {
-  return (value ?? "").trim();
+const MAX_QUERIES = 12;
+
+function unique(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    const cleaned = value.trim();
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(cleaned);
+  }
+  return out;
+}
+
+function orGroup(values: string[], quoted = true): string {
+  const parts = unique(values).slice(0, 6);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return quoted ? `"${parts[0]}"` : parts[0];
+  return `(${parts.map((v) => (quoted ? `"${v}"` : v)).join(" OR ")})`;
 }
 
 /**
- * Phase 2 — Hybrid SearchPlanner (Google + Bing) mit Search Score.
- * Max. 5 Queries, sortiert nach Priorität, nur vorhandene Daten.
- *
- * Google (safe=off): Telefon 100 · Mail 95 · Name+Ort 90 · Name+Firma 80 · Alias 70 · Domain 65
- * Bing (safeSearch=Off): Adult/Nische 88 · Foren/Leaks 76
+ * OSINT Reconnaissance Matrix — Google + Bing Dorks aus allen Profildaten.
+ * Ziel: 8–12 fokussierte Abfragen, priorisiert, ohne unnötige Leersuchen.
  */
 export function planGoogleSearches(
   identity: IdentityView | null
@@ -43,6 +60,21 @@ export function planScoredGoogleSearches(
       : fp.subjectName !== "Unbekannt"
         ? fp.subjectName
         : "";
+
+  const locations = unique([
+    fp.location,
+    fp.region,
+    ...(identity?.personal.previousLocations ?? []),
+  ]);
+  const companies = unique([fp.company, ...(identity?.companies ?? [])]);
+  const emails = unique(fp.emails);
+  const phones = unique(fp.phones);
+  const aliases = unique([
+    ...fp.aliases,
+    ...fp.socialHandles.map((h) => h.username).filter(Boolean),
+  ]);
+  const domains = unique(fp.domains);
+
   const candidates: ScoredSearchPlan[] = [];
   const seen = new Set<string>();
 
@@ -53,98 +85,176 @@ export function planScoredGoogleSearches(
     candidates.push(plan);
   }
 
-  // —— Google: sauberes Hauptprofil (SafeSearch AUS) ——
-  if (fp.phones[0]) {
+  // 1. Direct Identifiers Vector (Google)
+  const idParts = [
+    ...emails.map((e) => `"${e}"`),
+    ...phones.map((p) => `"${p}"`),
+  ];
+  if (idParts.length > 0) {
     push({
-      id: "g-phone",
-      label: "Telefon",
-      query: `"${fp.phones[0]}"`,
-      help: "Google · Score 100 — Telefonnummer aus dem Profil (safe=off).",
+      id: "v-direct-ids",
+      label: "Direct Identifiers",
+      query: idParts.slice(0, 6).join(" OR "),
+      help: "Vector 1 · E-Mails & Telefonnummern (Google, safe=off).",
       searchScore: 100,
       engine: "google",
+      vector: "direct_identifiers",
     });
   }
-  if (fp.emails[0]) {
+
+  // 2. Exact Identity & Location Vector (Google)
+  if (fullName && locations.length > 0) {
     push({
-      id: "g-email",
-      label: "E-Mail",
-      query: `"${fp.emails[0]}"`,
-      help: "Google · Score 95 — E-Mail aus dem Profil (safe=off).",
+      id: "v-identity-location",
+      label: "Identity + Location",
+      query: `"${fullName}" ${orGroup(locations)}`,
+      help: "Vector 2 · Name mit allen Wohnorten (Google).",
       searchScore: 95,
       engine: "google",
-    });
-  }
-  if (fullName && fp.location) {
-    push({
-      id: "g-name-location",
-      label: "Name + Wohnort",
-      query: `"${fullName}" ${fp.location}`,
-      help: "Google · Score 90 — Name mit Wohnort (safe=off).",
-      searchScore: 90,
-      engine: "google",
+      vector: "identity_location",
     });
   } else if (fullName) {
     push({
-      id: "g-name",
-      label: "Name",
+      id: "v-identity",
+      label: "Exact Identity",
       query: `"${fullName}"`,
-      help: "Google · Score 85 — Name ohne Wohnort (safe=off).",
-      searchScore: 85,
+      help: "Vector 2b · Exakter Name ohne Ort (Google).",
+      searchScore: 88,
       engine: "google",
-    });
-  }
-  if (fullName && fp.company) {
-    push({
-      id: "g-name-company",
-      label: "Name + Firma",
-      query: `"${fullName}" "${fp.company}"`,
-      help: "Google · Score 80 — Name mit Firma (safe=off).",
-      searchScore: 80,
-      engine: "google",
-    });
-  }
-  if (fp.aliases[0]) {
-    push({
-      id: "g-alias",
-      label: "Alias",
-      query: `"${fp.aliases[0]}"`,
-      help: "Google · Score 70 — Alias / Benutzername (safe=off).",
-      searchScore: 70,
-      engine: "google",
-    });
-  }
-  if (fp.domains[0] && fullName) {
-    push({
-      id: "g-domain",
-      label: "Domain",
-      query: `site:${fp.domains[0]} "${fullName}"`,
-      help: "Google · Score 65 — Domain aus dem Profil (safe=off).",
-      searchScore: 65,
-      engine: "google",
+      vector: "identity",
     });
   }
 
-  // —— Bing: unzensierter Adult-/Nischen- und Foren-Footprint ——
+  // 3. Exact Identity & Professional Vector (Google)
+  if (fullName && companies.length > 0) {
+    push({
+      id: "v-identity-professional",
+      label: "Identity + Professional",
+      query: `"${fullName}" ${orGroup(companies)}`,
+      help: "Vector 3 · Name mit allen Firmen (Google).",
+      searchScore: 92,
+      engine: "google",
+      vector: "identity_professional",
+    });
+  }
+
+  // 4. Username / Alias Social Vector (Google)
+  if (aliases.length > 0) {
+    const aliasGroup = orGroup(aliases);
+    push({
+      id: "v-alias-social",
+      label: "Alias Social",
+      query: `${aliasGroup} (site:instagram.com OR site:tiktok.com OR site:twitter.com OR site:x.com OR site:github.com OR site:reddit.com OR site:pinterest.com)`,
+      help: "Vector 4 · Alias auf Social-Plattformen (Google).",
+      searchScore: 90,
+      engine: "google",
+      vector: "alias_social",
+    });
+    // Extra: bare alias sweep for forums / niches
+    push({
+      id: "v-alias-general",
+      label: "Alias Sweep",
+      query: aliasGroup,
+      help: "Vector 4b · Alias/Username allgemein (Google).",
+      searchScore: 84,
+      engine: "google",
+      vector: "alias_general",
+    });
+  }
+
+  // 5. Business & Professional Vector (Google)
   if (fullName) {
     push({
-      id: "b-adult-niche",
-      label: "Adult / Nische",
-      query: `"${fullName}" (site:joyclub.de OR site:kaufmich.com OR site:fetlife.com OR site:onlyfans.com)`,
-      help: "Bing · Score 88 — Erotik- & Nischen-Footprint (safeSearch=Off).",
-      searchScore: 88,
-      engine: "bing",
-    });
-    push({
-      id: "b-forum-leak",
-      label: "Foren / Leaks",
-      query: `"${fullName}" (forum OR leak OR profil OR "geleakt")`,
-      help: "Bing · Score 76 — Foren & Leaks unzensiert (safeSearch=Off).",
-      searchScore: 76,
-      engine: "bing",
+      id: "v-business",
+      label: "Business Profiles",
+      query: `"${fullName}" (site:linkedin.com/in OR site:xing.com/profile OR site:northdata.de OR site:companyhouse.de)`,
+      help: "Vector 5 · Business-/Register-Profile (Google).",
+      searchScore: 86,
+      engine: "google",
+      vector: "business",
     });
   }
 
-  return candidates.sort((a, b) => b.searchScore - a.searchScore).slice(0, 5);
+  // 6. Adult & Niche Footprint (Bing, safeSearch=Off)
+  if (fullName || aliases.length > 0) {
+    const adultSubject =
+      aliases.length > 0 && fullName
+        ? `(${orGroup(aliases)} OR "${fullName}")`
+        : aliases.length > 0
+          ? orGroup(aliases)
+          : `"${fullName}"`;
+    push({
+      id: "v-adult-niche",
+      label: "Adult / Niche",
+      query: `${adultSubject} (site:joyclub.de OR site:kaufmich.com OR site:fetlife.com OR site:onlyfans.com OR site:fansly.com)`,
+      help: "Vector 6 · Adult/Nischen-Footprint (Bing, safeSearch=Off).",
+      searchScore: 87,
+      engine: "bing",
+      vector: "adult_niche",
+    });
+  }
+
+  // 7. Public Records & Document Leaks (Google)
+  if (fullName) {
+    push({
+      id: "v-docs-leaks",
+      label: "Public Records",
+      query: `"${fullName}" (filetype:pdf OR "Impressum" OR "Handelsregister" OR leak OR geleakt)`,
+      help: "Vector 7 · Dokumente & öffentliche Register (Google).",
+      searchScore: 82,
+      engine: "google",
+      vector: "docs_leaks",
+    });
+  }
+
+  // 8. Forums / Mentions (Bing uncensored)
+  if (fullName) {
+    push({
+      id: "v-forum-leak",
+      label: "Foren / Mentions",
+      query: `"${fullName}" (forum OR profil OR leak OR "geleakt" OR community)`,
+      help: "Vector 8 · Foren & Erwähnungen (Bing, safeSearch=Off).",
+      searchScore: 78,
+      engine: "bing",
+      vector: "forum_mentions",
+    });
+  }
+
+  // 9. Own domains / websites
+  if (domains.length > 0 && fullName) {
+    push({
+      id: "v-domains",
+      label: "Own Domains",
+      query: `(${domains
+        .slice(0, 4)
+        .map((d) => `site:${d}`)
+        .join(" OR ")}) "${fullName}"`,
+      help: "Vector 9 · Eigene Domains / Webseiten (Google).",
+      searchScore: 74,
+      engine: "google",
+      vector: "domains",
+    });
+  }
+
+  // 10. Phone-only deep dive when many phones
+  if (phones.length > 1) {
+    push({
+      id: "v-phones-extra",
+      label: "Phone Sweep",
+      query: phones
+        .slice(0, 4)
+        .map((p) => `"${p}"`)
+        .join(" OR "),
+      help: "Vector 10 · Weitere Telefonnummern (Google).",
+      searchScore: 96,
+      engine: "google",
+      vector: "phones_extra",
+    });
+  }
+
+  return candidates
+    .sort((a, b) => b.searchScore - a.searchScore)
+    .slice(0, MAX_QUERIES);
 }
 
 export function normalizeSearchCacheKey(
@@ -157,7 +267,9 @@ export function normalizeSearchCacheKey(
 /** @deprecated use planGoogleSearches — kept for identity helpers */
 export function resolvePlannerIdentity(identity: IdentityView | null) {
   return {
-    first: clean(identity?.personal.firstName),
-    last: clean(identity?.personal.lastName),
+    first: (identity?.personal.firstName ?? "").trim(),
+    last: (identity?.personal.lastName ?? "").trim(),
   };
 }
+
+export const OSINT_MAX_QUERIES = MAX_QUERIES;

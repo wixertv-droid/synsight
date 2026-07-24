@@ -45,7 +45,13 @@ function phoneMatches(text: string, phones: string[]): string[] {
 }
 
 /**
- * ConfidenceEngine — nachvollziehbare Checks + Score.
+ * Score-Engine — dynamische Gewichtung, keine Frühverwerfung bei starken Signalen.
+ *
+ * E-Mail / Telefon = +100 (Instant High)
+ * Alias / Username = +85
+ * Vorname + Nachname + Ort/Firma = +80
+ * Vorname + Nachname = +50
+ * Nur Nachname + Ort = +30
  */
 export function scoreIdentityConfidence(
   hit: Pick<
@@ -83,85 +89,84 @@ export function scoreIdentityConfidence(
   checks.push({ label: "Vorname gefunden", found: hasFirst });
   checks.push({ label: "Nachname gefunden", found: hasLast });
 
-  if (hasFirst) {
-    score += 25;
-    positives.push("Vorname stimmt");
-  }
-  if (hasLast) {
-    score += 25;
-    positives.push("Nachname stimmt");
-  }
-
   const hasLocation =
     location.length >= 3 && includesInsensitive(text, location);
   checks.push({ label: "Wohnort gefunden", found: hasLocation });
-  if (hasLocation) {
-    score += 20;
-    positives.push("Wohnort stimmt");
-  }
 
   const hasCompany = company.length >= 3 && includesInsensitive(text, company);
   checks.push({ label: "Firma gefunden", found: hasCompany });
-  if (hasCompany) {
-    score += 20;
-    positives.push("Firma stimmt");
-  }
 
   const matchedPhones = phoneMatches(text, phones);
   const hasPhone = matchedPhones.length > 0;
   checks.push({ label: "Telefon gefunden", found: hasPhone });
-  if (hasPhone) {
-    score += 40;
-    positives.push("Telefon stimmt");
-  }
 
   const matchedEmails = emails.filter((email) =>
     includesInsensitive(text, email)
   );
   const hasEmail = matchedEmails.length > 0;
   checks.push({ label: "Mail gefunden", found: hasEmail });
-  if (hasEmail) {
-    score += 50;
-    positives.push("E-Mail stimmt");
-  }
 
   const matchedAliases = aliases.filter((alias) =>
     includesInsensitive(text, alias)
   );
   const hasAlias = matchedAliases.length > 0;
   checks.push({ label: "Alias gefunden", found: hasAlias });
-  if (hasAlias) {
-    score += 35;
-    positives.push("Alias stimmt");
+
+  // Instant high: contact identifiers
+  if (hasEmail || hasPhone) {
+    score = Math.max(score, 100);
+    if (hasEmail) positives.push("E-Mail stimmt (+100)");
+    if (hasPhone) positives.push("Telefon stimmt (+100)");
   }
 
+  // Alias / username
+  if (hasAlias) {
+    score = Math.max(score, 85);
+    positives.push("Alias/Username stimmt (+85)");
+  }
+
+  // Name + location/company
+  if (hasFirst && hasLast && (hasLocation || hasCompany)) {
+    score = Math.max(score, 80);
+    positives.push(hasLocation ? "Name + Wohnort (+80)" : "Name + Firma (+80)");
+  } else if (hasFirst && hasLast) {
+    score = Math.max(score, 50);
+    positives.push("Vorname + Nachname (+50)");
+  } else if (hasLast && hasLocation && !hasFirst) {
+    score = Math.max(score, 30);
+    positives.push("Nachname + Wohnort (+30)");
+  }
+
+  // Additive nuance on top of floors (capped later)
+  if (hasFirst) score += 5;
+  if (hasLast) score += 5;
+  if (hasLocation) score += 8;
+  if (hasCompany) score += 8;
+
   const meta = getCategoryMeta(hit.category, hit.url, hit.title);
-  if (meta.filterKey === "image") {
-    score += 10;
+  if (meta.filterKey === "image" && (hasFirst || hasLast || hasAlias)) {
+    score += 8;
     positives.push("Profilbild / Medien");
     checks.push({ label: "Profilbild vorhanden", found: true });
   }
-  if (
-    meta.filterKey === "social" &&
-    (hasFirst || hasLast || matchedAliases.length)
-  ) {
-    score += 15;
+  if (meta.filterKey === "social" && (hasFirst || hasLast || hasAlias)) {
+    score += 10;
     positives.push("Social-Media-Link passt");
     checks.push({ label: "Social Handle passt", found: true });
   }
 
-  if (hasLast && !hasFirst && first.length >= 2) {
-    score -= 40;
-    negatives.push("Nur Nachname gleich");
-  } else if (first.length >= 2 && !hasFirst && hasLast) {
-    score -= 40;
-    negatives.push("Vorname unterschiedlich / fehlt");
+  // Soft penalty only when NO strong identifier exists
+  const hasStrongSignal = hasEmail || hasPhone || hasAlias;
+  if (!hasStrongSignal && hasLast && !hasFirst && first.length >= 2) {
+    score = Math.max(0, score - 15);
+    negatives.push("Nur Nachname ohne Vorname/Alias");
   }
 
-  score = Math.max(0, Math.min(100, score));
-  if (hasFirst && hasLast && score < 50) {
-    score = Math.max(score, 55);
-  }
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  // Never drop strong identifier matches below high band
+  if (hasEmail || hasPhone) score = Math.max(score, 92);
+  if (hasAlias) score = Math.max(score, 70);
 
   const label =
     score >= 90

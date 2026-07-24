@@ -104,12 +104,27 @@ export function isJunkHit(input: {
 /**
  * Rank / filter SERP hits: dedupe URLs, drop obvious junk, prefer subject matches.
  * Profile-linked hits are always kept.
+ * Strong signals (E-Mail, Telefon, Alias, Name+Ort) werden nicht früh verworfen.
  */
 export function refineSerpHits(
   hits: IntelligenceHit[],
-  subjectName: string
+  subjectName: string,
+  options?: {
+    emails?: string[];
+    phones?: string[];
+    aliases?: string[];
+    location?: string | null;
+  }
 ): IntelligenceHit[] {
   const subjectTokens = extractSubjectTokens(subjectName);
+  const emails = (options?.emails ?? []).map((e) => e.toLowerCase());
+  const aliases = (options?.aliases ?? [])
+    .map((a) => a.trim().toLowerCase())
+    .filter((a) => a.length >= 2);
+  const location = (options?.location ?? "").trim().toLowerCase();
+  const phoneDigits = (options?.phones ?? [])
+    .map((p) => p.replace(/\D+/g, ""))
+    .filter((d) => d.length >= 6);
   const seen = new Set<string>();
   const refined: IntelligenceHit[] = [];
 
@@ -126,12 +141,29 @@ export function refineSerpHits(
     if (isJunkHit(hit)) continue;
 
     const subjectText = `${hit.title} ${hit.snippet} ${hit.url}`;
+    const lower = subjectText.toLowerCase();
+    const digitHay = subjectText.replace(/\D+/g, "");
     const matchesSubject = textMatchesSubject(subjectText, subjectTokens);
+    const matchesEmail = emails.some((email) => lower.includes(email));
+    const matchesAlias = aliases.some((alias) => lower.includes(alias));
+    const matchesPhone = phoneDigits.some((digits) =>
+      digitHay.includes(digits)
+    );
+    const matchesLocation = location.length >= 3 && lower.includes(location);
+    const nameTokensHit = subjectTokens.filter((t) => lower.includes(t));
+    const matchesNameLocation = nameTokensHit.length >= 1 && matchesLocation;
+
     const sensitive =
       hit.category === "email" ||
       hit.category === "phone" ||
+      hit.category === "adult" ||
+      hit.category === "alias" ||
       hit.risk === "action" ||
-      hit.risk === "review";
+      hit.risk === "review" ||
+      matchesEmail ||
+      matchesPhone ||
+      matchesAlias ||
+      matchesNameLocation;
 
     if (!matchesSubject && !sensitive) {
       // Keep only if still moderately useful (social/company watch)
@@ -148,8 +180,11 @@ export function refineSerpHits(
         "Der Treffer bezieht sich erkennbar auf Ihren Namen oder Profilbezug.";
     }
     if (!matchesSubject && sensitive) {
-      whyRelevant =
-        "Kontaktdaten oder Verzeichnis-Signale — auch ohne klaren Namensmatch relevant.";
+      whyRelevant = matchesAlias
+        ? "Alias-/Username-Match — auch bei abweichendem Namen relevant."
+        : matchesEmail || matchesPhone
+          ? "Kontaktdaten-Match — auch ohne klaren Namensmatch relevant."
+          : "Standort-/Identitäts-Signale — auch ohne vollständigen Namensmatch relevant.";
     }
 
     refined.push({
@@ -163,6 +198,7 @@ export function refineSerpHits(
   const priority = (hit: IntelligenceHit): number => {
     if (hit.risk === "action") return 0;
     if (hit.risk === "review") return 1;
+    if ((hit.identityConfidence ?? 0) >= 85) return 1;
     if (hit.relevance === "relevant") return 2;
     if (hit.risk === "watch") return 3;
     if (hit.relevance === "neutral") return 4;
@@ -170,6 +206,8 @@ export function refineSerpHits(
   };
 
   return refined.sort((a, b) => {
+    const conf = (b.identityConfidence ?? 0) - (a.identityConfidence ?? 0);
+    if (Math.abs(conf) >= 10) return conf;
     const diff = priority(a) - priority(b);
     if (diff !== 0) return diff;
     return a.title.localeCompare(b.title, "de");

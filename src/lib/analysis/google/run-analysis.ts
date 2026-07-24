@@ -81,16 +81,37 @@ function clean(value: string | undefined | null): string {
 
 function inferCategory(query: string, label: string): string {
   const lower = query.toLowerCase();
-  if (label === "E-Mail" || lower.includes("@")) return "email";
-  if (label === "Telefon" || lower.includes("+")) return "phone";
-  if (label === "Firma") return "company";
-  if (label === "Alias") return "alias";
-  if (label === "Website" || lower.startsWith("site:")) return "website";
-  if (label === "Name + Wohnort" || label === "Name") return "name";
-  if (label === "Name + Firma") return "company";
+  if (
+    label === "E-Mail" ||
+    label === "Direct Identifiers" ||
+    lower.includes("@")
+  )
+    return "email";
+  if (label === "Telefon" || label === "Phone Sweep" || lower.includes("+"))
+    return "phone";
+  if (label === "Firma" || label === "Identity + Professional")
+    return "company";
+  if (label === "Alias" || label === "Alias Social" || label === "Alias Sweep")
+    return "alias";
+  if (
+    label === "Website" ||
+    label === "Own Domains" ||
+    lower.startsWith("site:")
+  )
+    return "website";
+  if (
+    label === "Name + Wohnort" ||
+    label === "Name" ||
+    label === "Identity + Location" ||
+    label === "Exact Identity"
+  )
+    return "name";
+  if (label === "Name + Firma" || label === "Business Profiles")
+    return "company";
   if (label === "Ort / Adresse") return "address";
-  if (label === "Adult / Nische") return "adult";
-  if (label === "Foren / Leaks") return "forum";
+  if (label === "Adult / Niche") return "adult";
+  if (label === "Foren / Mentions" || label === "Foren / Leaks") return "forum";
+  if (label === "Public Records") return "document";
   return "general";
 }
 
@@ -303,7 +324,7 @@ export async function runGoogleIntelligenceAnalysis(
   let serpSuccessCount = 0;
 
   if (apiConfigured) {
-    const batches = await mapPool(queries, 2, async (plan) => {
+    const batches = await mapPool(queries, 4, async (plan) => {
       const engine: SerpSearchEngine =
         plan.engine === "bing" ? "bing" : "google";
       try {
@@ -432,8 +453,9 @@ export async function runGoogleIntelligenceAnalysis(
           hitCount: serpHits.length,
           unitPriceUsd: 0.025,
           unitPriceEurNote: "$0.025 × 0.92 ≈ €0.023",
-          maxQueries: 5,
+          maxQueries: 12,
           safeSearch: "off",
+          concurrency: 4,
           queries: queries.map((plan) => ({
             id: plan.id,
             label: plan.label,
@@ -446,7 +468,12 @@ export async function runGoogleIntelligenceAnalysis(
   }
 
   const profileHits = profileLinkedHits(identity, generatedAt, hitSeq);
-  const refinedSerp = refineSerpHits(serpHits, subjectName);
+  const refinedSerp = refineSerpHits(serpHits, subjectName, {
+    emails: fingerprint.emails,
+    phones: fingerprint.phones,
+    aliases: fingerprint.aliases,
+    location: fingerprint.location || fingerprint.region,
+  });
   const intelContext = {
     subjectName,
     firstName: identity?.personal.firstName ?? "",

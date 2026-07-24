@@ -8,6 +8,11 @@ import {
   postProcessGeminiSummary,
 } from "@/lib/analysis/osint/gemini-summary-builder";
 import {
+  GEMINI_OSINT_SAFETY_SETTINGS,
+  GEMINI_SAFETY_FALLBACK_MESSAGE,
+  isGeminiSafetyBlock,
+} from "@/lib/analysis/gemini-safety";
+import {
   markApiCredentialError,
   markApiCredentialSuccess,
   resolveGeminiCredentials,
@@ -24,6 +29,22 @@ interface GeminiUsageMetadata {
   candidatesTokenCount?: number;
   totalTokenCount?: number;
   thoughtsTokenCount?: number;
+}
+
+interface GeminiCandidate {
+  finishReason?: string;
+  content?: { parts?: Array<{ text?: string; thought?: boolean }> };
+  safetyRatings?: Array<{ category?: string; probability?: string }>;
+}
+
+interface GeminiGenerateResponse {
+  candidates?: GeminiCandidate[];
+  promptFeedback?: {
+    blockReason?: string;
+    safetyRatings?: Array<{ category?: string; probability?: string }>;
+  };
+  usageMetadata?: GeminiUsageMetadata;
+  error?: { message?: string; status?: string };
 }
 
 function parseUsageMetadata(raw: unknown): ApiTokenUsage | null {
@@ -57,13 +78,7 @@ function mergeTokenUsage(
   };
 }
 
-function extractCandidateText(
-  candidate:
-    | {
-        content?: { parts?: Array<{ text?: string; thought?: boolean }> };
-      }
-    | undefined
-): string {
+function extractCandidateText(candidate: GeminiCandidate | undefined): string {
   const parts = candidate?.content?.parts ?? [];
   return parts
     .filter((part) => !part.thought && typeof part.text === "string")
@@ -87,7 +102,7 @@ function generationConfigForModel(model: string): Record<string, unknown> {
 }
 
 /**
- * Gemini KI-Lagebild — nur verifizierte Treffer (Confidence >= 70).
+ * Gemini KI-Lagebild — Top-ranked Treffer, Safety BLOCK_NONE für OSINT.
  */
 export async function summarizeWithGemini(
   report: Pick<
@@ -125,6 +140,7 @@ export async function summarizeWithGemini(
   let attempts = 0;
   let accumulatedUsage: ApiTokenUsage | null = null;
   let bestPartial: string | null = null;
+  let safetyBlocked = false;
 
   for (const model of models) {
     attempts += 1;
@@ -137,6 +153,7 @@ export async function summarizeWithGemini(
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: generationConfigForModel(model),
+            safetySettings: GEMINI_OSINT_SAFETY_SETTINGS,
           }),
         }
       );
@@ -146,18 +163,28 @@ export async function summarizeWithGemini(
         lastError = `HTTP ${response.status}: ${detail.slice(0, 200)}`;
         continue;
       }
-      const body = (await response.json()) as {
-        candidates?: Array<{
-          finishReason?: string;
-          content?: { parts?: Array<{ text?: string; thought?: boolean }> };
-        }>;
-        usageMetadata?: GeminiUsageMetadata;
-      };
+      const body = (await response.json()) as GeminiGenerateResponse;
       accumulatedUsage = mergeTokenUsage(
         accumulatedUsage,
         parseUsageMetadata(body.usageMetadata)
       );
       const candidate = body.candidates?.[0];
+      const finishReason = candidate?.finishReason ?? null;
+      const promptBlock = body.promptFeedback?.blockReason ?? null;
+
+      if (
+        isGeminiSafetyBlock({
+          finishReason,
+          blockReason: promptBlock,
+          promptBlockReason: promptBlock,
+        })
+      ) {
+        safetyBlocked = true;
+        lastError = `SAFETY block (${model}): finishReason=${finishReason ?? "n/a"} blockReason=${promptBlock ?? "n/a"}`;
+        // Try next model — some tolerate adult/leak content better.
+        continue;
+      }
+
       const text = extractCandidateText(candidate);
       if (!text) {
         lastError = "empty candidate text";
@@ -166,7 +193,6 @@ export async function summarizeWithGemini(
 
       const sanitized = sanitizeAiSummary(text);
       const linked = postProcessGeminiSummary(sanitized, verifiedHits);
-      const finishReason = candidate?.finishReason ?? null;
       const truncatedByLimit =
         finishReason === "MAX_TOKENS" || finishReason === "LENGTH";
       // Structured OSINT summary: accept if long enough and not hard-truncated.
@@ -198,7 +224,7 @@ export async function summarizeWithGemini(
         requestCount: attempts,
         success: true,
         detail: tokens
-          ? `KI-Lagebild · ${report.subjectName} · ${model} · ${tokens.promptTokenCount} in / ${tokens.candidatesTokenCount} out · ${verifiedHits.length} verified hits`
+          ? `KI-Lagebild · ${report.subjectName} · ${model} · ${tokens.promptTokenCount} in / ${tokens.candidatesTokenCount} out · ${verifiedHits.length} hits`
           : `KI-Lagebild · ${report.subjectName} · ${model}`,
         tokenUsage: tokens,
         metaJson: {
@@ -208,6 +234,7 @@ export async function summarizeWithGemini(
           subjectName: report.subjectName,
           finishReason,
           charCount: linked.length,
+          safetySettings: "BLOCK_NONE",
         },
       });
       return linked;
@@ -240,6 +267,29 @@ export async function summarizeWithGemini(
       });
       return fallback;
     }
+  }
+
+  if (safetyBlocked) {
+    await markApiCredentialSuccess("gemini");
+    await recordApiUsageEvent({
+      providerCode: "gemini",
+      eventType: "summarize_safety_fallback",
+      referenceKey: `gemini-safety:${report.subjectName}:${Date.now()}`,
+      requestCount: Math.max(1, attempts),
+      success: true,
+      detail: `KI-Lagebild Safety-Fallback · ${report.subjectName}`,
+      tokenUsage: accumulatedUsage,
+      metaJson: {
+        attempts,
+        subjectName: report.subjectName,
+        lastError,
+        safetySettings: "BLOCK_NONE",
+      },
+    });
+    return postProcessGeminiSummary(
+      GEMINI_SAFETY_FALLBACK_MESSAGE,
+      verifiedHits
+    );
   }
 
   await markApiCredentialError("gemini", lastError);

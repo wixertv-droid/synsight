@@ -11,6 +11,9 @@ import type { AggregatedProfile } from "@/lib/analysis/osint/profile-aggregator"
 import type { ThreatMatrix } from "@/lib/analysis/osint/threat-evaluator";
 import { detectSensitiveCategories } from "@/lib/analysis/osint/threat-evaluator";
 
+const GEMINI_TOP_HIT_LIMIT = 30;
+const GEMINI_PROFILE_MIN = 50;
+
 export interface GeminiHitPayload {
   title: string;
   url: string;
@@ -42,54 +45,72 @@ export function buildVerifiedGeminiPayload(
   payload: Record<string, unknown>;
   prompt: string;
 } {
-  const verifiedHits = hits.filter(
-    (hit) =>
-      isLiveSerpSource(hit.sourceType) &&
-      (hit.identityConfidence ?? 0) >= VERIFIED_CONFIDENCE_MIN
+  // Top 25–30 höchst gerankte Treffer — bevorzugt verifiziert, dann möglich
+  const rankedHits = hits
+    .filter((hit) => isLiveSerpSource(hit.sourceType))
+    .sort((a, b) => (b.identityConfidence ?? 0) - (a.identityConfidence ?? 0));
+  const high = rankedHits.filter(
+    (hit) => (hit.identityConfidence ?? 0) >= VERIFIED_CONFIDENCE_MIN
+  );
+  const medium = rankedHits.filter((hit) => {
+    const score = hit.identityConfidence ?? 0;
+    return score >= 50 && score < VERIFIED_CONFIDENCE_MIN;
+  });
+  const lowFill = rankedHits.filter((hit) => {
+    const score = hit.identityConfidence ?? 0;
+    return score >= 30 && score < 50;
+  });
+  let payloadSourceHits = [...high, ...medium].slice(0, GEMINI_TOP_HIT_LIMIT);
+  // Nur wenn keine High-Confidence-Treffer: niedrigere Scores für Substanz nachziehen
+  if (high.length === 0 && payloadSourceHits.length < 12) {
+    payloadSourceHits = [...payloadSourceHits, ...lowFill].slice(
+      0,
+      GEMINI_TOP_HIT_LIMIT
+    );
+  }
+
+  const categories = aggregateByOsintCategory(payloadSourceHits).map(
+    (item) => ({
+      label: item.label,
+      count: item.count,
+      avgConfidence: item.avgConfidence,
+      riskLevel: item.riskLevel,
+    })
   );
 
-  const categories = aggregateByOsintCategory(verifiedHits).map((item) => ({
-    label: item.label,
-    count: item.count,
-    avgConfidence: item.avgConfidence,
-    riskLevel: item.riskLevel,
-  }));
-
-  const sources = buildSourceLinks(verifiedHits).map((link) => ({
+  const sources = buildSourceLinks(payloadSourceHits).map((link) => ({
     platform: link.platform,
     url: link.url,
     title: link.title,
   }));
 
-  const sensitive = detectSensitiveCategories(verifiedHits);
-  const hasPublicEmail = verifiedHits.some((h) =>
+  const sensitive = detectSensitiveCategories(payloadSourceHits);
+  const hasPublicEmail = payloadSourceHits.some((h) =>
     /@|e-?mail/i.test(`${h.title} ${h.snippet}`)
   );
-  const hasPublicPhone = verifiedHits.some((h) =>
+  const hasPublicPhone = payloadSourceHits.some((h) =>
     /\+?\d[\d\s/-]{6,}|telefon/i.test(`${h.title} ${h.snippet}`)
   );
-  const hasPublicAddress = verifiedHits.some((h) =>
+  const hasPublicAddress = payloadSourceHits.some((h) =>
     /straße|strasse|plz|\b\d{5}\b|adresse/i.test(`${h.title} ${h.snippet}`)
   );
 
-  const payloadHits: GeminiHitPayload[] = verifiedHits
-    .slice(0, 40)
-    .map((hit) => ({
-      title: hit.title,
-      url: hit.url,
-      snippet: hit.snippet,
-      category: hit.displayCategory ?? hit.category,
-      risk: hit.risk,
-      source: hit.source,
-      confidence: hit.identityConfidence ?? 0,
-      confidenceLabel: hit.identityConfidenceLabel ?? "",
-      severity: hit.severity ?? "low",
-      checks: hit.confidenceChecks,
-      pageCount: hit.pageCount,
-    }));
+  const payloadHits: GeminiHitPayload[] = payloadSourceHits.map((hit) => ({
+    title: hit.title,
+    url: hit.url,
+    snippet: hit.snippet,
+    category: hit.displayCategory ?? hit.category,
+    risk: hit.risk,
+    source: hit.source,
+    confidence: hit.identityConfidence ?? 0,
+    confidenceLabel: hit.identityConfidenceLabel ?? "",
+    severity: hit.severity ?? "low",
+    checks: hit.confidenceChecks,
+    pageCount: hit.pageCount,
+  }));
 
   const profiles = (options?.profiles ?? [])
-    .filter((p) => p.maxConfidence >= VERIFIED_CONFIDENCE_MIN)
+    .filter((p) => p.maxConfidence >= GEMINI_PROFILE_MIN)
     .map((p) => ({
       platform: p.platform,
       host: p.host,
@@ -99,13 +120,13 @@ export function buildVerifiedGeminiPayload(
       confidence: p.maxConfidence,
     }));
 
-  const sourceBlock = formatSourceMarkdown(buildSourceLinks(verifiedHits));
+  const sourceBlock = formatSourceMarkdown(buildSourceLinks(payloadSourceHits));
 
   const payload = {
     subject: subjectName,
     riskLevel,
     fingerprintHash: options?.fingerprintHash ?? null,
-    hitCount: verifiedHits.length,
+    hitCount: payloadSourceHits.length,
     categories,
     profiles,
     sensitiveFindings: sensitive,
@@ -174,7 +195,7 @@ ${sourceBlock}
 DATEN (JSON — einzige erlaubte Faktenbasis):
 ${JSON.stringify(payload)}`;
 
-  return { verifiedHits, payload, prompt };
+  return { verifiedHits: payloadSourceHits, payload, prompt };
 }
 
 export function postProcessGeminiSummary(
@@ -184,8 +205,7 @@ export function postProcessGeminiSummary(
   const links = buildSourceLinks(
     hits.filter(
       (hit) =>
-        isLiveSerpSource(hit.sourceType) &&
-        (hit.identityConfidence ?? 0) >= VERIFIED_CONFIDENCE_MIN
+        isLiveSerpSource(hit.sourceType) && (hit.identityConfidence ?? 0) >= 30
     )
   );
   return linkifySummaryText(raw.trim(), links);

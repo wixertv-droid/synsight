@@ -52,14 +52,17 @@ function sampleIdentity(): IdentityView {
 }
 
 describe("buildGoogleQueriesFromIdentity", () => {
-  it("builds at most 5 queries only from profile fields", () => {
+  it("builds OSINT recon matrix (8–12) from all profile fields", () => {
     const queries = buildGoogleQueriesFromIdentity(sampleIdentity());
-    expect(queries.length).toBeLessThanOrEqual(5);
+    expect(queries.length).toBeLessThanOrEqual(12);
+    expect(queries.length).toBeGreaterThanOrEqual(7);
     const joined = queries.map((q) => q.query).join(" ");
     expect(joined).toContain("Anna Beispiel");
     expect(joined).toContain("anna@beispiel.de");
     expect(joined).toContain("SynSight GmbH");
     expect(joined).toContain("+49 170 1234567");
+    expect(joined).toMatch(/linkedin\.com|xing\.com|northdata/i);
+    expect(queries.some((q) => q.engine === "bing")).toBe(true);
   });
 });
 

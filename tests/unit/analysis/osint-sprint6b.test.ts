@@ -72,13 +72,14 @@ function hit(partial: Partial<IntelligenceHit>): IntelligenceHit {
 }
 
 describe("SearchPlanner", () => {
-  it("plans at most 5 hybrid queries in priority order without duplicates", () => {
+  it("plans at most 12 hybrid recon queries without duplicates", () => {
     const plans = planGoogleSearches(identity());
-    expect(plans.length).toBeLessThanOrEqual(5);
+    expect(plans.length).toBeLessThanOrEqual(12);
+    expect(plans.length).toBeGreaterThanOrEqual(7);
     const joined = plans.map((p) => p.query).join(" ");
     expect(joined).toContain("Anna Beispiel");
     expect(joined).toContain("Berlin");
-    expect(plans[0]?.label).toBe("Telefon");
+    expect(plans[0]?.label).toBe("Direct Identifiers");
     expect(plans.some((p) => p.query.includes("anna@beispiel.de"))).toBe(true);
     expect(
       plans.some(
@@ -111,7 +112,24 @@ describe("ConfidenceScorer", () => {
     expect(result.score).toBeGreaterThanOrEqual(70);
   });
 
-  it("penalizes last-name-only matches", () => {
+  it("keeps alias matches high even without full name", () => {
+    const result = scoreIdentityConfidence(
+      hit({
+        title: "User anna_beispiel",
+        snippet: "Profil anna.b",
+        url: "https://github.com/anna_beispiel",
+      }),
+      {
+        subjectName: "Anna Beispiel",
+        firstName: "Anna",
+        lastName: "Beispiel",
+        aliases: ["anna_beispiel", "anna.b"],
+      }
+    );
+    expect(result.score).toBeGreaterThanOrEqual(70);
+  });
+
+  it("penalizes last-name-only matches without strong signals", () => {
     const result = scoreIdentityConfidence(
       hit({
         title: "Max Beispiel in Hamburg",

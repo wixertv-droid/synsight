@@ -3,9 +3,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { IntelligenceScanStep } from "@/lib/analysis/types";
 
+const TERMINAL_LINES = [
+  "Scanning Footprint…",
+  "Building Identity Fingerprint…",
+  "Querying Vector 1 · Direct Identifiers…",
+  "Querying Vector 2 · Identity + Location…",
+  "Querying Vector 3 · Professional…",
+  "Querying Vector 4 · Alias Social…",
+  "Querying Vector 5 · Business Profiles…",
+  "Querying Vector 6 · Adult / Niche (Bing)…",
+  "Querying Vector 7 · Public Records…",
+  "Connecting Node cluster α…",
+  "Connecting Node cluster β…",
+  "Normalizing entities…",
+  "Resolving duplicate hosts…",
+  "Computing confidence matrix…",
+  "Evaluating threat dimensions…",
+  "Assembling KI-Lagebild payload…",
+];
+
 /**
  * Enterprise SOC Intelligence Scan — modern security-console aesthetic
- * (Sentinel / Chronicle / CrowdStrike inspired). Canvas graph + live counters.
+ * (Sentinel / Chronicle / CrowdStrike inspired). Canvas graph + live terminal.
  */
 export default function IntelligenceScanSequence({
   steps,
@@ -26,10 +45,12 @@ export default function IntelligenceScanSequence({
   const [edges, setEdges] = useState(0);
   const [signals, setSignals] = useState(0);
   const [deduped, setDeduped] = useState(0);
+  const [terminalLines, setTerminalLines] = useState<string[]>([]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nodesRef = useRef<
     Array<{ x: number; y: number; vx: number; vy: number; r: number }>
   >([]);
+  const terminalIndexRef = useRef(0);
 
   useEffect(() => {
     if (!running) {
@@ -38,7 +59,9 @@ export default function IntelligenceScanSequence({
       setEdges(0);
       setSignals(0);
       setDeduped(0);
+      setTerminalLines([]);
       nodesRef.current = [];
+      terminalIndexRef.current = 0;
       return;
     }
 
@@ -46,13 +69,24 @@ export default function IntelligenceScanSequence({
     const tick = window.setInterval(() => {
       const ms = Date.now() - started;
       setElapsed(ms);
-      setEntities((v) => v + 1 + Math.floor(Math.random() * 3));
-      setEdges((v) => v + Math.floor(Math.random() * 4));
-      setSignals((v) => v + 2 + Math.floor(Math.random() * 6));
-      if (ms > 5000) setDeduped((v) => v + (Math.random() > 0.6 ? 1 : 0));
-    }, 80);
+      setEntities((v) => v + 2 + Math.floor(Math.random() * 5));
+      setEdges((v) => v + 2 + Math.floor(Math.random() * 6));
+      setSignals((v) => v + 4 + Math.floor(Math.random() * 8));
+      if (ms > 4000) setDeduped((v) => v + (Math.random() > 0.5 ? 1 : 0));
+    }, 70);
 
-    return () => window.clearInterval(tick);
+    const stream = window.setInterval(() => {
+      const idx = terminalIndexRef.current % TERMINAL_LINES.length;
+      terminalIndexRef.current += 1;
+      const stamp = (Date.now() - started) / 1000;
+      const line = `[${stamp.toFixed(1)}s] ${TERMINAL_LINES[idx]}`;
+      setTerminalLines((prev) => [...prev.slice(-11), line]);
+    }, 380);
+
+    return () => {
+      window.clearInterval(tick);
+      window.clearInterval(stream);
+    };
   }, [running]);
 
   const activeIndex = useMemo(() => {
@@ -89,20 +123,22 @@ export default function IntelligenceScanSequence({
     const resize = () => {
       const parent = canvas.parentElement;
       const w = parent?.clientWidth ?? 640;
-      const h = 220;
+      const h = 240;
       const dpr = window.devicePixelRatio || 1;
       canvas.width = Math.floor(w * dpr);
       canvas.height = Math.floor(h * dpr);
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Deutlich mehr Knoten für die Recon-Matrix
       if (nodesRef.current.length === 0) {
-        nodesRef.current = Array.from({ length: 28 }, () => ({
+        nodesRef.current = Array.from({ length: 64 }, () => ({
           x: Math.random() * w,
           y: Math.random() * h,
-          vx: (Math.random() - 0.5) * 0.6,
-          vy: (Math.random() - 0.5) * 0.6,
-          r: 1.5 + Math.random() * 2.2,
+          // doppelte Animationsgeschwindigkeit
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: (Math.random() - 0.5) * 1.2,
+          r: 1.4 + Math.random() * 2.4,
         }));
       }
     };
@@ -115,16 +151,15 @@ export default function IntelligenceScanSequence({
       const h = canvas.clientHeight;
       ctx.clearRect(0, 0, w, h);
 
-      // grid
       ctx.strokeStyle = "rgba(56, 189, 248, 0.06)";
       ctx.lineWidth = 1;
-      for (let x = 0; x < w; x += 28) {
+      for (let x = 0; x < w; x += 24) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, h);
         ctx.stroke();
       }
-      for (let y = 0; y < h; y += 28) {
+      for (let y = 0; y < h; y += 24) {
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(w, y);
@@ -139,6 +174,7 @@ export default function IntelligenceScanSequence({
         if (node.y < 0 || node.y > h) node.vy *= -1;
       }
 
+      // Edges: größere Reichweite + schnellere Sweep-Wahrnehmung
       for (let i = 0; i < nodes.length; i += 1) {
         for (let j = i + 1; j < nodes.length; j += 1) {
           const a = nodes[i];
@@ -146,8 +182,8 @@ export default function IntelligenceScanSequence({
           const dx = a.x - b.x;
           const dy = a.y - b.y;
           const dist = Math.hypot(dx, dy);
-          if (dist < 90) {
-            ctx.strokeStyle = `rgba(56, 189, 248, ${0.18 * (1 - dist / 90)})`;
+          if (dist < 110) {
+            ctx.strokeStyle = `rgba(56, 189, 248, ${0.22 * (1 - dist / 110)})`;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
@@ -157,17 +193,17 @@ export default function IntelligenceScanSequence({
       }
 
       for (const node of nodes) {
-        ctx.fillStyle = "rgba(125, 211, 252, 0.85)";
+        ctx.fillStyle = "rgba(125, 211, 252, 0.9)";
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // sweep
-      const sweepX = ((frame * 2) % (w + 80)) - 40;
+      // Sweep doppelt so schnell
+      const sweepX = ((frame * 4) % (w + 80)) - 40;
       const grad = ctx.createLinearGradient(sweepX - 40, 0, sweepX + 40, 0);
       grad.addColorStop(0, "rgba(56,189,248,0)");
-      grad.addColorStop(0.5, "rgba(56,189,248,0.12)");
+      grad.addColorStop(0.5, "rgba(56,189,248,0.14)");
       grad.addColorStop(1, "rgba(56,189,248,0)");
       ctx.fillStyle = grad;
       ctx.fillRect(sweepX - 40, 0, 80, h);
@@ -212,7 +248,7 @@ export default function IntelligenceScanSequence({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-[9px] tracking-[.18em] text-sky-300/70">
-              ENTERPRISE INTELLIGENCE ENGINE · LIVE PIPELINE
+              OSINT RECON MATRIX · LIVE PIPELINE
             </p>
             <p className="mt-1 text-base text-white/85 md:text-lg">
               Subject · <span className="text-sky-200">{subjectName}</span>
@@ -238,7 +274,7 @@ export default function IntelligenceScanSequence({
       <div className="relative grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="border-b border-white/[0.06] p-5 lg:border-b-0 lg:border-r lg:border-white/[0.06]">
           <p className="mb-3 font-mono text-[8px] tracking-[.14em] text-white/35">
-            ENTITY GRAPH · NORMALIZATION
+            ENTITY GRAPH · DATA POINTS
           </p>
           <div className="overflow-hidden rounded-lg border border-white/[0.06] bg-[#05080e]">
             <canvas ref={canvasRef} className="block w-full" />
@@ -258,6 +294,23 @@ export default function IntelligenceScanSequence({
                 </p>
               </div>
             ))}
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-lg border border-white/[0.06] bg-[#04070c]">
+            <p className="border-b border-white/[0.05] px-3 py-1.5 font-mono text-[8px] tracking-[.14em] text-white/35">
+              LIVE TERMINAL · CODE STREAM
+            </p>
+            <div className="h-[140px] space-y-1 overflow-hidden px-3 py-2 font-mono text-[10px] leading-relaxed text-emerald-300/75">
+              {terminalLines.length === 0 ? (
+                <p className="text-white/25">Initializing recon stream…</p>
+              ) : (
+                terminalLines.map((line) => (
+                  <p key={line} className="truncate">
+                    {line}
+                  </p>
+                ))
+              )}
+            </div>
           </div>
         </div>
 
