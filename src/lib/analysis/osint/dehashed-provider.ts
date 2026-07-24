@@ -1,8 +1,8 @@
 /**
  * DeHashed Search Provider — Google OSINT Pipeline.
  *
- * Auth: HTTP Basic (DEHASHED_EMAIL + DEHASHED_API_KEY)
- * Endpoint: GET https://api.dehashed.com/search?query=
+ * Auth: Header `DeHashed-Api-Key` (Admin-DB oder Env-Fallback)
+ * Endpoint: POST https://api.dehashed.com/v2/search
  *
  * Bei API-Fehlern (401/429/leeres Guthaben/Netzwerk): leeres Array —
  * die SerpAPI Google/Bing-Analyse darf NICHT abstürzen.
@@ -16,6 +16,8 @@ import type { IdentityView } from "@/lib/services/identity-service";
 import type { IntelligenceHit } from "@/lib/analysis/types";
 
 export const DEHASHED_PROVIDER_ID = "dehashed" as const;
+
+const DEHASHED_V2_SEARCH_URL = "https://api.dehashed.com/v2/search";
 
 export interface DehashedLeakDetail {
   databaseName: string;
@@ -36,7 +38,6 @@ export interface DehashedSearchOutput {
 }
 
 interface DehashedCredentials {
-  email: string;
   apiKey: string;
   source: string;
 }
@@ -60,22 +61,8 @@ function tryDecrypt(
   }
 }
 
-function readConfigEmail(configJson: unknown): string | null {
-  let value: unknown = configJson;
-  if (typeof value === "string") {
-    try {
-      value = JSON.parse(value) as unknown;
-    } catch {
-      return null;
-    }
-  }
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const email = (value as { email?: unknown }).email;
-  return typeof email === "string" && email.includes("@") ? email.trim() : null;
-}
-
-async function resolveDehashedBasicAuth(): Promise<DehashedCredentials | null> {
-  // 1) Admin-DB zuerst (Account-E-Mail + API-Key)
+async function resolveDehashedApiKey(): Promise<DehashedCredentials | null> {
+  // 1) Admin-DB zuerst (API-Key; Account-E-Mail ist nur Referenz)
   const db = getDatabase();
   if (db) {
     try {
@@ -87,10 +74,8 @@ async function resolveDehashedBasicAuth(): Promise<DehashedCredentials | null> {
       const row = rows[0];
       if (row?.isActive) {
         const decrypted = tryDecrypt(row.encryptedSecret);
-        const email = readConfigEmail(row.configJson) || "";
-        if (decrypted.ok && decrypted.value.trim() && email) {
+        if (decrypted.ok && decrypted.value.trim()) {
           return {
-            email,
             apiKey: decrypted.value.trim(),
             source: "database",
           };
@@ -102,13 +87,12 @@ async function resolveDehashedBasicAuth(): Promise<DehashedCredentials | null> {
   }
 
   // 2) Optionaler Env-Fallback (nur wenn Admin noch nicht gesetzt)
-  const envEmail = process.env.DEHASHED_EMAIL?.trim() || "";
   const envKey =
     process.env.DEHASHED_API_KEY?.trim() ||
     process.env.DEHASHED_API_TOKEN?.trim() ||
     "";
-  if (envEmail && envKey) {
-    return { email: envEmail, apiKey: envKey, source: "env" };
+  if (envKey) {
+    return { apiKey: envKey, source: "env" };
   }
   return null;
 }
@@ -277,30 +261,31 @@ export async function searchDehashedForIdentity(
   const empty: DehashedSearchOutput = { hits: [], leaksForGemini: [] };
 
   try {
-    const credentials = await resolveDehashedBasicAuth();
+    const credentials = await resolveDehashedApiKey();
     if (!credentials) {
-      console.warn(
-        "[dehashed-provider] not configured (DEHASHED_EMAIL + API key)"
-      );
+      console.warn("[dehashed-provider] not configured (API key missing)");
       return empty;
     }
 
     const query = buildDehashedQueryFromIdentity(identity);
     if (!query) return empty;
 
-    const url = `https://api.dehashed.com/search?query=${encodeURIComponent(query)}&size=100`;
-    const basic = Buffer.from(
-      `${credentials.email}:${credentials.apiKey}`,
-      "utf8"
-    ).toString("base64");
-
-    const response = await fetch(url, {
-      method: "GET",
+    const response = await fetch(DEHASHED_V2_SEARCH_URL, {
+      method: "POST",
       headers: {
+        "Content-Type": "application/json",
         Accept: "application/json",
-        Authorization: `Basic ${basic}`,
+        "DeHashed-Api-Key": credentials.apiKey,
         "User-Agent": "SynSight-OSINT/1.0",
       },
+      body: JSON.stringify({
+        query,
+        page: 1,
+        size: 100,
+        wildcard: false,
+        regex: false,
+        de_dupe: true,
+      }),
       cache: "no-store",
     });
 

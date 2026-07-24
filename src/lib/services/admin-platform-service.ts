@@ -41,7 +41,7 @@ export interface ApiCredentialSummary {
   isActive: boolean;
   configured: boolean;
   engineId: string | null;
-  /** DeHashed account email (Basic Auth username), stored in config_json */
+  /** DeHashed account email (Admin-Referenz), stored in config_json */
   accountEmail: string | null;
   lastSuccessAt: string | null;
   lastErrorAt: string | null;

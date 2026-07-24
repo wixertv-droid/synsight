@@ -64,7 +64,8 @@ npm run build
 pm2 restart synsight
 ```
 
-Danach Admin → APIs: **DeHashed.com**-Key speichern und **API TESTEN**.
+Danach Admin → APIs: **DeHashed.com** Account-E-Mail + API-Key speichern und **API TESTEN**
+(Auth läuft über Header `DeHashed-Api-Key` gegen `POST /v2/search`).
 
 ## Offene Punkte
 

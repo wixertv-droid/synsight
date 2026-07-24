@@ -284,109 +284,55 @@ export async function searchDehashedByPhone(
   };
 }
 
-/** Admin connectivity probe — Basic Auth like production Google pipeline. */
+/**
+ * Admin connectivity probe — DeHashed Search API v2.
+ * Auth: header `DeHashed-Api-Key` (Account-E-Mail nur Admin-Referenz, nicht für Auth).
+ */
 export async function testDehashedConnection(input: {
   secret?: string | null;
   accountEmail?: string | null;
 }): Promise<ApiCredentialTestResult> {
   const started = Date.now();
   let apiKey = input.secret?.trim() || "";
-  let accountEmail = input.accountEmail?.trim() || "";
   let source = "draft";
 
-  if (!apiKey || !accountEmail) {
-    const db = getDatabase();
-    if (db) {
-      try {
-        const rows = await db
-          .select()
-          .from(apiCredentials)
-          .where(eq(apiCredentials.provider, DEHASHED_PROVIDER))
-          .limit(1);
-        const row = rows[0];
-        if (row?.isActive) {
-          if (!apiKey) {
-            const decrypted = tryDecrypt(row.encryptedSecret);
-            if (decrypted.ok) {
-              apiKey = decrypted.value.trim();
-              source = "database";
-            }
-          }
-          if (!accountEmail) {
-            let cfg: unknown = row.configJson;
-            if (typeof cfg === "string") {
-              try {
-                cfg = JSON.parse(cfg) as unknown;
-              } catch {
-                cfg = null;
-              }
-            }
-            const email =
-              cfg &&
-              typeof cfg === "object" &&
-              !Array.isArray(cfg) &&
-              typeof (cfg as { email?: unknown }).email === "string"
-                ? String((cfg as { email: string }).email).trim()
-                : "";
-            if (email.includes("@")) accountEmail = email;
-          }
-        }
-      } catch (error) {
-        console.error("[dehashed] test resolve failed", error);
-      }
+  if (!apiKey) {
+    const resolved = await resolveDehashedCredentials();
+    if (resolved) {
+      apiKey = resolved.apiKey;
+      source = resolved.source;
     }
   }
 
-  if (!apiKey || !accountEmail) {
+  if (!apiKey) {
     return {
       provider: DEHASHED_PROVIDER,
       ok: false,
       message: "✕ API Verbindung fehlgeschlagen",
-      detail: "Bitte DeHashed Account-E-Mail und API-Key im Admin speichern.",
+      detail: "Bitte DeHashed API-Key im Admin speichern.",
       latencyMs: Date.now() - started,
     };
   }
 
   try {
-    const basic = Buffer.from(`${accountEmail}:${apiKey}`, "utf8").toString(
-      "base64"
-    );
-    const response = await fetch(
-      `https://api.dehashed.com/search?query=${encodeURIComponent(
-        'email:"synsight-api-probe@example.invalid"'
-      )}&size=1`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          Authorization: `Basic ${basic}`,
-          "User-Agent": "SynSight-OSINT/1.0",
-        },
-        cache: "no-store",
-      }
+    // Probe with a non-matching address — success = auth + endpoint OK (0 hits fine)
+    const result = await dehashedSearch(
+      apiKey,
+      'email:"synsight-api-probe@example.invalid"',
+      1
     );
     const latencyMs = Date.now() - started;
-    const bodyText = await response.text().catch(() => "");
-
-    if (!response.ok) {
-      const detail = `HTTP ${response.status}${bodyText ? ` · ${bodyText.slice(0, 120)}` : ""}`;
-      await markDehashedStatus(false, detail);
-      console.error("[dehashed] admin test failed", detail);
-      return {
-        provider: DEHASHED_PROVIDER,
-        ok: false,
-        message: "✕ API Verbindung fehlgeschlagen",
-        detail,
-        latencyMs,
-      };
-    }
-
     await markDehashedStatus(true);
+    const balancePart =
+      result.balance != null ? ` · Balance=${result.balance}` : "";
+    const emailHint = input.accountEmail?.trim()
+      ? ` · Account=${input.accountEmail.trim()}`
+      : "";
     return {
       provider: DEHASHED_PROVIDER,
       ok: true,
       message: "✓ DeHashed.com API Verbindung erfolgreich",
-      detail: `Quelle=${source} · Basic Auth · ${latencyMs} ms`,
+      detail: `Quelle=${source} · v2/search · ${latencyMs} ms${balancePart}${emailHint}`,
       latencyMs,
     };
   } catch (error) {

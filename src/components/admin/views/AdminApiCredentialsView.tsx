@@ -118,15 +118,6 @@ export default function AdminApiCredentialsView() {
       setMessage("Bitte zuerst einen API-Schlüssel speichern.");
       return;
     }
-    if (
-      provider === "dehashed" &&
-      !draft?.accountEmail.trim() &&
-      !row?.accountEmail
-    ) {
-      setMessageTone("err");
-      setMessage("Bitte zuerst die DeHashed Account-E-Mail speichern.");
-      return;
-    }
     setBusyProvider(provider);
     setMessage(null);
     try {
@@ -276,7 +267,7 @@ export default function AdminApiCredentialsView() {
                             },
                           }))
                         }
-                        placeholder="DeHashed Account-E-Mail"
+                        placeholder="DeHashed Account-E-Mail (Referenz)"
                         className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/80 outline-none focus:border-cyber-cyan/35"
                       />
                     ) : null}
