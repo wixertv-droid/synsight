@@ -67,13 +67,20 @@ pm2 restart synsight
 Danach Admin → APIs: **DeHashed.com** Account-E-Mail + API-Key speichern und **API TESTEN**
 (Auth läuft über Header `DeHashed-Api-Key` gegen `POST /v2/search`).
 
-**Wichtig:** Nach Deploy **immer** `npm run db:migrate` ausführen (Migrationen `020`–`022`
-für Schema-Tabellen `digital_exposure_*`). Zusätzlich schreibt `ensureDigitalLeakCatalog`
-beim App-Start und bei Katalog-/API-Kosten-Reads die Pricing-/Cost-Zeilen nach — so
-erscheinen Digital Leak & DeHashed auch, wenn Migrate vergessen wurde oder ein
-Checksum-Mismatch auf `020` spätere Migrationen blockiert.
+**Wichtig:** Nach Deploy Katalog absichern:
 
-Prüfen nach Deploy (auch ohne manuellen Migrate für Katalog-Daten):
+```bash
+DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run db:migrate
+DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run db:ensure-catalog
+# Falls migrate an Checksum scheitert:
+# mysql -u synsight -p synsight < database/fixes/repair_digital_leak_catalog.sql
+```
+
+Zusätzlich schreibt `ensureDigitalLeakCatalog` beim App-Start und bei Katalog-/API-Kosten-Reads
+die Pricing-/Cost-Zeilen nach (Raw-SQL + Force-Repair), damit Digital Leak & DeHashed auch
+erscheinen, wenn Migrate vergessen wurde.
+
+Prüfen nach Deploy:
 
 - Analysecenter QUICK: **Digital Leak & Exposure Scan** (8 SynCredits), **kein** Telefon/E-Mail
 - Ergebniscenter: Tab Digital Leak & Exposure
