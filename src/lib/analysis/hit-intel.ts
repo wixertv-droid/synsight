@@ -25,6 +25,8 @@ export interface HitIntelContext {
   emails?: string[];
   phones?: string[];
   aliases?: string[];
+  usernames?: string[];
+  domains?: string[];
 }
 
 export interface HitAiEvaluation {
@@ -205,6 +207,8 @@ export function enrichHitIntel(
       emails: context.emails,
       phones: context.phones,
       aliases: context.aliases,
+      usernames: context.usernames,
+      domains: context.domains,
     })
   );
   const confidence = scored.score;

@@ -20,7 +20,17 @@ export interface IdentitySignals {
   emails?: string[];
   phones?: string[];
   aliases?: string[];
+  usernames?: string[];
+  domains?: string[];
   countryHints?: string[];
+}
+
+/** Sprint 6C Confidence-Bänder */
+export function scoreConfidenceBandLabel(score: number): string {
+  if (score >= 90) return "Bestätigt";
+  if (score >= 70) return "Hohe Übereinstimmung";
+  if (score >= 50) return "Möglicher Treffer";
+  return "Nicht anzeigen";
 }
 
 export interface ConfidenceCheck {
@@ -125,6 +135,20 @@ function includesInsensitive(hay: string, needle: string): boolean {
   return n.length >= 2 && hay.toLowerCase().includes(n);
 }
 
+function uniqueLocations(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    const cleaned = value.trim();
+    if (cleaned.length < 2) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(cleaned);
+  }
+  return out;
+}
+
 function digitsOnly(value: string): string {
   return value.replace(/\D+/g, "");
 }
@@ -199,7 +223,7 @@ export function scoreIdentityConfidence(
   if (hit.sourceType === "identity_profile") {
     return {
       score: 96,
-      label: "Sehr hohe Übereinstimmung (Profil-Verknüpfung)",
+      label: "Bestätigt",
       positives: ["Direkt aus dem Identitätsprofil"],
       negatives: [],
       checks: [{ label: "Profil-Verknüpfung", found: true }],
@@ -228,6 +252,14 @@ export function scoreIdentityConfidence(
   const emails = (signals.emails ?? []).map((e) => e.trim()).filter(Boolean);
   const phones = (signals.phones ?? []).map((p) => p.trim()).filter(Boolean);
   const aliases = (signals.aliases ?? []).map((a) => a.trim()).filter(Boolean);
+  const usernames = (signals.usernames ?? [])
+    .map((u) => u.trim())
+    .filter(Boolean);
+  const domains = (signals.domains ?? []).map((d) => d.trim()).filter(Boolean);
+  const allLocations = uniqueLocations([
+    location,
+    ...(signals.locations ?? []),
+  ]);
 
   let score = 0;
   const positives: string[] = [];
@@ -239,8 +271,10 @@ export function scoreIdentityConfidence(
   checks.push({ label: "Vorname gefunden", found: hasFirst });
   checks.push({ label: "Nachname gefunden", found: hasLast });
 
-  const hasLocation =
-    location.length >= 3 && includesInsensitive(text, location);
+  const matchedLocations = allLocations.filter((loc) =>
+    includesInsensitive(text, loc)
+  );
+  const hasLocation = matchedLocations.length > 0;
   checks.push({ label: "Wohnort gefunden", found: hasLocation });
 
   const hasCompany = company.length >= 3 && includesInsensitive(text, company);
@@ -254,7 +288,7 @@ export function scoreIdentityConfidence(
     includesInsensitive(text, email)
   );
   const hasEmail = matchedEmails.length > 0;
-  checks.push({ label: "Mail gefunden", found: hasEmail });
+  checks.push({ label: "E-Mail gefunden", found: hasEmail });
 
   // HARTE REGEL 1 — exakter Alias-Override (wichtigste Regel)
   const matchedAliases = aliases.filter((alias) =>
@@ -263,16 +297,34 @@ export function scoreIdentityConfidence(
   const hasAlias = matchedAliases.length > 0;
   checks.push({ label: "Alias gefunden", found: hasAlias });
 
+  const matchedUsernames = usernames.filter((username) =>
+    exactAliasMatch(text, username)
+  );
+  const hasUsername = matchedUsernames.length > 0;
+  checks.push({ label: "Benutzername gefunden", found: hasUsername });
+
+  const matchedDomains = domains.filter((domain) =>
+    includesInsensitive(text, domain.replace(/^www\./, ""))
+  );
+  const hasDomain = matchedDomains.length > 0;
+  checks.push({ label: "Domain gefunden", found: hasDomain });
+
   if (hasEmail || hasPhone) {
     score = Math.max(score, 100);
     if (hasEmail) positives.push("E-Mail stimmt (+100)");
     if (hasPhone) positives.push("Telefon stimmt (+100)");
   }
 
-  if (hasAlias) {
+  if (hasAlias || hasUsername) {
     score = Math.max(score, 90);
+    const handles = [...matchedAliases, ...matchedUsernames].slice(0, 3);
+    positives.push(`Alias/Username exakt: ${handles.join(", ")} (+90)`);
+  }
+
+  if (hasDomain) {
+    score = Math.max(score, 75);
     positives.push(
-      `Alias/Username exakt: ${matchedAliases.slice(0, 3).join(", ")} (+90)`
+      `Domain stimmt: ${matchedDomains.slice(0, 2).join(", ")} (+75)`
     );
   }
 
@@ -291,14 +343,21 @@ export function scoreIdentityConfidence(
   if (hasLast) score += 5;
   if (hasLocation) score += 8;
   if (hasCompany) score += 8;
+  if (hasDomain) score += 6;
 
   const meta = getCategoryMeta(hit.category, hit.url, hit.title);
-  if (meta.filterKey === "image" && (hasFirst || hasLast || hasAlias)) {
+  if (
+    meta.filterKey === "image" &&
+    (hasFirst || hasLast || hasAlias || hasUsername)
+  ) {
     score += 8;
     positives.push("Profilbild / Medien");
     checks.push({ label: "Profilbild vorhanden", found: true });
   }
-  if (meta.filterKey === "social" && (hasFirst || hasLast || hasAlias)) {
+  if (
+    meta.filterKey === "social" &&
+    (hasFirst || hasLast || hasAlias || hasUsername)
+  ) {
     score += 10;
     positives.push("Social-Media-Link passt");
     checks.push({ label: "Social Handle passt", found: true });
@@ -315,6 +374,7 @@ export function scoreIdentityConfidence(
 
   if (
     !hasAlias &&
+    !hasUsername &&
     !hasEmail &&
     !hasPhone &&
     hasLast &&
@@ -329,18 +389,15 @@ export function scoreIdentityConfidence(
 
   // Alias-/Kontakt-Override nach Penalty erneut absichern
   if (hasEmail || hasPhone) score = Math.max(score, 92);
-  if (hasAlias) score = Math.max(score, 90);
+  if (hasAlias || hasUsername) score = Math.max(score, 90);
 
-  const label =
-    score >= 90
-      ? "Sehr hohe Übereinstimmung"
-      : score >= 70
-        ? "Hohe Übereinstimmung"
-        : score >= 50
-          ? "Möglicher Treffer"
-          : "Geringe Übereinstimmung";
-
-  return { score, label, positives, negatives, checks };
+  return {
+    score,
+    label: scoreConfidenceBandLabel(score),
+    positives,
+    negatives,
+    checks,
+  };
 }
 
 export function buildSignalsFromIdentity(input: {
@@ -353,6 +410,8 @@ export function buildSignalsFromIdentity(input: {
   emails?: string[];
   phones?: string[];
   aliases?: string[];
+  usernames?: string[];
+  domains?: string[];
 }): IdentitySignals {
   const tokens = extractSubjectTokens(input.subjectName);
   const locations = [...(input.locations ?? []), input.location ?? ""].filter(
@@ -368,5 +427,7 @@ export function buildSignalsFromIdentity(input: {
     emails: input.emails ?? [],
     phones: input.phones ?? [],
     aliases: input.aliases ?? [],
+    usernames: input.usernames ?? [],
+    domains: input.domains ?? [],
   };
 }

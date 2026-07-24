@@ -9,6 +9,8 @@ import {
   type HitSeverity,
 } from "@/lib/analysis/hit-intel";
 import type { IntelligenceHit } from "@/lib/analysis/types";
+import InfoTooltip from "@/components/ui/InfoTooltip";
+import { osintGuidance } from "@/lib/content/guidance";
 
 type HitActionState = "none" | "ignored" | "watching" | "resolved";
 
@@ -116,11 +118,13 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
   const confidence = hit.identityConfidence ?? 40;
   const confidenceLabel =
     hit.identityConfidenceLabel ??
-    (confidence >= 75
-      ? "Sehr wahrscheinlich dieselbe Person"
-      : confidence >= 45
-        ? "Möglicher Bezug — manuell prüfen"
-        : "Wahrscheinlich Namensgleichheit");
+    (confidence >= 90
+      ? "Bestätigt"
+      : confidence >= 70
+        ? "Hohe Übereinstimmung"
+        : confidence >= 50
+          ? "Möglicher Treffer"
+          : "Nicht anzeigen");
   const evaluation = hit.aiEvaluation ?? {
     stars: confidence >= 70 ? 4 : 2,
     headline:
@@ -267,7 +271,17 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
           <span className="text-white/15">·</span>
           <span>Kategorie · {hit.displayCategory ?? meta.label}</span>
           <span className="text-white/15">·</span>
-          <span>Confidence · {confidence} %</span>
+          <span className="inline-flex items-center gap-1">
+            Confidence · {confidence} %
+            <InfoTooltip label="Confidence">
+              {osintGuidance.confidence}
+            </InfoTooltip>
+          </span>
+          <span className="text-white/15">·</span>
+          <span className="inline-flex items-center gap-1">
+            Risiko · {severityLabel(severity)}
+            <InfoTooltip label="Risk">{osintGuidance.risk}</InfoTooltip>
+          </span>
           <span className="text-white/15">·</span>
           <span>
             Zuletzt ·{" "}
@@ -295,20 +309,30 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
         </div>
 
         {hit.confidenceChecks && hit.confidenceChecks.length > 0 ? (
-          <ul className="flex flex-wrap gap-2">
-            {hit.confidenceChecks.map((check) => (
-              <li
-                key={check.label}
-                className={`rounded border px-2 py-0.5 font-mono text-[9px] ${
-                  check.found
-                    ? "border-emerald-400/25 text-emerald-100/75"
-                    : "border-white/10 text-white/30"
-                }`}
-              >
-                {check.found ? "✓" : "✗"} {check.label}
-              </li>
-            ))}
-          </ul>
+          <div>
+            <div className="mb-1.5 flex items-center gap-1.5">
+              <p className="font-mono text-[8px] tracking-[.12em] text-white/30">
+                WARUM GEFUNDEN · IDENTITY MATCH
+              </p>
+              <InfoTooltip label="Identity Match">
+                {osintGuidance.identityMatch}
+              </InfoTooltip>
+            </div>
+            <ul className="flex flex-wrap gap-2">
+              {hit.confidenceChecks.map((check) => (
+                <li
+                  key={check.label}
+                  className={`rounded border px-2 py-0.5 font-mono text-[9px] ${
+                    check.found
+                      ? "border-emerald-400/25 text-emerald-100/75"
+                      : "border-white/10 text-white/30"
+                  }`}
+                >
+                  {check.found ? "✓" : "✗"} {check.label}
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
 
         <div className="flex flex-wrap gap-2">

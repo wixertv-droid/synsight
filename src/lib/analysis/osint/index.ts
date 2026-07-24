@@ -12,6 +12,7 @@ export {
 export {
   scoreIdentityConfidence,
   buildSignalsFromIdentity,
+  scoreConfidenceBandLabel,
   exactAliasMatch,
   findForeignMajorCities,
   type IdentitySignals,

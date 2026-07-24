@@ -106,6 +106,7 @@ function inferCategory(query: string, label: string): string {
   if (
     label === "Name + Wohnort" ||
     label === "Name" ||
+    label === "Exakter Name" ||
     label === "Identity + Location" ||
     label === "Exact Identity"
   )
@@ -113,11 +114,29 @@ function inferCategory(query: string, label: string): string {
   if (label === "Name + Firma" || label === "Business Profiles")
     return "company";
   if (label === "Ort / Adresse") return "address";
-  if (label === "Adult / Niche" || label.startsWith("Adult Alias"))
+  if (
+    label === "Adult / Niche" ||
+    label.startsWith("Adult Alias") ||
+    label.startsWith("Adult / Niche")
+  )
     return "adult";
   if (label === "Foren / Mentions" || label === "Foren / Leaks") return "forum";
   if (label === "Public Records") return "document";
-  if (label === "Username Sweep" || label === "Alias Social") return "alias";
+  if (
+    label === "Username Sweep" ||
+    label === "Alias Social" ||
+    label === "Alias" ||
+    label === "Benutzername" ||
+    label.startsWith("E-Mail") ||
+    label.startsWith("Telefon")
+  )
+    return label.startsWith("E-Mail")
+      ? "email"
+      : label.startsWith("Telefon")
+        ? "phone"
+        : "alias";
+  if (label === "Domain / Webseite" || label === "Own Domains")
+    return "website";
   return "general";
 }
 
@@ -542,11 +561,17 @@ export async function runGoogleIntelligenceAnalysis(
     ].filter(Boolean),
     aliases: [
       identity?.aliases.publicAlias ?? "",
-      ...(identity?.aliases.usernames ?? []),
       ...(identity?.aliases.nicknames ?? []),
       ...(identity?.aliases.gamingNames ?? []),
       ...(identity?.aliases.formerNames ?? []),
     ].filter(Boolean),
+    usernames: [
+      ...(identity?.aliases.usernames ?? []),
+      ...(identity?.socialAccounts ?? [])
+        .map((a) => a.username)
+        .filter(Boolean),
+    ],
+    domains: fingerprint.domains,
   };
   const enrichedAll = dedupeHitsByUrl(
     [...refinedSerp, ...dehashedHits, ...profileHits].map((hit) =>
@@ -662,6 +687,7 @@ export async function runGoogleIntelligenceAnalysis(
   try {
     draft.aiSummary = await summarizeWithGemini(draft, {
       dehashedLeaks: dehashedLeaksForGemini,
+      profiles,
       userId: options?.userId ?? null,
     });
   } catch (error) {

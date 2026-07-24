@@ -4,22 +4,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { IntelligenceScanStep } from "@/lib/analysis/types";
 
 const TERMINAL_LINES = [
-  "Scanning Footprint…",
   "Building Identity Fingerprint…",
-  "Querying Vector 1 · Direct Identifiers…",
-  "Querying Vector 2 · Identity + Location…",
-  "Querying Vector 3 · Professional…",
-  "Querying Vector 4 · Alias Social…",
-  "Querying Vector 5 · Business Profiles…",
-  "Querying Vector 6 · Adult / Niche (Bing)…",
-  "Querying Vector 7 · Public Records…",
-  "Connecting Node cluster α…",
-  "Connecting Node cluster β…",
-  "Normalizing entities…",
-  "Resolving duplicate hosts…",
-  "Computing confidence matrix…",
-  "Evaluating threat dimensions…",
-  "Assembling KI-Lagebild payload…",
+  "Assembling Identity Matrix…",
+  "Planning Search Vectors (max 15)…",
+  "Querying Priority 1 · Name + Location…",
+  "Querying Priority 2 · Name + Company…",
+  "Querying Priority 3 · Exact Name…",
+  "Querying Priority 4–5 · Email / Phone…",
+  "Querying Priority 6–8 · Alias / Username / Domain…",
+  "Entity Matching · Name / Alias / Contact…",
+  "Entity Graph · Relationship Network…",
+  "Live Hashes · Data Nodes correlating…",
+  "Confidence Engine · Score Matrix…",
+  "Duplicate Resolver · Profile Aggregation…",
+  "Threat Matrix · Risk Evaluation…",
+  "Timeline · Source Correlation…",
+  "KI Summary · Digital Forensics Analyst…",
 ];
 
 /**

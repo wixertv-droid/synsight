@@ -117,6 +117,7 @@ export async function summarizeWithGemini(
   >,
   options?: {
     dehashedLeaks?: import("@/lib/analysis/osint/dehashed-provider").DehashedLeakDetail[];
+    profiles?: import("@/lib/analysis/osint/profile-aggregator").AggregatedProfile[];
     userId?: number | null;
   }
 ): Promise<string | null> {
@@ -131,6 +132,7 @@ export async function summarizeWithGemini(
       fingerprintHash: report.fingerprintHash ?? undefined,
       threatMatrix: report.threatMatrix ?? undefined,
       dehashedLeaks: options?.dehashedLeaks,
+      profiles: options?.profiles,
     }
   );
 

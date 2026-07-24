@@ -89,6 +89,24 @@ export const guidance = {
   },
 } as const;
 
+/** Sprint 6C — Enterprise OSINT Fachbegriffe (Info-Buttons) */
+export const osintGuidance = {
+  osint:
+    "OSINT (Open Source Intelligence) bedeutet die Auswertung öffentlich zugänglicher Quellen — Suchmaschinen, Profile, Foren, Dokumente und Register. SynSight erfindet keine privaten Daten.",
+  confidence:
+    "Confidence misst, wie gut ein Treffer zu Ihrer Identitätsmatrix passt. 90–100 % = Bestätigt, 70–89 % = Hohe Übereinstimmung, 50–69 % = Möglicher Treffer. Unter 50 % wird nicht angezeigt.",
+  identityMatch:
+    "Identity Match prüft Vorname, Nachname, Alias, Benutzername, Telefon, E-Mail, Firma, Wohnort und Domain gegen Titel, Snippet und URL des Treffers.",
+  leak: "Ein Leak / Datenleck liegt vor, wenn Identifikatoren (z. B. E-Mail oder Telefon) in bekannten Breach-Datenbanken auftauchen. DeHashed-Treffer gelten als verifiziert.",
+  entity:
+    "Eine Entity ist ein erkanntes Identitätsmerkmal oder ein verknüpftes Online-Objekt (Person, Profil, Domain, Handle), das mit Ihrer Fingerprint-Matrix korreliert wird.",
+  exposure:
+    "Exposure beschreibt, welche persönlichen Daten öffentlich auffindbar sind — z. B. Telefonnummer, E-Mail oder Anschrift in indexierten Quellen.",
+  threat:
+    "Threat bewertet belegte Risiken aus den gefundenen Quellen (Leak, Social Engineering, Impersonation, Reputation). Nur nachweisbare Signale zählen.",
+  risk: "Risk fasst die Gesamteinschätzung aus Trefferzahl, Confidence und Threat-Matrix zusammen. Mittel/Hoch bedeutet priorisierte Prüfung, nicht automatische Schuld.",
+} as const;
+
 export const analysisGuidance: Record<
   string,
   { what: string; why: string; result: string }

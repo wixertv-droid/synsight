@@ -79,7 +79,7 @@ describe("SearchPlanner", () => {
     const joined = plans.map((p) => p.query).join(" ");
     expect(joined).toContain("Anna Beispiel");
     expect(joined).toContain("Berlin");
-    expect(plans[0]?.label).toBe("Direct Identifiers");
+    expect(plans[0]?.label).toBe("Name + Wohnort");
     expect(plans.some((p) => p.query.includes("anna@beispiel.de"))).toBe(true);
     expect(
       plans.some(
