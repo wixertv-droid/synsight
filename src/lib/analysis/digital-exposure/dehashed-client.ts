@@ -190,6 +190,49 @@ export function summarizeDehashedEntries(
   );
 }
 
+/** Map DeHashed HTTP errors to actionable German admin messages. */
+export function formatDehashedHttpError(
+  status: number,
+  bodyText: string
+): string {
+  const raw = bodyText.trim();
+  let apiMessage = "";
+  try {
+    const parsed = raw
+      ? (JSON.parse(raw) as { error?: unknown; message?: unknown })
+      : null;
+    if (parsed && typeof parsed.error === "string") apiMessage = parsed.error;
+    else if (parsed && typeof parsed.message === "string")
+      apiMessage = parsed.message;
+  } catch {
+    apiMessage = "";
+  }
+  const lower = `${apiMessage} ${raw}`.toLowerCase();
+
+  if (
+    status === 401 &&
+    (lower.includes("search subscription") ||
+      lower.includes("api credits") ||
+      lower.includes("purchase a search"))
+  ) {
+    return (
+      "DeHashed Account hat kein aktives Search-Abo bzw. keine API-Credits. " +
+      "Bitte unter https://app.dehashed.com/subscriptions ein Search-Abo + Credits buchen, " +
+      "danach erneut „API TESTEN“."
+    );
+  }
+  if (status === 401 || status === 403) {
+    return (
+      "DeHashed API-Key ungültig oder ohne Berechtigung" +
+      (apiMessage ? ` — ${apiMessage.slice(0, 140)}` : "")
+    );
+  }
+  if (status === 429) {
+    return "DeHashed Rate-Limit erreicht — bitte kurz warten und erneut versuchen.";
+  }
+  return `DeHashed HTTP ${status}${raw ? `: ${raw.slice(0, 160)}` : ""}`;
+}
+
 async function dehashedSearch(
   apiKey: string,
   query: string,
@@ -221,9 +264,7 @@ async function dehashedSearch(
 
   const text = await response.text().catch(() => "");
   if (!response.ok) {
-    throw new Error(
-      `DeHashed HTTP ${response.status}${text ? `: ${text.slice(0, 160)}` : ""}`
-    );
+    throw new Error(formatDehashedHttpError(response.status, text));
   }
 
   let body: Record<string, unknown> = {};

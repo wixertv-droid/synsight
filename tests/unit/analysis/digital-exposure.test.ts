@@ -5,7 +5,10 @@ import {
   stripHtml,
 } from "@/lib/analysis/digital-exposure/mask";
 import { buildGeminiPrepPayload } from "@/lib/analysis/digital-exposure/gemini-prep";
-import { summarizeDehashedEntries } from "@/lib/analysis/digital-exposure/dehashed-client";
+import {
+  summarizeDehashedEntries,
+  formatDehashedHttpError,
+} from "@/lib/analysis/digital-exposure/dehashed-client";
 import type { DigitalExposureFinding } from "@/lib/analysis/digital-exposure/types";
 
 describe("digital exposure helpers", () => {
@@ -75,5 +78,18 @@ describe("digital exposure helpers", () => {
     expect(payload.instructions).toMatch(/Keine neuen Leaks/i);
     expect(payload.constraints.join(" ")).toMatch(/bestätigte API-Treffer/i);
     expect(JSON.stringify(payload)).not.toMatch(/password123|geheim/i);
+  });
+
+  it("maps DeHashed subscription 401 to a clear German message", () => {
+    const message = formatDehashedHttpError(
+      401,
+      JSON.stringify({
+        error:
+          "You need a search subscription and API credits to use the API, please purchase a search subscription.",
+      })
+    );
+    expect(message).toMatch(/Search-Abo/i);
+    expect(message).toMatch(/API-Credits/i);
+    expect(message).toMatch(/app\.dehashed\.com\/subscriptions/);
   });
 });
