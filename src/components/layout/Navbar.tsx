@@ -122,7 +122,20 @@ export default function Navbar() {
               }
               onClick={() => setMenuOpen(false)}
             >
-              Admin Center
+              Admin
+            </Link>
+          ) : null}
+          {session.user.role === "admin" || session.user.role === "support" ? (
+            <Link
+              href="/support-desk"
+              className={
+                mobile
+                  ? "block py-2 text-sm text-emerald-100/70"
+                  : "text-[12px] tracking-wide text-emerald-100/55 transition-colors hover:text-emerald-100/85"
+              }
+              onClick={() => setMenuOpen(false)}
+            >
+              Support
             </Link>
           ) : null}
           <button

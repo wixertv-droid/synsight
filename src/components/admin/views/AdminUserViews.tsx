@@ -85,7 +85,13 @@ export default function AdminUserOverviewView({
   );
 }
 
-export function AdminUserTable({ statusFilter }: { statusFilter?: string }) {
+export function AdminUserTable({
+  statusFilter,
+  profileHrefBase = "/admin/benutzer/profil",
+}: {
+  statusFilter?: string;
+  profileHrefBase?: string;
+}) {
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<
     Array<{
@@ -208,7 +214,7 @@ export function AdminUserTable({ statusFilter }: { statusFilter?: string }) {
                 </td>
                 <td className="px-3 py-3">
                   <Link
-                    href={`/admin/benutzer/profil/${user.id}`}
+                    href={`${profileHrefBase}/${user.id}`}
                     className="rounded border border-cyber-cyan/30 px-2 py-1 text-xs text-cyber-cyan hover:border-cyber-cyan/50"
                   >
                     Profil öffnen

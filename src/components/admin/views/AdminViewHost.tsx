@@ -20,17 +20,19 @@ export default function AdminViewHost({
   view,
   overviewStats,
   userId,
+  profileHrefBase,
 }: {
   view: string;
   overviewStats?: AdminUserOverviewStats | null;
   userId?: number;
+  profileHrefBase?: string;
 }) {
   switch (view) {
     case "user-overview":
       return <AdminUserOverviewView initialStats={overviewStats} />;
     case "user-management":
     case "support-user-search":
-      return <AdminUserTable />;
+      return <AdminUserTable profileHrefBase={profileHrefBase} />;
     case "user-credits-adjust":
       return <AdminUserControl />;
     case "user-audit":

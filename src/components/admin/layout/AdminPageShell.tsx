@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import InfoTooltip from "@/components/ui/InfoTooltip";
-import type { AdminNavItem, AdminSectionConfig } from "@/lib/admin/navigation";
+import {
+  ADMIN_SECTIONS,
+  type AdminNavItem,
+  type AdminSectionConfig,
+} from "@/lib/admin/navigation";
 
 export default function AdminPageShell({
   section,
@@ -17,6 +22,33 @@ export default function AdminPageShell({
 
   return (
     <div>
+      <nav
+        aria-label="Admin-Bereiche"
+        className="mb-5 flex flex-wrap gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.015] p-2"
+      >
+        <Link
+          href="/admin"
+          className="rounded-lg px-2.5 py-1.5 font-mono text-[8px] tracking-[.12em] text-white/35 transition hover:bg-white/[0.04] hover:text-white/70"
+        >
+          A0 Übersicht
+        </Link>
+        {ADMIN_SECTIONS.map((entry) => {
+          const active = entry.id === section.id;
+          return (
+            <Link
+              key={entry.id}
+              href={`${entry.href}/${entry.defaultSlug}`}
+              className={`rounded-lg px-2.5 py-1.5 font-mono text-[8px] tracking-[.12em] transition ${
+                active
+                  ? "bg-cyber-cyan/[0.12] text-cyber-cyan"
+                  : "text-white/35 hover:bg-white/[0.04] hover:text-white/70"
+              }`}
+            >
+              {entry.sidebarCode} {entry.title}
+            </Link>
+          );
+        })}
+      </nav>
       <header className="mb-6">
         <span className="hud-label">Admin / {section.title}</span>
         <h1 className="mt-3 flex flex-wrap items-center text-2xl font-semibold tracking-[-.03em] text-white md:text-3xl">

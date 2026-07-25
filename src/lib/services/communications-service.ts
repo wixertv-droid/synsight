@@ -1,4 +1,5 @@
 import type { AuthenticatedUser } from "@/lib/auth/types";
+import { isStaffRole } from "@/lib/admin/permissions";
 import { getCommunicationsRepository } from "@/lib/repositories";
 import {
   sendContactNotification,
@@ -16,7 +17,7 @@ import type {
 import type { CommunicationChannel } from "@/lib/repositories/communications-repository";
 
 export class AdminForbiddenError extends Error {
-  constructor(message = "Administratorrechte erforderlich.") {
+  constructor(message = "Support- oder Administratorrechte erforderlich.") {
     super(message);
     this.name = "AdminForbiddenError";
   }
@@ -37,8 +38,8 @@ export const defaultPublicSiteEmails = {
   privacyEmail: "datenschutz@synsight.de",
 };
 
-function assertAdmin(actor: AuthenticatedUser) {
-  if (actor.role !== "admin") throw new AdminForbiddenError();
+function assertStaff(actor: AuthenticatedUser) {
+  if (!isStaffRole(actor.role)) throw new AdminForbiddenError();
 }
 
 function assertNotSpam(website?: string) {
@@ -173,7 +174,7 @@ export async function submitPressRequest(input: {
 }
 
 export async function getCommunicationSettings(actor: AuthenticatedUser) {
-  assertAdmin(actor);
+  assertStaff(actor);
   return getCommunicationsRepository().getSettings();
 }
 
@@ -196,7 +197,7 @@ export async function updateCommunicationSettings(input: {
   supportEmail: string;
   privacyEmail: string;
 }) {
-  assertAdmin(input.actor);
+  assertStaff(input.actor);
   return getCommunicationsRepository().updateSettings({
     contactEmail: input.contactEmail,
     pressEmail: input.pressEmail,
@@ -208,7 +209,7 @@ export async function updateCommunicationSettings(input: {
 }
 
 export async function listCommunicationRequests(actor: AuthenticatedUser) {
-  assertAdmin(actor);
+  assertStaff(actor);
   const repo = getCommunicationsRepository();
   const [contact, partner, press, support] = await Promise.all([
     repo.listContactRequests(),
@@ -229,7 +230,7 @@ export async function updateCommunicationRequestStatus(input: {
   status: RequestStatus;
   adminNotes?: string | null;
 }) {
-  assertAdmin(input.actor);
+  assertStaff(input.actor);
   const updated = await getCommunicationsRepository().updateRequestStatus({
     channel: input.channel,
     id: input.id,
@@ -243,7 +244,7 @@ export async function updateCommunicationRequestStatus(input: {
 }
 
 export async function getCommunicationInboxSummary(actor: AuthenticatedUser) {
-  assertAdmin(actor);
+  assertStaff(actor);
   try {
     const requests = await listCommunicationRequests(actor);
 
@@ -319,7 +320,7 @@ export async function forwardCommunicationRequest(input: {
   channel: CommunicationChannel;
   id: number;
 }) {
-  assertAdmin(input.actor);
+  assertStaff(input.actor);
   const repo = getCommunicationsRepository();
   const settings = await repo.getSettings();
   const request = await findCommunicationRequest(input.channel, input.id);
@@ -398,7 +399,7 @@ export async function deleteCommunicationRequest(input: {
   channel: CommunicationChannel;
   id: number;
 }) {
-  assertAdmin(input.actor);
+  assertStaff(input.actor);
   const deleted = await getCommunicationsRepository().deleteRequest({
     channel: input.channel,
     id: input.id,

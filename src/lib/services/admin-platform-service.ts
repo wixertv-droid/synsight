@@ -1,4 +1,5 @@
 import type { AuthenticatedUser } from "@/lib/auth/types";
+import { isStaffRole } from "@/lib/admin/permissions";
 import { getDatabase } from "@/lib/database/client";
 import { apiCredentials, platformSettings } from "@/lib/database/schema";
 import { decryptSecret, encryptSecret } from "@/lib/security/secret-vault";
@@ -61,6 +62,10 @@ function assertAdmin(actor: AuthenticatedUser): void {
   if (actor.role !== "admin") throw new Error("ADMIN_FORBIDDEN");
 }
 
+function assertStaff(actor: AuthenticatedUser): void {
+  if (!isStaffRole(actor.role)) throw new Error("STAFF_FORBIDDEN");
+}
+
 function normalizeSettings(
   value: Partial<PlatformSettings> | null | undefined
 ): PlatformSettings {
@@ -87,36 +92,73 @@ export async function getAdminPlatformSettings(
   return getPublicPlatformSettings();
 }
 
-export async function updateAdminPlatformSettings(
+async function persistPlatformSettings(
   actor: AuthenticatedUser,
   input: Partial<PlatformSettings>
 ): Promise<PlatformSettings> {
-  assertAdmin(actor);
   const merged = normalizeSettings({
-    ...(await getAdminPlatformSettings(actor)),
+    ...(await getPublicPlatformSettings()),
     ...input,
   });
 
   const db = getDatabase();
   if (!db) return merged;
 
-  const adminId = Number(actor.id);
+  const actorId = Number(actor.id);
 
   await db
     .insert(platformSettings)
     .values({
       id: 1,
       settingsJson: merged,
-      updatedByAdminId: adminId,
+      updatedByAdminId: actorId,
     })
     .onDuplicateKeyUpdate({
       set: {
         settingsJson: merged,
-        updatedByAdminId: adminId,
+        updatedByAdminId: actorId,
       },
     });
 
   return merged;
+}
+
+export async function updateAdminPlatformSettings(
+  actor: AuthenticatedUser,
+  input: Partial<PlatformSettings>
+): Promise<PlatformSettings> {
+  assertAdmin(actor);
+  return persistPlatformSettings(actor, input);
+}
+
+export async function getSupportHoursSettings(actor: AuthenticatedUser) {
+  assertStaff(actor);
+  const settings = await getPublicPlatformSettings();
+  return {
+    supportHoursStart: settings.supportHoursStart,
+    supportHoursEnd: settings.supportHoursEnd,
+    supportTimezone: settings.supportTimezone,
+    supportResponseText: settings.supportResponseText,
+  };
+}
+
+export async function updateSupportHoursSettings(
+  actor: AuthenticatedUser,
+  input: {
+    supportHoursStart: string;
+    supportHoursEnd: string;
+    supportTimezone: string;
+    supportResponseText: string;
+  }
+) {
+  assertStaff(actor);
+  const settings = await persistPlatformSettings(actor, input);
+  return {
+    supportHoursStart: settings.supportHoursStart,
+    supportHoursEnd: settings.supportHoursEnd,
+    supportTimezone: settings.supportTimezone,
+    supportResponseText: settings.supportResponseText,
+  };
 }
 
 function readEngineId(configJson: unknown): string | null {

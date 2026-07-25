@@ -5,9 +5,11 @@ import { useState } from "react";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import PlatformBackground from "@/components/platform/PlatformBackground";
 import LogoutButton from "@/components/dashboard/LogoutButton";
+import StaffAreaButtons from "@/components/dashboard/StaffAreaButtons";
 import AdminInboxBadge from "@/components/admin/AdminInboxBadge";
 import StatusDot from "@/components/ui/StatusDot";
 import type { AuthenticatedUser } from "@/lib/auth/types";
+import { isStaffRole } from "@/lib/admin/permissions";
 
 interface DashboardShellProps {
   children: ReactNode;
@@ -21,6 +23,7 @@ export default function DashboardShell({
   creditBalance = 0,
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const staff = isStaffRole(user.role);
 
   return (
     <div className="min-h-screen bg-space-black text-white">
@@ -59,6 +62,7 @@ export default function DashboardShell({
             </span>
           </div>
           <div className="ml-auto flex items-center gap-3">
+            <StaffAreaButtons role={user.role} />
             <LogoutButton variant="text" className="hidden sm:inline-flex" />
             <a
               href="/dashboard#syncredits-dashboard"
@@ -71,8 +75,8 @@ export default function DashboardShell({
                 {creditBalance.toLocaleString("de-DE")}
               </p>
             </a>
-            {user.role === "admin" ? <AdminInboxBadge /> : null}
-            {user.role !== "admin" ? (
+            {staff ? <AdminInboxBadge /> : null}
+            {!staff ? (
               <button
                 type="button"
                 className="relative rounded-lg border border-white/[0.06] bg-white/[0.018] p-2.5 text-white/35 transition-colors hover:text-white/70"
@@ -89,12 +93,6 @@ export default function DashboardShell({
                 </svg>
               </button>
             ) : null}
-            <div className="hidden rounded-lg border border-white/[0.06] bg-white/[0.018] px-3 py-2 lg:block">
-              <p className="font-mono text-[8px] tracking-[.12em] text-white/32">
-                LAST SYNC
-              </p>
-              <p className="mt-1 text-[9px] text-white/55">Heute, 12:04</p>
-            </div>
           </div>
         </header>
         <div className="p-5 md:p-8 lg:p-10">{children}</div>

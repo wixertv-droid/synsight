@@ -29,4 +29,5 @@ export const PROTECTED_ROUTE_PREFIXES = [
   "/settings",
   "/onboarding",
   "/admin",
+  "/support-desk",
 ];

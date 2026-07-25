@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import BrandLogo from "@/components/ui/BrandLogo";
 import StatusDot from "@/components/ui/StatusDot";
 import LogoutButton from "@/components/dashboard/LogoutButton";
-import AdminMainSidebarLinks from "@/components/admin/layout/AdminMainSidebarLinks";
 import { getInitials } from "@/lib/utils/strings";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 
@@ -157,10 +156,6 @@ export default function DashboardSidebar({
               </Link>
             );
           })}
-          {user.role === "admin" &&
-          !pathname.startsWith("/dashboard/analysis") ? (
-            <AdminMainSidebarLinks onNavigate={onClose} />
-          ) : null}
         </nav>
 
         <div className="space-y-1 border-t border-white/[0.06] pt-5">
@@ -189,7 +184,11 @@ export default function DashboardSidebar({
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs text-white/70">{user.displayName}</p>
             <p className="mt-1 truncate font-mono text-[7px] tracking-wider text-white/20">
-              {user.role === "admin" ? "ADMIN ACCOUNT" : "USER ACCOUNT"}
+              {user.role === "admin"
+                ? "ADMIN ACCOUNT"
+                : user.role === "support"
+                  ? "SUPPORT ACCOUNT"
+                  : "USER ACCOUNT"}
             </p>
           </div>
           <LogoutButton />

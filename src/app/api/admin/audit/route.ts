@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { getAdminAccess } from "@/lib/admin/access";
+import { getStaffAccess } from "@/lib/admin/access";
 import { listAdminAuditEvents } from "@/lib/services/admin-user-profile-service";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const access = await getAdminAccess();
+  const access = await getStaffAccess();
   if (!access.granted) {
     return NextResponse.json(
       apiError(
         access.status === 401 ? "UNAUTHORIZED" : "FORBIDDEN",
         access.status === 401
           ? "Sie müssen angemeldet sein."
-          : "Administratorrechte erforderlich."
+          : "Support- oder Administratorrechte erforderlich."
       ),
       { status: access.status }
     );

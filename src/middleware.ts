@@ -8,9 +8,9 @@ import { verifySessionToken } from "@/lib/auth/session-token";
 
 /**
  * Route guard for the protected platform area (`/dashboard`, `/profile`,
- * `/settings`). Runs on the Edge runtime, so it only uses
- * `verifySessionToken`, which is implemented with the Web Crypto API and
- * has no Node-only dependencies.
+ * `/settings`, `/admin`, `/support-desk`). Runs on the Edge runtime, so it
+ * only uses `verifySessionToken`, which is implemented with the Web Crypto
+ * API and has no Node-only dependencies.
  *
  * This is the first line of defense; `(platform)/layout.tsx` additionally
  * calls `getCurrentUser()` server-side as defense in depth.
@@ -38,6 +38,17 @@ export async function middleware(request: NextRequest) {
     (pathname === "/admin" || pathname.startsWith("/admin/")) &&
     session.role !== "admin"
   ) {
+    if (session.role === "support") {
+      return NextResponse.redirect(new URL("/support-desk", request.url));
+    }
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  if (
+    (pathname === "/support-desk" || pathname.startsWith("/support-desk/")) &&
+    session.role !== "admin" &&
+    session.role !== "support"
+  ) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -51,5 +62,6 @@ export const config = {
     "/settings/:path*",
     "/onboarding/:path*",
     "/admin/:path*",
+    "/support-desk/:path*",
   ],
 };

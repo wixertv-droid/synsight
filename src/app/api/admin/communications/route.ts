@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { getAdminAccess } from "@/lib/admin/access";
+import { getStaffAccess } from "@/lib/admin/access";
 import {
   getCommunicationSettings,
   listCommunicationRequests,
@@ -19,14 +19,14 @@ function denied(status: 401 | 403) {
       status === 401 ? "UNAUTHORIZED" : "FORBIDDEN",
       status === 401
         ? "Sie müssen angemeldet sein."
-        : "Administratorrechte erforderlich."
+        : "Support- oder Administratorrechte erforderlich."
     ),
     { status }
   );
 }
 
 export async function GET() {
-  const access = await getAdminAccess();
+  const access = await getStaffAccess();
   if (!access.granted) return denied(access.status);
 
   const [settings, requests] = await Promise.all([
@@ -38,7 +38,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const access = await getAdminAccess();
+  const access = await getStaffAccess();
   if (!access.granted) return denied(access.status);
 
   const csrfError = validateMutationOrigin(request);
@@ -64,7 +64,7 @@ export async function PUT(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const access = await getAdminAccess();
+  const access = await getStaffAccess();
   if (!access.granted) return denied(access.status);
 
   const csrfError = validateMutationOrigin(request);
