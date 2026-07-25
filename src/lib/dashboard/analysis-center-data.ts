@@ -73,6 +73,24 @@ export const analysisModules: AnalysisModule[] = [
     accent: "from-rose-400/15 to-transparent",
   },
   {
+    id: "username_intelligence",
+    title: "Username Intelligence Scan",
+    tagline: "Wo taucht Ihr Benutzername öffentlich auf?",
+    description:
+      "Wir prüfen öffentliche Profile, Foren, Communities und Gaming-/Developer-Plattformen zu Ihren Benutzernamen — mit Identity Confidence und ohne Kombinatorik-Explosion.",
+    whatYouGet: [
+      "Plattformkarten mit Direktlinks",
+      "Identity Confidence je Treffer",
+      "KI-Lagebild und priorisierte Empfehlungen",
+    ],
+    duration: "ca. 20–60 Sek.",
+    tier: "quick",
+    badge: "Neu",
+    help: "Ideal, wenn Sie denselben Nicknamen auf mehreren Plattformen nutzen. Benötigt SerpAPI und mindestens einen Alias/Benutzernamen im Profil.",
+    icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
+    accent: "from-amber-300/15 to-transparent",
+  },
+  {
     id: "phone_analysis",
     title: "Telefonnummer",
     tagline: "Ist Ihre Nummer öffentlich auffindbar?",

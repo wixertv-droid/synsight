@@ -167,6 +167,14 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
         help: "api_cost_settings + api_usage_events — öffnen für Einzelkosten.",
         view: "finance-api-costs",
       },
+      {
+        slug: "username-intelligence",
+        label: "Username Intelligence",
+        description:
+          "SynCredits, SerpAPI-/Gemini-Kosten und Gewinnkalkulation.",
+        help: "username_module_settings — automatische Kosten-/Gewinnberechnung.",
+        view: "finance-api-costs",
+      },
     ],
   },
   {

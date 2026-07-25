@@ -93,6 +93,11 @@ export function buildProfileModuleReadiness(
       ]),
     },
     {
+      key: "username_intelligence",
+      label: "Username Intelligence",
+      ...score([{ ok: hasAlias(view), label: "Benutzername / Alias" }]),
+    },
+    {
       key: "phone_analysis",
       label: "Telefon Analyse",
       ...score([{ ok: hasPhone(view), label: "Telefonnummer" }]),

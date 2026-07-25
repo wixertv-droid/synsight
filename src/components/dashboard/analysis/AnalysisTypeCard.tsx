@@ -16,7 +16,9 @@ export default function AnalysisTypeCard({
       ? "/dashboard/analysis/google?start=1"
       : module.id === "digital_leak_exposure"
         ? "/dashboard/analysis/digital-exposure?start=1"
-        : `/dashboard/results#${module.id}`;
+        : module.id === "username_intelligence"
+          ? "/dashboard/analysis/username?start=1"
+          : `/dashboard/results#${module.id}`;
 
   return (
     <article

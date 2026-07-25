@@ -6,6 +6,10 @@ import type {
   ApiCostSettingPublic,
   ApiUsageEventPublic,
 } from "@/lib/services/finance-service";
+import type {
+  UsernameFinanceSnapshot,
+  UsernameModuleSettings,
+} from "@/lib/analysis/username/types";
 
 type SettingDraft = {
   label: string;
@@ -48,6 +52,20 @@ export default function AdminFinanceApiCostsView() {
   const [message, setMessage] = useState<string | null>(null);
   const [tone, setTone] = useState<"ok" | "err">("ok");
   const [busyCode, setBusyCode] = useState<string | null>(null);
+  const [usernameSettings, setUsernameSettings] =
+    useState<UsernameModuleSettings | null>(null);
+  const [usernameFinance, setUsernameFinance] =
+    useState<UsernameFinanceSnapshot | null>(null);
+  const [usernameBusy, setUsernameBusy] = useState(false);
+
+  const loadUsernameFinance = useCallback(async () => {
+    const response = await fetch("/api/admin/username-module");
+    const body = await response.json().catch(() => null);
+    if (response.ok && body?.success) {
+      setUsernameSettings(body.data.settings);
+      setUsernameFinance(body.data.finance);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/admin/finance/api-costs");
@@ -64,7 +82,35 @@ export default function AdminFinanceApiCostsView() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadUsernameFinance();
+  }, [load, loadUsernameFinance]);
+
+  async function saveUsernameFinance() {
+    if (!usernameSettings) return;
+    setUsernameBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/username-module", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(usernameSettings),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body?.success) {
+        setTone("err");
+        setMessage(
+          body?.error?.message ?? "Username Finance speichern fehlgeschlagen."
+        );
+        return;
+      }
+      setUsernameSettings(body.data.settings);
+      setUsernameFinance(body.data.finance);
+      setTone("ok");
+      setMessage("Username Intelligence Finanzen gespeichert.");
+    } finally {
+      setUsernameBusy(false);
+    }
+  }
 
   async function saveSetting(providerCode: string) {
     const draft = drafts[providerCode];
@@ -170,6 +216,113 @@ export default function AdminFinanceApiCostsView() {
 
   return (
     <div className="space-y-6">
+      {usernameSettings && usernameFinance ? (
+        <section
+          id="username-intelligence-finance"
+          className="rounded-[1.3rem] border border-amber-300/20 bg-gradient-to-br from-amber-300/[0.05] to-transparent p-5 md:p-6"
+        >
+          <p className="font-mono text-[9px] tracking-[.16em] text-amber-100/70">
+            USERNAME INTELLIGENCE · FINANZEN
+          </p>
+          <p className="mt-2 max-w-3xl text-sm text-white/45">
+            SynCredits, SerpAPI-/Gemini-Kosten, Gewinnaufschlag und automatische
+            Kalkulation pro Analyse.
+          </p>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {(
+              [
+                ["synCredits", "SynCredits"],
+                ["serpapiCostEur", "SerpAPI Kosten (€)"],
+                ["geminiCostEur", "Gemini Kosten (€)"],
+                ["markupPercent", "Gewinnaufschlag (%)"],
+                ["minProfitEur", "Mindestgewinn (€)"],
+                ["creditValueEur", "Credit-Wert (€)"],
+              ] as const
+            ).map(([key, label]) => (
+              <label
+                key={key}
+                className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3"
+              >
+                <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+                  {label.toUpperCase()}
+                </span>
+                <input
+                  type="number"
+                  step="0.001"
+                  value={usernameSettings[key]}
+                  onChange={(event) =>
+                    setUsernameSettings((current) =>
+                      current
+                        ? {
+                            ...current,
+                            [key]: Number(event.target.value),
+                          }
+                        : current
+                    )
+                  }
+                  className="mt-2 w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+                />
+              </label>
+            ))}
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              [
+                "Geschätzte API Kosten",
+                `${usernameFinance.estimatedApiCostEur.toFixed(4)} €`,
+              ],
+              [
+                "Kosten pro Analyse",
+                `${usernameFinance.costPerAnalysisEur.toFixed(4)} €`,
+              ],
+              [
+                "Umsatz pro Analyse",
+                `${usernameFinance.revenuePerAnalysisEur.toFixed(4)} €`,
+              ],
+              [
+                "Gewinn pro Analyse",
+                `${usernameFinance.profitPerAnalysisEur.toFixed(4)} €`,
+              ],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-xl border border-white/[0.07] bg-black/30 px-3 py-3"
+              >
+                <p className="font-mono text-[7px] tracking-[.1em] text-white/30">
+                  {label.toUpperCase()}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-white/85">
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <p
+            className={`mt-3 text-xs ${
+              usernameFinance.meetsMinProfit
+                ? "text-emerald-200/75"
+                : "text-amber-100/75"
+            }`}
+          >
+            {usernameFinance.meetsMinProfit
+              ? "Mindestgewinn erreicht."
+              : "Mindestgewinn unterschritten — SynCredits oder Kosten anpassen."}
+          </p>
+
+          <button
+            type="button"
+            disabled={usernameBusy}
+            onClick={() => void saveUsernameFinance()}
+            className="mt-4 rounded-lg border border-amber-300/35 bg-amber-300/[0.08] px-4 py-2 text-sm text-amber-100/85"
+          >
+            {usernameBusy ? "Speichern…" : "Username Finanzen speichern"}
+          </button>
+        </section>
+      ) : null}
+
       <section className="rounded-[1.3rem] border border-cyber-cyan/20 bg-gradient-to-br from-cyber-cyan/[0.05] to-transparent p-5 md:p-6">
         <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
           API-AUSGABEN · PREISE

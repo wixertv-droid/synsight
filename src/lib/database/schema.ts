@@ -1407,6 +1407,198 @@ export const apiUsageLogs = mysqlTable(
   ]
 );
 
+export const usernameAnalysis = mysqlTable(
+  "username_analysis",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 32 }).notNull().default("pending"),
+    subjectUsername: varchar("subject_username", { length: 255 }),
+    subjectName: varchar("subject_name", { length: 255 }),
+    startedAt: timestamp("started_at", { mode: "string", fsp: 3 }),
+    completedAt: timestamp("completed_at", { mode: "string", fsp: 3 }),
+    identityScore: int("identity_score", { unsigned: true })
+      .notNull()
+      .default(0),
+    riskScore: int("risk_score", { unsigned: true }).notNull().default(0),
+    confidence: int("confidence", { unsigned: true }).notNull().default(0),
+    hitCount: int("hit_count", { unsigned: true }).notNull().default(0),
+    queryCount: int("query_count", { unsigned: true }).notNull().default(0),
+    summary: text("summary"),
+    settingsJson: json("settings_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("username_analysis_user_id_idx").on(table.userId),
+    index("username_analysis_created_at_idx").on(table.createdAt),
+  ]
+);
+
+export const usernameHits = mysqlTable(
+  "username_hits",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    analysisId: bigint("analysis_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => usernameAnalysis.id, { onDelete: "cascade" }),
+    platform: varchar("platform", { length: 120 }).notNull(),
+    category: varchar("category", { length: 64 }).notNull().default("Sonstige"),
+    profileName: varchar("profile_name", { length: 255 }),
+    profileUrl: varchar("profile_url", { length: 500 }),
+    title: varchar("title", { length: 500 }),
+    snippet: text("snippet"),
+    visibleInfoJson: json("visible_info_json"),
+    identityScore: int("identity_score", { unsigned: true })
+      .notNull()
+      .default(0),
+    confidence: int("confidence", { unsigned: true }).notNull().default(0),
+    riskLevel: varchar("risk_level", { length: 16 }).notNull().default("low"),
+    firstSeen: varchar("first_seen", { length: 64 }),
+    queryUsed: varchar("query_used", { length: 500 }),
+    logoKey: varchar("logo_key", { length: 64 }),
+    metaJson: json("meta_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("username_hits_analysis_id_idx").on(table.analysisId),
+    index("username_hits_platform_idx").on(table.platform),
+    index("username_hits_confidence_idx").on(table.confidence),
+  ]
+);
+
+export const usernameReports = mysqlTable(
+  "username_reports",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    analysisId: bigint("analysis_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => usernameAnalysis.id, { onDelete: "cascade" }),
+    reportJson: json("report_json").notNull(),
+    managementSummary: text("management_summary"),
+    identityGraphJson: json("identity_graph_json"),
+    platformOverviewJson: json("platform_overview_json"),
+    timelineJson: json("timeline_json"),
+    heatmapJson: json("heatmap_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("username_reports_analysis_id_unique").on(table.analysisId),
+  ]
+);
+
+export const usernameAiReports = mysqlTable(
+  "username_ai_reports",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    analysisId: bigint("analysis_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => usernameAnalysis.id, { onDelete: "cascade" }),
+    model: varchar("model", { length: 120 }),
+    promptHash: varchar("prompt_hash", { length: 64 }),
+    content: text("content").notNull(),
+    tokenUsageJson: json("token_usage_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [index("username_ai_reports_analysis_id_idx").on(table.analysisId)]
+);
+
+export const usernameCostLogs = mysqlTable(
+  "username_cost_logs",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    analysisId: bigint("analysis_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => usernameAnalysis.id, { onDelete: "cascade" }),
+    userId: bigint("user_id", { mode: "number", unsigned: true }),
+    serpapiRequests: int("serpapi_requests", { unsigned: true })
+      .notNull()
+      .default(0),
+    serpapiCostEur: decimal("serpapi_cost_eur", { precision: 14, scale: 6 })
+      .notNull()
+      .default("0"),
+    geminiTokens: int("gemini_tokens", { unsigned: true }).notNull().default(0),
+    geminiCostEur: decimal("gemini_cost_eur", { precision: 14, scale: 6 })
+      .notNull()
+      .default("0"),
+    synCredits: int("syn_credits", { unsigned: true }).notNull().default(0),
+    totalApiCostEur: decimal("total_api_cost_eur", { precision: 14, scale: 6 })
+      .notNull()
+      .default("0"),
+    estimatedProfitEur: decimal("estimated_profit_eur", {
+      precision: 14,
+      scale: 6,
+    })
+      .notNull()
+      .default("0"),
+    metaJson: json("meta_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("username_cost_logs_analysis_id_idx").on(table.analysisId),
+    index("username_cost_logs_user_id_idx").on(table.userId),
+    index("username_cost_logs_created_at_idx").on(table.createdAt),
+  ]
+);
+
+export const usernameModuleSettings = mysqlTable("username_module_settings", {
+  id: int("id", { unsigned: true }).primaryKey().default(1),
+  isActive: boolean("is_active").notNull().default(true),
+  apiEnabled: boolean("api_enabled").notNull().default(true),
+  maxQueries: int("max_queries", { unsigned: true }).notNull().default(8),
+  countries: varchar("countries", { length: 255 }).notNull().default("de"),
+  language: varchar("language", { length: 16 }).notNull().default("de"),
+  resultLimit: int("result_limit", { unsigned: true }).notNull().default(40),
+  confidenceMin: int("confidence_min", { unsigned: true })
+    .notNull()
+    .default(60),
+  synCredits: int("syn_credits", { unsigned: true }).notNull().default(10),
+  serpapiCostEur: decimal("serpapi_cost_eur", { precision: 14, scale: 6 })
+    .notNull()
+    .default("0.023000"),
+  geminiCostEur: decimal("gemini_cost_eur", { precision: 14, scale: 6 })
+    .notNull()
+    .default("0.002000"),
+  markupPercent: decimal("markup_percent", { precision: 8, scale: 2 })
+    .notNull()
+    .default("100.00"),
+  minProfitEur: decimal("min_profit_eur", { precision: 14, scale: 6 })
+    .notNull()
+    .default("0.050000"),
+  creditValueEur: decimal("credit_value_eur", { precision: 14, scale: 6 })
+    .notNull()
+    .default("0.010000"),
+  updatedByAdminId: bigint("updated_by_admin_id", {
+    mode: "number",
+    unsigned: true,
+  }),
+  updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP(3)`)
+    .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+});
+
 export type DbUser = typeof users.$inferSelect;
 export type DbProfile = typeof profiles.$inferSelect;
 export type DbSession = typeof sessions.$inferSelect;

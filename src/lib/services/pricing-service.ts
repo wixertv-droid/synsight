@@ -3,6 +3,7 @@ import {
   ensureDigitalLeakCatalog,
   verifyDigitalLeakCatalog,
 } from "@/lib/credits/ensure-digital-leak-catalog";
+import { ensureUsernameCatalog } from "@/lib/credits/ensure-username-catalog";
 import {
   DEFAULT_ANALYSIS_PRICES,
   formatEuroFromCents,
@@ -44,6 +45,10 @@ const DIGITAL_LEAK_DEFAULT = DEFAULT_ANALYSIS_PRICES.find(
   (row) => row.key === "digital_leak_exposure"
 )!;
 
+const USERNAME_DEFAULT = DEFAULT_ANALYSIS_PRICES.find(
+  (row) => row.key === "username_intelligence"
+)!;
+
 /**
  * After DB ensure: drop replaced phone/email; inject digital_leak if still missing.
  * Injection is a last-resort UI safety net — ensure should have written the row.
@@ -60,24 +65,40 @@ function normalizePublicAnalyses(
   const withoutLegacy = analyses.filter(
     (row) => !isReplacedAnalysisKey(row.key)
   );
-  if (withoutLegacy.some((row) => row.key === "digital_leak_exposure")) {
-    return withoutLegacy;
+  let next = withoutLegacy;
+  if (!next.some((row) => row.key === "digital_leak_exposure")) {
+    next = [
+      ...next,
+      {
+        key: DIGITAL_LEAK_DEFAULT.key,
+        label: DIGITAL_LEAK_DEFAULT.label,
+        description: DIGITAL_LEAK_DEFAULT.description,
+        credits: DIGITAL_LEAK_DEFAULT.credits,
+        sortOrder: 25,
+      },
+    ];
   }
-  return [
-    ...withoutLegacy,
-    {
-      key: DIGITAL_LEAK_DEFAULT.key,
-      label: DIGITAL_LEAK_DEFAULT.label,
-      description: DIGITAL_LEAK_DEFAULT.description,
-      credits: DIGITAL_LEAK_DEFAULT.credits,
-      sortOrder: 25,
-    },
-  ].sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
+  if (!next.some((row) => row.key === "username_intelligence")) {
+    next = [
+      ...next,
+      {
+        key: USERNAME_DEFAULT.key,
+        label: USERNAME_DEFAULT.label,
+        description: USERNAME_DEFAULT.description,
+        credits: USERNAME_DEFAULT.credits,
+        sortOrder: 22,
+      },
+    ];
+  }
+  return next.sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)
+  );
 }
 
 export async function getPublicPricingCatalog() {
   try {
     await ensureDigitalLeakCatalog(false);
+    await ensureUsernameCatalog(false);
     const repository = getPricingRepository();
     let analyses = await repository.listAnalyses(true);
     let mapped = analyses.map((entry) => ({
@@ -90,10 +111,12 @@ export async function getPublicPricingCatalog() {
 
     const needsRepair =
       !mapped.some((row) => row.key === "digital_leak_exposure") ||
+      !mapped.some((row) => row.key === "username_intelligence") ||
       mapped.some((row) => isReplacedAnalysisKey(row.key));
 
     if (needsRepair) {
       await ensureDigitalLeakCatalog(true);
+      await ensureUsernameCatalog(true);
       analyses = await repository.listAnalyses(true);
       mapped = analyses.map((entry) => ({
         key: entry.analysisKey,
@@ -131,6 +154,7 @@ export async function getPublicPricingCatalog() {
 
 export async function getAnalysisQuote(userId: number, analysisKey: string) {
   await ensureDigitalLeakCatalog(false);
+  await ensureUsernameCatalog(false);
   const pricing = await getPricingRepository().findAnalysisByKey(analysisKey);
   if (!pricing || !pricing.isActive) return null;
   const account = await getCreditsRepository().ensureAccount(userId);
@@ -147,6 +171,7 @@ export async function getAnalysisQuote(userId: number, analysisKey: string) {
 export async function getAdminPricingCatalog(actor: AuthenticatedUser) {
   assertAdmin(actor);
   await ensureDigitalLeakCatalog(true);
+  await ensureUsernameCatalog(true);
   const repository = getPricingRepository();
   const [analyses, packages] = await Promise.all([
     repository.listAnalyses(false),

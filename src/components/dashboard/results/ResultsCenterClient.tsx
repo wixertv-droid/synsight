@@ -4,11 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import GoogleIntelligenceReport from "@/components/analysis/google/GoogleIntelligenceReport";
 import DigitalExposureReportView from "@/components/analysis/digital-exposure/DigitalExposureReportView";
+import UsernameIntelligenceReportView from "@/components/analysis/username/UsernameIntelligenceReportView";
 import IntelligenceScanSequence from "@/components/analysis/intelligence/IntelligenceScanSequence";
 import DashboardPageRail from "@/components/dashboard/DashboardPageRail";
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
 import { digitalLeakExposureModule } from "@/lib/analysis/digital-exposure/module";
 import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/types";
+import { usernameIntelligenceModule } from "@/lib/analysis/username/module";
+import type { UsernameReport } from "@/lib/analysis/username/types";
 import { googleIntelligenceModule } from "@/lib/analysis/google/module";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import {
@@ -42,6 +45,13 @@ const FALLBACK_TABS: ResultsTabModule[] = [
     title: "Digital Leak & Exposure Scan",
     help: "Datenlecks zu E-Mail und Telefon (DeHashed)",
     tagline: "Leak & Exposure",
+    available: true,
+  },
+  {
+    id: "username_intelligence",
+    title: "Username Intelligence Scan",
+    help: "Öffentliche Profile zu Benutzernamen",
+    tagline: "Username Intelligence",
     available: true,
   },
   {
@@ -103,15 +113,26 @@ async function loadLatestExposureReport(): Promise<DigitalExposureReport | null>
   return (body.data?.report as DigitalExposureReport | null) ?? null;
 }
 
+async function loadLatestUsernameReport(): Promise<UsernameReport | null> {
+  const response = await fetch("/api/analysis/username/latest", {
+    cache: "no-store",
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !body?.success) return null;
+  return (body.data?.report as UsernameReport | null) ?? null;
+}
+
 export default function ResultsCenterClient({
   modules,
   initialGoogleReport,
   initialExposureReport = null,
+  initialUsernameReport = null,
   subjectName,
 }: {
   modules: ResultsTabModule[];
   initialGoogleReport: IntelligenceReport | null;
   initialExposureReport?: DigitalExposureReport | null;
+  initialUsernameReport?: UsernameReport | null;
   subjectName: string;
 }) {
   const router = useRouter();
@@ -138,6 +159,9 @@ export default function ResultsCenterClient({
   });
   const [exposureReport, setExposureReport] =
     useState<DigitalExposureReport | null>(initialExposureReport);
+  const [usernameReport, setUsernameReport] = useState<UsernameReport | null>(
+    initialUsernameReport
+  );
   const [scanning, setScanning] = useState(false);
   const [scanApiReady, setScanApiReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -380,6 +404,81 @@ export default function ResultsCenterClient({
     }
   }, [finishScanAttempt]);
 
+  const runUsernameScan = useCallback(async () => {
+    setError(null);
+    setScanning(true);
+    setScanApiReady(false);
+    const scanStart = Date.now();
+    const minScanMs = Math.max(
+      usernameIntelligenceModule.minScanMs,
+      usernameIntelligenceModule.scanSteps.at(-1)?.atMs ??
+        usernameIntelligenceModule.minScanMs
+    );
+
+    try {
+      const response = await fetch("/api/analysis/username/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      setScanApiReady(true);
+      let body: {
+        success?: boolean;
+        data?: { report?: UsernameReport };
+        error?: { message?: string };
+      } = {};
+      try {
+        body = await response.json();
+      } catch {
+        body = {};
+      }
+
+      const elapsed = Date.now() - scanStart;
+      const waitMs = Math.max(0, minScanMs - elapsed);
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, waitMs > 0 ? waitMs : 500)
+      );
+
+      if (!response.ok || !body.success) {
+        if (response.status === 503) {
+          setError(
+            body.error?.message ??
+              "Username Intelligence Scan ist aktuell nicht verfügbar. Bitte wenden Sie sich an den Administrator."
+          );
+          finishScanAttempt({ tab: "username_intelligence" });
+          return;
+        }
+        const recovered = await loadLatestUsernameReport();
+        if (recovered) {
+          setUsernameReport(recovered);
+          setError(null);
+          finishScanAttempt({ tab: "username_intelligence" });
+          return;
+        }
+        setError(
+          body.error?.message ??
+            "Username Intelligence Scan konnte nicht abgeschlossen werden."
+        );
+        finishScanAttempt({ tab: "username_intelligence" });
+        return;
+      }
+
+      if (body.data?.report) {
+        setUsernameReport(body.data.report);
+      }
+      finishScanAttempt({ tab: "username_intelligence" });
+    } catch {
+      const recovered = await loadLatestUsernameReport().catch(() => null);
+      if (recovered) {
+        setUsernameReport(recovered);
+        finishScanAttempt({ tab: "username_intelligence" });
+        return;
+      }
+      setError("Verbindung zum Server nicht möglich.");
+      finishScanAttempt({ tab: "username_intelligence" });
+    }
+  }, [finishScanAttempt]);
+
   useEffect(() => {
     if (
       shouldScan &&
@@ -405,6 +504,19 @@ export default function ResultsCenterClient({
       void runExposureScan();
     }
   }, [shouldScan, activeTab, scanning, scanDone, runExposureScan]);
+
+  useEffect(() => {
+    if (
+      shouldScan &&
+      activeTab === "username_intelligence" &&
+      !scanning &&
+      !scanDone &&
+      !scanStartedRef.current
+    ) {
+      scanStartedRef.current = true;
+      void runUsernameScan();
+    }
+  }, [shouldScan, activeTab, scanning, scanDone, runUsernameScan]);
 
   function selectTab(id: string) {
     setActiveTab(id);
@@ -648,6 +760,47 @@ export default function ResultsCenterClient({
                   </section>
                 ) : null}
               </>
+            ) : activeModule.id === "username_intelligence" ? (
+              <>
+                {scanning ? (
+                  <IntelligenceScanSequence
+                    steps={usernameIntelligenceModule.scanSteps}
+                    minDurationMs={usernameIntelligenceModule.minScanMs}
+                    running={scanning}
+                    subjectName={subjectName}
+                    apiReady={scanApiReady}
+                    onComplete={() => undefined}
+                  />
+                ) : null}
+
+                {error ? (
+                  <p className="mt-4 rounded-lg border border-rose-400/20 bg-rose-400/[0.05] px-4 py-3 text-sm text-rose-100/70">
+                    {error}
+                  </p>
+                ) : null}
+
+                {!scanning && usernameReport ? (
+                  <UsernameIntelligenceReportView report={usernameReport} />
+                ) : null}
+
+                {!scanning && !usernameReport && !error ? (
+                  <section className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] p-6 md:p-8">
+                    <p className="font-mono text-[9px] tracking-[.16em] text-white/35">
+                      USERNAME INTELLIGENCE SCAN
+                    </p>
+                    <p className="mt-3 text-sm text-white/50">
+                      Noch kein Username-Report vorhanden. Starten Sie die
+                      Analyse im Analyse Center.
+                    </p>
+                    <a
+                      href="/dashboard/analysis/username?start=1"
+                      className="mt-5 inline-flex rounded-lg border border-cyber-cyan/50 bg-cyber-cyan/[0.1] px-4 py-2.5 text-sm font-medium text-cyber-cyan"
+                    >
+                      Username Intelligence Scan starten
+                    </a>
+                  </section>
+                ) : null}
+              </>
             ) : (
               <section className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] p-6 md:p-8">
                 <p className="font-mono text-[9px] tracking-[.16em] text-white/35">
@@ -656,7 +809,7 @@ export default function ResultsCenterClient({
                 <p className="mt-3 text-sm text-white/50">
                   {activeModule.available
                     ? activeModule.tagline
-                    : "Dieses Modul wird in einem späteren Sprint freigeschaltet. Die Google Analyse und der Digital Leak & Exposure Scan sind bereits verfügbar."}
+                    : "Dieses Modul wird in einem späteren Sprint freigeschaltet. Google Analyse, Digital Leak & Exposure und Username Intelligence sind bereits verfügbar."}
                 </p>
               </section>
             )}

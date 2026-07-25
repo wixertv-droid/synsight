@@ -107,6 +107,21 @@ export const osintGuidance = {
   risk: "Risk fasst die Gesamteinschätzung aus Trefferzahl, Confidence und Threat-Matrix zusammen. Mittel/Hoch bedeutet priorisierte Prüfung, nicht automatische Schuld.",
 } as const;
 
+/** Sprint 6E — Username Intelligence Fachbegriffe */
+export const usernameGuidance = {
+  osint:
+    "Username Intelligence sucht öffentliche Profile und Communities zu Ihren Benutzernamen über SerpAPI — ohne private Datenbanken und ohne Halluzinationen.",
+  confidence:
+    "Confidence: 95–100 % Bestätigt, 80–94 % Sehr wahrscheinlich, 60–79 % Möglich. Unter 60 % wird nicht angezeigt.",
+  identityMatch:
+    "Identity Match prüft Benutzername, Alias, Name, Wohnort, Firma und E-Mail-Signale gegen Titel, Snippet und URL.",
+  exposure:
+    "Exposure beschreibt, welche Plattformen den Benutzernamen öffentlich indexieren und welche Zusatzinformationen sichtbar sind.",
+  threat:
+    "Threat bewertet belegte Risiken aus problematischen Plattformen (z. B. Dating, Scam, Darknet) und der Verknüpfbarkeit über mehrere Surfaces.",
+  risk: "Risk fasst Trefferzahl, problematische Kategorien und Identity Score zusammen — priorisierte Prüfung, keine automatische Schuldzuweisung.",
+} as const;
+
 /** Sprint 6D — Digital Leak Fachbegriffe */
 export const leakGuidance = {
   credentialStuffing:
@@ -140,6 +155,12 @@ export const analysisGuidance: Record<
     why: "Kompromittierte Identifikatoren sind ein häufiges Einfallstor für Account-Übernahmen.",
     result:
       "Exposure-Report mit Risiko-Score und konkreten Schutzempfehlungen.",
+  },
+  username_intelligence: {
+    what: "Sucht öffentliche Profile, Foren und Communities zu Ihren Benutzernamen.",
+    why: "Wiederverwendete Usernames verknüpfen oft Profile über Jahre und Plattformen hinweg.",
+    result:
+      "Identity-Report mit Plattformkarten, Confidence und priorisierten Empfehlungen.",
   },
   phone_analysis: {
     what: "Prüft, ob Ihre Telefonnummer in öffentlichen Quellen auffindbar ist.",

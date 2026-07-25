@@ -4,7 +4,9 @@ import ResultsCenterClient, {
 } from "@/components/dashboard/results/ResultsCenterClient";
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
 import { getLatestDigitalExposureReport } from "@/lib/analysis/digital-exposure/repository";
+import { getLatestUsernameReport } from "@/lib/analysis/username/repository";
 import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/types";
+import type { UsernameReport } from "@/lib/analysis/username/types";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import { resolveSubjectName } from "@/lib/analysis/google/queries";
 import { resolveActiveAnalyses } from "@/lib/dashboard/resolve-active-analyses";
@@ -38,6 +40,13 @@ const FALLBACK_TABS: ResultsTabModule[] = [
     tagline: "Leak & Exposure",
     available: true,
   },
+  {
+    id: "username_intelligence",
+    title: "Username Intelligence Scan",
+    help: "Öffentliche Profile zu Benutzernamen",
+    tagline: "Username Intelligence",
+    available: true,
+  },
 ];
 
 /** Strip non-JSON values so Client Component props never crash RSC serialization. */
@@ -56,6 +65,8 @@ function tabTitle(id: string, fallback: string): string {
       return "Google Analyse";
     case "digital_leak_exposure":
       return "Digital Leak & Exposure Scan";
+    case "username_intelligence":
+      return "Username Intelligence Scan";
     case "phone_analysis":
       return "Telefon Analyse";
     case "email_analysis":
@@ -69,15 +80,25 @@ function tabTitle(id: string, fallback: string): string {
   }
 }
 
+function isAvailableModule(id: string): boolean {
+  return (
+    id === "google_search" ||
+    id === "digital_leak_exposure" ||
+    id === "username_intelligence"
+  );
+}
+
 async function loadResultsData(): Promise<{
   tabs: ResultsTabModule[];
   googleReport: IntelligenceReport | null;
   exposureReport: DigitalExposureReport | null;
+  usernameReport: UsernameReport | null;
   subjectName: string;
 }> {
   let tabs: ResultsTabModule[] = FALLBACK_TABS;
   let googleReport: IntelligenceReport | null = null;
   let exposureReport: DigitalExposureReport | null = null;
+  let usernameReport: UsernameReport | null = null;
   let subjectName = "Unbekannt";
 
   try {
@@ -96,9 +117,7 @@ async function loadResultsData(): Promise<{
             title: tabTitle(module.id, module.title),
             help: module.help,
             tagline: module.tagline,
-            available:
-              module.id === "google_search" ||
-              module.id === "digital_leak_exposure",
+            available: isAvailableModule(module.id),
           })),
           ...EXTRA_TABS.filter(
             (extra) => !modules.some((module) => module.id === extra.id)
@@ -112,7 +131,13 @@ async function loadResultsData(): Promise<{
 
     const userId = user ? Number.parseInt(user.id, 10) : NaN;
     if (!Number.isFinite(userId)) {
-      return { tabs, googleReport, exposureReport, subjectName };
+      return {
+        tabs,
+        googleReport,
+        exposureReport,
+        usernameReport,
+        subjectName,
+      };
     }
 
     try {
@@ -137,13 +162,21 @@ async function loadResultsData(): Promise<{
       exposureReport = null;
     }
 
-    return { tabs, googleReport, exposureReport, subjectName };
+    try {
+      usernameReport = await getLatestUsernameReport(userId);
+    } catch (error) {
+      console.error("[ResultsCenter] username report load failed", error);
+      usernameReport = null;
+    }
+
+    return { tabs, googleReport, exposureReport, usernameReport, subjectName };
   } catch (error) {
     console.error("[ResultsCenter] unexpected load failure", error);
     return {
       tabs: FALLBACK_TABS,
       googleReport: null,
       exposureReport: null,
+      usernameReport: null,
       subjectName,
     };
   }
@@ -155,6 +188,7 @@ export default async function ResultsCenter() {
     modules: data.tabs,
     initialGoogleReport: data.googleReport,
     initialExposureReport: data.exposureReport,
+    initialUsernameReport: data.usernameReport,
     subjectName: data.subjectName || "Unbekannt",
   });
 
@@ -170,6 +204,7 @@ export default async function ResultsCenter() {
         modules={props.modules}
         initialGoogleReport={props.initialGoogleReport}
         initialExposureReport={props.initialExposureReport}
+        initialUsernameReport={props.initialUsernameReport}
         subjectName={props.subjectName}
       />
     </Suspense>
