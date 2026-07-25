@@ -135,6 +135,8 @@ export const DEFAULT_ANALYSIS_PRICES: readonly AnalysisPrice[] = [
 export const REPLACED_ANALYSIS_KEYS = [
   "phone_analysis",
   "email_analysis",
+  /** Superseded by username_intelligence */
+  "alias_analysis",
 ] as const satisfies readonly AnalysisKey[];
 
 export function isReplacedAnalysisKey(key: string): boolean {
@@ -142,6 +144,8 @@ export function isReplacedAnalysisKey(key: string): boolean {
 }
 
 export function isAnalysisActiveByDefault(key: string): boolean {
+  // person_search has no live module implementation — keep inactive by default
+  if (key === "person_search") return false;
   return !isReplacedAnalysisKey(key);
 }
 

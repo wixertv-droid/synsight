@@ -5,10 +5,22 @@ import Button from "@/components/ui/Button";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import { getAnalysisGuidance, guidance } from "@/lib/content/guidance";
 
+export interface ConsumeCompletedPayload {
+  balance: number;
+  requestId: string;
+}
+
 interface ConsumeConfirmProps {
   analysisKey: string;
   confirmLabel?: string;
-  onCompleted?: (balance: number) => void;
+  onCompleted?: (payload: ConsumeCompletedPayload) => void;
+}
+
+function createRequestId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `req_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
 }
 
 /**
@@ -52,6 +64,7 @@ export default function ConsumeConfirm({
   const confirm = async () => {
     setSubmitting(true);
     setError(null);
+    const requestId = createRequestId();
     try {
       const response = await fetch("/api/credits/consume", {
         method: "POST",
@@ -59,6 +72,7 @@ export default function ConsumeConfirm({
         body: JSON.stringify({
           analysisKey,
           confirm: true,
+          requestId,
         }),
       });
       const result = await response.json();
@@ -70,7 +84,7 @@ export default function ConsumeConfirm({
         return;
       }
       setBalance(result.data.balance);
-      onCompleted?.(result.data.balance);
+      onCompleted?.({ balance: result.data.balance, requestId });
     } catch {
       setError("Verbindung zum Server nicht möglich.");
     }

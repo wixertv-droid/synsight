@@ -132,6 +132,10 @@ export interface CreditsRepository {
     transactionId?: number | null;
     requestId?: string | null;
   }): Promise<UsageLogRecord>;
+  findUsageByRequestId(
+    userId: number,
+    requestId: string
+  ): Promise<UsageLogRecord | null>;
   createInvoice(input: {
     userId: number;
     paymentId: number;
@@ -326,6 +330,13 @@ export function createInMemoryCreditsRepository(): CreditsRepository {
     },
 
     async createUsageLog(input) {
+      if (input.requestId) {
+        const existing = (memory.__synsightUsageLogs ?? []).find(
+          (row) =>
+            row.userId === input.userId && row.requestId === input.requestId
+        );
+        if (existing) return existing;
+      }
       const id = memory.__synsightUsageLogId ?? 1;
       memory.__synsightUsageLogId = id + 1;
       const log: UsageLogRecord = {
@@ -340,6 +351,14 @@ export function createInMemoryCreditsRepository(): CreditsRepository {
       };
       memory.__synsightUsageLogs = [...(memory.__synsightUsageLogs ?? []), log];
       return log;
+    },
+
+    async findUsageByRequestId(userId, requestId) {
+      return (
+        (memory.__synsightUsageLogs ?? []).find(
+          (row) => row.userId === userId && row.requestId === requestId
+        ) ?? null
+      );
     },
 
     async createInvoice(input) {

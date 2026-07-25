@@ -1,18 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { AnalysisSource } from "@/types/platform";
 import StatusDot from "@/components/ui/StatusDot";
 import InfoTooltip from "@/components/ui/InfoTooltip";
-import ConsumeConfirm from "@/components/credits/ConsumeConfirm";
 import { guidance } from "@/lib/content/guidance";
 
 export default function AnalysisWidget({
   sources,
   signalCount = 0,
+  activeModuleCount = 0,
 }: {
   sources: AnalysisSource[];
   signalCount?: number;
+  activeModuleCount?: number;
 }) {
   const [running, setRunning] = useState(true);
   const [cycle, setCycle] = useState(0);
@@ -177,11 +179,22 @@ export default function AnalysisWidget({
       <div className="border-t border-white/[0.06] p-5 md:p-6">
         <p className="mb-3 flex items-center gap-2 font-mono text-[8px] tracking-[.14em] text-cyber-cyan/45">
           ANALYSE STARTEN
-          <InfoTooltip label="Personensuche">
-            {guidance.analysis.what}
+          <InfoTooltip label="Analysecenter">
+            {guidance.dashboard.analysisCenter}
           </InfoTooltip>
         </p>
-        <ConsumeConfirm analysisKey="person_search" />
+        <Link
+          href="/dashboard/analysis"
+          className="inline-flex items-center gap-2 rounded-lg border border-cyber-blue/20 bg-cyber-blue/[0.06] px-4 py-2.5 text-xs text-cyber-cyan/80 transition hover:border-cyber-blue/35 hover:text-cyber-cyan"
+        >
+          Zum Analysecenter
+          {activeModuleCount > 0 ? (
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              {activeModuleCount} MODULE
+            </span>
+          ) : null}
+          <span aria-hidden="true">→</span>
+        </Link>
       </div>
     </section>
   );

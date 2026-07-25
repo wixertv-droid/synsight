@@ -15,13 +15,42 @@ import { getIdentityForUser } from "@/lib/services/identity-service";
 import { getProfileRepository } from "@/lib/repositories";
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
 import { getLatestDigitalExposureReport } from "@/lib/analysis/digital-exposure/repository";
+import { getLatestUsernameReport } from "@/lib/analysis/username/repository";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
-import { buildDashboardOverview } from "@/lib/dashboard/build-dashboard-overview";
+import {
+  buildDashboardOverview,
+  type DashboardModuleInput,
+} from "@/lib/dashboard/build-dashboard-overview";
+import { resolveActiveAnalyses } from "@/lib/dashboard/resolve-active-analyses";
+import { getPublicPricingCatalog } from "@/lib/services/pricing-service";
 
 export const metadata: Metadata = {
   title: "Dashboard — SynSight Command Center",
   description: "Ihre persönliche SynSight Sicherheitszentrale.",
 };
+
+const IMPLEMENTED_REPORT_KEYS = new Set([
+  "google_search",
+  "digital_leak_exposure",
+  "username_intelligence",
+]);
+
+async function loadModuleReport(
+  userId: number,
+  key: string
+): Promise<unknown | null> {
+  if (key === "google_search") {
+    const raw = await getIntelligenceReport(userId, "google_search");
+    return raw ? normalizeIntelligenceReport(raw) : null;
+  }
+  if (key === "digital_leak_exposure") {
+    return getLatestDigitalExposureReport(userId);
+  }
+  if (key === "username_intelligence") {
+    return getLatestUsernameReport(userId);
+  }
+  return null;
+}
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -38,20 +67,78 @@ export default async function DashboardPage() {
   const identity = user ? await getIdentityForUser(userId) : null;
   const completeness = identity?.completenessPercent ?? 0;
 
-  let googleReport = user
-    ? await getIntelligenceReport(userId, "google_search")
-    : null;
-  if (googleReport) {
-    googleReport = normalizeIntelligenceReport(googleReport);
+  let activeModules: Awaited<ReturnType<typeof resolveActiveAnalyses>> = [];
+  try {
+    const catalog = await getPublicPricingCatalog();
+    activeModules = resolveActiveAnalyses(catalog.analyses ?? []);
+  } catch (error) {
+    console.error("[Dashboard] pricing catalog failed", error);
   }
-  const exposureReport = user
-    ? await getLatestDigitalExposureReport(userId)
-    : null;
 
-  const overview = buildDashboardOverview({
-    google: googleReport,
-    exposure: exposureReport,
-  });
+  if (activeModules.length === 0) {
+    activeModules = [
+      {
+        id: "google_search",
+        title: "Google Analyse",
+        tagline: "",
+        description: "",
+        whatYouGet: [],
+        duration: "",
+        tier: "quick",
+        help: "",
+        icon: "",
+        accent: "",
+        credits: 0,
+      },
+      {
+        id: "digital_leak_exposure",
+        title: "Digital Leak & Exposure",
+        tagline: "",
+        description: "",
+        whatYouGet: [],
+        duration: "",
+        tier: "quick",
+        help: "",
+        icon: "",
+        accent: "",
+        credits: 0,
+      },
+      {
+        id: "username_intelligence",
+        title: "Username Intelligence",
+        tagline: "",
+        description: "",
+        whatYouGet: [],
+        duration: "",
+        tier: "quick",
+        help: "",
+        icon: "",
+        accent: "",
+        credits: 0,
+      },
+    ];
+  }
+
+  const modules: DashboardModuleInput[] = [];
+  for (const module of activeModules) {
+    const key = String(module.id);
+    let report: unknown | null = null;
+    if (user && IMPLEMENTED_REPORT_KEYS.has(key)) {
+      try {
+        report = await loadModuleReport(userId, key);
+      } catch (error) {
+        console.error(`[Dashboard] report load failed for ${key}`, error);
+        report = null;
+      }
+    }
+    modules.push({
+      key,
+      label: module.title,
+      report,
+    });
+  }
+
+  const overview = buildDashboardOverview({ modules });
 
   const now = new Date();
   const formattedDate = new Intl.DateTimeFormat("de-DE", {
@@ -155,8 +242,7 @@ export default async function DashboardPage() {
             </InfoTooltip>
           </span>
           <span>
-            Kennzahlen erscheinen nach der ersten Google-Analyse oder dem
-            Digital Leak Scan.
+            Kennzahlen erscheinen nach der ersten Analyse im Analysecenter.
           </span>
         </p>
       ) : null}
@@ -179,6 +265,7 @@ export default async function DashboardPage() {
         <AnalysisWidget
           sources={overview.analysisSources}
           signalCount={overview.signalCount}
+          activeModuleCount={activeModules.length}
         />
 
         <div className="space-y-6">

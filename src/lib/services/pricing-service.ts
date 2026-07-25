@@ -41,17 +41,9 @@ function presentPackage(pack: {
   };
 }
 
-const DIGITAL_LEAK_DEFAULT = DEFAULT_ANALYSIS_PRICES.find(
-  (row) => row.key === "digital_leak_exposure"
-)!;
-
-const USERNAME_DEFAULT = DEFAULT_ANALYSIS_PRICES.find(
-  (row) => row.key === "username_intelligence"
-)!;
-
 /**
- * After DB ensure: drop replaced phone/email; inject digital_leak if still missing.
- * Injection is a last-resort UI safety net — ensure should have written the row.
+ * After DB ensure: drop replaced phone/email.
+ * Do NOT inject inactive/missing modules — deactivated modules must disappear.
  */
 function normalizePublicAnalyses(
   analyses: Array<{
@@ -62,37 +54,11 @@ function normalizePublicAnalyses(
     sortOrder: number;
   }>
 ) {
-  const withoutLegacy = analyses.filter(
-    (row) => !isReplacedAnalysisKey(row.key)
-  );
-  let next = withoutLegacy;
-  if (!next.some((row) => row.key === "digital_leak_exposure")) {
-    next = [
-      ...next,
-      {
-        key: DIGITAL_LEAK_DEFAULT.key,
-        label: DIGITAL_LEAK_DEFAULT.label,
-        description: DIGITAL_LEAK_DEFAULT.description,
-        credits: DIGITAL_LEAK_DEFAULT.credits,
-        sortOrder: 25,
-      },
-    ];
-  }
-  if (!next.some((row) => row.key === "username_intelligence")) {
-    next = [
-      ...next,
-      {
-        key: USERNAME_DEFAULT.key,
-        label: USERNAME_DEFAULT.label,
-        description: USERNAME_DEFAULT.description,
-        credits: USERNAME_DEFAULT.credits,
-        sortOrder: 30,
-      },
-    ];
-  }
-  return next.sort(
-    (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)
-  );
+  return analyses
+    .filter((row) => !isReplacedAnalysisKey(row.key))
+    .sort(
+      (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)
+    );
 }
 
 export async function getPublicPricingCatalog() {
@@ -178,38 +144,10 @@ export async function getAdminPricingCatalog(actor: AuthenticatedUser) {
     repository.listManagedPackages(false),
   ]);
 
-  const hasLeak = analyses.some(
-    (row) => row.analysisKey === "digital_leak_exposure"
+  // Preserve admin isActive flags — never force-activate modules in the UI.
+  const normalized = analyses.map((row) =>
+    isReplacedAnalysisKey(row.analysisKey) ? { ...row, isActive: false } : row
   );
-  const normalized = hasLeak
-    ? analyses.map((row) =>
-        isReplacedAnalysisKey(row.analysisKey)
-          ? { ...row, isActive: false }
-          : row.analysisKey === "digital_leak_exposure"
-            ? { ...row, isActive: true }
-            : row
-      )
-    : [
-        ...analyses.map((row) =>
-          isReplacedAnalysisKey(row.analysisKey)
-            ? { ...row, isActive: false }
-            : row
-        ),
-        {
-          id: -1,
-          analysisKey: DIGITAL_LEAK_DEFAULT.key,
-          label: DIGITAL_LEAK_DEFAULT.label,
-          description: DIGITAL_LEAK_DEFAULT.description,
-          credits: DIGITAL_LEAK_DEFAULT.credits,
-          sortOrder: 25,
-          isActive: true,
-          isSystemDefault: true,
-          defaultLabel: DIGITAL_LEAK_DEFAULT.label,
-          defaultDescription: DIGITAL_LEAK_DEFAULT.description,
-          defaultCredits: DIGITAL_LEAK_DEFAULT.credits,
-          updatedByAdminId: null,
-        },
-      ];
 
   return {
     analyses: normalized.sort(
@@ -254,6 +192,25 @@ export async function updateAnalysisPricing(input: {
       label: updated.label,
     },
   });
+
+  // M-12: analysis_pricing is SSoT for SynCredits / active flags —
+  // mirror username module settings when that key changes.
+  if (updated.analysisKey === "username_intelligence") {
+    try {
+      const { updateUsernameModuleSettings } =
+        await import("@/lib/analysis/username/settings");
+      await updateUsernameModuleSettings(
+        {
+          synCredits: updated.credits,
+          isActive: updated.isActive,
+        },
+        adminId
+      );
+    } catch (error) {
+      console.error("[pricing] username module settings sync failed", error);
+    }
+  }
+
   return updated;
 }
 

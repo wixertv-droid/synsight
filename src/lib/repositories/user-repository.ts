@@ -34,6 +34,7 @@ export interface UserRepository {
   findById(id: number): Promise<UserRecord | null>;
   create(input: CreateUserInput): Promise<UserRecord>;
   activate(id: number): Promise<void>;
+  updatePasswordHash(id: number, passwordHash: string): Promise<void>;
   recordFailedLogin(id: number, lockedUntil: string | null): Promise<void>;
   clearFailedLogins(id: number): Promise<void>;
   updateLastLogin(id: number): Promise<void>;
@@ -120,6 +121,11 @@ export function createInMemoryUserRepository(): UserRepository {
     async activate(id) {
       const user = users.get(id);
       if (user) user.status = "active";
+    },
+
+    async updatePasswordHash(id, passwordHash) {
+      const user = users.get(id);
+      if (user) user.passwordHash = passwordHash;
     },
 
     async recordFailedLogin(id, lockedUntil) {

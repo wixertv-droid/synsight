@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import LoginCard from "@/components/auth/LoginCard";
+import { safeInternalRedirect } from "@/lib/security/safe-redirect";
 
 export const metadata: Metadata = {
   title: "Login — SynSight Sicherheitszentrale",
@@ -9,13 +10,25 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ registered?: string }>;
+  searchParams: Promise<{
+    registered?: string;
+    reset?: string;
+    from?: string;
+  }>;
 }) {
   const params = await searchParams;
   const notice =
-    params.registered === "1"
-      ? "Konto erstellt. Sie können sich jetzt anmelden."
-      : null;
+    params.reset === "1"
+      ? "Passwort aktualisiert. Sie können sich jetzt anmelden."
+      : params.registered === "1"
+        ? "Konto erstellt. Sie können sich jetzt anmelden."
+        : null;
 
-  return <LoginCard mode="login" notice={notice} />;
+  return (
+    <LoginCard
+      mode="login"
+      notice={notice}
+      from={safeInternalRedirect(params.from)}
+    />
+  );
 }

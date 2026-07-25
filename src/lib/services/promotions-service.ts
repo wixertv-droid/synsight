@@ -243,6 +243,63 @@ export async function processAutomaticNewUserPromotions(input: {
   return granted;
 }
 
+/**
+ * Redeem a promotion code for a logged-in (typically existing) user (M-04).
+ * New-user-only promotions remain on the automatic verification path.
+ */
+export async function redeemPromotionByCode(input: {
+  userId: number;
+  promoCode: string;
+  ipAddress?: string | null;
+}): Promise<
+  | {
+      status: "completed";
+      promotionId: number;
+      promotionName: string;
+      credits: number;
+      balance: number;
+    }
+  | { status: "invalid_code" | "not_eligible"; reason?: string }
+> {
+  const code = input.promoCode.trim().toUpperCase();
+  if (!code) return { status: "invalid_code" };
+
+  const repository = getPromotionsRepository();
+  const promotion = await repository.findPromotionByCode(code);
+  if (!promotion) return { status: "invalid_code" };
+
+  const creditsRepository = getCreditsRepository();
+  const account = await creditsRepository.ensureAccount(input.userId);
+
+  // Code redemption is for accounts that already exist; new-user-only
+  // promotions continue to use processAutomaticNewUserPromotions.
+  const eligibility = await canGrantPromotion(promotion, input.userId, {
+    isNewUser: false,
+    currentBalance: account.balance,
+    promoCode: code,
+  });
+  if (!eligibility.eligible) {
+    return { status: "not_eligible", reason: eligibility.reason };
+  }
+
+  const granted = await grantPromotionCredits({
+    promotion,
+    userId: input.userId,
+    reason: `Promotioncode ${code}`,
+    promoCodeUsed: code,
+    ipAddress: input.ipAddress,
+    metadataJson: { trigger: "promo_code_redeem" },
+  });
+
+  return {
+    status: "completed",
+    promotionId: granted.promotionId,
+    promotionName: granted.promotionName,
+    credits: granted.credits,
+    balance: granted.balance,
+  };
+}
+
 export async function getPendingPromotionNotifications(userId: number) {
   return getPromotionsRepository().listPendingNotifications(userId);
 }

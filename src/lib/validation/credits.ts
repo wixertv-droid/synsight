@@ -11,7 +11,11 @@ export const consumeCreditsSchema = z.object({
     .min(2)
     .max(64)
     .regex(/^[a-z0-9_]+$/, "Ungültiger Analyseschlüssel."),
-  requestId: z.string().max(64).optional(),
+  requestId: z
+    .string()
+    .trim()
+    .min(8, "Anfragekennung fehlt oder ist ungültig.")
+    .max(64),
   confirm: z.literal(true),
 });
 

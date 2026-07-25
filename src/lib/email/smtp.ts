@@ -1,6 +1,7 @@
 import dns from "node:dns";
 import nodemailer, { type Transporter } from "nodemailer";
 import type { Environment } from "@/lib/config/env";
+import { buildPasswordResetEmail } from "@/lib/email/templates/password-reset-email";
 import { buildVerificationEmail } from "@/lib/email/templates/verification-email";
 
 // Many VPS hosts resolve AAAA first; broken IPv6 routes cause SMTP timeouts
@@ -14,6 +15,11 @@ try {
 export interface VerificationEmail {
   to: string;
   verificationUrl: string;
+}
+
+export interface PasswordResetEmail {
+  to: string;
+  resetUrl: string;
 }
 
 export interface SmtpMailMessage {
@@ -172,6 +178,22 @@ export async function sendVerificationEmail(
 ): Promise<void> {
   const template = buildVerificationEmail({
     verificationUrl: message.verificationUrl,
+  });
+  await sendSmtpMail(env, {
+    from: env.SMTP_FROM as string,
+    to: message.to,
+    subject: template.subject,
+    text: template.text,
+    html: template.html,
+  });
+}
+
+export async function sendPasswordResetEmail(
+  env: Environment,
+  message: PasswordResetEmail
+): Promise<void> {
+  const template = buildPasswordResetEmail({
+    resetUrl: message.resetUrl,
   });
   await sendSmtpMail(env, {
     from: env.SMTP_FROM as string,

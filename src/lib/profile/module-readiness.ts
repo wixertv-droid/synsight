@@ -67,9 +67,10 @@ function score(
 
 /** Readiness je Analyseart — Felder die schon in Stammdaten liegen zählen mit. */
 export function buildProfileModuleReadiness(
-  view: IdentityView
+  view: IdentityView,
+  options?: { activeKeys?: string[] }
 ): ProfileModuleReadiness[] {
-  return [
+  const all: ProfileModuleReadiness[] = [
     {
       key: "google_search",
       label: "Google Analyse",
@@ -175,6 +176,10 @@ export function buildProfileModuleReadiness(
       ]),
     },
   ];
+
+  if (!options?.activeKeys) return all;
+  const active = new Set(options.activeKeys);
+  return all.filter((entry) => active.has(entry.key));
 }
 
 export function splitFirstNames(firstName: string): {

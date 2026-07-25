@@ -138,6 +138,10 @@ export function createMysqlUserRepository(
         .where(eq(users.id, id));
     },
 
+    async updatePasswordHash(id, passwordHash) {
+      await db.update(users).set({ passwordHash }).where(eq(users.id, id));
+    },
+
     async recordFailedLogin(id, lockedUntil) {
       await db
         .update(users)

@@ -49,6 +49,7 @@ import { aggregateProfiles } from "@/lib/analysis/osint/profile-aggregator";
 import { evaluateThreatMatrix } from "@/lib/analysis/osint/threat-evaluator";
 import { buildConcreteRecommendations } from "@/lib/analysis/osint/recommendation-engine";
 import { planScoredGoogleSearches } from "@/lib/analysis/osint/search-planner";
+import { getPricingRepository } from "@/lib/repositories";
 
 async function mapPool<T, R>(
   items: T[],
@@ -352,8 +353,19 @@ export async function runGoogleIntelligenceAnalysis(
   let dehashedAttempted = false;
   let dehashedHttpOk = false;
 
-  // DeHashed parallel zur Serp-Pipeline (Fehler → [] — Serp läuft weiter)
-  const dehashedTask = searchDehashedForIdentity(identity, { generatedAt });
+  // M-08: DeHashed only when Digital Leak module is active in the catalog.
+  const leakPricing = await getPricingRepository().findAnalysisByKey(
+    "digital_leak_exposure"
+  );
+  const leakModuleActive = Boolean(leakPricing?.isActive);
+  const dehashedTask = leakModuleActive
+    ? searchDehashedForIdentity(identity, { generatedAt })
+    : Promise.resolve({
+        hits: [] as IntelligenceHit[],
+        leaksForGemini: [] as DehashedLeakDetail[],
+        attempted: false,
+        httpOk: false,
+      });
 
   if (apiConfigured) {
     const [batches, dehashedResult] = await Promise.all([

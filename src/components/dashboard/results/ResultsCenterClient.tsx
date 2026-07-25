@@ -32,58 +32,6 @@ export interface ResultsTabModule {
   available: boolean;
 }
 
-const FALLBACK_TABS: ResultsTabModule[] = [
-  {
-    id: "google_search",
-    title: "Google Analyse",
-    help: "Öffentliche Google-Suchtreffer",
-    tagline: "OSINT Google Report",
-    available: true,
-  },
-  {
-    id: "digital_leak_exposure",
-    title: "Digital Leak & Exposure Scan",
-    help: "Datenlecks zu E-Mail und Telefon (DeHashed)",
-    tagline: "Leak & Exposure",
-    available: true,
-  },
-  {
-    id: "username_intelligence",
-    title: "Username Intelligence Scan",
-    help: "Öffentliche Profile zu Benutzernamen",
-    tagline: "Username Intelligence",
-    available: true,
-  },
-  {
-    id: "website_analysis",
-    title: "Website Analyse",
-    help: "Website-Signale",
-    tagline: "Folgt",
-    available: false,
-  },
-  {
-    id: "social_media",
-    title: "Social Analyse",
-    help: "Social-Media-Profile",
-    tagline: "Folgt",
-    available: false,
-  },
-  {
-    id: "darknet",
-    title: "Darknet Analyse",
-    help: "Darknet-Hinweise",
-    tagline: "Folgt",
-    available: false,
-  },
-  {
-    id: "reverse_image_search",
-    title: "Bildanalyse",
-    help: "Bild-Rückwärtssuche",
-    tagline: "Folgt",
-    available: false,
-  },
-];
-
 function readStoredRetention(): ReportRetentionDays {
   if (typeof window === "undefined") return DEFAULT_REPORT_RETENTION_DAYS;
   try {
@@ -137,10 +85,11 @@ export default function ResultsCenterClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tabs = modules.length > 0 ? modules : FALLBACK_TABS;
+  const tabs = modules;
 
-  const requestedTab = searchParams.get("tab") ?? "google_search";
+  const requestedTab = searchParams.get("tab") ?? tabs[0]?.id ?? "";
   const shouldScan = searchParams.get("scan") === "1";
+  const requestIdFromUrl = (searchParams.get("requestId") ?? "").trim();
   const retentionFromUrl = parseRetentionDays(
     searchParams.get("retention"),
     DEFAULT_REPORT_RETENTION_DAYS
@@ -199,8 +148,7 @@ export default function ResultsCenterClient({
   }, [retentionFromUrl, searchParams]);
 
   const activeModule = useMemo(
-    () =>
-      tabs.find((tab) => tab.id === activeTab) ?? tabs[0] ?? FALLBACK_TABS[0]!,
+    () => tabs.find((tab) => tab.id === activeTab) ?? tabs[0] ?? null,
     [activeTab, tabs]
   );
 
@@ -243,10 +191,24 @@ export default function ResultsCenterClient({
         setRetentionDays(effectiveRetention);
       }
 
+      const requestId = (
+        searchParams.get("requestId") ?? requestIdFromUrl
+      ).trim();
+      if (!requestId) {
+        setError(
+          "Anfragekennung fehlt. Bitte starten Sie die Analyse erneut über das Analyse Center."
+        );
+        finishScanAttempt();
+        return;
+      }
+
       const response = await fetch("/api/analysis/google/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ retentionDays: effectiveRetention }),
+        body: JSON.stringify({
+          retentionDays: effectiveRetention,
+          requestId,
+        }),
       });
       // API fertig → Balken darf auf 100 % (nach Mindestanimation)
       setScanApiReady(true);
@@ -341,10 +303,21 @@ export default function ResultsCenterClient({
     );
 
     try {
+      const requestId = (
+        searchParams.get("requestId") ?? requestIdFromUrl
+      ).trim();
+      if (!requestId) {
+        setError(
+          "Anfragekennung fehlt. Bitte starten Sie die Analyse erneut über das Analyse Center."
+        );
+        finishScanAttempt({ tab: "digital_leak_exposure" });
+        return;
+      }
+
       const response = await fetch("/api/analysis/digital-exposure/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ requestId }),
       });
       setScanApiReady(true);
       let body: {
@@ -427,10 +400,24 @@ export default function ResultsCenterClient({
         setRetentionDays(effectiveRetention);
       }
 
+      const requestId = (
+        searchParams.get("requestId") ?? requestIdFromUrl
+      ).trim();
+      if (!requestId) {
+        setError(
+          "Anfragekennung fehlt. Bitte starten Sie die Analyse erneut über das Analyse Center."
+        );
+        finishScanAttempt({ tab: "username_intelligence" });
+        return;
+      }
+
       const response = await fetch("/api/analysis/username/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ retentionDays: effectiveRetention }),
+        body: JSON.stringify({
+          retentionDays: effectiveRetention,
+          requestId,
+        }),
       });
       setScanApiReady(true);
       let body: {
@@ -541,6 +528,24 @@ export default function ResultsCenterClient({
     } catch {
       /* ignore */
     }
+  }
+
+  if (!activeModule) {
+    return (
+      <main id="results-center-page" className="mx-auto max-w-[1500px]">
+        <DashboardSectionHeader
+          eyebrow="Command Center / Ergebnisse"
+          title="Ergebnis Center"
+          description="Aktuell sind keine Analysemodule freigeschaltet."
+          helpLabel="Ergebnis Center"
+          helpText="Sobald Module in der Administration aktiviert sind, erscheinen sie hier automatisch."
+        />
+        <p className="mt-6 text-sm text-white/45">
+          Keine aktiven Module verfügbar. Bitte prüfen Sie die
+          Modul-Freischaltung oder starten Sie eine Analyse im Analyse Center.
+        </p>
+      </main>
+    );
   }
 
   return (

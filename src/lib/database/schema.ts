@@ -754,6 +754,10 @@ export const usageLogs = mysqlTable(
     index("usage_logs_user_id_idx").on(table.userId),
     index("usage_logs_analysis_key_idx").on(table.analysisKey),
     index("usage_logs_created_at_idx").on(table.createdAt),
+    uniqueIndex("usage_logs_user_request_unique").on(
+      table.userId,
+      table.requestId
+    ),
   ]
 );
 

@@ -39,9 +39,17 @@ export default function DigitalExposurePageClient({
     setPhase("confirm");
   };
 
-  const onCreditsConfirmed = useCallback(() => {
-    router.push("/dashboard/results?tab=digital_leak_exposure&scan=1");
-  }, [router]);
+  const onCreditsConfirmed = useCallback(
+    (payload: { requestId: string }) => {
+      const params = new URLSearchParams({
+        tab: "digital_leak_exposure",
+        scan: "1",
+        requestId: payload.requestId,
+      });
+      router.push(`/dashboard/results?${params.toString()}`);
+    },
+    [router]
+  );
 
   useEffect(() => {
     if (autoStart && apiAvailable) setPhase("confirm");
@@ -118,7 +126,7 @@ export default function DigitalExposurePageClient({
         <ConsumeConfirm
           analysisKey="digital_leak_exposure"
           confirmLabel="Analyse starten"
-          onCompleted={() => onCreditsConfirmed()}
+          onCompleted={onCreditsConfirmed}
         />
       ) : null}
     </main>

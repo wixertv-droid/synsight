@@ -15,40 +15,6 @@ import { getIdentityForUser } from "@/lib/services/identity-service";
 import { getPublicPricingCatalog } from "@/lib/services/pricing-service";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 
-const EXTRA_TABS: ResultsTabModule[] = [
-  {
-    id: "darknet",
-    title: "Darknet Analyse",
-    help: "Darknet-Hinweise",
-    tagline: "Folgt in einem späteren Sprint",
-    available: false,
-  },
-];
-
-const FALLBACK_TABS: ResultsTabModule[] = [
-  {
-    id: "google_search",
-    title: "Google Analyse",
-    help: "Öffentliche Google-Suchtreffer",
-    tagline: "OSINT Google Report",
-    available: true,
-  },
-  {
-    id: "digital_leak_exposure",
-    title: "Digital Leak & Exposure Scan",
-    help: "Datenlecks zu E-Mail und Telefon (DeHashed)",
-    tagline: "Leak & Exposure",
-    available: true,
-  },
-  {
-    id: "username_intelligence",
-    title: "Username Intelligence Scan",
-    help: "Öffentliche Profile zu Benutzernamen",
-    tagline: "Username Intelligence",
-    available: true,
-  },
-];
-
 /** Keep live modules left-to-right: Google → Leak → Username, then others. */
 function tabSortRank(id: string): number {
   if (id === "google_search") return 10;
@@ -103,7 +69,8 @@ async function loadResultsData(): Promise<{
   usernameReport: UsernameReport | null;
   subjectName: string;
 }> {
-  let tabs: ResultsTabModule[] = FALLBACK_TABS;
+  // No hardcoded available FALLBACK — inactive/missing catalog → no tabs.
+  let tabs: ResultsTabModule[] = [];
   let googleReport: IntelligenceReport | null = null;
   let exposureReport: DigitalExposureReport | null = null;
   let usernameReport: UsernameReport | null = null;
@@ -118,29 +85,22 @@ async function loadResultsData(): Promise<{
     try {
       const catalog = await getPublicPricingCatalog();
       const modules = resolveActiveAnalyses(catalog.analyses ?? []);
-      if (modules.length > 0) {
-        tabs = [
-          ...modules
-            .map((module) => ({
-              id: module.id,
-              title: tabTitle(module.id, module.title),
-              help: module.help,
-              tagline: module.tagline,
-              available: isAvailableModule(module.id),
-            }))
-            .sort(
-              (a, b) =>
-                tabSortRank(a.id) - tabSortRank(b.id) ||
-                a.title.localeCompare(b.title)
-            ),
-          ...EXTRA_TABS.filter(
-            (extra) => !modules.some((module) => module.id === extra.id)
-          ),
-        ];
-      }
+      tabs = modules
+        .map((module) => ({
+          id: module.id,
+          title: tabTitle(module.id, module.title),
+          help: module.help,
+          tagline: module.tagline,
+          available: isAvailableModule(module.id),
+        }))
+        .sort(
+          (a, b) =>
+            tabSortRank(a.id) - tabSortRank(b.id) ||
+            a.title.localeCompare(b.title)
+        );
     } catch (error) {
       console.error("[ResultsCenter] pricing catalog failed", error);
-      tabs = FALLBACK_TABS;
+      tabs = [];
     }
 
     const userId = user ? Number.parseInt(user.id, 10) : NaN;

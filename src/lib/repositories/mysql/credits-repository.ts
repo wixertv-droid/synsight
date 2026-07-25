@@ -292,24 +292,64 @@ export function createMysqlCreditsRepository(
     },
 
     async createUsageLog(input) {
-      const inserted = await db.insert(usageLogs).values({
-        userId: input.userId,
-        analysisKey: input.analysisKey,
-        creditsCharged: input.creditsCharged,
-        status: input.status,
-        transactionId: input.transactionId ?? null,
-        requestId: input.requestId ?? null,
-      });
-      const id = Number(inserted[0].insertId);
+      if (input.requestId) {
+        const existing = await this.findUsageByRequestId(
+          input.userId,
+          input.requestId
+        );
+        if (existing) return existing;
+      }
+      try {
+        const inserted = await db.insert(usageLogs).values({
+          userId: input.userId,
+          analysisKey: input.analysisKey,
+          creditsCharged: input.creditsCharged,
+          status: input.status,
+          transactionId: input.transactionId ?? null,
+          requestId: input.requestId ?? null,
+        });
+        const id = Number(inserted[0].insertId);
+        return {
+          id,
+          userId: input.userId,
+          analysisKey: input.analysisKey,
+          creditsCharged: input.creditsCharged,
+          status: input.status,
+          transactionId: input.transactionId ?? null,
+          requestId: input.requestId ?? null,
+          createdAt: new Date().toISOString(),
+        };
+      } catch (error) {
+        if (input.requestId) {
+          const raced = await this.findUsageByRequestId(
+            input.userId,
+            input.requestId
+          );
+          if (raced) return raced;
+        }
+        throw error;
+      }
+    },
+
+    async findUsageByRequestId(userId, requestId) {
+      const rows = await db
+        .select()
+        .from(usageLogs)
+        .where(
+          and(eq(usageLogs.userId, userId), eq(usageLogs.requestId, requestId))
+        )
+        .limit(1);
+      const row = rows[0];
+      if (!row) return null;
       return {
-        id,
-        userId: input.userId,
-        analysisKey: input.analysisKey,
-        creditsCharged: input.creditsCharged,
-        status: input.status,
-        transactionId: input.transactionId ?? null,
-        requestId: input.requestId ?? null,
-        createdAt: new Date().toISOString(),
+        id: row.id,
+        userId: row.userId,
+        analysisKey: row.analysisKey,
+        creditsCharged: row.creditsCharged,
+        status: row.status,
+        transactionId: row.transactionId,
+        requestId: row.requestId,
+        createdAt: row.createdAt,
       };
     },
 

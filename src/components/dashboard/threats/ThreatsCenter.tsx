@@ -2,10 +2,11 @@ import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeade
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import StatusDot from "@/components/ui/StatusDot";
 import {
-  demoThreats,
   threatLevelMeta,
-} from "@/lib/dashboard/threats-demo-data";
+  type PlatformThreat,
+} from "@/lib/dashboard/build-threats-from-reports";
 import type { RiskLevel } from "@/types/platform";
+import Link from "next/link";
 
 const levelTone: Record<
   RiskLevel,
@@ -30,10 +31,14 @@ const levelTone: Record<
 
 const levels: RiskLevel[] = ["low", "medium", "high"];
 
-export default function ThreatsCenter() {
+export default function ThreatsCenter({
+  threats,
+}: {
+  threats: PlatformThreat[];
+}) {
   const counts = levels.map((level) => ({
     level,
-    count: demoThreats.filter((threat) => threat.level === level).length,
+    count: threats.filter((threat) => threat.level === level).length,
   }));
 
   return (
@@ -41,9 +46,9 @@ export default function ThreatsCenter() {
       <DashboardSectionHeader
         eyebrow="Command Center / Schutz"
         title="Bedrohungen & Schutzmaßnahmen"
-        description="Priorisierte Risiken mit klarer Erklärung und konkreten Handlungsschritten — Demo-Inhalt zur Architekturvorbereitung."
+        description="Priorisierte Risiken aus Ihren Analyseberichten — mit klarer Erklärung und konkreten Handlungsschritten."
         helpLabel="Was sind Bedrohungen?"
-        helpText="Jede Karte beschreibt einen Fund, warum er relevant ist und was Sie tun können. Später gespeist aus echten Analyse-Ergebnissen."
+        helpText="Jede Karte beschreibt einen Fund aus Google-, Leak- oder Username-Analysen, warum er relevant ist und was Sie tun können."
       />
 
       <section
@@ -71,7 +76,7 @@ export default function ThreatsCenter() {
                 {meta.label}
               </h2>
               <p className="mt-2 text-xs text-white/35">
-                {count} Bedrohung{count === 1 ? "" : "en"} (Demo)
+                {count} Bedrohung{count === 1 ? "" : "en"}
               </p>
             </article>
           );
@@ -79,71 +84,91 @@ export default function ThreatsCenter() {
       </section>
 
       <section aria-label="Bedrohungsliste" className="mt-8 space-y-4">
-        {demoThreats.map((threat) => {
-          const meta = threatLevelMeta[threat.level];
-          const style = levelTone[threat.level];
-          return (
-            <article
-              key={threat.id}
-              className="glass-strong hardware-panel overflow-hidden rounded-[1.4rem] border border-white/[0.08] transition duration-300 hover:border-cyber-blue/20"
+        {threats.length === 0 ? (
+          <article className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] px-5 py-8 md:px-6">
+            <p className="font-mono text-[8px] tracking-[.14em] text-white/25">
+              KEINE BEDROHUNGEN
+            </p>
+            <h3 className="mt-3 text-lg font-medium text-white/80">
+              Noch keine priorisierten Funde
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/35">
+              Sobald Google-, Leak- oder Username-Analysen vorliegen, erscheinen
+              hier die relevanten Risiken mit Handlungsschritten.
+            </p>
+            <Link
+              href="/dashboard/analysis"
+              className="mt-5 inline-flex text-xs text-cyber-blue/80 transition hover:text-cyber-cyan"
             >
-              <div className="flex flex-col gap-3 border-b border-white/[0.06] px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
-                <div>
-                  <p className="flex items-center gap-2 font-mono text-[8px] tracking-[.14em] text-white/25">
-                    <StatusDot tone={style.tone} />
-                    {meta.label.toUpperCase()} · {threat.source}
-                  </p>
-                  <h3 className="mt-2 text-lg font-medium text-white/88">
-                    {threat.title}
-                  </h3>
+              Zum Analysecenter →
+            </Link>
+          </article>
+        ) : (
+          threats.map((threat) => {
+            const meta = threatLevelMeta[threat.level];
+            const style = levelTone[threat.level];
+            return (
+              <article
+                key={threat.id}
+                className="glass-strong hardware-panel overflow-hidden rounded-[1.4rem] border border-white/[0.08] transition duration-300 hover:border-cyber-blue/20"
+              >
+                <div className="flex flex-col gap-3 border-b border-white/[0.06] px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+                  <div>
+                    <p className="flex items-center gap-2 font-mono text-[8px] tracking-[.14em] text-white/25">
+                      <StatusDot tone={style.tone} />
+                      {meta.label.toUpperCase()} · {threat.source}
+                    </p>
+                    <h3 className="mt-2 text-lg font-medium text-white/88">
+                      {threat.title}
+                    </h3>
+                  </div>
+                  <span
+                    className={`inline-flex rounded-lg border px-3 py-1.5 font-mono text-[8px] tracking-[.14em] ${style.panel}`}
+                  >
+                    LEVEL / {meta.short}
+                  </span>
                 </div>
-                <span
-                  className={`inline-flex rounded-lg border px-3 py-1.5 font-mono text-[8px] tracking-[.14em] ${style.panel}`}
-                >
-                  LEVEL / {meta.short}
-                </span>
-              </div>
 
-              <div className="grid gap-px bg-white/[0.05] md:grid-cols-3">
-                <div className="bg-[#050a13]/95 p-5">
-                  <p className="flex items-center font-mono text-[8px] tracking-[.14em] text-cyber-cyan/45">
-                    WAS WURDE GEFUNDEN?
-                    <InfoTooltip label="Fund erklären">
-                      Später der Roh- oder aggregierte Treffer aus der Analyse.
-                    </InfoTooltip>
-                  </p>
-                  <p className="mt-3 text-[12px] leading-relaxed text-white/45">
-                    {threat.found}
-                  </p>
+                <div className="grid gap-px bg-white/[0.05] md:grid-cols-3">
+                  <div className="bg-[#050a13]/95 p-5">
+                    <p className="flex items-center font-mono text-[8px] tracking-[.14em] text-cyber-cyan/45">
+                      WAS WURDE GEFUNDEN?
+                      <InfoTooltip label="Fund erklären">
+                        Treffer aus Ihrer Analyse.
+                      </InfoTooltip>
+                    </p>
+                    <p className="mt-3 text-[12px] leading-relaxed text-white/45">
+                      {threat.found}
+                    </p>
+                  </div>
+                  <div className="bg-[#050a13]/95 p-5">
+                    <p className="flex items-center font-mono text-[8px] tracking-[.14em] text-amber-100/45">
+                      WARUM IST ES WICHTIG?
+                      <InfoTooltip label="Risiko erklären">
+                        Kontext, warum Handlungsbedarf besteht.
+                      </InfoTooltip>
+                    </p>
+                    <p className="mt-3 text-[12px] leading-relaxed text-white/45">
+                      {threat.whyItMatters}
+                    </p>
+                  </div>
+                  <div className="bg-[#050a13]/95 p-5">
+                    <p className="flex items-center font-mono text-[8px] tracking-[.14em] text-emerald-100/45">
+                      WAS KÖNNEN SIE TUN?
+                      <InfoTooltip label="Maßnahmen erklären">
+                        Konkrete Schutzmaßnahmen, die Sie selbst umsetzen
+                        können.
+                      </InfoTooltip>
+                    </p>
+                    <p className="mt-3 text-[12px] leading-relaxed text-white/45">
+                      {threat.userAction}
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-[#050a13]/95 p-5">
-                  <p className="flex items-center font-mono text-[8px] tracking-[.14em] text-amber-100/45">
-                    WARUM IST ES WICHTIG?
-                    <InfoTooltip label="Risiko erklären">
-                      Kontext für unerfahrene Nutzer — warum Handlungsbedarf
-                      besteht.
-                    </InfoTooltip>
-                  </p>
-                  <p className="mt-3 text-[12px] leading-relaxed text-white/45">
-                    {threat.whyItMatters}
-                  </p>
-                </div>
-                <div className="bg-[#050a13]/95 p-5">
-                  <p className="flex items-center font-mono text-[8px] tracking-[.14em] text-emerald-100/45">
-                    WAS KÖNNEN SIE TUN?
-                    <InfoTooltip label="Maßnahmen erklären">
-                      Konkrete Schutzmaßnahmen, die der Nutzer selbst umsetzen
-                      kann.
-                    </InfoTooltip>
-                  </p>
-                  <p className="mt-3 text-[12px] leading-relaxed text-white/45">
-                    {threat.userAction}
-                  </p>
-                </div>
-              </div>
-            </article>
-          );
-        })}
+              </article>
+            );
+          })
+        )}
       </section>
     </main>
   );

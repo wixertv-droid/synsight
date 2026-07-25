@@ -40,15 +40,46 @@ describe("credits-service", () => {
 
   it("consumes credits for a priced analysis", async () => {
     await purchaseCreditPackage(1, "pack_500");
-    const consumed = await consumeCredits(1, "domain_analysis");
+    const consumed = await consumeCredits(
+      1,
+      "domain_analysis",
+      "req-domain-001"
+    );
     expect(consumed.status).toBe("completed");
     if (consumed.status !== "completed") return;
     expect(consumed.creditsCharged).toBe(5);
     expect(consumed.balance).toBe(495);
   });
 
+  it("is idempotent for the same requestId", async () => {
+    await purchaseCreditPackage(1, "pack_500");
+    const first = await consumeCredits(1, "domain_analysis", "req-idem-1");
+    const second = await consumeCredits(1, "domain_analysis", "req-idem-1");
+    expect(first.status).toBe("completed");
+    expect(second.status).toBe("completed");
+    if (first.status !== "completed" || second.status !== "completed") return;
+    expect(second.alreadyConsumed).toBe(true);
+    expect(second.balance).toBe(first.balance);
+    const overview = await getCreditsOverview(1);
+    expect(overview.balance).toBe(495);
+  });
+
   it("rejects consume when balance is insufficient", async () => {
-    const consumed = await consumeCredits(1, "full_identity_analysis");
+    const consumed = await consumeCredits(
+      1,
+      "full_identity_analysis",
+      "req-full-1"
+    );
     expect(consumed.status).toBe("insufficient");
+  });
+
+  it("blocks instant checkout in production unless explicitly allowed", async () => {
+    const previousNode = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    delete process.env.CREDITS_CHECKOUT_MODE;
+    const result = await purchaseCreditPackage(1, "pack_500");
+    expect(result.status).toBe("checkout_pending");
+    process.env.NODE_ENV = previousNode;
+    process.env.CREDITS_CHECKOUT_MODE = "instant";
   });
 });

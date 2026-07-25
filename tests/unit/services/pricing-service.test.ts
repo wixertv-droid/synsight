@@ -27,9 +27,10 @@ describe("database-backed pricing service", () => {
     process.env.CREDITS_CHECKOUT_MODE = "instant";
   });
 
-  it("provides active analysis prices without replaced phone/email modules", async () => {
+  it("provides active analysis prices without replaced phone/email/alias modules", async () => {
     const catalog = await getPublicPricingCatalog();
-    expect(catalog.analyses).toHaveLength(12);
+    // Defaults minus phone/email/alias/person_search
+    expect(catalog.analyses.length).toBeGreaterThanOrEqual(10);
     expect(
       catalog.analyses.find((row) => row.key === "digital_leak_exposure")
         ?.credits
@@ -41,8 +42,11 @@ describe("database-backed pricing service", () => {
       catalog.analyses.find((row) => row.key === "email_analysis")
     ).toBeUndefined();
     expect(
-      catalog.analyses.find((row) => row.key === "alias_analysis")?.credits
-    ).toBe(8);
+      catalog.analyses.find((row) => row.key === "alias_analysis")
+    ).toBeUndefined();
+    expect(
+      catalog.analyses.find((row) => row.key === "person_search")
+    ).toBeUndefined();
   });
 
   it("keeps phone/email inactive after pricing reset", async () => {

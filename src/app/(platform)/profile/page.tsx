@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import IdentityProfilePanel from "@/components/profile/IdentityProfilePanel";
 import { getCurrentUser } from "@/lib/auth/session";
+import { resolveActiveAnalyses } from "@/lib/dashboard/resolve-active-analyses";
 import { getProfileRepository } from "@/lib/repositories";
 import { getIdentityForUser } from "@/lib/services/identity-service";
+import { getPublicPricingCatalog } from "@/lib/services/pricing-service";
 
 export const metadata: Metadata = {
   title: "Mein Identitätsprofil — SynSight",
@@ -21,6 +23,17 @@ export default async function ProfilePage() {
   const identity = await getIdentityForUser(userId);
   if (!identity) return null;
 
+  let activeKeys: string[] | undefined;
+  try {
+    const catalog = await getPublicPricingCatalog();
+    const resolved = resolveActiveAnalyses(catalog.analyses ?? []);
+    if (resolved.length > 0) {
+      activeKeys = resolved.map((m) => String(m.id));
+    }
+  } catch (error) {
+    console.error("[Profile] pricing catalog failed", error);
+  }
+
   return (
     <main className="mx-auto max-w-5xl">
       <div className="mb-8">
@@ -34,7 +47,7 @@ export default async function ProfilePage() {
           bleiben erhalten.
         </p>
       </div>
-      <IdentityProfilePanel initial={identity} />
+      <IdentityProfilePanel initial={identity} activeKeys={activeKeys} />
     </main>
   );
 }

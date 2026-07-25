@@ -1,6 +1,10 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
+  AnalysisGateError,
+  assertAnalysisRunnable,
+} from "@/lib/analysis/assert-runnable";
+import {
   DigitalExposureUnavailableError,
   runDigitalLeakExposureScan,
 } from "@/lib/analysis/digital-exposure/run-analysis";
@@ -30,11 +34,28 @@ export async function POST(request: Request) {
     );
   }
 
+  const body = (await request.json().catch(() => ({}))) as {
+    requestId?: unknown;
+  };
+  const requestId =
+    typeof body.requestId === "string" ? body.requestId.trim() : "";
+
   try {
+    await assertAnalysisRunnable({
+      userId,
+      analysisKey: "digital_leak_exposure",
+      requestId,
+    });
+
     const identity = await getIdentityForUser(userId);
     const report = await runDigitalLeakExposureScan(identity, { userId });
     return NextResponse.json(apiSuccess({ report }));
   } catch (error) {
+    if (error instanceof AnalysisGateError) {
+      return NextResponse.json(apiError(error.code, error.message), {
+        status: error.httpStatus,
+      });
+    }
     if (error instanceof DigitalExposureUnavailableError) {
       return NextResponse.json(
         apiError("PROVIDER_UNAVAILABLE", error.message),

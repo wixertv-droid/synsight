@@ -61,4 +61,16 @@ describe("module-readiness", () => {
     );
     expect(phone?.ready).toBe(true);
   });
+
+  it("filters readiness to active catalog modules only", () => {
+    const readiness = buildProfileModuleReadiness(emptyIdentity(), {
+      activeKeys: ["google_search", "username_intelligence"],
+    });
+    expect(readiness.map((r) => r.key)).toEqual([
+      "google_search",
+      "username_intelligence",
+    ]);
+    expect(readiness.some((r) => r.key === "person_search")).toBe(false);
+    expect(readiness.some((r) => r.key === "alias_analysis")).toBe(false);
+  });
 });

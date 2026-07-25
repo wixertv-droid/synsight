@@ -12,6 +12,7 @@ interface AnalysisRow {
   label: string;
   credits: number;
   isActive: boolean;
+  sortOrder: number;
 }
 
 const emptySettings: UsernameModuleSettings = {
@@ -72,7 +73,7 @@ export default function AdminAnalysisModulesView() {
           description: null,
           credits: row.credits,
           isActive: !row.isActive,
-          sortOrder: row.id,
+          sortOrder: Number.isFinite(row.sortOrder) ? row.sortOrder : 100,
         }),
       });
       setRows((current) =>

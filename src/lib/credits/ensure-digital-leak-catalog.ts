@@ -156,7 +156,7 @@ async function runEnsure(): Promise<boolean> {
         description = VALUES(description),
         credits = VALUES(credits),
         sort_order = VALUES(sort_order),
-        is_active = 1,
+        is_active = IF(is_active IS NULL, 1, is_active),
         is_system_default = 1,
         default_label = VALUES(default_label),
         default_description = VALUES(default_description),

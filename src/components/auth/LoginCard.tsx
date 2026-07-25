@@ -14,6 +14,8 @@ interface LoginCardProps {
   mode?: "login" | "register";
   /** Shown after successful registration when auto-verify is enabled. */
   notice?: string | null;
+  /** Safe internal post-login path from `?from=`. */
+  from?: string | null;
 }
 
 interface AuthRedirectData {
@@ -23,6 +25,7 @@ interface AuthRedirectData {
 export default function LoginCard({
   mode = "login",
   notice = null,
+  from = null,
 }: LoginCardProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -72,7 +75,11 @@ export default function LoginCard({
       return;
     }
 
-    await submit(endpoint, parsed.data, "/dashboard");
+    await submit(
+      endpoint,
+      { ...parsed.data, from: from ?? undefined },
+      from ?? "/dashboard"
+    );
   };
 
   const strengthChecks = [
@@ -214,6 +221,17 @@ export default function LoginCard({
           }
           required
         />
+
+        {!isRegister ? (
+          <div className="-mt-2 text-right">
+            <Link
+              href="/forgot-password"
+              className="font-mono text-[8px] tracking-[.12em] text-cyber-blue/70 transition-colors hover:text-cyber-cyan"
+            >
+              Passwort vergessen?
+            </Link>
+          </div>
+        ) : null}
 
         {isRegister && (
           <>

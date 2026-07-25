@@ -33,6 +33,8 @@ const PLATFORMS = socialPlatformSchema.options;
 
 interface IdentityProfilePanelProps {
   initial: IdentityView;
+  /** Active analysis keys from the public pricing catalog. */
+  activeKeys?: string[];
 }
 
 function StringListEditor({
@@ -167,6 +169,7 @@ function ReadyBadge({
 
 export default function IdentityProfilePanel({
   initial,
+  activeKeys,
 }: IdentityProfilePanelProps) {
   const [form, setForm] = useState<IdentityView>(initial);
   const [saving, setSaving] = useState(false);
@@ -200,11 +203,40 @@ export default function IdentityProfilePanel({
     deep: false,
   });
 
-  const readiness = useMemo(() => buildProfileModuleReadiness(form), [form]);
+  const readiness = useMemo(
+    () => buildProfileModuleReadiness(form, { activeKeys }),
+    [form, activeKeys]
+  );
   const byKey = useMemo(
     () => Object.fromEntries(readiness.map((r) => [r.key, r])),
     [readiness]
   );
+  const isActive = useCallback(
+    (key: string) => {
+      if (!activeKeys) return true;
+      return activeKeys.includes(key);
+    },
+    [activeKeys]
+  );
+  const showAliasCard =
+    isActive("alias_analysis") || isActive("username_intelligence");
+  const aliasReadiness =
+    byKey.alias_analysis ?? byKey.username_intelligence ?? null;
+  const deepKeys = [
+    "person_search",
+    "deep_intelligence",
+    "full_identity_analysis",
+    "username_intelligence",
+  ] as const;
+  const deepItems = readiness.filter((r) =>
+    (deepKeys as readonly string[]).includes(r.key)
+  );
+  // Username has its own alias card when active; avoid duplicating in deep list
+  // when the alias card already shows username readiness.
+  const deepListItems = deepItems.filter((r) => {
+    if (r.key === "username_intelligence" && showAliasCard) return false;
+    return true;
+  });
 
   const firstNames = useMemo(
     () => splitFirstNames(form.personal.firstName),
@@ -593,134 +625,177 @@ export default function IdentityProfilePanel({
       </CollapsibleCard>
 
       {/* 2. Google Analyse */}
-      <CollapsibleCard
-        id="google"
-        title="Google Analyse"
-        subtitle="OSINT-Signale für die öffentliche Websuche"
-        open={openCards.google}
-        onToggle={() => toggle("google")}
-        badge={
-          byKey.google_search ? (
-            <ReadyBadge
-              ready={byKey.google_search.ready}
-              filled={byKey.google_search.filled}
-              total={byKey.google_search.total}
+      {isActive("google_search") ? (
+        <CollapsibleCard
+          id="google"
+          title="Google Analyse"
+          subtitle="OSINT-Signale für die öffentliche Websuche"
+          open={openCards.google}
+          onToggle={() => toggle("google")}
+          badge={
+            byKey.google_search ? (
+              <ReadyBadge
+                ready={byKey.google_search.ready}
+                filled={byKey.google_search.filled}
+                total={byKey.google_search.total}
+              />
+            ) : null
+          }
+        >
+          {byKey.google_search?.missing.length ? (
+            <p className="mb-4 rounded-lg border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2 font-mono text-[10px] text-amber-100/70">
+              FEHLT · {byKey.google_search.missing.join(" · ")}
+            </p>
+          ) : (
+            <p className="mb-4 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.05] px-3 py-2 font-mono text-[10px] text-emerald-200/75">
+              STAMMDATEN + SIGNALE AUSREICHEND FÜR GOOGLE OSINT
+            </p>
+          )}
+          <div className="space-y-5">
+            <StringListEditor
+              label="E-MAIL-ADRESSEN"
+              values={form.emails}
+              onChange={(emails) =>
+                setForm((current) => ({ ...current, emails }))
+              }
+              placeholder="name@domain.de"
             />
-          ) : null
-        }
-      >
-        {byKey.google_search?.missing.length ? (
-          <p className="mb-4 rounded-lg border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2 font-mono text-[10px] text-amber-100/70">
-            FEHLT · {byKey.google_search.missing.join(" · ")}
-          </p>
-        ) : (
-          <p className="mb-4 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.05] px-3 py-2 font-mono text-[10px] text-emerald-200/75">
-            STAMMDATEN + SIGNALE AUSREICHEND FÜR GOOGLE OSINT
-          </p>
-        )}
-        <div className="space-y-5">
-          <StringListEditor
-            label="E-MAIL-ADRESSEN"
-            values={form.emails}
-            onChange={(emails) =>
-              setForm((current) => ({ ...current, emails }))
-            }
-            placeholder="name@domain.de"
-          />
-          <StringListEditor
-            label="WEITERE TELEFONNUMMERN"
-            values={form.phoneNumbers}
-            onChange={(phoneNumbers) =>
-              setForm((current) => ({ ...current, phoneNumbers }))
-            }
-            placeholder="+49 …"
-          />
-          <FormField
-            label="Alias / öffentlicher Name"
-            value={form.aliases.publicAlias}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                aliases: {
-                  ...current.aliases,
-                  publicAlias: event.target.value,
-                },
-              }))
-            }
-          />
-          <StringListEditor
-            label="BENUTZERNAMEN"
-            values={form.aliases.usernames}
-            onChange={(usernames) =>
-              setForm((current) => ({
-                ...current,
-                aliases: { ...current.aliases, usernames, nicknames: [] },
-              }))
-            }
-            placeholder="Benutzername hinzufügen"
-          />
-          <StringListEditor
-            label="WEITERE UNTERNEHMEN"
-            values={form.companies}
-            onChange={(companies) =>
-              setForm((current) => ({ ...current, companies }))
-            }
-            placeholder="Firmenname"
-          />
-          <StringListEditor
-            label="WEBSITES"
-            values={form.websites}
-            onChange={(websites) =>
-              setForm((current) => ({ ...current, websites }))
-            }
-            placeholder="example.com"
-          />
-          <StringListEditor
-            label="DOMAINS"
-            values={form.domains}
-            onChange={(domains) =>
-              setForm((current) => ({ ...current, domains }))
-            }
-            placeholder="example.org"
-          />
-        </div>
-      </CollapsibleCard>
+            <StringListEditor
+              label="WEITERE TELEFONNUMMERN"
+              values={form.phoneNumbers}
+              onChange={(phoneNumbers) =>
+                setForm((current) => ({ ...current, phoneNumbers }))
+              }
+              placeholder="+49 …"
+            />
+            <FormField
+              label="Alias / öffentlicher Name"
+              value={form.aliases.publicAlias}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  aliases: {
+                    ...current.aliases,
+                    publicAlias: event.target.value,
+                  },
+                }))
+              }
+            />
+            <StringListEditor
+              label="BENUTZERNAMEN"
+              values={form.aliases.usernames}
+              onChange={(usernames) =>
+                setForm((current) => ({
+                  ...current,
+                  aliases: { ...current.aliases, usernames, nicknames: [] },
+                }))
+              }
+              placeholder="Benutzername hinzufügen"
+            />
+            <StringListEditor
+              label="WEITERE UNTERNEHMEN"
+              values={form.companies}
+              onChange={(companies) =>
+                setForm((current) => ({ ...current, companies }))
+              }
+              placeholder="Firmenname"
+            />
+            <StringListEditor
+              label="WEBSITES"
+              values={form.websites}
+              onChange={(websites) =>
+                setForm((current) => ({ ...current, websites }))
+              }
+              placeholder="example.com"
+            />
+            <StringListEditor
+              label="DOMAINS"
+              values={form.domains}
+              onChange={(domains) =>
+                setForm((current) => ({ ...current, domains }))
+              }
+              placeholder="example.org"
+            />
+          </div>
+        </CollapsibleCard>
+      ) : null}
 
       {/* Digital Leak & Exposure */}
-      <CollapsibleCard
-        id="exposure"
-        title="Digital Leak & Exposure Scan"
-        subtitle="E-Mail- und Telefon-Identifikatoren für Leak-Prüfung"
-        open={openCards.exposure}
-        onToggle={() => toggle("exposure")}
-        badge={
-          byKey.digital_leak_exposure ? (
-            <ReadyBadge
-              ready={byKey.digital_leak_exposure.ready}
-              filled={byKey.digital_leak_exposure.filled}
-              total={byKey.digital_leak_exposure.total}
+      {isActive("digital_leak_exposure") ? (
+        <CollapsibleCard
+          id="exposure"
+          title="Digital Leak & Exposure Scan"
+          subtitle="E-Mail- und Telefon-Identifikatoren für Leak-Prüfung"
+          open={openCards.exposure}
+          onToggle={() => toggle("exposure")}
+          badge={
+            byKey.digital_leak_exposure ? (
+              <ReadyBadge
+                ready={byKey.digital_leak_exposure.ready}
+                filled={byKey.digital_leak_exposure.filled}
+                total={byKey.digital_leak_exposure.total}
+              />
+            ) : null
+          }
+        >
+          {byKey.digital_leak_exposure?.missing.length ? (
+            <p className="mb-4 rounded-lg border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2 font-mono text-[10px] text-amber-100/70">
+              FEHLT · {byKey.digital_leak_exposure.missing.join(" · ")}
+            </p>
+          ) : (
+            <p className="mb-4 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.05] px-3 py-2 font-mono text-[10px] text-emerald-200/75">
+              E-MAIL ODER TELEFON VORHANDEN — BEREIT FÜR EXPOSURE SCAN
+            </p>
+          )}
+          <div className="space-y-5">
+            <StringListEditor
+              label="E-MAIL-ADRESSEN"
+              values={form.emails}
+              onChange={(emails) =>
+                setForm((current) => ({ ...current, emails }))
+              }
+              placeholder="name@domain.de"
             />
-          ) : null
-        }
-      >
-        {byKey.digital_leak_exposure?.missing.length ? (
-          <p className="mb-4 rounded-lg border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2 font-mono text-[10px] text-amber-100/70">
-            FEHLT · {byKey.digital_leak_exposure.missing.join(" · ")}
-          </p>
-        ) : (
-          <p className="mb-4 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.05] px-3 py-2 font-mono text-[10px] text-emerald-200/75">
-            E-MAIL ODER TELEFON VORHANDEN — BEREIT FÜR EXPOSURE SCAN
-          </p>
-        )}
-        <div className="space-y-5">
-          <StringListEditor
-            label="E-MAIL-ADRESSEN"
-            values={form.emails}
-            onChange={(emails) =>
-              setForm((current) => ({ ...current, emails }))
-            }
-            placeholder="name@domain.de"
-          />
+            <StringListEditor
+              label="TELEFONNUMMERN"
+              values={form.phoneNumbers}
+              onChange={(phoneNumbers) =>
+                setForm((current) => ({ ...current, phoneNumbers }))
+              }
+              placeholder="+49 …"
+            />
+            {form.personal.phone ? (
+              <p className="font-mono text-[10px] text-emerald-200/70">
+                HAUPTTELEFON AUS STAMMDATEN · {form.personal.phone}
+              </p>
+            ) : null}
+          </div>
+        </CollapsibleCard>
+      ) : null}
+
+      {/* 3. Telefon */}
+      {isActive("phone_analysis") ? (
+        <CollapsibleCard
+          id="phone"
+          title="Telefon Analyse"
+          subtitle="Nummern für Telefon-Exposure"
+          open={openCards.phone}
+          onToggle={() => toggle("phone")}
+          badge={
+            byKey.phone_analysis ? (
+              <ReadyBadge
+                ready={byKey.phone_analysis.ready}
+                filled={byKey.phone_analysis.filled}
+                total={byKey.phone_analysis.total}
+              />
+            ) : null
+          }
+        >
+          {form.personal.phone ? (
+            <p className="mb-3 font-mono text-[10px] text-emerald-200/70">
+              ÜBERNOMMEN AUS STAMMDATEN · {form.personal.phone}
+            </p>
+          ) : null}
           <StringListEditor
             label="TELEFONNUMMERN"
             values={form.phoneNumbers}
@@ -729,412 +804,386 @@ export default function IdentityProfilePanel({
             }
             placeholder="+49 …"
           />
-          {form.personal.phone ? (
-            <p className="font-mono text-[10px] text-emerald-200/70">
-              HAUPTTELEFON AUS STAMMDATEN · {form.personal.phone}
-            </p>
-          ) : null}
-        </div>
-      </CollapsibleCard>
-
-      {/* 3. Telefon */}
-      <CollapsibleCard
-        id="phone"
-        title="Telefon Analyse"
-        subtitle="Nummern für Telefon-Exposure"
-        open={openCards.phone}
-        onToggle={() => toggle("phone")}
-        badge={
-          byKey.phone_analysis ? (
-            <ReadyBadge
-              ready={byKey.phone_analysis.ready}
-              filled={byKey.phone_analysis.filled}
-              total={byKey.phone_analysis.total}
-            />
-          ) : null
-        }
-      >
-        {form.personal.phone ? (
-          <p className="mb-3 font-mono text-[10px] text-emerald-200/70">
-            ÜBERNOMMEN AUS STAMMDATEN · {form.personal.phone}
-          </p>
-        ) : null}
-        <StringListEditor
-          label="TELEFONNUMMERN"
-          values={form.phoneNumbers}
-          onChange={(phoneNumbers) =>
-            setForm((current) => ({ ...current, phoneNumbers }))
-          }
-          placeholder="+49 …"
-        />
-      </CollapsibleCard>
+        </CollapsibleCard>
+      ) : null}
 
       {/* 4. E-Mail */}
-      <CollapsibleCard
-        id="email"
-        title="E-Mail Analyse"
-        subtitle="Adressen für Leak- und Exposure-Scans"
-        open={openCards.email}
-        onToggle={() => toggle("email")}
-        badge={
-          byKey.email_analysis ? (
-            <ReadyBadge
-              ready={byKey.email_analysis.ready}
-              filled={byKey.email_analysis.filled}
-              total={byKey.email_analysis.total}
-            />
-          ) : null
-        }
-      >
-        <StringListEditor
-          label="E-MAIL-ADRESSEN"
-          values={form.emails}
-          onChange={(emails) => setForm((current) => ({ ...current, emails }))}
-          placeholder="name@domain.de"
-        />
-      </CollapsibleCard>
+      {isActive("email_analysis") ? (
+        <CollapsibleCard
+          id="email"
+          title="E-Mail Analyse"
+          subtitle="Adressen für Leak- und Exposure-Scans"
+          open={openCards.email}
+          onToggle={() => toggle("email")}
+          badge={
+            byKey.email_analysis ? (
+              <ReadyBadge
+                ready={byKey.email_analysis.ready}
+                filled={byKey.email_analysis.filled}
+                total={byKey.email_analysis.total}
+              />
+            ) : null
+          }
+        >
+          <StringListEditor
+            label="E-MAIL-ADRESSEN"
+            values={form.emails}
+            onChange={(emails) =>
+              setForm((current) => ({ ...current, emails }))
+            }
+            placeholder="name@domain.de"
+          />
+        </CollapsibleCard>
+      ) : null}
 
       {/* 5. Web / Domain */}
-      <CollapsibleCard
-        id="web"
-        title="Website & Domain Analyse"
-        subtitle="Öffentliche Web-Assets"
-        open={openCards.web}
-        onToggle={() => toggle("web")}
-        badge={
-          <ReadyBadge
-            ready={
-              Boolean(byKey.website_analysis?.ready) &&
-              Boolean(byKey.domain_analysis?.ready)
-            }
-            filled={
-              (byKey.website_analysis?.filled ?? 0) +
-              (byKey.domain_analysis?.filled ?? 0)
-            }
-            total={2}
-          />
-        }
-      >
-        <div className="space-y-5">
-          <StringListEditor
-            label="WEBSITES"
-            values={form.websites}
-            onChange={(websites) =>
-              setForm((current) => ({ ...current, websites }))
-            }
-            placeholder="example.com"
-          />
-          <StringListEditor
-            label="DOMAINS"
-            values={form.domains}
-            onChange={(domains) =>
-              setForm((current) => ({ ...current, domains }))
-            }
-            placeholder="example.org"
-          />
-        </div>
-      </CollapsibleCard>
-
-      {/* 6. Alias */}
-      <CollapsibleCard
-        id="alias"
-        title="Alias Analyse"
-        subtitle="Benutzernamen, Gamertags, frühere Namen"
-        open={openCards.alias}
-        onToggle={() => toggle("alias")}
-        badge={
-          byKey.alias_analysis ? (
+      {isActive("website_analysis") || isActive("domain_analysis") ? (
+        <CollapsibleCard
+          id="web"
+          title="Website & Domain Analyse"
+          subtitle="Öffentliche Web-Assets"
+          open={openCards.web}
+          onToggle={() => toggle("web")}
+          badge={
             <ReadyBadge
-              ready={byKey.alias_analysis.ready}
-              filled={byKey.alias_analysis.filled}
-              total={byKey.alias_analysis.total}
+              ready={
+                Boolean(byKey.website_analysis?.ready) &&
+                Boolean(byKey.domain_analysis?.ready)
+              }
+              filled={
+                (byKey.website_analysis?.filled ?? 0) +
+                (byKey.domain_analysis?.filled ?? 0)
+              }
+              total={2}
             />
-          ) : null
-        }
-      >
-        <div className="space-y-5">
-          <FormField
-            label="Alias / öffentlicher Name"
-            value={form.aliases.publicAlias}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                aliases: {
-                  ...current.aliases,
-                  publicAlias: event.target.value,
-                },
-              }))
-            }
-          />
-          <StringListEditor
-            label="BENUTZERNAMEN"
-            values={form.aliases.usernames}
-            onChange={(usernames) =>
-              setForm((current) => ({
-                ...current,
-                aliases: { ...current.aliases, usernames, nicknames: [] },
-              }))
-            }
-            placeholder="Benutzername"
-          />
-          <StringListEditor
-            label="GAMERTAGS"
-            values={form.aliases.gamingNames}
-            onChange={(gamingNames) =>
-              setForm((current) => ({
-                ...current,
-                aliases: { ...current.aliases, gamingNames },
-              }))
-            }
-            placeholder="Gamertag"
-          />
-          <StringListEditor
-            label="FRÜHERE NAMEN"
-            values={form.aliases.formerNames}
-            onChange={(formerNames) =>
-              setForm((current) => ({
-                ...current,
-                aliases: { ...current.aliases, formerNames },
-              }))
-            }
-            placeholder="Früherer Name"
-          />
-        </div>
-      </CollapsibleCard>
+          }
+        >
+          <div className="space-y-5">
+            <StringListEditor
+              label="WEBSITES"
+              values={form.websites}
+              onChange={(websites) =>
+                setForm((current) => ({ ...current, websites }))
+              }
+              placeholder="example.com"
+            />
+            <StringListEditor
+              label="DOMAINS"
+              values={form.domains}
+              onChange={(domains) =>
+                setForm((current) => ({ ...current, domains }))
+              }
+              placeholder="example.org"
+            />
+          </div>
+        </CollapsibleCard>
+      ) : null}
+
+      {/* 6. Alias / Username */}
+      {showAliasCard ? (
+        <CollapsibleCard
+          id="alias"
+          title={
+            isActive("alias_analysis")
+              ? "Alias Analyse"
+              : "Username Intelligence"
+          }
+          subtitle="Benutzernamen, Gamertags, frühere Namen"
+          open={openCards.alias}
+          onToggle={() => toggle("alias")}
+          badge={
+            aliasReadiness ? (
+              <ReadyBadge
+                ready={aliasReadiness.ready}
+                filled={aliasReadiness.filled}
+                total={aliasReadiness.total}
+              />
+            ) : null
+          }
+        >
+          <div className="space-y-5">
+            <FormField
+              label="Alias / öffentlicher Name"
+              value={form.aliases.publicAlias}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  aliases: {
+                    ...current.aliases,
+                    publicAlias: event.target.value,
+                  },
+                }))
+              }
+            />
+            <StringListEditor
+              label="BENUTZERNAMEN"
+              values={form.aliases.usernames}
+              onChange={(usernames) =>
+                setForm((current) => ({
+                  ...current,
+                  aliases: { ...current.aliases, usernames, nicknames: [] },
+                }))
+              }
+              placeholder="Benutzername"
+            />
+            <StringListEditor
+              label="GAMERTAGS"
+              values={form.aliases.gamingNames}
+              onChange={(gamingNames) =>
+                setForm((current) => ({
+                  ...current,
+                  aliases: { ...current.aliases, gamingNames },
+                }))
+              }
+              placeholder="Gamertag"
+            />
+            <StringListEditor
+              label="FRÜHERE NAMEN"
+              values={form.aliases.formerNames}
+              onChange={(formerNames) =>
+                setForm((current) => ({
+                  ...current,
+                  aliases: { ...current.aliases, formerNames },
+                }))
+              }
+              placeholder="Früherer Name"
+            />
+          </div>
+        </CollapsibleCard>
+      ) : null}
 
       {/* 7. Social */}
-      <CollapsibleCard
-        id="social"
-        title="Social Media Analyse"
-        subtitle="Verknüpfte Netzwerke und Profile"
-        open={openCards.social}
-        onToggle={() => toggle("social")}
-        badge={
-          byKey.social_media ? (
-            <ReadyBadge
-              ready={byKey.social_media.ready}
-              filled={byKey.social_media.filled}
-              total={byKey.social_media.total}
+      {isActive("social_media") ? (
+        <CollapsibleCard
+          id="social"
+          title="Social Media Analyse"
+          subtitle="Verknüpfte Netzwerke und Profile"
+          open={openCards.social}
+          onToggle={() => toggle("social")}
+          badge={
+            byKey.social_media ? (
+              <ReadyBadge
+                ready={byKey.social_media.ready}
+                filled={byKey.social_media.filled}
+                total={byKey.social_media.total}
+              />
+            ) : null
+          }
+        >
+          <div className="space-y-3">
+            {form.socialAccounts.map((account, index) => (
+              <div
+                key={`${account.platform}-${account.username}-${index}`}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-3"
+              >
+                <div>
+                  <p className="text-sm text-white/75">
+                    {account.platform} · @{account.username}
+                  </p>
+                  <p className="mt-1 font-mono text-[9px] text-white/25">
+                    {account.accountStatus}
+                    {account.profileUrl ? ` · ${account.profileUrl}` : ""}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      socialAccounts: current.socialAccounts.filter(
+                        (_, i) => i !== index
+                      ),
+                    }))
+                  }
+                >
+                  Entfernen
+                </Button>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <label className="block">
+              <span className="mb-2 block text-[11px] text-white/45">
+                Netzwerk
+              </span>
+              <select
+                value={socialDraft.platform}
+                onChange={(event) =>
+                  setSocialDraft((current) => ({
+                    ...current,
+                    platform: event.target.value as SocialPlatform,
+                  }))
+                }
+                className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2.5 text-sm text-white/80"
+              >
+                {PLATFORMS.map((platform) => (
+                  <option key={platform} value={platform}>
+                    {platform}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-[11px] text-white/45">
+                Status
+              </span>
+              <select
+                value={socialDraft.accountStatus}
+                onChange={(event) =>
+                  setSocialDraft((current) => ({
+                    ...current,
+                    accountStatus: event.target.value as
+                      "active" | "former" | "unknown",
+                  }))
+                }
+                className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2.5 text-sm text-white/80"
+              >
+                <option value="active">aktiv</option>
+                <option value="former">ehemalig</option>
+                <option value="unknown">unbekannt</option>
+              </select>
+            </label>
+            <FormField
+              label="Benutzername"
+              value={socialDraft.username}
+              onChange={(event) =>
+                setSocialDraft((current) => ({
+                  ...current,
+                  username: event.target.value,
+                }))
+              }
             />
-          ) : null
-        }
-      >
-        <div className="space-y-3">
-          {form.socialAccounts.map((account, index) => (
-            <div
-              key={`${account.platform}-${account.username}-${index}`}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-3"
-            >
+            <FormField
+              label="Profil-URL (optional)"
+              value={socialDraft.profileUrl}
+              onChange={(event) =>
+                setSocialDraft((current) => ({
+                  ...current,
+                  profileUrl: event.target.value,
+                }))
+              }
+            />
+          </div>
+          <Button
+            type="button"
+            className="mt-4"
+            onClick={() => {
+              if (!socialDraft.username.trim()) return;
+              setForm((current) => ({
+                ...current,
+                socialAccounts: [
+                  ...current.socialAccounts,
+                  {
+                    platform: socialDraft.platform,
+                    username: socialDraft.username.trim(),
+                    profileUrl: socialDraft.profileUrl.trim(),
+                    accountStatus: socialDraft.accountStatus,
+                  },
+                ],
+              }));
+              setSocialDraft((current) => ({
+                ...current,
+                username: "",
+                profileUrl: "",
+              }));
+            }}
+          >
+            Konto hinzufügen
+          </Button>
+        </CollapsibleCard>
+      ) : null}
+
+      {/* 8. Reverse Image */}
+      {isActive("reverse_image_search") ? (
+        <CollapsibleCard
+          id="image"
+          title="Reverse Image Search"
+          subtitle="Vier biometrische Referenzansichten"
+          open={openCards.image}
+          onToggle={() => toggle("image")}
+          badge={
+            byKey.reverse_image_search ? (
+              <ReadyBadge
+                ready={byKey.reverse_image_search.ready}
+                filled={byKey.reverse_image_search.filled}
+                total={byKey.reverse_image_search.total}
+              />
+            ) : null
+          }
+        >
+          <ReferenceImageSlots
+            images={form.images}
+            uploadingType={uploadingType}
+            onSelect={(type, file) => void uploadImage(type, file)}
+            onDelete={(type) => void deleteImage(type)}
+          />
+          <div className="mt-5 rounded-lg border border-white/[0.07] bg-white/[0.02] p-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm text-white/75">
-                  {account.platform} · @{account.username}
+                <p className="font-mono text-[9px] tracking-[.14em] text-cyber-cyan/55">
+                  HANDY-UPLOAD
                 </p>
-                <p className="mt-1 font-mono text-[9px] text-white/25">
-                  {account.accountStatus}
-                  {account.profileUrl ? ` · ${account.profileUrl}` : ""}
+                <p className="mt-2 text-sm text-white/55">
+                  QR-Code scannen und Referenzbilder direkt mit dem Handy
+                  aufnehmen.
                 </p>
               </div>
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() =>
-                  setForm((current) => ({
-                    ...current,
-                    socialAccounts: current.socialAccounts.filter(
-                      (_, i) => i !== index
-                    ),
-                  }))
-                }
+                disabled={mobileLoading}
+                onClick={() => void startMobileUpload()}
               >
-                Entfernen
+                {mobileLoading
+                  ? "QR wird erzeugt…"
+                  : mobileSession
+                    ? "Neuen QR-Code erzeugen"
+                    : "QR-Code für Handy"}
               </Button>
             </div>
-          ))}
-        </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <label className="block">
-            <span className="mb-2 block text-[11px] text-white/45">
-              Netzwerk
-            </span>
-            <select
-              value={socialDraft.platform}
-              onChange={(event) =>
-                setSocialDraft((current) => ({
-                  ...current,
-                  platform: event.target.value as SocialPlatform,
-                }))
-              }
-              className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2.5 text-sm text-white/80"
-            >
-              {PLATFORMS.map((platform) => (
-                <option key={platform} value={platform}>
-                  {platform}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-[11px] text-white/45">Status</span>
-            <select
-              value={socialDraft.accountStatus}
-              onChange={(event) =>
-                setSocialDraft((current) => ({
-                  ...current,
-                  accountStatus: event.target.value as
-                    "active" | "former" | "unknown",
-                }))
-              }
-              className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2.5 text-sm text-white/80"
-            >
-              <option value="active">aktiv</option>
-              <option value="former">ehemalig</option>
-              <option value="unknown">unbekannt</option>
-            </select>
-          </label>
-          <FormField
-            label="Benutzername"
-            value={socialDraft.username}
-            onChange={(event) =>
-              setSocialDraft((current) => ({
-                ...current,
-                username: event.target.value,
-              }))
-            }
-          />
-          <FormField
-            label="Profil-URL (optional)"
-            value={socialDraft.profileUrl}
-            onChange={(event) =>
-              setSocialDraft((current) => ({
-                ...current,
-                profileUrl: event.target.value,
-              }))
-            }
-          />
-        </div>
-        <Button
-          type="button"
-          className="mt-4"
-          onClick={() => {
-            if (!socialDraft.username.trim()) return;
-            setForm((current) => ({
-              ...current,
-              socialAccounts: [
-                ...current.socialAccounts,
-                {
-                  platform: socialDraft.platform,
-                  username: socialDraft.username.trim(),
-                  profileUrl: socialDraft.profileUrl.trim(),
-                  accountStatus: socialDraft.accountStatus,
-                },
-              ],
-            }));
-            setSocialDraft((current) => ({
-              ...current,
-              username: "",
-              profileUrl: "",
-            }));
-          }}
-        >
-          Konto hinzufügen
-        </Button>
-      </CollapsibleCard>
-
-      {/* 8. Reverse Image */}
-      <CollapsibleCard
-        id="image"
-        title="Reverse Image Search"
-        subtitle="Vier biometrische Referenzansichten"
-        open={openCards.image}
-        onToggle={() => toggle("image")}
-        badge={
-          byKey.reverse_image_search ? (
-            <ReadyBadge
-              ready={byKey.reverse_image_search.ready}
-              filled={byKey.reverse_image_search.filled}
-              total={byKey.reverse_image_search.total}
-            />
-          ) : null
-        }
-      >
-        <ReferenceImageSlots
-          images={form.images}
-          uploadingType={uploadingType}
-          onSelect={(type, file) => void uploadImage(type, file)}
-          onDelete={(type) => void deleteImage(type)}
-        />
-        <div className="mt-5 rounded-lg border border-white/[0.07] bg-white/[0.02] p-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="font-mono text-[9px] tracking-[.14em] text-cyber-cyan/55">
-                HANDY-UPLOAD
-              </p>
-              <p className="mt-2 text-sm text-white/55">
-                QR-Code scannen und Referenzbilder direkt mit dem Handy
-                aufnehmen.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={mobileLoading}
-              onClick={() => void startMobileUpload()}
-            >
-              {mobileLoading
-                ? "QR wird erzeugt…"
-                : mobileSession
-                  ? "Neuen QR-Code erzeugen"
-                  : "QR-Code für Handy"}
-            </Button>
-          </div>
-          {mobileSession ? (
-            <div className="mt-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={mobileSession.qrDataUrl}
-                alt="QR-Code für Handy-Upload"
-                width={168}
-                height={168}
-                className="rounded-xl border border-white/10 bg-white p-2"
-              />
-              <div className="space-y-2 text-xs text-white/40">
-                <p>
-                  Gültig bis{" "}
-                  <span className="text-white/60">
-                    {mobileSession.expiresAt}
-                  </span>
-                </p>
-                <button
-                  type="button"
-                  className="text-cyber-cyan/70 hover:text-cyber-cyan"
-                  onClick={() => void refreshImages()}
-                >
-                  Jetzt aktualisieren
-                </button>
+            {mobileSession ? (
+              <div className="mt-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={mobileSession.qrDataUrl}
+                  alt="QR-Code für Handy-Upload"
+                  width={168}
+                  height={168}
+                  className="rounded-xl border border-white/10 bg-white p-2"
+                />
+                <div className="space-y-2 text-xs text-white/40">
+                  <p>
+                    Gültig bis{" "}
+                    <span className="text-white/60">
+                      {mobileSession.expiresAt}
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    className="text-cyber-cyan/70 hover:text-cyber-cyan"
+                    onClick={() => void refreshImages()}
+                  >
+                    Jetzt aktualisieren
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : null}
-        </div>
-      </CollapsibleCard>
+            ) : null}
+          </div>
+        </CollapsibleCard>
+      ) : null}
 
       {/* 9. Deep / Full checklist */}
-      <CollapsibleCard
-        id="deep"
-        title="Weitere Analysearten"
-        subtitle="Personensuche · Deep Intelligence · Komplettanalyse"
-        open={openCards.deep}
-        onToggle={() => toggle("deep")}
-      >
-        <ul className="space-y-2">
-          {readiness
-            .filter((r) =>
-              [
-                "person_search",
-                "deep_intelligence",
-                "full_identity_analysis",
-              ].includes(r.key)
-            )
-            .map((item) => (
+      {deepListItems.length > 0 ? (
+        <CollapsibleCard
+          id="deep"
+          title="Weitere Analysearten"
+          subtitle="Aktive Analysearten ohne eigene Karte"
+          open={openCards.deep}
+          onToggle={() => toggle("deep")}
+        >
+          <ul className="space-y-2">
+            {deepListItems.map((item) => (
               <li
                 key={item.key}
                 className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
@@ -1154,8 +1203,9 @@ export default function IdentityProfilePanel({
                 />
               </li>
             ))}
-        </ul>
-      </CollapsibleCard>
+          </ul>
+        </CollapsibleCard>
+      ) : null}
 
       {error ? (
         <p

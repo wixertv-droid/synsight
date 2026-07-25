@@ -1,6 +1,10 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
+  AnalysisGateError,
+  assertAnalysisRunnable,
+} from "@/lib/analysis/assert-runnable";
+import {
   UsernameIntelligenceUnavailableError,
   runUsernameIntelligenceScan,
 } from "@/lib/analysis/username/run-analysis";
@@ -33,10 +37,19 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as {
     retentionDays?: unknown;
+    requestId?: unknown;
   };
   const retentionDays = parseRetentionDays(body.retentionDays);
+  const requestId =
+    typeof body.requestId === "string" ? body.requestId.trim() : "";
 
   try {
+    await assertAnalysisRunnable({
+      userId,
+      analysisKey: "username_intelligence",
+      requestId,
+    });
+
     const identity = await getIdentityForUser(userId);
     const report = await runUsernameIntelligenceScan(identity, {
       userId,
@@ -44,6 +57,11 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(apiSuccess({ report }));
   } catch (error) {
+    if (error instanceof AnalysisGateError) {
+      return NextResponse.json(apiError(error.code, error.message), {
+        status: error.httpStatus,
+      });
+    }
     if (error instanceof UsernameIntelligenceUnavailableError) {
       return NextResponse.json(
         apiError("PROVIDER_UNAVAILABLE", error.message),

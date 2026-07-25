@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PromoRedeemForm from "@/components/credits/PromoRedeemForm";
 import InfoHeading from "@/components/ui/InfoHeading";
 import InfoPanel from "@/components/ui/InfoPanel";
 import { guidance } from "@/lib/content/guidance";
@@ -76,6 +77,7 @@ export default async function CreditsPanel({ userId }: CreditsPanelProps) {
               Preisübersicht
             </Link>
           </div>
+          <PromoRedeemForm />
         </div>
 
         <div className="grid flex-1 gap-4 md:grid-cols-2">

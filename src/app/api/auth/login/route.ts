@@ -10,6 +10,7 @@ import {
   recordRateLimitFailure,
 } from "@/lib/security/rate-limit";
 import { getClientIp, validateMutationOrigin } from "@/lib/security/request";
+import { safeInternalRedirect } from "@/lib/security/safe-redirect";
 
 export async function POST(request: Request) {
   const csrfError = validateMutationOrigin(request);
@@ -18,6 +19,10 @@ export async function POST(request: Request) {
   const ipAddress = getClientIp(request);
   const json = await request.json().catch(() => null);
   const parsed = loginSchema.safeParse(json);
+  const requestedFrom =
+    json && typeof json === "object" && "from" in json
+      ? String((json as { from?: unknown }).from ?? "")
+      : "";
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -93,5 +98,7 @@ export async function POST(request: Request) {
   }
 
   clearRateLimit(rateLimitKey);
-  return NextResponse.json(apiSuccess({ redirectTo: "/dashboard" }));
+  return NextResponse.json(
+    apiSuccess({ redirectTo: safeInternalRedirect(requestedFrom) })
+  );
 }

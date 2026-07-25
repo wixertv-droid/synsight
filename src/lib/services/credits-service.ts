@@ -12,8 +12,16 @@ function startOfMonthIso(): string {
 
 function checkoutMode(): "instant" | "provider" {
   const mode = process.env.CREDITS_CHECKOUT_MODE?.trim().toLowerCase();
+  if (mode === "instant") {
+    // Instant checkout is DEV/test only — never default in production.
+    if (process.env.NODE_ENV === "production") {
+      return "provider";
+    }
+    return "instant";
+  }
   if (mode === "provider") return "provider";
-  return "instant";
+  // Production defaults to provider; development may use instant for local tests.
+  return process.env.NODE_ENV === "production" ? "provider" : "instant";
 }
 
 function defaultProvider(): string {
@@ -173,6 +181,24 @@ export async function consumeCredits(
   const repo = getCreditsRepository();
   await repo.ensureAccount(userId);
 
+  // Idempotent retry: same requestId → return prior success without re-debit
+  if (requestId) {
+    const prior = await repo.findUsageByRequestId(userId, requestId);
+    if (prior && prior.status === "completed") {
+      const account = await repo.ensureAccount(userId);
+      return {
+        status: "completed" as const,
+        analysisKey: price.analysisKey,
+        label: price.label,
+        creditsCharged: prior.creditsCharged,
+        balance: account.balance,
+        transactionId: prior.transactionId ?? 0,
+        usageLogId: prior.id,
+        alreadyConsumed: true as const,
+      };
+    }
+  }
+
   try {
     const result = await repo.applyCreditChange({
       userId,
@@ -200,6 +226,7 @@ export async function consumeCredits(
       balance: result.account.balance,
       transactionId: result.transaction.id,
       usageLogId: usage.id,
+      alreadyConsumed: false as const,
     };
   } catch (error) {
     if (error instanceof Error && error.message === "INSUFFICIENT_CREDITS") {
@@ -211,6 +238,23 @@ export async function consumeCredits(
         analysisKey: price.analysisKey,
         label: price.label,
       };
+    }
+    // Unique race: another request finished first
+    if (requestId) {
+      const raced = await repo.findUsageByRequestId(userId, requestId);
+      if (raced && raced.status === "completed") {
+        const account = await repo.ensureAccount(userId);
+        return {
+          status: "completed" as const,
+          analysisKey: price.analysisKey,
+          label: price.label,
+          creditsCharged: raced.creditsCharged,
+          balance: account.balance,
+          transactionId: raced.transactionId ?? 0,
+          usageLogId: raced.id,
+          alreadyConsumed: true as const,
+        };
+      }
     }
     throw error;
   }

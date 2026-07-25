@@ -50,19 +50,26 @@ export default function GoogleAnalysisPageClient({
     setPhase("confirm");
   };
 
-  const onCreditsConfirmed = useCallback(() => {
-    try {
-      window.localStorage.setItem(
-        REPORT_RETENTION_STORAGE_KEY,
-        String(retentionDays)
-      );
-    } catch {
-      /* ignore */
-    }
-    router.push(
-      `/dashboard/results?tab=google_search&scan=1&retention=${retentionDays}`
-    );
-  }, [retentionDays, router]);
+  const onCreditsConfirmed = useCallback(
+    (payload: { requestId: string }) => {
+      try {
+        window.localStorage.setItem(
+          REPORT_RETENTION_STORAGE_KEY,
+          String(retentionDays)
+        );
+      } catch {
+        /* ignore */
+      }
+      const params = new URLSearchParams({
+        tab: "google_search",
+        scan: "1",
+        retention: String(retentionDays),
+        requestId: payload.requestId,
+      });
+      router.push(`/dashboard/results?${params.toString()}`);
+    },
+    [retentionDays, router]
+  );
 
   useEffect(() => {
     if (autoStart) setPhase("confirm");
@@ -191,7 +198,7 @@ export default function GoogleAnalysisPageClient({
             <ConsumeConfirm
               analysisKey="google_search"
               confirmLabel="Analyse starten"
-              onCompleted={() => onCreditsConfirmed()}
+              onCompleted={onCreditsConfirmed}
             />
           </div>
           {error ? (

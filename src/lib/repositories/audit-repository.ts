@@ -5,6 +5,7 @@ export type AuditEventType =
   | "auth.registration"
   | "auth.email.verified"
   | "auth.password.changed"
+  | "auth.password_reset.requested"
   | "profile.updated"
   | "security.settings.updated"
   | "admin.action"

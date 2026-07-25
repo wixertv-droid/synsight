@@ -1,5 +1,9 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
+import {
+  AnalysisGateError,
+  assertAnalysisRunnable,
+} from "@/lib/analysis/assert-runnable";
 import { runGoogleIntelligenceAnalysis } from "@/lib/analysis/google/run-analysis";
 import { saveIntelligenceReport } from "@/lib/analysis/session-store";
 import { parseRetentionDays } from "@/lib/analysis/retention";
@@ -31,10 +35,19 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as {
     retentionDays?: unknown;
+    requestId?: unknown;
   };
   const retentionDays = parseRetentionDays(body.retentionDays);
+  const requestId =
+    typeof body.requestId === "string" ? body.requestId.trim() : "";
 
   try {
+    await assertAnalysisRunnable({
+      userId,
+      analysisKey: "google_search",
+      requestId,
+    });
+
     const identity = await getIdentityForUser(userId);
     const report = await runGoogleIntelligenceAnalysis(identity, {
       retentionDays,
@@ -43,6 +56,11 @@ export async function POST(request: Request) {
     await saveIntelligenceReport(userId, report);
     return NextResponse.json(apiSuccess({ report }));
   } catch (error) {
+    if (error instanceof AnalysisGateError) {
+      return NextResponse.json(apiError(error.code, error.message), {
+        status: error.httpStatus,
+      });
+    }
     console.error("[analysis/google/run] failed", error);
     const technical =
       error instanceof Error ? error.message : "unbekannter Fehler";

@@ -81,15 +81,12 @@ export const getCurrentUser = cache(
         id: String(user.id),
         displayName: toDisplayName(user),
         email: user.email,
+        // Always prefer DB role over token claim (M-06).
         role: user.role,
       };
     }
 
-    return {
-      id: payload.sub,
-      displayName: payload.displayName,
-      email: payload.email,
-      role: payload.role,
-    };
+    // No DB-backed session → reject. Cookie claims alone are insufficient.
+    return null;
   }
 );

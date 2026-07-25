@@ -1,13 +1,12 @@
+import {
+  getRateLimitStore,
+  type RateLimitBucket,
+} from "@/lib/security/rate-limit-store";
+
 export interface RateLimitPolicy {
   limit: number;
   windowMs: number;
   blockMs: number;
-}
-
-interface Bucket {
-  attempts: number;
-  windowStartedAt: number;
-  blockedUntil: number;
 }
 
 export interface RateLimitResult {
@@ -15,14 +14,6 @@ export interface RateLimitResult {
   remaining: number;
   retryAfterSeconds: number;
 }
-
-const globalStore = globalThis as typeof globalThis & {
-  __synsightRateLimits?: Map<string, Bucket>;
-};
-
-const store =
-  globalStore.__synsightRateLimits ??
-  (globalStore.__synsightRateLimits = new Map<string, Bucket>());
 
 export const LOGIN_RATE_LIMIT: RateLimitPolicy = {
   limit: 5,
@@ -42,6 +33,12 @@ export const VERIFICATION_RATE_LIMIT: RateLimitPolicy = {
   blockMs: 15 * 60_000,
 };
 
+export const PASSWORD_RESET_RATE_LIMIT: RateLimitPolicy = {
+  limit: 3,
+  windowMs: 15 * 60_000,
+  blockMs: 15 * 60_000,
+};
+
 export const IMAGE_UPLOAD_RATE_LIMIT: RateLimitPolicy = {
   limit: 12,
   windowMs: 60 * 60_000,
@@ -55,19 +52,30 @@ export const COMMUNICATION_RATE_LIMIT: RateLimitPolicy = {
   blockMs: 60 * 60_000,
 };
 
+export const PROMO_REDEEM_RATE_LIMIT: RateLimitPolicy = {
+  limit: 10,
+  windowMs: 60 * 60_000,
+  blockMs: 30 * 60_000,
+};
+
+function store() {
+  return getRateLimitStore();
+}
+
 export function checkRateLimit(
   key: string,
   policy: RateLimitPolicy,
   now = Date.now()
 ): RateLimitResult {
-  const bucket = store.get(key);
+  const bucket = store().get(key);
 
   if (!bucket || now - bucket.windowStartedAt >= policy.windowMs) {
-    store.set(key, {
+    const fresh: RateLimitBucket = {
       attempts: 0,
       windowStartedAt: now,
       blockedUntil: 0,
-    });
+    };
+    store().set(key, fresh);
     return {
       allowed: true,
       remaining: policy.limit,
@@ -104,14 +112,14 @@ export function recordRateLimitAttempt(
   policy: RateLimitPolicy,
   now = Date.now()
 ): RateLimitResult {
-  const current = store.get(key);
-  const bucket =
+  const current = store().get(key);
+  const bucket: RateLimitBucket =
     !current || now - current.windowStartedAt >= policy.windowMs
       ? { attempts: 0, windowStartedAt: now, blockedUntil: 0 }
       : { ...current };
 
   if (bucket.blockedUntil > now) {
-    store.set(key, bucket);
+    store().set(key, bucket);
     return {
       allowed: false,
       remaining: 0,
@@ -121,7 +129,7 @@ export function recordRateLimitAttempt(
 
   if (bucket.attempts >= policy.limit) {
     bucket.blockedUntil = now + policy.blockMs;
-    store.set(key, bucket);
+    store().set(key, bucket);
     return {
       allowed: false,
       remaining: 0,
@@ -133,7 +141,7 @@ export function recordRateLimitAttempt(
   if (bucket.attempts >= policy.limit) {
     bucket.blockedUntil = now + policy.blockMs;
   }
-  store.set(key, bucket);
+  store().set(key, bucket);
 
   return {
     allowed: true,
@@ -143,7 +151,7 @@ export function recordRateLimitAttempt(
 }
 
 export function clearRateLimit(key: string): void {
-  store.delete(key);
+  store().delete(key);
 }
 
 export function rateLimitHeaders(result: RateLimitResult): HeadersInit {
