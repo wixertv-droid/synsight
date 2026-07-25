@@ -78,26 +78,18 @@ describe("Sprint 6C enterprise OSINT", () => {
     expect(fp.phones[0]).toContain("170");
   });
 
-  it("plans priority searches: name+location before email/phone, max 15", () => {
+  it("plans hybrid recon with Direct Identifiers first and max 15", () => {
     const plans = planScoredGoogleSearches(identity());
     expect(plans.length).toBeLessThanOrEqual(15);
     expect(plans.length).toBeGreaterThanOrEqual(7);
-    expect(plans[0]?.vector).toBe("identity_location");
+    expect(plans[0]?.vector).toBe("direct_identifiers");
     expect(plans[0]?.searchScore).toBe(100);
+    expect(plans[0]?.label).toBe("Direct Identifiers");
+    expect(plans.some((p) => p.vector === "identity_location")).toBe(true);
     expect(plans.some((p) => p.vector === "identity_professional")).toBe(true);
-    expect(plans.some((p) => p.vector === "identity")).toBe(true);
-    expect(plans.some((p) => p.vector === "email")).toBe(true);
-    expect(plans.some((p) => p.vector === "phone")).toBe(true);
-    expect(
-      plans.some((p) => p.vector === "alias" || p.vector === "username")
-    ).toBe(true);
-    expect(plans.some((p) => p.vector === "domains")).toBe(true);
-    // Core identity must outrank adult niche
-    const nameScore =
-      plans.find((p) => p.vector === "identity_location")?.searchScore ?? 0;
-    const adultScore =
-      plans.find((p) => p.vector === "adult_alias")?.searchScore ?? 0;
-    expect(nameScore).toBeGreaterThan(adultScore);
+    expect(plans.some((p) => p.vector === "adult_alias")).toBe(true);
+    expect(plans.some((p) => p.query.includes("linkedin.com"))).toBe(true);
+    expect(plans.some((p) => p.query.includes("filetype:pdf"))).toBe(true);
   });
 
   it("keeps Google+Bing engines without duplicate queries", () => {
@@ -110,6 +102,12 @@ describe("Sprint 6C enterprise OSINT", () => {
       (p) => `${p.engine}:${p.query.toLowerCase().replace(/\s+/g, " ").trim()}`
     );
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("includes Bing adult and forum vectors in recon strategy", () => {
+    const plans = planScoredGoogleSearches(identity());
+    expect(plans.some((p) => p.vector === "adult_alias")).toBe(true);
+    expect(plans.some((p) => p.vector === "forum_mentions")).toBe(true);
   });
 
   it("uses Sprint 6C confidence band labels", () => {

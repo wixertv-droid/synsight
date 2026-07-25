@@ -561,6 +561,7 @@ export async function runGoogleIntelligenceAnalysis(
     ].filter(Boolean),
     aliases: [
       identity?.aliases.publicAlias ?? "",
+      ...(identity?.aliases.usernames ?? []),
       ...(identity?.aliases.nicknames ?? []),
       ...(identity?.aliases.gamingNames ?? []),
       ...(identity?.aliases.formerNames ?? []),
