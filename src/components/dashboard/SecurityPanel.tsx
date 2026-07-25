@@ -4,10 +4,15 @@ import { useEffect, useState } from "react";
 import StatusDot from "@/components/ui/StatusDot";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import { guidance } from "@/lib/content/guidance";
+import type { DashboardSecurityStatus } from "@/lib/dashboard/build-dashboard-overview";
 
 const STORAGE_KEY = "synsight.securityPanel.collapsed";
 
-export default function SecurityPanel() {
+export default function SecurityPanel({
+  status,
+}: {
+  status: DashboardSecurityStatus;
+}) {
   const [collapsed, setCollapsed] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -31,6 +36,9 @@ export default function SecurityPanel() {
       return next;
     });
   };
+
+  const circumference = 2 * Math.PI * 78;
+  const offset = circumference - (status.score / 100) * circumference;
 
   return (
     <section className="glass-strong hardware-panel relative z-0 mb-6 overflow-hidden rounded-[1.4rem] border border-cyber-blue/15 shadow-[0_35px_100px_rgba(0,0,0,.3)]">
@@ -88,13 +96,11 @@ export default function SecurityPanel() {
                   </span>
                 </h2>
                 <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/35">
-                  Die letzte Analyse wurde erfolgreich synchronisiert. Drei
-                  priorisierte Maßnahmen können Ihren Schutzstatus weiter
-                  verbessern.
+                  {status.summaryText}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-5 font-mono text-[8px] tracking-[.13em] text-white/24">
-                  <span>MONITORING / AKTIV</span>
-                  <span>LETZTE ANALYSE / HEUTE</span>
+                  <span>MONITORING / {status.monitoringLabel}</span>
+                  <span>LETZTE ANALYSE / {status.lastAnalysisLabel}</span>
                   <span>REGION / EU</span>
                 </div>
               </div>
@@ -120,8 +126,8 @@ export default function SecurityPanel() {
                     stroke="url(#securityScore)"
                     strokeWidth="8"
                     strokeLinecap="round"
-                    strokeDasharray="490"
-                    strokeDashoffset="108"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={offset}
                   />
                   <defs>
                     <linearGradient id="securityScore">
@@ -132,7 +138,7 @@ export default function SecurityPanel() {
                 </svg>
                 <div className="text-center">
                   <span className="font-mono text-4xl font-light tabular-nums text-white">
-                    78
+                    {status.score}
                   </span>
                   <span className="text-sm text-white/25"> / 100</span>
                   <p className="mt-2 text-[9px] uppercase tracking-[.16em] text-cyber-cyan/50">

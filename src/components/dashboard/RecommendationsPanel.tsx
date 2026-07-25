@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { recommendations } from "@/lib/platform-data";
+import type { Recommendation } from "@/types/platform";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import { guidance } from "@/lib/content/guidance";
 
-export default function RecommendationsPanel() {
+export default function RecommendationsPanel({
+  items,
+}: {
+  items: Recommendation[];
+}) {
   const [completed, setCompleted] = useState<string[]>([]);
 
   return (
@@ -16,18 +20,18 @@ export default function RecommendationsPanel() {
             WIR EMPFEHLEN
           </p>
           <p className="mt-2 flex items-center gap-2 text-xs text-white/28">
-            Priorisiert durch die SynSight KI
+            Priorisiert aus Ihren Analysen
             <InfoTooltip label="Empfehlungen">
               {guidance.dashboard.recommendations}
             </InfoTooltip>
           </p>
         </div>
         <span className="font-mono text-[8px] text-white/18">
-          {completed.length}/{recommendations.length} ERLEDIGT
+          {completed.length}/{items.length} ERLEDIGT
         </span>
       </div>
       <div className="mt-6 space-y-3">
-        {recommendations.map((item, index) => {
+        {items.map((item, index) => {
           const done = completed.includes(item.id);
           return (
             <button

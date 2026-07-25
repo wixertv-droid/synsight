@@ -10,10 +10,13 @@ import CreditsPanel from "@/components/dashboard/CreditsPanel";
 import PromotionWelcomeBanner from "@/components/dashboard/PromotionWelcomeBanner";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import { guidance } from "@/lib/content/guidance";
-import { dashboardMetrics, riskSignals } from "@/lib/platform-data";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getIdentityForUser } from "@/lib/services/identity-service";
 import { getProfileRepository } from "@/lib/repositories";
+import { getIntelligenceReport } from "@/lib/analysis/session-store";
+import { getLatestDigitalExposureReport } from "@/lib/analysis/digital-exposure/repository";
+import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
+import { buildDashboardOverview } from "@/lib/dashboard/build-dashboard-overview";
 
 export const metadata: Metadata = {
   title: "Dashboard — SynSight Command Center",
@@ -34,6 +37,21 @@ export default async function DashboardPage() {
 
   const identity = user ? await getIdentityForUser(userId) : null;
   const completeness = identity?.completenessPercent ?? 0;
+
+  let googleReport = user
+    ? await getIntelligenceReport(userId, "google_search")
+    : null;
+  if (googleReport) {
+    googleReport = normalizeIntelligenceReport(googleReport);
+  }
+  const exposureReport = user
+    ? await getLatestDigitalExposureReport(userId)
+    : null;
+
+  const overview = buildDashboardOverview({
+    google: googleReport,
+    exposure: exposureReport,
+  });
 
   const now = new Date();
   const formattedDate = new Intl.DateTimeFormat("de-DE", {
@@ -125,23 +143,25 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <p
-        className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[0.04] px-4 py-3 text-[11px] leading-relaxed text-amber-50/70"
-        role="status"
-      >
-        <span className="inline-flex items-center gap-2">
-          Hinweis zu Beispieldaten
-          <InfoTooltip label="Beispieldaten">
-            {guidance.dashboard.demoData}
-          </InfoTooltip>
-        </span>
-        <span>
-          Kennzahlen und Risikosignale auf dieser Übersicht sind derzeit
-          Illustrationsdaten zur Produktvorschau.
-        </span>
-      </p>
+      {!overview.hasAnyReport ? (
+        <p
+          className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[0.04] px-4 py-3 text-[11px] leading-relaxed text-amber-50/70"
+          role="status"
+        >
+          <span className="inline-flex items-center gap-2">
+            Noch keine Analyseberichte
+            <InfoTooltip label="Beispieldaten">
+              {guidance.dashboard.demoData}
+            </InfoTooltip>
+          </span>
+          <span>
+            Kennzahlen erscheinen nach der ersten Google-Analyse oder dem
+            Digital Leak Scan.
+          </span>
+        </p>
+      ) : null}
 
-      <SecurityPanel />
+      <SecurityPanel status={overview.security} />
 
       {user ? <CreditsPanel userId={userId} /> : null}
 
@@ -150,13 +170,16 @@ export default async function DashboardPage() {
         className="relative z-0 mt-6 grid gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4"
         aria-label="Sicherheitskennzahlen"
       >
-        {dashboardMetrics.map((metric, index) => (
+        {overview.metrics.map((metric, index) => (
           <StatusCard key={metric.label} metric={metric} index={index} />
         ))}
       </section>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.45fr_.75fr]">
-        <AnalysisWidget />
+        <AnalysisWidget
+          sources={overview.analysisSources}
+          signalCount={overview.signalCount}
+        />
 
         <div className="space-y-6">
           <section
@@ -176,17 +199,17 @@ export default async function DashboardPage() {
                 </p>
               </div>
               <span className="rounded border border-rose-300/10 bg-rose-300/[0.02] px-2 py-1 font-mono text-[7px] tracking-[.1em] text-rose-100/55">
-                3 SIGNALE
+                {overview.riskSignalCount} SIGNALE
               </span>
             </div>
             <div className="mt-6 space-y-3">
-              {riskSignals.map((risk) => (
+              {overview.riskSignals.map((risk) => (
                 <RiskCard key={risk.id} risk={risk} />
               ))}
             </div>
           </section>
 
-          <RecommendationsPanel />
+          <RecommendationsPanel items={overview.recommendations} />
         </div>
       </div>
 
@@ -194,30 +217,16 @@ export default async function DashboardPage() {
         id="monitoring"
         className="mt-6 grid gap-px overflow-hidden rounded-[1.4rem] border border-white/[0.06] bg-white/[0.06] sm:grid-cols-3"
       >
-        {[
-          [
-            "MONITORING",
-            "Aktiv",
-            "Neue Signale werden kontinuierlich bewertet.",
-          ],
-          [
-            "BERICHTE",
-            "1 verfügbar",
-            "Ihr monatlicher Schutzbericht ist bereit.",
-          ],
-          [
-            "NÄCHSTER SCAN",
-            "In 06:42 h",
-            "Automatischer Analysezyklus geplant.",
-          ],
-        ].map(([label, value, detail]) => (
-          <article key={label} className="bg-[#050a13]/95 p-5 md:p-6">
+        {overview.monitoring.map((tile) => (
+          <article key={tile.label} className="bg-[#050a13]/95 p-5 md:p-6">
             <p className="font-mono text-[8px] tracking-[.16em] text-white/22">
-              {label}
+              {tile.label}
             </p>
-            <p className="mt-3 text-lg font-medium text-white/75">{value}</p>
+            <p className="mt-3 text-lg font-medium text-white/75">
+              {tile.value}
+            </p>
             <p className="mt-2 text-[10px] leading-relaxed text-white/25">
-              {detail}
+              {tile.detail}
             </p>
           </article>
         ))}

@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { analysisSources } from "@/lib/platform-data";
+import type { AnalysisSource } from "@/types/platform";
 import StatusDot from "@/components/ui/StatusDot";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import ConsumeConfirm from "@/components/credits/ConsumeConfirm";
 import { guidance } from "@/lib/content/guidance";
 
-export default function AnalysisWidget() {
+export default function AnalysisWidget({
+  sources,
+  signalCount = 0,
+}: {
+  sources: AnalysisSource[];
+  signalCount?: number;
+}) {
   const [running, setRunning] = useState(true);
   const [cycle, setCycle] = useState(0);
 
@@ -116,9 +122,11 @@ export default function AnalysisWidget() {
             </g>
           </svg>
           <div className="absolute bottom-5 left-5 right-5 z-20 flex items-center justify-between font-mono text-[7px] tracking-[.12em] text-white/18 md:left-6 md:right-6">
-            <span>SIGNALS / 247</span>
+            <span>SIGNALS / {String(signalCount).padStart(3, "0")}</span>
             <span>CORRELATION / ACTIVE</span>
-            <span>QUEUE / 03</span>
+            <span>
+              QUEUE / {String(Math.min(99, sources.length)).padStart(2, "0")}
+            </span>
           </div>
         </div>
 
@@ -127,7 +135,7 @@ export default function AnalysisWidget() {
             QUELLENSTATUS
           </p>
           <div className="mt-5 space-y-4">
-            {analysisSources.map((source, index) => (
+            {sources.map((source, index) => (
               <div key={source.label}>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-[10px] text-white/42">
