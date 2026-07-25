@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import type { PlatformSettings } from "@/lib/services/admin-platform-service";
 
-const FIELD_LABELS: Record<keyof PlatformSettings, string> = {
+type ImageSettingsKey =
+  | "imageMaxUploadMb"
+  | "imageCompressionQuality"
+  | "imageWebpQuality"
+  | "imageThumbnailQuality"
+  | "imageMaxResolution"
+  | "encryptOriginals"
+  | "generateAnalysisImages";
+
+const FIELD_LABELS: Record<ImageSettingsKey, string> = {
   imageMaxUploadMb: "Maximale Dateigröße (MB)",
   imageCompressionQuality: "Kompressionsqualität",
   imageWebpQuality: "WebP Qualität",
@@ -57,53 +66,51 @@ export default function AdminImageSettingsView() {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        {(Object.keys(FIELD_LABELS) as Array<keyof PlatformSettings>).map(
-          (key) => (
-            <label
-              key={key}
-              className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"
-            >
-              <p className="font-mono text-[8px] text-white/30">
-                {FIELD_LABELS[key]}
-              </p>
-              {typeof settings[key] === "boolean" ? (
-                <select
-                  value={settings[key] ? "true" : "false"}
-                  onChange={(event) =>
-                    setSettings((current) =>
-                      current
-                        ? {
-                            ...current,
-                            [key]: event.target.value === "true",
-                          }
-                        : current
-                    )
-                  }
-                  className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
-                >
-                  <option value="true">Ja</option>
-                  <option value="false">Nein</option>
-                </select>
-              ) : (
-                <input
-                  type="number"
-                  value={settings[key]}
-                  onChange={(event) =>
-                    setSettings((current) =>
-                      current
-                        ? {
-                            ...current,
-                            [key]: Number.parseInt(event.target.value, 10),
-                          }
-                        : current
-                    )
-                  }
-                  className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
-                />
-              )}
-            </label>
-          )
-        )}
+        {(Object.keys(FIELD_LABELS) as ImageSettingsKey[]).map((key) => (
+          <label
+            key={key}
+            className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"
+          >
+            <p className="font-mono text-[8px] text-white/30">
+              {FIELD_LABELS[key]}
+            </p>
+            {typeof settings[key] === "boolean" ? (
+              <select
+                value={settings[key] ? "true" : "false"}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          [key]: event.target.value === "true",
+                        }
+                      : current
+                  )
+                }
+                className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+              >
+                <option value="true">Ja</option>
+                <option value="false">Nein</option>
+              </select>
+            ) : (
+              <input
+                type="number"
+                value={settings[key]}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          [key]: Number.parseInt(event.target.value, 10),
+                        }
+                      : current
+                  )
+                }
+                className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+              />
+            )}
+          </label>
+        ))}
       </div>
       <div className="flex items-center gap-3">
         <button
