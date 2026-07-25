@@ -4,6 +4,7 @@ import {
   UsernameIntelligenceUnavailableError,
   runUsernameIntelligenceScan,
 } from "@/lib/analysis/username/run-analysis";
+import { parseRetentionDays } from "@/lib/analysis/retention";
 import { getIdentityForUser } from "@/lib/services/identity-service";
 import { NextResponse } from "next/server";
 import { validateMutationOrigin } from "@/lib/security/request";
@@ -30,9 +31,17 @@ export async function POST(request: Request) {
     );
   }
 
+  const body = (await request.json().catch(() => ({}))) as {
+    retentionDays?: unknown;
+  };
+  const retentionDays = parseRetentionDays(body.retentionDays);
+
   try {
     const identity = await getIdentityForUser(userId);
-    const report = await runUsernameIntelligenceScan(identity, { userId });
+    const report = await runUsernameIntelligenceScan(identity, {
+      userId,
+      retentionDays,
+    });
     return NextResponse.json(apiSuccess({ report }));
   } catch (error) {
     if (error instanceof UsernameIntelligenceUnavailableError) {
@@ -47,7 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       apiError(
         "ANALYSIS_FAILED",
-        `Username Intelligence Scan ist fehlgeschlagen. (${technical.slice(0, 160)})`
+        `Username Intelligence Scan ist fehlgeschlagen. (${technical.slice(0, 220)})`
       ),
       { status: 500 }
     );

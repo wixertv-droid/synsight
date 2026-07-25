@@ -137,6 +137,8 @@ export interface UsernameReport {
   queryCount: number;
   startedAt: string | null;
   completedAt: string | null;
+  retentionDays?: number;
+  expiresAt?: string | null;
   hits: UsernameHit[];
   managementOverview: UsernameManagementOverview;
   platformOverview: UsernamePlatformOverviewItem[];

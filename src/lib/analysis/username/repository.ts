@@ -12,9 +12,10 @@ import type {
   UsernameReport,
 } from "@/lib/analysis/username/types";
 import { ensureUsernameSchema } from "@/lib/analysis/username/ensure-schema";
+import { isReportExpired, toMysqlTimestamp } from "@/lib/analysis/retention";
 
 function mysqlNow(): string {
-  return new Date().toISOString().slice(0, 23).replace("T", " ");
+  return toMysqlTimestamp(new Date());
 }
 
 export function readMysqlInsertId(result: unknown): number {
@@ -74,6 +75,8 @@ export async function persistUsernameReport(
   const db = getDatabase();
   if (!db) throw new Error("DATABASE_REQUIRED");
 
+  const completedAtMysql = mysqlNow();
+
   await db
     .update(usernameAnalysis)
     .set({
@@ -84,7 +87,8 @@ export async function persistUsernameReport(
       hitCount: report.hitCount,
       queryCount: report.queryCount,
       summary: report.summary,
-      completedAt: report.completedAt ?? mysqlNow(),
+      // MySQL TIMESTAMP — never write ISO `T`/`Z` strings
+      completedAt: completedAtMysql,
     })
     .where(eq(usernameAnalysis.id, report.analysisId));
 
@@ -241,7 +245,17 @@ export async function getLatestUsernameReport(
 
   const stored = reportRows[0]?.reportJson;
   if (stored && typeof stored === "object" && !Array.isArray(stored)) {
-    return stored as UsernameReport;
+    const report = stored as UsernameReport;
+    if (
+      isReportExpired({
+        expiresAt: report.expiresAt,
+        generatedAt: report.completedAt ?? analysis.completedAt ?? undefined,
+        retentionDays: report.retentionDays,
+      })
+    ) {
+      return null;
+    }
+    return report;
   }
 
   const hitRows = await db

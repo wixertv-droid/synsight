@@ -86,7 +86,7 @@ function normalizePublicAnalyses(
         label: USERNAME_DEFAULT.label,
         description: USERNAME_DEFAULT.description,
         credits: USERNAME_DEFAULT.credits,
-        sortOrder: 22,
+        sortOrder: 30,
       },
     ];
   }

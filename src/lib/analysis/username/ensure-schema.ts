@@ -150,5 +150,23 @@ async function runEnsure(): Promise<boolean> {
     ON DUPLICATE KEY UPDATE id = VALUES(id)
   `);
 
+  // Heal columns if an older partial table was created without them
+  try {
+    await db.execute(sql`
+      ALTER TABLE username_analysis
+      ADD COLUMN query_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER hit_count
+    `);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await db.execute(sql`
+      ALTER TABLE username_analysis
+      ADD COLUMN settings_json JSON NULL AFTER summary
+    `);
+  } catch {
+    /* column already exists */
+  }
+
   return true;
 }

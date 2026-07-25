@@ -416,10 +416,21 @@ export default function ResultsCenterClient({
     );
 
     try {
+      const effectiveRetention = parseRetentionDays(
+        searchParams.get("retention") ??
+          (typeof window !== "undefined"
+            ? window.localStorage.getItem(REPORT_RETENTION_STORAGE_KEY)
+            : null),
+        retentionDays
+      );
+      if (effectiveRetention !== retentionDays) {
+        setRetentionDays(effectiveRetention);
+      }
+
       const response = await fetch("/api/analysis/username/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ retentionDays: effectiveRetention }),
       });
       setScanApiReady(true);
       let body: {
@@ -477,7 +488,7 @@ export default function ResultsCenterClient({
       setError("Verbindung zum Server nicht möglich.");
       finishScanAttempt({ tab: "username_intelligence" });
     }
-  }, [finishScanAttempt]);
+  }, [finishScanAttempt, retentionDays, searchParams]);
 
   useEffect(() => {
     if (
@@ -638,7 +649,9 @@ export default function ResultsCenterClient({
             })}
           </nav>
 
-          {activeModule.id === "google_search" && !scanning ? (
+          {(activeModule.id === "google_search" ||
+            activeModule.id === "username_intelligence") &&
+          !scanning ? (
             <section
               id="results-retention"
               className="mt-4 scroll-mt-24 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4"

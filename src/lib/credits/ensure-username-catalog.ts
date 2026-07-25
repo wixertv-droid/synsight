@@ -67,7 +67,7 @@ async function runEnsure(): Promise<boolean> {
           ${LABEL},
           ${DESCRIPTION},
           ${CREDITS},
-          22,
+          30,
           1,
           1,
           ${LABEL},

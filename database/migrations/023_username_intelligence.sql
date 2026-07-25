@@ -140,7 +140,7 @@ VALUES
     'Username Intelligence Scan',
     'Öffentliche Profile, Foren und Communities zu Benutzernamen — mit Identity Confidence.',
     10,
-    22,
+    30,
     1,
     1,
     'Username Intelligence Scan',

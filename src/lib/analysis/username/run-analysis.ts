@@ -43,6 +43,11 @@ import type {
   UsernameRiskLevel,
 } from "@/lib/analysis/username/types";
 import { recordApiUsageEvent } from "@/lib/services/finance-service";
+import {
+  computeExpiresAt,
+  parseRetentionDays,
+  type ReportRetentionDays,
+} from "@/lib/analysis/retention";
 
 export class UsernameIntelligenceUnavailableError extends Error {
   constructor(message: string) {
@@ -121,7 +126,7 @@ async function mapPool<T, R>(
 
 export async function runUsernameIntelligenceScan(
   identity: IdentityView | null,
-  options?: { userId?: number | null }
+  options?: { userId?: number | null; retentionDays?: ReportRetentionDays }
 ): Promise<UsernameReport> {
   const settings = await getUsernameModuleSettings();
   if (!settings.isActive) {
@@ -160,6 +165,10 @@ export async function runUsernameIntelligenceScan(
     );
   }
 
+  const retentionDays = parseRetentionDays(options?.retentionDays);
+  const generatedAt = new Date().toISOString();
+  const expiresAt = computeExpiresAt(generatedAt, retentionDays);
+
   const analysisId = await createUsernameAnalysis({
     userId,
     subjectUsername: username,
@@ -170,11 +179,13 @@ export async function runUsernameIntelligenceScan(
       language: settings.language,
       resultLimit: settings.resultLimit,
       confidenceMin: settings.confidenceMin,
+      retentionDays,
+      expiresAt,
     },
   });
 
   const analysisRef = `username:${analysisId}`;
-  const startedAt = new Date().toISOString();
+  const startedAt = generatedAt;
   let serpSuccessCount = 0;
 
   try {
@@ -378,6 +389,8 @@ export async function runUsernameIntelligenceScan(
       queryCount: queries.length,
       startedAt,
       completedAt,
+      retentionDays,
+      expiresAt,
       hits,
       managementOverview,
       platformOverview,

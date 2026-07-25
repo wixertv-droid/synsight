@@ -49,6 +49,14 @@ const FALLBACK_TABS: ResultsTabModule[] = [
   },
 ];
 
+/** Keep live modules left-to-right: Google → Leak → Username, then others. */
+function tabSortRank(id: string): number {
+  if (id === "google_search") return 10;
+  if (id === "digital_leak_exposure") return 20;
+  if (id === "username_intelligence") return 30;
+  return 100;
+}
+
 /** Strip non-JSON values so Client Component props never crash RSC serialization. */
 function safeClientProps<T>(value: T): T {
   try {
@@ -112,13 +120,19 @@ async function loadResultsData(): Promise<{
       const modules = resolveActiveAnalyses(catalog.analyses ?? []);
       if (modules.length > 0) {
         tabs = [
-          ...modules.map((module) => ({
-            id: module.id,
-            title: tabTitle(module.id, module.title),
-            help: module.help,
-            tagline: module.tagline,
-            available: isAvailableModule(module.id),
-          })),
+          ...modules
+            .map((module) => ({
+              id: module.id,
+              title: tabTitle(module.id, module.title),
+              help: module.help,
+              tagline: module.tagline,
+              available: isAvailableModule(module.id),
+            }))
+            .sort(
+              (a, b) =>
+                tabSortRank(a.id) - tabSortRank(b.id) ||
+                a.title.localeCompare(b.title)
+            ),
           ...EXTRA_TABS.filter(
             (extra) => !modules.some((module) => module.id === extra.id)
           ),
