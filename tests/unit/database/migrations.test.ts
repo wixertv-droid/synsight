@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–026 migration files", () => {
+  it("ships ordered 001–027 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -36,6 +36,7 @@ describe("database migrations workflow", () => {
       "024_username_sort_and_heal.sql",
       "025_rc2_hardening.sql",
       "026_support_tickets_and_public_emails.sql",
+      "027_support_role_and_hours.sql",
     ]);
   });
 
@@ -171,6 +172,16 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("`privacy_email`");
     expect(sql).toContain("support@synsight.de");
     expect(sql).toContain("datenschutz@synsight.de");
+  });
+
+  it("adds support role and hours defaults in 027", () => {
+    const sql = readFileSync(
+      path.join(dir, "027_support_role_and_hours.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("ENUM('admin', 'support', 'user')");
+    expect(sql).toContain("supportHoursStart");
+    expect(sql).toContain("Europe/Berlin");
   });
 
   it("adds platform settings and api credentials in 013", () => {

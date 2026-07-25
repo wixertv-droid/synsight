@@ -19,6 +19,13 @@ interface Settings {
   privacyEmail: string;
 }
 
+interface SupportHoursSettings {
+  supportHoursStart: string;
+  supportHoursEnd: string;
+  supportTimezone: string;
+  supportResponseText: string;
+}
+
 interface RequestRow {
   id: number;
   name: string;
@@ -84,15 +91,25 @@ export default function AdminCommunicationsControl() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingHours, setSavingHours] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [hours, setHours] = useState<SupportHoursSettings>({
+    supportHoursStart: "09:00",
+    supportHoursEnd: "18:00",
+    supportTimezone: "Europe/Berlin",
+    supportResponseText: "In der Regel innerhalb von 1–2 Werktagen",
+  });
 
   async function load() {
     setLoading(true);
     try {
-      const response = await fetch("/api/admin/communications");
+      const [commsResponse, hoursResponse] = await Promise.all([
+        fetch("/api/admin/communications"),
+        fetch("/api/admin/support/settings"),
+      ]);
       const result =
-        (await response.json()) as ApiResult<CommunicationsPayload>;
-      if (!response.ok || !result.success) {
+        (await commsResponse.json()) as ApiResult<CommunicationsPayload>;
+      if (!commsResponse.ok || !result.success) {
         setMessage(
           result.success
             ? "Kommunikationsdaten konnten nicht geladen werden."
@@ -108,6 +125,13 @@ export default function AdminCommunicationsControl() {
         privacyEmail: result.data.settings.privacyEmail,
       });
       setRequests(result.data.requests);
+
+      const hoursResult = (await hoursResponse.json()) as ApiResult<{
+        settings: SupportHoursSettings;
+      }>;
+      if (hoursResponse.ok && hoursResult.success) {
+        setHours(hoursResult.data.settings);
+      }
     } catch {
       setMessage("Verbindung zur Kommunikationsverwaltung fehlgeschlagen.");
     } finally {
@@ -150,6 +174,38 @@ export default function AdminCommunicationsControl() {
       setMessage("Speichern fehlgeschlagen.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveHours(event: FormEvent) {
+    event.preventDefault();
+    setSavingHours(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/support/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(hours),
+      });
+      const result = (await response.json()) as ApiResult<{
+        settings: SupportHoursSettings;
+      }>;
+      if (!response.ok || !result.success) {
+        setMessage(
+          result.success
+            ? "Support-Zeiten konnten nicht gespeichert werden."
+            : result.error.message
+        );
+        return;
+      }
+      setHours(result.data.settings);
+      setMessage(
+        "Support-Zeiten gespeichert — steuern die Ampel auf /support."
+      );
+    } catch {
+      setMessage("Support-Zeiten speichern fehlgeschlagen.");
+    } finally {
+      setSavingHours(false);
     }
   }
 
@@ -353,6 +409,67 @@ export default function AdminCommunicationsControl() {
             className="rounded-lg border border-cyber-cyan/25 bg-cyber-cyan/[0.1] px-4 py-2 font-mono text-[9px] tracking-[.14em] text-cyber-cyan disabled:opacity-50"
           >
             {saving ? "Speichert…" : "E-Mail-Ziele speichern"}
+          </button>
+        </div>
+      </form>
+
+      <form
+        onSubmit={saveHours}
+        className="mb-8 grid gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 md:grid-cols-2"
+      >
+        <div className="md:col-span-2">
+          <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
+            SUPPORT ONLINE / AMPEL
+          </p>
+          <p className="mt-2 text-sm text-white/45">
+            Grün bei anwesendem Support/Admin oder innerhalb dieser Zeiten; rot
+            außerhalb der Zeiten ohne Online-Mitarbeiter.
+          </p>
+        </div>
+        {(
+          [
+            ["supportHoursStart", "Start (HH:MM)"],
+            ["supportHoursEnd", "Ende (HH:MM)"],
+            ["supportTimezone", "Zeitzone"],
+          ] as const
+        ).map(([key, label]) => (
+          <div key={key}>
+            <label className="mb-2 block font-mono text-[8px] tracking-[.14em] text-white/30">
+              {label.toUpperCase()}
+            </label>
+            <input
+              required
+              value={hours[key]}
+              onChange={(event) =>
+                setHours((prev) => ({ ...prev, [key]: event.target.value }))
+              }
+              className="w-full rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+            />
+          </div>
+        ))}
+        <div className="md:col-span-2">
+          <label className="mb-2 block font-mono text-[8px] tracking-[.14em] text-white/30">
+            ANTWORTTEXT
+          </label>
+          <input
+            required
+            value={hours.supportResponseText}
+            onChange={(event) =>
+              setHours((prev) => ({
+                ...prev,
+                supportResponseText: event.target.value,
+              }))
+            }
+            className="w-full rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <button
+            type="submit"
+            disabled={savingHours}
+            className="rounded-lg border border-cyber-cyan/25 bg-cyber-cyan/[0.1] px-4 py-2 font-mono text-[9px] tracking-[.14em] text-cyber-cyan disabled:opacity-50"
+          >
+            {savingHours ? "Speichert…" : "Support-Zeiten speichern"}
           </button>
         </div>
       </form>

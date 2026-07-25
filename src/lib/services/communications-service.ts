@@ -214,7 +214,10 @@ export async function listCommunicationRequests(actor: AuthenticatedUser) {
     repo.listContactRequests(),
     repo.listPartnerRequests(),
     repo.listPressRequests(),
-    repo.listSupportRequests(),
+    repo.listSupportRequests().catch((error) => {
+      console.error("[communications.listSupportRequests] failed:", error);
+      return [];
+    }),
   ]);
   return { contact, partner, press, support };
 }
@@ -241,26 +244,41 @@ export async function updateCommunicationRequestStatus(input: {
 
 export async function getCommunicationInboxSummary(actor: AuthenticatedUser) {
   assertAdmin(actor);
-  const requests = await listCommunicationRequests(actor);
+  try {
+    const requests = await listCommunicationRequests(actor);
 
-  const summarize = (
-    rows: Array<{ status: RequestStatus }>
-  ): { total: number; newCount: number } => ({
-    total: rows.length,
-    newCount: rows.filter((row) => row.status === "new").length,
-  });
+    const summarize = (
+      rows: Array<{ status: RequestStatus }>
+    ): { total: number; newCount: number } => ({
+      total: rows.length,
+      newCount: rows.filter((row) => row.status === "new").length,
+    });
 
-  const contact = summarize(requests.contact);
-  const partner = summarize(requests.partner);
-  const press = summarize(requests.press);
-  const support = summarize(requests.support);
+    const contact = summarize(requests.contact);
+    const partner = summarize(requests.partner);
+    const press = summarize(requests.press);
+    const support = summarize(requests.support);
 
-  return {
-    total: contact.total + partner.total + press.total + support.total,
-    newCount:
-      contact.newCount + partner.newCount + press.newCount + support.newCount,
-    byChannel: { contact, partner, press, support },
-  };
+    return {
+      total: contact.total + partner.total + press.total + support.total,
+      newCount:
+        contact.newCount + partner.newCount + press.newCount + support.newCount,
+      byChannel: { contact, partner, press, support },
+    };
+  } catch (error) {
+    console.error("[communications.inboxSummary] failed:", error);
+    const empty = { total: 0, newCount: 0 };
+    return {
+      total: 0,
+      newCount: 0,
+      byChannel: {
+        contact: empty,
+        partner: empty,
+        press: empty,
+        support: empty,
+      },
+    };
+  }
 }
 
 async function findCommunicationRequest(

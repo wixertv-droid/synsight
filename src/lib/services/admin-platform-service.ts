@@ -23,6 +23,10 @@ export const DEFAULT_PLATFORM_SETTINGS = {
   imageMaxResolution: 2048,
   encryptOriginals: true,
   generateAnalysisImages: true,
+  supportHoursStart: "09:00",
+  supportHoursEnd: "18:00",
+  supportTimezone: "Europe/Berlin",
+  supportResponseText: "In der Regel innerhalb von 1–2 Werktagen",
 } as const;
 
 export type PlatformSettings = {
@@ -33,6 +37,10 @@ export type PlatformSettings = {
   imageMaxResolution: number;
   encryptOriginals: boolean;
   generateAnalysisImages: boolean;
+  supportHoursStart: string;
+  supportHoursEnd: string;
+  supportTimezone: string;
+  supportResponseText: string;
 };
 
 export interface ApiCredentialSummary {
@@ -62,10 +70,7 @@ function normalizeSettings(
   };
 }
 
-export async function getAdminPlatformSettings(
-  actor: AuthenticatedUser
-): Promise<PlatformSettings> {
-  assertAdmin(actor);
+export async function getPublicPlatformSettings(): Promise<PlatformSettings> {
   const db = getDatabase();
   if (!db) return { ...DEFAULT_PLATFORM_SETTINGS };
 
@@ -73,6 +78,13 @@ export async function getAdminPlatformSettings(
   return normalizeSettings(
     (rows[0]?.settingsJson as Partial<PlatformSettings> | undefined) ?? null
   );
+}
+
+export async function getAdminPlatformSettings(
+  actor: AuthenticatedUser
+): Promise<PlatformSettings> {
+  assertAdmin(actor);
+  return getPublicPlatformSettings();
 }
 
 export async function updateAdminPlatformSettings(

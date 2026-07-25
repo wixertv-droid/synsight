@@ -21,6 +21,8 @@ export interface FormFieldConfig {
   options?: { value: string; label: string }[];
   rows?: number;
   autoComplete?: string;
+  minLength?: number;
+  hint?: string;
 }
 
 interface RequestFormShellProps {
@@ -168,6 +170,7 @@ export default function RequestFormShell({
                 <textarea
                   {...(sharedProps as TextareaHTMLAttributes<HTMLTextAreaElement>)}
                   rows={field.rows ?? 5}
+                  minLength={field.minLength}
                 />
               ) : field.type === "select" ? (
                 <select {...sharedProps}>
@@ -183,8 +186,12 @@ export default function RequestFormShell({
                   {...(sharedProps as InputHTMLAttributes<HTMLInputElement>)}
                   type={field.type ?? "text"}
                   autoComplete={field.autoComplete}
+                  minLength={field.minLength}
                 />
               )}
+              {field.hint ? (
+                <p className="mt-1.5 text-xs text-white/30">{field.hint}</p>
+              ) : null}
             </div>
           );
         })}

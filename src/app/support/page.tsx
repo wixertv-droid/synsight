@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import CompanyPage from "@/components/layout/CompanyPage";
 import SupportForm from "@/components/company/SupportForm";
+import SupportStatusIndicator from "@/components/support/SupportStatusIndicator";
 
 export const metadata: Metadata = {
   title: "Support — SynSight",
@@ -17,6 +18,16 @@ export default function SupportPage() {
       subtitle="Beschreiben Sie Ihr Anliegen — wir erfassen es strukturiert und leiten es an das Support-Team."
       maxWidthClassName="max-w-3xl"
     >
+      <section aria-labelledby="support-status-heading" className="mb-8">
+        <h2
+          id="support-status-heading"
+          className="mb-3 font-mono text-[9px] tracking-[.14em] text-white/30"
+        >
+          SUPPORT ONLINE
+        </h2>
+        <SupportStatusIndicator />
+      </section>
+
       <section aria-labelledby="support-form-heading">
         <div className="mb-8">
           <h2
@@ -27,7 +38,8 @@ export default function SupportPage() {
           </h2>
           <p className="mt-2 text-sm text-white/35">
             Für technische Probleme, Kontofragen, Plattformmeldungen und
-            Anfragen zum Datenschutz.
+            Anfragen zum Datenschutz. Bitte schreiben Sie mindestens 10 Zeichen
+            in die Nachricht.
           </p>
         </div>
         <Suspense fallback={null}>

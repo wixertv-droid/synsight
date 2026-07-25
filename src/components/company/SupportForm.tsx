@@ -69,6 +69,8 @@ export default function SupportForm() {
           type: "textarea",
           required: true,
           rows: 6,
+          minLength: 10,
+          hint: "Mindestens 10 Zeichen — kurz „test“ reicht nicht.",
           placeholder:
             "Beschreiben Sie Ihr Anliegen, betroffene Funktionen und relevante Schritte…",
         },

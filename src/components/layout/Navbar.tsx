@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 interface SessionUser {
   displayName: string;
   email: string;
-  role: "admin" | "user";
+  role: "admin" | "support" | "user";
 }
 
 type SessionState =

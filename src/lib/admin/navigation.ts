@@ -189,8 +189,9 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
       {
         slug: "nachrichten",
         label: "Nachrichten",
-        description: "Kontakt, Presse und Partnerschaft — Inbox.",
-        help: "AdminCommunicationsControl — Weiterleitung, Status, Löschen.",
+        description:
+          "Kontakt, Support, Presse, Partnerschaft — Inbox und Support-Zeiten.",
+        help: "AdminCommunicationsControl — Weiterleitung, Status, Löschen, Support-Ampel-Zeiten.",
         view: "support-messages",
       },
       {

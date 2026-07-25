@@ -7,6 +7,7 @@ import {
   pressRequests,
   supportRequests,
 } from "@/lib/database/schema";
+import { ensureSupportCommunicationsSchema } from "@/lib/communications/ensure-support-schema";
 import {
   createInMemoryCommunicationsRepository,
   type CommunicationsRepository,
@@ -113,6 +114,7 @@ function mapPress(row: typeof pressRequests.$inferSelect): PressRequestRecord {
 async function ensureSettings(
   db: SynSightDatabase
 ): Promise<CommunicationSettingsRecord> {
+  await ensureSupportCommunicationsSchema();
   const rows = await db
     .select()
     .from(communicationSettings)
@@ -181,6 +183,7 @@ export function createMysqlCommunicationsRepository(
       return mapContact(rows[0]);
     },
     async createSupportRequest(input) {
+      await ensureSupportCommunicationsSchema();
       const result = await db.insert(supportRequests).values({
         name: input.name,
         company: input.company ?? null,
@@ -247,6 +250,7 @@ export function createMysqlCommunicationsRepository(
       return rows.map(mapContact);
     },
     async listSupportRequests() {
+      await ensureSupportCommunicationsSchema();
       const rows = await db
         .select()
         .from(supportRequests)

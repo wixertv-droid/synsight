@@ -31,7 +31,7 @@ const userStatusEnum = mysqlEnum("status", [
   "deleted",
 ]);
 
-const userRoleEnum = mysqlEnum("role", ["admin", "user"]);
+const userRoleEnum = mysqlEnum("role", ["admin", "support", "user"]);
 
 const tokenTypeEnum = mysqlEnum("token_type", [
   "password_reset",

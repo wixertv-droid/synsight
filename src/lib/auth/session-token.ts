@@ -31,7 +31,7 @@ export interface SessionPayload {
   sid: string;
   displayName: string;
   email: string;
-  role: "admin" | "user";
+  role: "admin" | "support" | "user";
   /** Issued-at, unix seconds. */
   iat: number;
   /** Expires-at, unix seconds. */
