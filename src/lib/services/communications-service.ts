@@ -4,12 +4,14 @@ import {
   sendContactNotification,
   sendPartnerNotification,
   sendPressNotification,
+  sendSupportNotification,
 } from "@/lib/services/email-service";
 import type {
   ContactRequestInput,
   PartnerRequestInput,
   PressRequestInput,
   RequestStatus,
+  SupportRequestInput,
 } from "@/lib/validation/communications";
 import type { CommunicationChannel } from "@/lib/repositories/communications-repository";
 
@@ -26,6 +28,14 @@ export class SpamRejectedError extends Error {
     this.name = "SpamRejectedError";
   }
 }
+
+export const defaultPublicSiteEmails = {
+  contactEmail: "contact@synsight.de",
+  pressEmail: "press@synsight.de",
+  partnersEmail: "partners@synsight.de",
+  supportEmail: "support@synsight.de",
+  privacyEmail: "datenschutz@synsight.de",
+};
 
 function assertAdmin(actor: AuthenticatedUser) {
   if (actor.role !== "admin") throw new AdminForbiddenError();
@@ -56,6 +66,38 @@ export async function submitContactRequest(input: {
 
   const notification = await sendContactNotification({
     to: settings.contactEmail,
+    requestId: record.id,
+    name: record.name,
+    email: record.email,
+    subject: record.subject,
+    company: record.company,
+    message: record.message,
+  });
+
+  return { request: record, notification };
+}
+
+export async function submitSupportRequest(input: {
+  data: SupportRequestInput;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}) {
+  assertNotSpam(input.data.website);
+  const repo = getCommunicationsRepository();
+  const settings = await repo.getSettings();
+  const record = await repo.createSupportRequest({
+    name: input.data.name,
+    company: input.data.company ?? null,
+    email: input.data.email,
+    phone: input.data.phone ?? null,
+    subject: input.data.subject,
+    message: input.data.message,
+    ipAddress: input.ipAddress,
+    userAgent: input.userAgent,
+  });
+
+  const notification = await sendSupportNotification({
+    to: settings.supportEmail,
     requestId: record.id,
     name: record.name,
     email: record.email,
@@ -135,17 +177,32 @@ export async function getCommunicationSettings(actor: AuthenticatedUser) {
   return getCommunicationsRepository().getSettings();
 }
 
+export async function getPublicSiteEmails() {
+  const settings = await getCommunicationsRepository().getSettings();
+  return {
+    contactEmail: settings.contactEmail,
+    pressEmail: settings.pressEmail,
+    partnersEmail: settings.partnersEmail,
+    supportEmail: settings.supportEmail,
+    privacyEmail: settings.privacyEmail,
+  };
+}
+
 export async function updateCommunicationSettings(input: {
   actor: AuthenticatedUser;
   contactEmail: string;
   pressEmail: string;
   partnersEmail: string;
+  supportEmail: string;
+  privacyEmail: string;
 }) {
   assertAdmin(input.actor);
   return getCommunicationsRepository().updateSettings({
     contactEmail: input.contactEmail,
     pressEmail: input.pressEmail,
     partnersEmail: input.partnersEmail,
+    supportEmail: input.supportEmail,
+    privacyEmail: input.privacyEmail,
     adminId: Number(input.actor.id),
   });
 }
@@ -153,12 +210,13 @@ export async function updateCommunicationSettings(input: {
 export async function listCommunicationRequests(actor: AuthenticatedUser) {
   assertAdmin(actor);
   const repo = getCommunicationsRepository();
-  const [contact, partner, press] = await Promise.all([
+  const [contact, partner, press, support] = await Promise.all([
     repo.listContactRequests(),
     repo.listPartnerRequests(),
     repo.listPressRequests(),
+    repo.listSupportRequests(),
   ]);
-  return { contact, partner, press };
+  return { contact, partner, press, support };
 }
 
 export async function updateCommunicationRequestStatus(input: {
@@ -195,11 +253,13 @@ export async function getCommunicationInboxSummary(actor: AuthenticatedUser) {
   const contact = summarize(requests.contact);
   const partner = summarize(requests.partner);
   const press = summarize(requests.press);
+  const support = summarize(requests.support);
 
   return {
-    total: contact.total + partner.total + press.total,
-    newCount: contact.newCount + partner.newCount + press.newCount,
-    byChannel: { contact, partner, press },
+    total: contact.total + partner.total + press.total + support.total,
+    newCount:
+      contact.newCount + partner.newCount + press.newCount + support.newCount,
+    byChannel: { contact, partner, press, support },
   };
 }
 
@@ -211,9 +271,11 @@ async function findCommunicationRequest(
   const rows =
     channel === "contact"
       ? await repo.listContactRequests()
-      : channel === "partner"
-        ? await repo.listPartnerRequests()
-        : await repo.listPressRequests();
+      : channel === "support"
+        ? await repo.listSupportRequests()
+        : channel === "partner"
+          ? await repo.listPartnerRequests()
+          : await repo.listPressRequests();
   return rows.find((row) => row.id === id) ?? null;
 }
 
@@ -225,12 +287,14 @@ function mailboxForChannel(
 ): string {
   if (channel === "contact") return settings.contactEmail;
   if (channel === "press") return settings.pressEmail;
+  if (channel === "support") return settings.supportEmail;
   return settings.partnersEmail;
 }
 
 /**
  * Forward a message to the mailbox of its own tab:
- * Kontakt → contactEmail, Presse → pressEmail, Partnerschaft → partnersEmail.
+ * Kontakt → contactEmail, Support → supportEmail, Presse → pressEmail,
+ * Partnerschaft → partnersEmail.
  */
 export async function forwardCommunicationRequest(input: {
   actor: AuthenticatedUser;
@@ -250,6 +314,16 @@ export async function forwardCommunicationRequest(input: {
 
   if (input.channel === "contact" && "subject" in request) {
     notification = await sendContactNotification({
+      to,
+      requestId: request.id,
+      name: request.name,
+      email: request.email,
+      subject: `[Weiterleitung] ${request.subject}`,
+      company: request.company,
+      message: request.message,
+    });
+  } else if (input.channel === "support" && "subject" in request) {
+    notification = await sendSupportNotification({
       to,
       requestId: request.id,
       name: request.name,

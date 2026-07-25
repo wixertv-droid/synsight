@@ -8,13 +8,15 @@ type ApiResult<T> =
   { success: true; data: T } | { success: false; error: { message: string } };
 
 type RequestStatus = "new" | "processing" | "answered" | "archived";
-type Channel = "contact" | "partner" | "press";
+type Channel = "contact" | "partner" | "press" | "support";
 type StatusFilter = "all" | RequestStatus;
 
 interface Settings {
   contactEmail: string;
   pressEmail: string;
   partnersEmail: string;
+  supportEmail: string;
+  privacyEmail: string;
 }
 
 interface RequestRow {
@@ -37,6 +39,7 @@ interface CommunicationsPayload {
     contact: RequestRow[];
     partner: RequestRow[];
     press: RequestRow[];
+    support: RequestRow[];
   };
 }
 
@@ -51,12 +54,14 @@ const channelLabel: Record<Channel, string> = {
   contact: "Kontakt",
   partner: "Partnerschaft",
   press: "Presse",
+  support: "Support",
 };
 
 const channelMailboxKey: Record<Channel, keyof Settings> = {
   contact: "contactEmail",
   partner: "partnersEmail",
   press: "pressEmail",
+  support: "supportEmail",
 };
 
 export default function AdminCommunicationsControl() {
@@ -64,11 +69,14 @@ export default function AdminCommunicationsControl() {
     contactEmail: "contact@synsight.de",
     pressEmail: "press@synsight.de",
     partnersEmail: "partners@synsight.de",
+    supportEmail: "support@synsight.de",
+    privacyEmail: "datenschutz@synsight.de",
   });
   const [requests, setRequests] = useState<CommunicationsPayload["requests"]>({
     contact: [],
     partner: [],
     press: [],
+    support: [],
   });
   const [channel, setChannel] = useState<Channel>("contact");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -96,6 +104,8 @@ export default function AdminCommunicationsControl() {
         contactEmail: result.data.settings.contactEmail,
         pressEmail: result.data.settings.pressEmail,
         partnersEmail: result.data.settings.partnersEmail,
+        supportEmail: result.data.settings.supportEmail,
+        privacyEmail: result.data.settings.privacyEmail,
       });
       setRequests(result.data.requests);
     } catch {
@@ -132,6 +142,8 @@ export default function AdminCommunicationsControl() {
         contactEmail: result.data.contactEmail,
         pressEmail: result.data.pressEmail,
         partnersEmail: result.data.partnersEmail,
+        supportEmail: result.data.supportEmail,
+        privacyEmail: result.data.privacyEmail,
       });
       setMessage("Kontakt-E-Mails gespeichert.");
     } catch {
@@ -261,9 +273,13 @@ export default function AdminCommunicationsControl() {
   const newCount =
     requests.contact.filter((row) => row.status === "new").length +
     requests.partner.filter((row) => row.status === "new").length +
-    requests.press.filter((row) => row.status === "new").length;
+    requests.press.filter((row) => row.status === "new").length +
+    requests.support.filter((row) => row.status === "new").length;
   const totalCount =
-    requests.contact.length + requests.partner.length + requests.press.length;
+    requests.contact.length +
+    requests.partner.length +
+    requests.press.length +
+    requests.support.length;
 
   return (
     <section
@@ -311,6 +327,8 @@ export default function AdminCommunicationsControl() {
             ["contactEmail", "Kontakt E-Mail"],
             ["pressEmail", "Presse E-Mail"],
             ["partnersEmail", "Partnerschafts E-Mail"],
+            ["supportEmail", "Support E-Mail"],
+            ["privacyEmail", "Datenschutz E-Mail"],
           ] as const
         ).map(([key, label]) => (
           <div key={key}>

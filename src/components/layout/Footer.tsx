@@ -1,4 +1,8 @@
 import Link from "next/link";
+import {
+  defaultPublicSiteEmails,
+  getPublicSiteEmails,
+} from "@/lib/services/communications-service";
 
 const footerLinks = {
   Produkt: [
@@ -27,17 +31,11 @@ const footerLinks = {
     { label: "Kontakt", href: "/contact" },
     { label: "Login", href: "/login" },
     { label: "Konto erstellen", href: "/register" },
-    {
-      label: "Support",
-      href: "mailto:support@synsight.de?subject=Supportanfrage%20SynSight",
-    },
-    {
-      label: "Datenschutzanfrage",
-      href: "mailto:datenschutz@synsight.de?subject=Datenschutzanfrage%20SynSight",
-    },
+    { label: "Support", href: "/support" },
+    { label: "Datenschutzanfrage", href: "/support?subject=Datenschutz" },
     {
       label: "Technischer Kontakt",
-      href: "mailto:support@synsight.de?subject=Technische%20Anfrage%20SynSight",
+      href: "/support?subject=Technische%20Anfrage",
     },
   ],
 };
@@ -46,10 +44,22 @@ function isInternal(href: string) {
   return href.startsWith("/");
 }
 
-export default function Footer() {
+export default async function Footer() {
+  let emails = defaultPublicSiteEmails;
+  try {
+    emails = await getPublicSiteEmails();
+  } catch (error) {
+    if (process.env.DATABASE_URL) {
+      console.error("[footer] failed to load site emails:", error);
+    }
+  }
+
+  const contactMailto = `mailto:${emails.contactEmail}?subject=${encodeURIComponent(
+    "Kontaktanfrage SynSight"
+  )}`;
+
   return (
     <footer className="relative overflow-hidden border-t border-cyber-blue/10 bg-space-darker">
-      {/* Subtle signal field — counterpart to the hero globe, much lighter */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-70"
@@ -67,7 +77,6 @@ export default function Footer() {
       </div>
 
       <div className="section-padding relative mx-auto max-w-7xl">
-        {/* Action strip */}
         <div className="mb-14 flex flex-col gap-5 rounded-2xl border border-cyber-blue/15 bg-gradient-to-r from-cyber-blue/[0.08] via-transparent to-cyber-cyan/[0.05] p-5 md:flex-row md:items-center md:justify-between md:p-6">
           <div>
             <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/55">
@@ -123,10 +132,10 @@ export default function Footer() {
             </p>
             <div className="flex flex-col gap-2">
               <a
-                href="mailto:contact@synsight.de"
+                href={contactMailto}
                 className="inline-flex items-center gap-2 text-sm text-cyber-blue/70 transition-colors hover:text-cyber-cyan"
               >
-                contact@synsight.de
+                {emails.contactEmail}
                 <span aria-hidden="true">↗</span>
               </a>
               <Link
@@ -175,9 +184,9 @@ export default function Footer() {
             Rechte vorbehalten.
           </p>
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-cyber-cyan/60 shadow-[0_0_8px_rgba(112,231,255,.45)]" />
-            <span className="font-mono text-xs text-gray-500">
-              Produktentwicklung in Deutschland · EU-Datenprinzip
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyber-cyan" />
+            <span className="font-mono text-[10px] tracking-[.14em] text-gray-600">
+              SYSTEMS ONLINE
             </span>
           </div>
         </div>

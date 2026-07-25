@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import CompanyPage from "@/components/layout/CompanyPage";
 import PressForm from "@/components/company/PressForm";
+import {
+  defaultPublicSiteEmails,
+  getPublicSiteEmails,
+} from "@/lib/services/communications-service";
 
 export const metadata: Metadata = {
   title: "Presse — SynSight",
@@ -8,7 +12,11 @@ export const metadata: Metadata = {
     "Pressebereich von SynSight — Medienkontakt, Presseanfragen und Materialien.",
 };
 
-export default function PressPage() {
+export default async function PressPage() {
+  const emails = await getPublicSiteEmails().catch(
+    () => defaultPublicSiteEmails
+  );
+
   return (
     <CompanyPage
       label="Unternehmen / Presse"
@@ -43,10 +51,10 @@ export default function PressPage() {
           <h3 className="mt-3 text-lg text-white/85">Direkt</h3>
           <p className="mt-3 text-sm text-white/45">
             <a
-              href="mailto:press@synsight.de"
+              href={`mailto:${emails.pressEmail}`}
               className="text-cyber-cyan/80 transition hover:text-cyber-cyan"
             >
-              press@synsight.de
+              {emails.pressEmail}
             </a>
           </p>
         </article>

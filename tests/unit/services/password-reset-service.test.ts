@@ -26,7 +26,12 @@ describe("password-reset-service", () => {
   });
 
   it("does not reveal whether an email exists", async () => {
-    expect(await requestPasswordReset("missing@example.com")).toBeNull();
+    await expect(
+      requestPasswordReset("missing@example.com")
+    ).resolves.toMatchObject({
+      token: null,
+      delivered: false,
+    });
   });
 
   it("issues a token, resets the password, and writes audit events", async () => {
@@ -39,17 +44,17 @@ describe("password-reset-service", () => {
     });
     await getUserRepository().activate(user.id);
 
-    const token = await requestPasswordReset(user.email);
-    expect(token).toBeTruthy();
+    const resetRequest = await requestPasswordReset(user.email);
+    expect(resetRequest.token).toBeTruthy();
 
     const stored = await getUserTokenRepository().findValid(
-      hashToken(token as string),
+      hashToken(resetRequest.token!),
       "password_reset"
     );
     expect(stored?.userId).toBe(user.id);
 
     const result = await resetPasswordWithToken(
-      token as string,
+      resetRequest.token!,
       "NewSecurePass1!"
     );
     expect(result).toEqual({ success: true });
@@ -61,7 +66,7 @@ describe("password-reset-service", () => {
     );
 
     const reused = await resetPasswordWithToken(
-      token as string,
+      resetRequest.token!,
       "AnotherSecure1!"
     );
     expect(reused).toEqual({ success: false, reason: "already_used" });
@@ -121,8 +126,8 @@ describe("password-reset-service", () => {
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
     });
 
-    const token = await requestPasswordReset(user.email);
-    await resetPasswordWithToken(token as string, "NewSecurePass1!");
+    const resetRequest = await requestPasswordReset(user.email);
+    await resetPasswordWithToken(resetRequest.token!, "NewSecurePass1!");
 
     const active =
       await getSessionRepository().findActiveByTokenHash("session-hash");
@@ -145,6 +150,9 @@ describe("password-reset-service", () => {
     const record = memory?.get(user.id);
     if (record) record.status = "suspended";
 
-    expect(await requestPasswordReset(user.email)).toBeNull();
+    await expect(requestPasswordReset(user.email)).resolves.toMatchObject({
+      token: null,
+      delivered: false,
+    });
   });
 });

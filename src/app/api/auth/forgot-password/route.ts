@@ -11,7 +11,7 @@ import { requestPasswordReset } from "@/lib/services/password-reset-service";
 import { passwordResetRequestSchema } from "@/lib/validation/auth";
 
 const PUBLIC_MESSAGE =
-  "Wenn ein Konto mit dieser E-Mail-Adresse existiert, wurde eine E-Mail zum Zurücksetzen des Passworts gesendet.";
+  "Wenn ein Konto mit dieser E-Mail-Adresse existiert, wurde eine E-Mail zum Zurücksetzen des Passworts gesendet. Prüfen Sie auch den Spam-Ordner.";
 
 export async function POST(request: Request) {
   const csrfError = validateMutationOrigin(request);
@@ -37,13 +37,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const token = await requestPasswordReset(parsed.data.email);
+  const result = await requestPasswordReset(parsed.data.email);
   const attempted = recordRateLimitAttempt(key, PASSWORD_RESET_RATE_LIMIT);
+
+  // Preview only when delivery is log-link (dev/ops) — never for provider mode.
+  const showPreview =
+    result.deliveryMode === "log-link" && Boolean(result.token);
 
   return NextResponse.json(
     apiSuccess({
       message: PUBLIC_MESSAGE,
-      previewToken: process.env.NODE_ENV === "production" ? null : token,
+      previewToken: showPreview ? result.token : null,
+      deliveryMode: result.deliveryMode,
     }),
     { headers: rateLimitHeaders(attempted) }
   );

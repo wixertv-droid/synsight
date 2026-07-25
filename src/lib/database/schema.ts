@@ -982,6 +982,12 @@ export const communicationSettings = mysqlTable("communication_settings", {
   partnersEmail: varchar("partners_email", { length: 255 })
     .notNull()
     .default("partners@synsight.de"),
+  supportEmail: varchar("support_email", { length: 255 })
+    .notNull()
+    .default("support@synsight.de"),
+  privacyEmail: varchar("privacy_email", { length: 255 })
+    .notNull()
+    .default("datenschutz@synsight.de"),
   updatedByAdminId: bigint("updated_by_admin_id", {
     mode: "number",
     unsigned: true,
@@ -1023,6 +1029,37 @@ export const contactRequests = mysqlTable(
     index("contact_requests_status_idx").on(table.status),
     index("contact_requests_created_at_idx").on(table.createdAt),
     index("contact_requests_email_idx").on(table.email),
+  ]
+);
+
+export const supportRequests = mysqlTable(
+  "support_requests",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    name: varchar("name", { length: 150 }).notNull(),
+    company: varchar("company", { length: 200 }),
+    email: varchar("email", { length: 255 }).notNull(),
+    phone: varchar("phone", { length: 64 }),
+    subject: varchar("subject", { length: 200 }).notNull(),
+    message: text("message").notNull(),
+    status: requestStatusEnum.notNull().default("new"),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: varchar("user_agent", { length: 500 }),
+    adminNotes: text("admin_notes"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("support_requests_status_idx").on(table.status),
+    index("support_requests_created_at_idx").on(table.createdAt),
+    index("support_requests_email_idx").on(table.email),
   ]
 );
 

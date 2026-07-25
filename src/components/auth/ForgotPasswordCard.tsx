@@ -11,6 +11,7 @@ import { passwordResetRequestSchema } from "@/lib/validation/auth";
 interface ForgotPasswordData {
   message: string;
   previewToken: string | null;
+  deliveryMode?: "provider" | "log-link" | "disabled";
 }
 
 export default function ForgotPasswordCard() {
@@ -102,7 +103,7 @@ export default function ForgotPasswordCard() {
               href={`/reset-password?token=${encodeURIComponent(previewToken)}`}
               className="mt-4 inline-flex text-xs text-cyan-100/80 underline-offset-2 transition hover:text-cyan-100 hover:underline"
             >
-              Entwicklungsvorschau: Link öffnen
+              Link öffnen (E-Mail-Modus: Log-Link)
             </Link>
           ) : null}
         </div>

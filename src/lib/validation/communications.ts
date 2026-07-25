@@ -51,6 +51,8 @@ export const contactRequestSchema = z.object({
   website: honeypotSchema,
 });
 
+export const supportRequestSchema = contactRequestSchema;
+
 export const partnerRequestSchema = z.object({
   name: z
     .string()
@@ -131,10 +133,29 @@ export const communicationSettingsSchema = z.object({
     .toLowerCase()
     .email("Ungültige Partnerschafts-E-Mail.")
     .max(255),
+  supportEmail: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Ungültige Support-E-Mail.")
+    .max(255),
+  privacyEmail: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Ungültige Datenschutz-E-Mail.")
+    .max(255),
 });
 
+const communicationChannelSchema = z.enum([
+  "contact",
+  "partner",
+  "press",
+  "support",
+]);
+
 export const adminRequestStatusUpdateSchema = z.object({
-  channel: z.enum(["contact", "partner", "press"]),
+  channel: communicationChannelSchema,
   id: z.number().int().positive(),
   status: requestStatusSchema,
   adminNotes: z
@@ -147,16 +168,17 @@ export const adminRequestStatusUpdateSchema = z.object({
 
 /** Forward always goes to the mailbox of the request's own channel/tab. */
 export const adminRequestForwardSchema = z.object({
-  channel: z.enum(["contact", "partner", "press"]),
+  channel: communicationChannelSchema,
   id: z.number().int().positive(),
 });
 
 export const adminRequestDeleteSchema = z.object({
-  channel: z.enum(["contact", "partner", "press"]),
+  channel: communicationChannelSchema,
   id: z.number().int().positive(),
 });
 
 export type ContactRequestInput = z.input<typeof contactRequestSchema>;
+export type SupportRequestInput = z.input<typeof supportRequestSchema>;
 export type PartnerRequestInput = z.input<typeof partnerRequestSchema>;
 export type PressRequestInput = z.input<typeof pressRequestSchema>;
 export type CommunicationSettingsInput = z.infer<

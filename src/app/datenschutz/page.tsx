@@ -4,6 +4,10 @@ import LegalDocument, {
   LegalMeta,
   LegalPanel,
 } from "@/components/layout/LegalDocument";
+import {
+  defaultPublicSiteEmails,
+  getPublicSiteEmails,
+} from "@/lib/services/communications-service";
 
 export const metadata: Metadata = {
   title: "Datenschutz — SynSight",
@@ -13,7 +17,10 @@ export const metadata: Metadata = {
 
 const UPDATED = "17. Juli 2026";
 
-export default function DatenschutzPage() {
+export default async function DatenschutzPage() {
+  const emails = await getPublicSiteEmails().catch(
+    () => defaultPublicSiteEmails
+  );
   return (
     <LegalDocument
       label="Recht / Datenschutz"
@@ -44,17 +51,17 @@ export default function DatenschutzPage() {
           <br />
           E-Mail:{" "}
           <a
-            href="mailto:datenschutz@synsight.de"
+            href={`mailto:${emails.privacyEmail}`}
             className="text-cyber-cyan/80 hover:text-cyber-cyan"
           >
-            datenschutz@synsight.de
+            {emails.privacyEmail}
           </a>{" "}
           bzw.{" "}
           <a
-            href="mailto:contact@synsight.de"
+            href={`mailto:${emails.contactEmail}`}
             className="text-cyber-cyan/80 hover:text-cyber-cyan"
           >
-            contact@synsight.de
+            {emails.contactEmail}
           </a>
         </p>
       </LegalPanel>
@@ -213,10 +220,17 @@ export default function DatenschutzPage() {
         <p>
           Anfragen richten Sie bitte an{" "}
           <a
-            href="mailto:datenschutz@synsight.de"
+            href={`mailto:${emails.privacyEmail}`}
             className="text-cyber-cyan/80 hover:text-cyber-cyan"
           >
-            datenschutz@synsight.de
+            {emails.privacyEmail}
+          </a>{" "}
+          oder über das{" "}
+          <a
+            href="/support?subject=Datenschutz"
+            className="text-cyber-cyan/80 hover:text-cyber-cyan"
+          >
+            Support-Ticket
           </a>
           . Zusätzlich besteht ein Beschwerderecht bei einer zuständigen
           Datenschutzaufsichtsbehörde.

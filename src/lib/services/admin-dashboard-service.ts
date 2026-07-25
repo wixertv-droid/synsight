@@ -27,6 +27,7 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
           contact: { total: 0, newCount: 0 },
           partner: { total: 0, newCount: 0 },
           press: { total: 0, newCount: 0 },
+          support: { total: 0, newCount: 0 },
         },
       })),
       getPricingRepository().listAnalyses(false),
@@ -140,6 +141,10 @@ export async function getAdminDashboardOverview(actor: AuthenticatedUser) {
           {
             label: "Kontakt",
             value: inbox.byChannel?.contact?.newCount ?? 0,
+          },
+          {
+            label: "Support",
+            value: inbox.byChannel?.support?.newCount ?? 0,
           },
         ],
       },

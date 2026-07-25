@@ -11,6 +11,7 @@ import {
   submitContactRequest,
   submitPartnerRequest,
   submitPressRequest,
+  submitSupportRequest,
   updateCommunicationRequestStatus,
   updateCommunicationSettings,
 } from "@/lib/services/communications-service";
@@ -18,6 +19,7 @@ import {
   sendContactNotification,
   sendPartnerNotification,
   sendPressNotification,
+  sendSupportNotification,
 } from "@/lib/services/email-service";
 
 const admin: AuthenticatedUser = {
@@ -53,7 +55,7 @@ describe("communications-service", () => {
     expect(result.notification.payload.to).toBe("contact@synsight.de");
   });
 
-  it("stores partner and press requests", async () => {
+  it("stores partner, press and support requests", async () => {
     const partner = await submitPartnerRequest({
       data: {
         name: "Lia Partner",
@@ -74,13 +76,25 @@ describe("communications-service", () => {
         website: "",
       },
     });
+    const support = await submitSupportRequest({
+      data: {
+        name: "Sven Support",
+        email: "sven@example.de",
+        subject: "Technische Anfrage",
+        message: "Bitte prüfen Sie mein technisches Anliegen im Dashboard.",
+        website: "",
+      },
+    });
 
     expect(partner.request.company).toBe("SecureOps");
     expect(press.request.medium).toBe("Cyber Weekly");
+    expect(support.request.subject).toBe("Technische Anfrage");
+    expect(support.notification.payload.to).toBe("support@synsight.de");
 
     const listed = await listCommunicationRequests(admin);
     expect(listed.partner).toHaveLength(1);
     expect(listed.press).toHaveLength(1);
+    expect(listed.support).toHaveLength(1);
   });
 
   it("allows admins to update settings and request status", async () => {
@@ -98,8 +112,11 @@ describe("communications-service", () => {
       contactEmail: "hello@synsight.de",
       pressEmail: "media@synsight.de",
       partnersEmail: "coop@synsight.de",
+      supportEmail: "hilfe@synsight.de",
+      privacyEmail: "privacy@synsight.de",
     });
     expect(settings.contactEmail).toBe("hello@synsight.de");
+    expect(settings.supportEmail).toBe("hilfe@synsight.de");
 
     const created = await submitContactRequest({
       data: {
@@ -140,12 +157,22 @@ describe("communications-service", () => {
         website: "",
       },
     });
+    await submitSupportRequest({
+      data: {
+        name: "Inbox C",
+        email: "c@example.com",
+        subject: "Support",
+        message: "Supportanfrage für die Inbox-Zusammenfassung.",
+        website: "",
+      },
+    });
 
     const summary = await getCommunicationInboxSummary(admin);
-    expect(summary.total).toBe(2);
-    expect(summary.newCount).toBe(2);
+    expect(summary.total).toBe(3);
+    expect(summary.newCount).toBe(3);
     expect(summary.byChannel.contact.newCount).toBe(1);
     expect(summary.byChannel.partner.newCount).toBe(1);
+    expect(summary.byChannel.support.newCount).toBe(1);
   });
 
   it("forwards messages to the mailbox of their own channel tab", async () => {
@@ -227,5 +254,18 @@ describe("email-service delivery modes", () => {
     });
     expect(press.provider).toBe("disabled");
     expect(press.delivered).toBe(false);
+  });
+
+  it("logs support notifications in log-link mode", async () => {
+    const support = await sendSupportNotification({
+      to: "support@synsight.de",
+      requestId: 3,
+      name: "C",
+      email: "c@d.de",
+      subject: "Support",
+    });
+    expect(support.payload.channel).toBe("support");
+    expect(support.provider).toBe("log-link");
+    expect(support.queued).toBe(true);
   });
 });

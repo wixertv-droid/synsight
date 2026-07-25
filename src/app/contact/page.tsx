@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import CompanyPage from "@/components/layout/CompanyPage";
 import ContactForm from "@/components/company/ContactForm";
+import {
+  defaultPublicSiteEmails,
+  getPublicSiteEmails,
+} from "@/lib/services/communications-service";
 
 export const metadata: Metadata = {
   title: "Kontakt — SynSight",
@@ -8,7 +13,11 @@ export const metadata: Metadata = {
     "Kontaktieren Sie das SynSight Team für Produktfragen, Support und allgemeine Anliegen.",
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const emails = await getPublicSiteEmails().catch(
+    () => defaultPublicSiteEmails
+  );
+
   return (
     <CompanyPage
       label="Unternehmen / Kontakt"
@@ -39,10 +48,10 @@ export default function ContactPage() {
           </p>
           <p className="mt-3 text-sm text-white/55">
             <a
-              href="mailto:contact@synsight.de"
+              href={`mailto:${emails.contactEmail}`}
               className="text-cyber-cyan/80 transition hover:text-cyber-cyan"
             >
-              contact@synsight.de
+              {emails.contactEmail}
             </a>
           </p>
           <p className="mt-2 text-xs text-white/30">
@@ -54,12 +63,12 @@ export default function ContactPage() {
             SUPPORT
           </p>
           <p className="mt-3 text-sm text-white/55">
-            <a
-              href="mailto:support@synsight.de"
+            <Link
+              href="/support"
               className="text-cyber-cyan/80 transition hover:text-cyber-cyan"
             >
-              support@synsight.de
-            </a>
+              Support-Ticket öffnen
+            </Link>
           </p>
           <p className="mt-2 text-xs text-white/30">
             Technische Probleme und Plattformfragen

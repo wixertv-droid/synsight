@@ -4,6 +4,10 @@ import LegalDocument, {
   LegalMeta,
   LegalPanel,
 } from "@/components/layout/LegalDocument";
+import {
+  defaultPublicSiteEmails,
+  getPublicSiteEmails,
+} from "@/lib/services/communications-service";
 
 export const metadata: Metadata = {
   title: "Security & Compliance — SynSight",
@@ -13,7 +17,10 @@ export const metadata: Metadata = {
 
 const UPDATED = "17. Juli 2026";
 
-export default function SecurityPage() {
+export default async function SecurityPage() {
+  const emails = await getPublicSiteEmails().catch(
+    () => defaultPublicSiteEmails
+  );
   return (
     <LegalDocument
       label="Trust / Security"
@@ -149,10 +156,10 @@ export default function SecurityPage() {
           Wenn Sie eine potenzielle Sicherheitslücke in SynSight entdecken,
           melden Sie diese bitte vertraulich an{" "}
           <a
-            href="mailto:contact@synsight.de?subject=Security%20Disclosure"
+            href={`mailto:${emails.contactEmail}?subject=${encodeURIComponent("Security Disclosure")}`}
             className="text-cyber-cyan/80 hover:text-cyber-cyan"
           >
-            contact@synsight.de
+            {emails.contactEmail}
           </a>{" "}
           mit dem Betreff „Security Disclosure“.
         </p>

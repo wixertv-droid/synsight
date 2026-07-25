@@ -13,7 +13,7 @@ import { buildContactEmail } from "@/lib/email/templates/contact-email";
 import { buildPressEmail } from "@/lib/email/templates/press-email";
 import { buildPartnerEmail } from "@/lib/email/templates/partner-email";
 
-export type EmailChannel = "contact" | "press" | "partner";
+export type EmailChannel = "contact" | "press" | "partner" | "support";
 
 export interface EmailNotificationPayload {
   channel: EmailChannel;
@@ -38,6 +38,7 @@ const CHANNEL_FROM: Record<EmailChannel, string> = {
   contact: "SynSight Kontakt <contact@synsight.de>",
   press: "SynSight Presse <press@synsight.de>",
   partner: "SynSight Partnerschaften <partners@synsight.de>",
+  support: "SynSight Support <support@synsight.de>",
 };
 
 function deliveryMode(): string {
@@ -59,7 +60,9 @@ export function resolveNotificationRecipient(
       ? "CONTACT_EMAIL"
       : channel === "press"
         ? "PRESS_EMAIL"
-        : "PARTNER_EMAIL";
+        : channel === "support"
+          ? "SUPPORT_EMAIL"
+          : "PARTNER_EMAIL";
   const fromEnv = process.env[envKey]?.trim();
   return fromEnv && fromEnv.length > 0 ? fromEnv : fallback;
 }
@@ -169,6 +172,43 @@ export async function sendContactNotification(input: {
     to: resolveNotificationRecipient("contact", input.to),
     subject: template.subject,
     preview: `Neue Kontaktanfrage von ${input.name} <${input.email}>`,
+    requestId: input.requestId,
+    replyTo: input.email,
+    bodyText: template.text,
+    bodyHtml: template.html,
+    metadata: {
+      name: input.name,
+      company: input.company ?? null,
+      subject: input.subject,
+    },
+  });
+}
+
+export async function sendSupportNotification(input: {
+  to: string;
+  requestId: number;
+  name: string;
+  email: string;
+  subject: string;
+  company?: string | null;
+  message?: string | null;
+}): Promise<EmailDispatchResult> {
+  const template = buildContactEmail({
+    name: input.name,
+    email: input.email,
+    subject: input.subject,
+    company: input.company,
+    message: input.message,
+    requestId: input.requestId,
+    channelLabel: "Supportanfrage",
+    subjectPrefix: "Support",
+  });
+
+  return dispatchNotification({
+    channel: "support",
+    to: resolveNotificationRecipient("support", input.to),
+    subject: template.subject,
+    preview: `Neue Supportanfrage von ${input.name} <${input.email}>`,
     requestId: input.requestId,
     replyTo: input.email,
     bodyText: template.text,

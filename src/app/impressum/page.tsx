@@ -3,6 +3,10 @@ import LegalDocument, {
   LegalMeta,
   LegalPanel,
 } from "@/components/layout/LegalDocument";
+import {
+  defaultPublicSiteEmails,
+  getPublicSiteEmails,
+} from "@/lib/services/communications-service";
 
 export const metadata: Metadata = {
   title: "Impressum — SynSight",
@@ -12,7 +16,10 @@ export const metadata: Metadata = {
 
 const UPDATED = "17. Juli 2026";
 
-export default function ImpressumPage() {
+export default async function ImpressumPage() {
+  const emails = await getPublicSiteEmails().catch(
+    () => defaultPublicSiteEmails
+  );
   return (
     <LegalDocument
       label="Recht / Anbieterkennzeichnung"
@@ -64,10 +71,10 @@ export default function ImpressumPage() {
               label: "E-Mail",
               value: (
                 <a
-                  href="mailto:contact@synsight.de"
+                  href={`mailto:${emails.contactEmail}`}
                   className="text-cyber-cyan/80 transition hover:text-cyber-cyan"
                 >
-                  contact@synsight.de
+                  {emails.contactEmail}
                 </a>
               ),
             },

@@ -12,6 +12,8 @@ import { createOpaqueToken, hashToken } from "@/lib/utils/crypto";
 
 const PASSWORD_RESET_TTL_MS = 60 * 60_000;
 
+export type PasswordResetDeliveryMode = "provider" | "log-link" | "disabled";
+
 function resolveAppUrl(): string {
   const fromProcess = process.env.APP_URL?.trim();
   if (fromProcess) return fromProcess.replace(/\/$/, "");
@@ -34,15 +36,25 @@ function formatExpiresAt(ttlMs: number): string {
     .replace("T", " ");
 }
 
+function deliveryMode(): PasswordResetDeliveryMode {
+  const mode = (process.env.EMAIL_DELIVERY_MODE ?? "log-link")
+    .trim()
+    .toLowerCase();
+  if (mode === "provider" || mode === "disabled" || mode === "log-link") {
+    return mode;
+  }
+  return "log-link";
+}
+
 async function deliverPasswordResetEmail(
   email: string,
   token: string
-): Promise<void> {
-  const mode = process.env.EMAIL_DELIVERY_MODE ?? "log-link";
+): Promise<{ mode: PasswordResetDeliveryMode; delivered: boolean }> {
+  const mode = deliveryMode();
   const url = buildResetUrl(token);
 
   if (mode === "disabled") {
-    return;
+    return { mode, delivered: false };
   }
 
   if (mode === "log-link") {
@@ -50,7 +62,7 @@ async function deliverPasswordResetEmail(
     getObservability().recordMetric("email.password_reset.logged", 1, {
       mode,
     });
-    return;
+    return { mode, delivered: true };
   }
 
   try {
@@ -61,6 +73,7 @@ async function deliverPasswordResetEmail(
       resetUrl: url,
     });
     getObservability().recordMetric("email.password_reset.sent", 1, { mode });
+    return { mode, delivered: true };
   } catch (error) {
     getObservability().captureError(
       error instanceof Error ? error : new Error("SMTP delivery failed."),
@@ -74,25 +87,32 @@ async function deliverPasswordResetEmail(
         email.split("@")[1] ?? "unknown"
       }: ${sanitizeSmtpError(error)}`
     );
-    console.info(
-      `[email:fallback-log] password-reset delivery deferred for domain ${
-        email.split("@")[1] ?? "unknown"
-      } (token remains valid; user can request again)`
-    );
+    // Keep token valid; fall back to log so ops can recover the link.
+    console.info(`[email:fallback-log] password-reset for ${email}: ${url}`);
+    return { mode, delivered: false };
   }
+}
+
+export interface RequestPasswordResetResult {
+  /** Opaque token — only expose in log-link / non-production. */
+  token: string | null;
+  deliveryMode: PasswordResetDeliveryMode;
+  /** True when a mail was queued/sent or a log-link was written. */
+  delivered: boolean;
 }
 
 /**
  * Issues a password-reset token for an eligible account.
- * Returns null when no email should be sent (unknown / blocked account).
- * Callers must never reveal whether the email exists.
+ * Never reveals whether the email exists (token stays null for unknowns).
  */
 export async function requestPasswordReset(
   email: string
-): Promise<string | null> {
-  const user = await getUserRepository().findByEmail(email);
+): Promise<RequestPasswordResetResult> {
+  const normalized = email.trim().toLowerCase();
+  const mode = deliveryMode();
+  const user = await getUserRepository().findByEmail(normalized);
   if (!user || user.status === "deleted" || user.status === "suspended") {
-    return null;
+    return { token: null, deliveryMode: mode, delivered: false };
   }
 
   const tokenRepository = getUserTokenRepository();
@@ -111,10 +131,16 @@ export async function requestPasswordReset(
     eventType: "auth.password_reset.requested",
     entityType: "user",
     entityId: String(user.id),
+    metadata: { deliveryMode: mode },
   });
 
-  void deliverPasswordResetEmail(user.email, token);
-  return token;
+  // Await delivery so SMTP/config failures surface in logs before the response.
+  const delivery = await deliverPasswordResetEmail(user.email, token);
+  return {
+    token,
+    deliveryMode: delivery.mode,
+    delivered: delivery.delivered,
+  };
 }
 
 export type ResetPasswordResult =

@@ -5,7 +5,7 @@ import path from "node:path";
 describe("home launch screen session gating", () => {
   it("stores launch completion in sessionStorage", () => {
     const source = readFileSync(
-      path.join(process.cwd(), "src/app/page.tsx"),
+      path.join(process.cwd(), "src/app/HomeContent.tsx"),
       "utf8"
     );
     expect(source).toContain("synsight.launch.seen");

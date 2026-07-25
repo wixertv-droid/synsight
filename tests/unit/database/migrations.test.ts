@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–025 migration files", () => {
+  it("ships ordered 001–026 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -35,6 +35,7 @@ describe("database migrations workflow", () => {
       "023_username_intelligence.sql",
       "024_username_sort_and_heal.sql",
       "025_rc2_hardening.sql",
+      "026_support_tickets_and_public_emails.sql",
     ]);
   });
 
@@ -158,6 +159,18 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("contact@synsight.de");
     expect(sql).toContain("press@synsight.de");
     expect(sql).toContain("partners@synsight.de");
+  });
+
+  it("adds support tickets and public mailbox columns in 026", () => {
+    const sql = readFileSync(
+      path.join(dir, "026_support_tickets_and_public_emails.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `support_requests`");
+    expect(sql).toContain("`support_email`");
+    expect(sql).toContain("`privacy_email`");
+    expect(sql).toContain("support@synsight.de");
+    expect(sql).toContain("datenschutz@synsight.de");
   });
 
   it("adds platform settings and api credentials in 013", () => {

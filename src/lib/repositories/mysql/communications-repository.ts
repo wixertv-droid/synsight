@@ -5,6 +5,7 @@ import {
   contactRequests,
   partnerRequests,
   pressRequests,
+  supportRequests,
 } from "@/lib/database/schema";
 import {
   createInMemoryCommunicationsRepository,
@@ -12,6 +13,7 @@ import {
   type ContactRequestRecord,
   type PartnerRequestRecord,
   type PressRequestRecord,
+  type SupportRequestRecord,
   type CommunicationSettingsRecord,
 } from "../communications-repository";
 import type { RequestStatus } from "@/lib/validation/communications";
@@ -23,6 +25,8 @@ function mapSettings(
     contactEmail: row.contactEmail,
     pressEmail: row.pressEmail,
     partnersEmail: row.partnersEmail,
+    supportEmail: row.supportEmail,
+    privacyEmail: row.privacyEmail,
     updatedByAdminId: row.updatedByAdminId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -32,6 +36,26 @@ function mapSettings(
 function mapContact(
   row: typeof contactRequests.$inferSelect
 ): ContactRequestRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    company: row.company,
+    email: row.email,
+    phone: row.phone,
+    subject: row.subject,
+    message: row.message,
+    status: row.status as RequestStatus,
+    ipAddress: row.ipAddress,
+    userAgent: row.userAgent,
+    adminNotes: row.adminNotes,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function mapSupport(
+  row: typeof supportRequests.$inferSelect
+): SupportRequestRecord {
   return {
     id: row.id,
     name: row.name,
@@ -101,6 +125,8 @@ async function ensureSettings(
     contactEmail: "contact@synsight.de",
     pressEmail: "press@synsight.de",
     partnersEmail: "partners@synsight.de",
+    supportEmail: "support@synsight.de",
+    privacyEmail: "datenschutz@synsight.de",
   });
 
   const created = await db
@@ -127,6 +153,8 @@ export function createMysqlCommunicationsRepository(
           contactEmail: input.contactEmail,
           pressEmail: input.pressEmail,
           partnersEmail: input.partnersEmail,
+          supportEmail: input.supportEmail,
+          privacyEmail: input.privacyEmail,
           updatedByAdminId: input.adminId,
         })
         .where(eq(communicationSettings.id, 1));
@@ -151,6 +179,26 @@ export function createMysqlCommunicationsRepository(
         .limit(1);
       if (!rows[0]) throw new Error("CONTACT_REQUEST_CREATE_FAILED");
       return mapContact(rows[0]);
+    },
+    async createSupportRequest(input) {
+      const result = await db.insert(supportRequests).values({
+        name: input.name,
+        company: input.company ?? null,
+        email: input.email,
+        phone: input.phone ?? null,
+        subject: input.subject,
+        message: input.message,
+        ipAddress: input.ipAddress ?? null,
+        userAgent: input.userAgent ?? null,
+      });
+      const id = Number(result[0].insertId);
+      const rows = await db
+        .select()
+        .from(supportRequests)
+        .where(eq(supportRequests.id, id))
+        .limit(1);
+      if (!rows[0]) throw new Error("SUPPORT_REQUEST_CREATE_FAILED");
+      return mapSupport(rows[0]);
     },
     async createPartnerRequest(input) {
       const result = await db.insert(partnerRequests).values({
@@ -198,6 +246,13 @@ export function createMysqlCommunicationsRepository(
         .orderBy(desc(contactRequests.createdAt));
       return rows.map(mapContact);
     },
+    async listSupportRequests() {
+      const rows = await db
+        .select()
+        .from(supportRequests)
+        .orderBy(desc(supportRequests.createdAt));
+      return rows.map(mapSupport);
+    },
     async listPartnerRequests() {
       const rows = await db
         .select()
@@ -229,6 +284,23 @@ export function createMysqlCommunicationsRepository(
           .where(eq(contactRequests.id, input.id))
           .limit(1);
         return rows[0] ? mapContact(rows[0]) : null;
+      }
+      if (input.channel === "support") {
+        await db
+          .update(supportRequests)
+          .set({
+            status: input.status,
+            ...(input.adminNotes !== undefined
+              ? { adminNotes: input.adminNotes }
+              : {}),
+          })
+          .where(eq(supportRequests.id, input.id));
+        const rows = await db
+          .select()
+          .from(supportRequests)
+          .where(eq(supportRequests.id, input.id))
+          .limit(1);
+        return rows[0] ? mapSupport(rows[0]) : null;
       }
       if (input.channel === "partner") {
         await db
@@ -268,6 +340,12 @@ export function createMysqlCommunicationsRepository(
         const result = await db
           .delete(contactRequests)
           .where(eq(contactRequests.id, input.id));
+        return Number(result[0].affectedRows ?? 0) > 0;
+      }
+      if (input.channel === "support") {
+        const result = await db
+          .delete(supportRequests)
+          .where(eq(supportRequests.id, input.id));
         return Number(result[0].affectedRows ?? 0) > 0;
       }
       if (input.channel === "partner") {

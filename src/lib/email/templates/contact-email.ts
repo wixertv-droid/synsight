@@ -7,10 +7,14 @@ export function buildContactEmail(input: {
   company?: string | null;
   message?: string | null;
   requestId: number;
+  channelLabel?: string;
+  subjectPrefix?: string;
 }): { subject: string; text: string; html: string } {
-  const subject = `[SynSight Kontakt] ${input.subject}`;
+  const channelLabel = input.channelLabel ?? "Kontaktanfrage";
+  const subjectPrefix = input.subjectPrefix ?? "Kontakt";
+  const subject = `[SynSight ${subjectPrefix}] ${input.subject}`;
   const text = [
-    "Neue Kontaktanfrage",
+    `Neue ${channelLabel}`,
     "",
     `Name: ${input.name}`,
     `E-Mail: ${input.email}`,
@@ -24,8 +28,8 @@ export function buildContactEmail(input: {
     .join("\n");
 
   const bodyHtml = `
-    <p style="margin:0 0 8px 0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:rgba(112,231,255,.65);">Kontaktanfrage</p>
-    <h1 style="margin:0 0 16px 0;font-size:22px;color:#fff;">Neue Kontaktanfrage</h1>
+    <p style="margin:0 0 8px 0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:rgba(112,231,255,.65);">${escapeHtml(channelLabel)}</p>
+    <h1 style="margin:0 0 16px 0;font-size:22px;color:#fff;">Neue ${escapeHtml(channelLabel)}</h1>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size:14px;color:rgba(232,237,245,.72);">
       <tr><td style="padding:6px 0;width:120px;color:rgba(232,237,245,.4);">Name</td><td>${escapeHtml(input.name)}</td></tr>
       <tr><td style="padding:6px 0;color:rgba(232,237,245,.4);">E-Mail</td><td>${escapeHtml(input.email)}</td></tr>
@@ -42,7 +46,7 @@ export function buildContactEmail(input: {
   `;
 
   const { html } = renderEmailLayout({
-    preheader: `Neue Kontaktanfrage von ${input.name}`,
+    preheader: `Neue ${channelLabel} von ${input.name}`,
     title: subject,
     bodyHtml,
   });

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import LegalDocument, { LegalPanel } from "@/components/layout/LegalDocument";
 import ChangelogTimeline from "@/components/changelog/ChangelogTimeline";
 import { getChangelogCatalog } from "@/lib/content/changelog";
@@ -43,12 +44,12 @@ export default function ChangelogPage() {
         </p>
         <p>
           Feedback und Supportanfragen:{" "}
-          <a
-            href="mailto:support@synsight.de"
+          <Link
+            href="/support"
             className="text-cyber-cyan/80 transition hover:text-cyber-cyan"
           >
-            support@synsight.de
-          </a>
+            Support-Ticket öffnen
+          </Link>
         </p>
       </LegalPanel>
     </LegalDocument>

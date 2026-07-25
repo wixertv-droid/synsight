@@ -1,17 +1,35 @@
 import type { RequestStatus } from "@/lib/validation/communications";
 
-export type CommunicationChannel = "contact" | "partner" | "press";
+export type CommunicationChannel = "contact" | "partner" | "press" | "support";
 
 export interface CommunicationSettingsRecord {
   contactEmail: string;
   pressEmail: string;
   partnersEmail: string;
+  supportEmail: string;
+  privacyEmail: string;
   updatedByAdminId: number | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ContactRequestRecord {
+  id: number;
+  name: string;
+  company: string | null;
+  email: string;
+  phone: string | null;
+  subject: string;
+  message: string;
+  status: RequestStatus;
+  ipAddress: string | null;
+  userAgent: string | null;
+  adminNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportRequestRecord {
   id: number;
   name: string;
   company: string | null;
@@ -69,6 +87,17 @@ export interface CreateContactRequestInput {
   userAgent?: string | null;
 }
 
+export interface CreateSupportRequestInput {
+  name: string;
+  company?: string | null;
+  email: string;
+  phone?: string | null;
+  subject: string;
+  message: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}
+
 export interface CreatePartnerRequestInput {
   name: string;
   company: string;
@@ -96,11 +125,16 @@ export interface CommunicationsRepository {
     contactEmail: string;
     pressEmail: string;
     partnersEmail: string;
+    supportEmail: string;
+    privacyEmail: string;
     adminId: number;
   }): Promise<CommunicationSettingsRecord>;
   createContactRequest(
     input: CreateContactRequestInput
   ): Promise<ContactRequestRecord>;
+  createSupportRequest(
+    input: CreateSupportRequestInput
+  ): Promise<SupportRequestRecord>;
   createPartnerRequest(
     input: CreatePartnerRequestInput
   ): Promise<PartnerRequestRecord>;
@@ -108,6 +142,7 @@ export interface CommunicationsRepository {
     input: CreatePressRequestInput
   ): Promise<PressRequestRecord>;
   listContactRequests(): Promise<ContactRequestRecord[]>;
+  listSupportRequests(): Promise<SupportRequestRecord[]>;
   listPartnerRequests(): Promise<PartnerRequestRecord[]>;
   listPressRequests(): Promise<PressRequestRecord[]>;
   updateRequestStatus(input: {
@@ -116,7 +151,11 @@ export interface CommunicationsRepository {
     status: RequestStatus;
     adminNotes?: string | null;
   }): Promise<
-    ContactRequestRecord | PartnerRequestRecord | PressRequestRecord | null
+    | ContactRequestRecord
+    | PartnerRequestRecord
+    | PressRequestRecord
+    | SupportRequestRecord
+    | null
   >;
   deleteRequest(input: {
     channel: CommunicationChannel;
@@ -134,6 +173,8 @@ function defaultSettings(): CommunicationSettingsRecord {
     contactEmail: "contact@synsight.de",
     pressEmail: "press@synsight.de",
     partnersEmail: "partners@synsight.de",
+    supportEmail: "support@synsight.de",
+    privacyEmail: "datenschutz@synsight.de",
     updatedByAdminId: null,
     createdAt: stamp,
     updatedAt: stamp,
@@ -158,6 +199,14 @@ function contactStore(): ContactRequestRecord[] {
   return g.__synsightContactRequests;
 }
 
+function supportStore(): SupportRequestRecord[] {
+  const g = globalThis as typeof globalThis & {
+    __synsightSupportRequests?: SupportRequestRecord[];
+  };
+  if (!g.__synsightSupportRequests) g.__synsightSupportRequests = [];
+  return g.__synsightSupportRequests;
+}
+
 function partnerStore(): PartnerRequestRecord[] {
   const g = globalThis as typeof globalThis & {
     __synsightPartnerRequests?: PartnerRequestRecord[];
@@ -177,6 +226,7 @@ function pressStore(): PressRequestRecord[] {
 function nextId(
   key:
     | "__synsightContactRequestId"
+    | "__synsightSupportRequestId"
     | "__synsightPartnerRequestId"
     | "__synsightPressRequestId"
 ) {
@@ -198,6 +248,8 @@ export function createInMemoryCommunicationsRepository(): CommunicationsReposito
         contactEmail: input.contactEmail,
         pressEmail: input.pressEmail,
         partnersEmail: input.partnersEmail,
+        supportEmail: input.supportEmail,
+        privacyEmail: input.privacyEmail,
         updatedByAdminId: input.adminId,
         updatedAt: stamp,
       });
@@ -221,6 +273,26 @@ export function createInMemoryCommunicationsRepository(): CommunicationsReposito
         updatedAt: stamp,
       };
       contactStore().unshift(record);
+      return { ...record };
+    },
+    async createSupportRequest(input) {
+      const stamp = nowStamp();
+      const record: SupportRequestRecord = {
+        id: nextId("__synsightSupportRequestId"),
+        name: input.name,
+        company: input.company ?? null,
+        email: input.email,
+        phone: input.phone ?? null,
+        subject: input.subject,
+        message: input.message,
+        status: "new",
+        ipAddress: input.ipAddress ?? null,
+        userAgent: input.userAgent ?? null,
+        adminNotes: null,
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      supportStore().unshift(record);
       return { ...record };
     },
     async createPartnerRequest(input) {
@@ -265,6 +337,9 @@ export function createInMemoryCommunicationsRepository(): CommunicationsReposito
     async listContactRequests() {
       return contactStore().map((entry) => ({ ...entry }));
     },
+    async listSupportRequests() {
+      return supportStore().map((entry) => ({ ...entry }));
+    },
     async listPartnerRequests() {
       return partnerStore().map((entry) => ({ ...entry }));
     },
@@ -275,6 +350,14 @@ export function createInMemoryCommunicationsRepository(): CommunicationsReposito
       const stamp = nowStamp();
       if (input.channel === "contact") {
         const row = contactStore().find((entry) => entry.id === input.id);
+        if (!row) return null;
+        row.status = input.status;
+        if (input.adminNotes !== undefined) row.adminNotes = input.adminNotes;
+        row.updatedAt = stamp;
+        return { ...row };
+      }
+      if (input.channel === "support") {
+        const row = supportStore().find((entry) => entry.id === input.id);
         if (!row) return null;
         row.status = input.status;
         if (input.adminNotes !== undefined) row.adminNotes = input.adminNotes;
@@ -299,6 +382,13 @@ export function createInMemoryCommunicationsRepository(): CommunicationsReposito
     async deleteRequest(input) {
       if (input.channel === "contact") {
         const store = contactStore();
+        const index = store.findIndex((entry) => entry.id === input.id);
+        if (index < 0) return false;
+        store.splice(index, 1);
+        return true;
+      }
+      if (input.channel === "support") {
+        const store = supportStore();
         const index = store.findIndex((entry) => entry.id === input.id);
         if (index < 0) return false;
         store.splice(index, 1);

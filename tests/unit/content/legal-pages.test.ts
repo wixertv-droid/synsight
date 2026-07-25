@@ -35,8 +35,9 @@ describe("Sprint 7 legal compliance pages", () => {
     expect(footer).toContain('href: "/contact"');
     expect(footer).toContain('href: "/login"');
     expect(footer).toContain('href: "/register"');
-    expect(footer).toContain("mailto:datenschutz@synsight.de");
-    expect(footer).toContain("mailto:contact@synsight.de");
+    expect(footer).toContain('href: "/support"');
+    expect(footer).toContain("getPublicSiteEmails");
+    expect(footer).toContain("emails.contactEmail");
   });
 
   it("uses real operator data in the Impressum", () => {
@@ -47,7 +48,7 @@ describe("Sprint 7 legal compliance pages", () => {
     expect(impressum).toContain("René Eule");
     expect(impressum).toContain("Katharinenstraße 4");
     expect(impressum).toContain("07546 Gera");
-    expect(impressum).toContain("contact@synsight.de");
+    expect(impressum).toContain("emails.contactEmail");
     expect(impressum).toContain("§ 19 UStG");
     expect(impressum).not.toMatch(/lorem ipsum/i);
     expect(impressum).not.toMatch(/Platzhalter/i);

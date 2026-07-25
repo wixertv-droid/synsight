@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   contactRequestSchema,
+  supportRequestSchema,
   partnerRequestSchema,
   pressRequestSchema,
   communicationSettingsSchema,
@@ -13,6 +14,19 @@ describe("communications validation", () => {
       email: "ada@example.com",
       subject: "Produktfrage",
       message: "Ich interessiere mich für SynSight Analyse.",
+      company: "Analytical Engines",
+      phone: "+49 123",
+      website: "",
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("accepts a valid support request", () => {
+    const parsed = supportRequestSchema.safeParse({
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      subject: "Technische Anfrage",
+      message: "Ich brauche Unterstützung bei einer Analyse.",
       company: "Analytical Engines",
       phone: "+49 123",
       website: "",
@@ -69,6 +83,8 @@ describe("communications validation", () => {
         contactEmail: "contact@synsight.de",
         pressEmail: "press@synsight.de",
         partnersEmail: "partners@synsight.de",
+        supportEmail: "support@synsight.de",
+        privacyEmail: "datenschutz@synsight.de",
       }).success
     ).toBe(true);
 
@@ -77,6 +93,8 @@ describe("communications validation", () => {
         contactEmail: "not-an-email",
         pressEmail: "press@synsight.de",
         partnersEmail: "partners@synsight.de",
+        supportEmail: "support@synsight.de",
+        privacyEmail: "datenschutz@synsight.de",
       }).success
     ).toBe(false);
   });

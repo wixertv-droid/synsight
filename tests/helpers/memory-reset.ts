@@ -40,6 +40,8 @@ export function resetInMemoryStores(): void {
     __synsightCommunicationSettings?: unknown;
     __synsightContactRequests?: unknown[];
     __synsightContactRequestId?: number;
+    __synsightSupportRequests?: unknown[];
+    __synsightSupportRequestId?: number;
     __synsightPartnerRequests?: unknown[];
     __synsightPartnerRequestId?: number;
     __synsightPressRequests?: unknown[];
@@ -84,6 +86,8 @@ export function resetInMemoryStores(): void {
   delete g.__synsightCommunicationSettings;
   delete g.__synsightContactRequests;
   delete g.__synsightContactRequestId;
+  delete g.__synsightSupportRequests;
+  delete g.__synsightSupportRequestId;
   delete g.__synsightPartnerRequests;
   delete g.__synsightPartnerRequestId;
   delete g.__synsightPressRequests;

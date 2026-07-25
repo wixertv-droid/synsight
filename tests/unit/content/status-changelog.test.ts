@@ -54,7 +54,7 @@ describe("Sprint 7 status & changelog", () => {
     );
     expect(footer).toContain('href: "/status"');
     expect(footer).toContain('href: "/changelog"');
-    expect(footer).toContain("mailto:support@synsight.de");
-    expect(footer).toContain("mailto:contact@synsight.de");
+    expect(footer).toContain('href: "/support"');
+    expect(footer).toContain("emails.contactEmail");
   });
 });

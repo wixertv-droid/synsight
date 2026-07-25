@@ -3,6 +3,7 @@
  */
 export {
   sendContactNotification,
+  sendSupportNotification,
   sendPressNotification,
   sendPartnerNotification,
   resolveNotificationRecipient,
