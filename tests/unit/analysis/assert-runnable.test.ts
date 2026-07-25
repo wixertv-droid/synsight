@@ -4,7 +4,6 @@ import {
   AnalysisGateError,
   assertAnalysisRunnable,
 } from "@/lib/analysis/assert-runnable";
-import { purchaseCreditPackage } from "@/lib/services/credits-service";
 import { updateAnalysisPricing } from "@/lib/services/pricing-service";
 import type { AuthenticatedUser } from "@/lib/auth/types";
 
@@ -20,9 +19,6 @@ describe("assertAnalysisRunnable", () => {
     resetInMemoryStores();
     delete process.env.DATABASE_URL;
     process.env.CREDITS_CHECKOUT_MODE = "instant";
-    // Google provider readiness uses SerpAPI config helpers — mark as present
-    // via env so memory tests can pass the API gate for google_search.
-    process.env.SERPAPI_API_KEY = "test-key";
   });
 
   it("requires requestId", async () => {
@@ -35,7 +31,7 @@ describe("assertAnalysisRunnable", () => {
     ).rejects.toMatchObject({ code: "REQUEST_ID_REQUIRED" });
   });
 
-  it("rejects inactive modules before consume", async () => {
+  it("rejects inactive modules before any provider call", async () => {
     await updateAnalysisPricing({
       actor: admin,
       analysisKey: "domain_analysis",
@@ -52,19 +48,25 @@ describe("assertAnalysisRunnable", () => {
         requestId: "req-inactive-1",
       })
     ).rejects.toBeInstanceOf(AnalysisGateError);
+
+    try {
+      await assertAnalysisRunnable({
+        userId: 1,
+        analysisKey: "domain_analysis",
+        requestId: "req-inactive-2",
+      });
+    } catch (error) {
+      expect(error).toMatchObject({ code: "MODULE_INACTIVE" });
+    }
   });
 
-  it("consumes credits once and returns alreadyConsumed on retry", async () => {
-    await purchaseCreditPackage(1, "pack_500");
-    // domain_analysis has no Serp/DeHashed provider check → assertProviderReady false
-    // Use a key that passes provider readiness only when configured.
-    // For memory tests without provider, expect API_UNAVAILABLE for google/leak/username.
+  it("rejects replaced alias_analysis", async () => {
     await expect(
       assertAnalysisRunnable({
         userId: 1,
-        analysisKey: "google_search",
-        requestId: "req-google-1",
+        analysisKey: "alias_analysis",
+        requestId: "req-alias-1",
       })
-    ).rejects.toMatchObject({ code: "API_UNAVAILABLE" });
+    ).rejects.toMatchObject({ code: "MODULE_REPLACED" });
   });
 });

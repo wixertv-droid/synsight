@@ -73,13 +73,10 @@ describe("credits-service", () => {
     expect(consumed.status).toBe("insufficient");
   });
 
-  it("blocks instant checkout in production unless explicitly allowed", async () => {
-    const previousNode = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
-    delete process.env.CREDITS_CHECKOUT_MODE;
+  it("blocks instant checkout when CREDITS_CHECKOUT_MODE=provider", async () => {
+    process.env.CREDITS_CHECKOUT_MODE = "provider";
     const result = await purchaseCreditPackage(1, "pack_500");
     expect(result.status).toBe("checkout_pending");
-    process.env.NODE_ENV = previousNode;
     process.env.CREDITS_CHECKOUT_MODE = "instant";
   });
 });

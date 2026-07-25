@@ -147,6 +147,82 @@ export const demoAnalysisResults: DemoAnalysisResult[] = [
     ],
   },
   {
+    id: "digital_leak_exposure",
+    title: "Digital Leak & Exposure Scan",
+    tier: "advanced",
+    status: "completed",
+    statusLabel: "Beispiel-Report bereit",
+    riskScore: 72,
+    riskLevel: "high",
+    tagline: "Öffentlich bekannte Datenlecks zu E-Mail und Telefon",
+    summary:
+      "Es wurden bestätigte Leak-Quellen zu hinterlegten Identifikatoren gefunden. Passwortwerte werden nicht angezeigt.",
+    help: "Zeigt bestätigte Leak-Quellen ohne Passwortwerte. Nutzen Sie die Empfehlungen zur Absicherung kompromittierter Konten.",
+    whatThisMeans:
+      "Wenn Ihre Identität in öffentlichen Leak-Datenbanken vorkommt, sollten Passwörter und 2FA priorisiert geprüft werden.",
+    findings: [
+      {
+        id: "dl-breach",
+        label: "Bestätigtes Datenleck",
+        detail: "E-Mail in einer öffentlichen Breach-Quelle gelistet.",
+        severity: "high",
+        whyItMatters:
+          "Kompromittierte Identifikatoren erhöhen das Risiko von Account-Übernahmen.",
+        evidence: [
+          "Quelle: öffentlich bekannte Breach-Liste",
+          "Identifikator: E-Mail (maskiert)",
+        ],
+        sourceHint: "DeHashed / Leak-Katalog",
+      },
+    ],
+    recommendations: [
+      {
+        title: "Passwort rotieren",
+        detail:
+          "Nutzen Sie ein neues, einzigartiges Passwort und aktivieren Sie 2FA.",
+        priority: "Jetzt",
+      },
+    ],
+  },
+  {
+    id: "username_intelligence",
+    title: "Username Intelligence Scan",
+    tier: "advanced",
+    status: "completed",
+    statusLabel: "Beispiel-Report bereit",
+    riskScore: 48,
+    riskLevel: "medium",
+    tagline: "Öffentliche Profile und Communities zu Benutzernamen",
+    summary:
+      "Es wurden öffentlich indexierte Profile mit ausreichender Identity Confidence gefunden.",
+    help: "Ordnet öffentlich indexierte Profile Ihren Benutzernamen zu und bewertet die Identity Confidence.",
+    whatThisMeans:
+      "Wiederkehrende Benutzernamen über Plattformen hinweg können Ihre digitale Spur verdichten.",
+    findings: [
+      {
+        id: "ui-profile",
+        label: "Öffentliches Profil gefunden",
+        detail: "Treffer mit Identity Confidence ≥ 60 %.",
+        severity: "medium",
+        whyItMatters:
+          "Öffentliche Profile erweitern die Angriffsfläche und erleichtern Korrelationen.",
+        evidence: [
+          "Plattform-Treffer über SerpAPI",
+          "Identity Confidence oberhalb des Schwellenwerts",
+        ],
+        sourceHint: "Öffentliche Websuche",
+      },
+    ],
+    recommendations: [
+      {
+        title: "Sichtbarkeit prüfen",
+        detail:
+          "Prüfen Sie Privatsphäre-Einstellungen auf gefundenen Plattformen.",
+        priority: "Diese Woche",
+      },
+    ],
+  },
+  {
     id: "phone_analysis",
     title: "Telefonnummer",
     tier: "quick",

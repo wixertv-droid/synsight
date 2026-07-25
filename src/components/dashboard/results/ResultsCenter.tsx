@@ -147,7 +147,7 @@ async function loadResultsData(): Promise<{
   } catch (error) {
     console.error("[ResultsCenter] unexpected load failure", error);
     return {
-      tabs: FALLBACK_TABS,
+      tabs: [],
       googleReport: null,
       exposureReport: null,
       usernameReport: null,

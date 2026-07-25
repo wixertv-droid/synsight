@@ -38,14 +38,14 @@ test.describe("auth happy path", () => {
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
     await expect(page.locator("#synsight-dashboard")).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Administration" })
+      page.getByRole("link", { name: /A0\s+Übersicht/i })
     ).toBeVisible();
-    await page.getByRole("link", { name: "Administration" }).click();
+    await page.getByRole("link", { name: /A0\s+Übersicht/i }).click();
     await expect(page).toHaveURL(/\/admin/);
     await expect(page.locator("#synsight-admin")).toBeVisible();
 
-    await page.getByRole("button", { name: /abmelden/i }).click();
-    await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
+    await page.getByRole("button", { name: "ABMELDEN", exact: true }).click();
+    await expect(page).toHaveURL(/\/($|\?)/, { timeout: 15_000 });
 
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/login/);
@@ -71,12 +71,12 @@ test.describe("auth happy path", () => {
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
     await expect(page.locator("#synsight-dashboard")).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Administration" })
+      page.getByRole("link", { name: /A0\s+Übersicht/i })
     ).toHaveCount(0);
     await page.goto("/admin");
     await expect(page).toHaveURL(/\/dashboard/);
 
-    await page.getByRole("button", { name: /abmelden/i }).click();
-    await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
+    await page.getByRole("button", { name: "ABMELDEN", exact: true }).click();
+    await expect(page).toHaveURL(/\/($|\?)/, { timeout: 15_000 });
   });
 });

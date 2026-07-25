@@ -15,10 +15,10 @@ SET @sql := IF(
 );
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
--- Deactivate superseded alias module (Username Intelligence replaces it)
+-- Deactivate superseded / unimplemented modules
 UPDATE `analysis_pricing`
 SET `is_active` = 0
-WHERE `analysis_key` = 'alias_analysis';
+WHERE `analysis_key` IN ('alias_analysis', 'person_search', 'phone_analysis', 'email_analysis');
 
 -- Username sort after Digital Leak
 UPDATE `analysis_pricing`

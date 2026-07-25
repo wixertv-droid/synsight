@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       { status: 404 }
     );
   }
-  if (result.status === "not_eligible") {
+  if (result.status !== "completed") {
     const message =
       result.reason === "ALREADY_REDEEMED"
         ? "Dieser Promotioncode wurde bereits eingelöst."

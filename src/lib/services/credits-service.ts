@@ -92,7 +92,8 @@ export async function purchaseCreditPackage(
     sortOrder: pack.sortOrder,
   });
 
-  if (mode === "provider" && provider !== "manual") {
+  // H-05: Instant checkout is DEV-only. Production must use a real provider later.
+  if (mode === "provider") {
     const payment = await repo.createPayment({
       userId,
       packageId: pack.id,
@@ -110,7 +111,7 @@ export async function purchaseCreditPackage(
       credits: creditsTotal,
       amountCents: pack.priceCents,
       message:
-        "Zahlungsanbieter ist vorbereitet, aber noch nicht angebunden. Setzen Sie CREDITS_CHECKOUT_MODE=instant für den Testabschluss.",
+        "Zahlungsanbieter ist für den Produktivbetrieb erforderlich. Instant-Checkout ist nur in der Entwicklungsumgebung verfügbar (CREDITS_CHECKOUT_MODE=instant, NODE_ENV≠production).",
     };
   }
 

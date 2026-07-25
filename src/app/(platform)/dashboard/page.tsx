@@ -120,8 +120,8 @@ export default async function DashboardPage() {
   }
 
   const modules: DashboardModuleInput[] = [];
-  for (const module of activeModules) {
-    const key = String(module.id);
+  for (const activeModule of activeModules) {
+    const key = String(activeModule.id);
     let report: unknown | null = null;
     if (user && IMPLEMENTED_REPORT_KEYS.has(key)) {
       try {
@@ -133,7 +133,7 @@ export default async function DashboardPage() {
     }
     modules.push({
       key,
-      label: module.title,
+      label: activeModule.title,
       report,
     });
   }

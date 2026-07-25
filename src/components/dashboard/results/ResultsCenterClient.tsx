@@ -289,7 +289,7 @@ export default function ResultsCenterClient({
       setError("Verbindung zum Server nicht möglich.");
       finishScanAttempt();
     }
-  }, [finishScanAttempt, retentionDays, searchParams]);
+  }, [finishScanAttempt, requestIdFromUrl, retentionDays, searchParams]);
 
   const runExposureScan = useCallback(async () => {
     setError(null);
@@ -375,7 +375,7 @@ export default function ResultsCenterClient({
       setError("Verbindung zum Server nicht möglich.");
       finishScanAttempt({ tab: "digital_leak_exposure" });
     }
-  }, [finishScanAttempt]);
+  }, [finishScanAttempt, requestIdFromUrl, searchParams]);
 
   const runUsernameScan = useCallback(async () => {
     setError(null);
@@ -475,7 +475,7 @@ export default function ResultsCenterClient({
       setError("Verbindung zum Server nicht möglich.");
       finishScanAttempt({ tab: "username_intelligence" });
     }
-  }, [finishScanAttempt, retentionDays, searchParams]);
+  }, [finishScanAttempt, requestIdFromUrl, retentionDays, searchParams]);
 
   useEffect(() => {
     if (
