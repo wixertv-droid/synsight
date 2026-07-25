@@ -14,12 +14,15 @@ export type DigitalExposureScanStatus =
 export type DigitalExposureActionPriority =
   "SOFORT" | "HOCH" | "MITTEL" | "OPTIONAL";
 
-/** Single exposed attribute from DeHashed — values masked or presence-only. */
+/** Single exposed attribute from DeHashed.
+ * Non-secret fields: cleartext in maskedValue.
+ * password / hashed_password: masked preview only.
+ */
 export interface DigitalExposureAttribute {
   key: string;
   label: string;
   present: boolean;
-  /** Masked sample when safe (never passwords/hashes) */
+  /** Cleartext for identity fields; masked preview for password/hash only */
   maskedValue?: string | null;
 }
 

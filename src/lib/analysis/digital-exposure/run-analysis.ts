@@ -67,7 +67,7 @@ function findingsFromEmailBreach(
   email: string,
   breach: DehashedBreachSummary
 ): DigitalExposureFinding[] {
-  const masked = maskEmail(email);
+  const identifier = email.trim();
   const risk = riskForBreach(breach);
   const confidence =
     breach.hasPasswordExposure || breach.hasHashedPasswordExposure ? 98 : 92;
@@ -75,14 +75,14 @@ function findingsFromEmailBreach(
     {
       type: "BREACH",
       title: breach.databaseName,
-      description: `Bestätigter DeHashed-Treffer in „${breach.databaseName}“ (${breach.recordCount} Datensatz/Datensätze). Alle angezeigten Merkmale stammen aus der API — keine Passwortwerte gespeichert.`,
+      description: `Bestätigter DeHashed-Treffer in „${breach.databaseName}“ (${breach.recordCount} Datensatz/Datensätze). Passwörter/Hashes nur maskiert; alle übrigen Merkmale im Klartext.`,
       riskLevel: risk,
       sourceName: breach.databaseName,
       sourceDate: breach.sourceDate,
       recommendation:
         "Betroffene Konten prüfen, Passwörter ändern und Zwei-Faktor-Authentifizierung aktivieren.",
       sourceUrl: DEHASHED_URL,
-      identifierMasked: masked,
+      identifierMasked: identifier,
       dataClasses: breach.dataClasses.slice(),
       attributes: breach.attributes,
       recordCount: breach.recordCount,
@@ -103,7 +103,7 @@ function findingsFromEmailBreach(
       recommendation:
         "E-Mail auf Phishing prüfen und Wiederverwendung von Passwörtern vermeiden.",
       sourceUrl: DEHASHED_URL,
-      identifierMasked: masked,
+      identifierMasked: identifier,
       dataClasses: breach.dataClasses.filter((c) =>
         /e-mail|email|benutzername/i.test(c)
       ),
@@ -120,14 +120,14 @@ function findingsFromEmailBreach(
       type: "PASSWORD_EXPOSURE",
       title: "Passwort Exposure",
       description:
-        "Im Leak war ein Passwort bzw. Passwort-Hash gemeldet. Es werden keine Passwortwerte oder Hashes gespeichert oder angezeigt.",
+        "Im Leak war ein Passwort bzw. Passwort-Hash gemeldet. Es werden nur maskierte Vorschauen gespeichert/angezeigt (keine vollständigen Secrets).",
       riskLevel: "high",
       sourceName: breach.databaseName,
       sourceDate: breach.sourceDate,
       recommendation:
         "Passwörter bei betroffenen Diensten sofort ändern und nicht wiederverwenden.",
       sourceUrl: DEHASHED_URL,
-      identifierMasked: masked,
+      identifierMasked: identifier,
       dataClasses: breach.dataClasses.filter((c) => /passwort|hash/i.test(c)),
       attributes: breach.attributes.filter((a) =>
         ["password", "hashed_password", "hash_type"].includes(a.key)
@@ -145,7 +145,7 @@ function findingsFromPhoneBreach(
   phone: string,
   breach: DehashedBreachSummary
 ): DigitalExposureFinding[] {
-  const masked = maskPhone(phone);
+  const identifier = phone.trim();
   const risk = riskForBreach(breach);
   const confidence =
     breach.hasPasswordExposure || breach.hasHashedPasswordExposure ? 98 : 92;
@@ -160,7 +160,7 @@ function findingsFromPhoneBreach(
       recommendation:
         "Nummer auf Spam-Listen prüfen und sparsam veröffentlichen.",
       sourceUrl: DEHASHED_URL,
-      identifierMasked: masked,
+      identifierMasked: identifier,
       dataClasses: breach.dataClasses.slice(),
       attributes: breach.attributes,
       recordCount: breach.recordCount,
@@ -181,7 +181,7 @@ function findingsFromPhoneBreach(
       recommendation:
         "Bei verdächtigen Anrufen Rufnummer-Sperre und Anbieter-Portale nutzen.",
       sourceUrl: DEHASHED_URL,
-      identifierMasked: masked,
+      identifierMasked: identifier,
       dataClasses: breach.dataClasses.filter((c) => /telefon/i.test(c)),
       attributes: breach.attributes.filter((a) => a.key === "phone"),
       recordCount: breach.recordCount,
@@ -194,14 +194,14 @@ function findingsFromPhoneBreach(
       type: "PASSWORD_EXPOSURE",
       title: "Passwort Exposure",
       description:
-        "Im zugehörigen Leak waren Passwort-Daten gemeldet (Werte werden nicht gespeichert).",
+        "Im zugehörigen Leak waren Passwort-Daten gemeldet (nur maskierte Vorschau, keine vollständigen Secrets).",
       riskLevel: "high",
       sourceName: breach.databaseName,
       sourceDate: breach.sourceDate,
       recommendation:
         "Passwörter bei betroffenen Diensten ändern und 2FA aktivieren.",
       sourceUrl: DEHASHED_URL,
-      identifierMasked: masked,
+      identifierMasked: identifier,
       dataClasses: breach.dataClasses.filter((c) => /passwort|hash/i.test(c)),
       attributes: breach.attributes.filter((a) =>
         ["password", "hashed_password", "hash_type"].includes(a.key)
@@ -324,7 +324,7 @@ export async function runDigitalLeakExposureScan(
             sourceDate: null,
             recommendation: null,
             sourceUrl: DEHASHED_URL,
-            identifierMasked: maskEmail(email),
+            identifierMasked: email.trim(),
             dataClasses: [],
           });
         } else {
@@ -364,7 +364,7 @@ export async function runDigitalLeakExposureScan(
           recommendation:
             "Später erneut prüfen. Admin-API-Test kann trotz einzelner Query-Fehler grün sein.",
           sourceUrl: DEHASHED_URL,
-          identifierMasked: maskEmail(email),
+          identifierMasked: email.trim(),
           dataClasses: [],
         });
       }
@@ -407,7 +407,7 @@ export async function runDigitalLeakExposureScan(
             recommendation:
               "Telefonnummer sparsam veröffentlichen und bei Spam-Verdacht Anbieter-Portale prüfen.",
             sourceUrl: DEHASHED_URL,
-            identifierMasked: maskPhone(phone),
+            identifierMasked: phone.trim(),
             dataClasses: [],
           });
         } else {
@@ -445,7 +445,7 @@ export async function runDigitalLeakExposureScan(
           sourceDate: null,
           recommendation: "Später erneut prüfen.",
           sourceUrl: DEHASHED_URL,
-          identifierMasked: maskPhone(phone),
+          identifierMasked: phone.trim(),
           dataClasses: [],
         });
       }
@@ -457,7 +457,7 @@ export async function runDigitalLeakExposureScan(
       type: "SOURCE",
       title: "Quellenbasis",
       description:
-        "Auswertung über DeHashed.com Search API. Es werden ausschließlich Metadaten gespeichert — keine Passwörter und keine Passwort-Hashes.",
+        "Auswertung über DeHashed.com Search API. Identitätfelder (E-Mail, Telefon, Name, Username) im Klartext; Passwörter/Hashes nur maskiert.",
       riskLevel: "low",
       sourceName: "DeHashed",
       sourceDate: null,

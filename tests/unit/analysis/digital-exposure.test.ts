@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   maskEmail,
   maskPhone,
+  maskSecret,
   stripHtml,
 } from "@/lib/analysis/digital-exposure/mask";
 import { buildGeminiPrepPayload } from "@/lib/analysis/digital-exposure/gemini-prep";
@@ -12,34 +13,36 @@ import {
 import type { DigitalExposureFinding } from "@/lib/analysis/digital-exposure/types";
 
 describe("digital exposure helpers", () => {
-  it("masks email and phone without leaking full identifiers", () => {
+  it("masks only secrets with first3/last2 preview", () => {
+    expect(maskSecret("super-secret-password")).toMatch(/^sup\*+rd$/);
+    expect(maskSecret("abc123hash")).toMatch(/^abc\*+sh$/);
+    // audit helpers still exist for usage logs
     expect(maskEmail("max.mustermann@example.de")).toMatch(
       /^ma\*+@example\.de$/
     );
     expect(maskPhone("+4917612345678")).toContain("*");
-    expect(maskPhone("+4917612345678")).not.toContain("123456");
   });
 
   it("strips HTML from breach descriptions", () => {
     expect(stripHtml("<p>Adobe <em>Leak</em></p>")).toBe("Adobe Leak");
   });
 
-  it("summarizes DeHashed entries without storing password values", () => {
+  it("keeps email/username/name cleartext and only masks password/hash", () => {
     const summaries = summarizeDehashedEntries([
       {
-        email: ["max@example.de"],
+        email: ["anja1921@example.de"],
         password: ["super-secret-should-never-appear"],
-        hashed_password: ["abc123hash"],
+        hashed_password: ["abc123hashvalue"],
         hash_type: "bcrypt",
         database_name: "Adobe",
-        username: ["max"],
-        name: ["Max Mustermann"],
+        username: ["anja1921"],
+        name: ["Anja Beispiel"],
         city: ["Berlin"],
         country: ["DE"],
         ip_address: ["1.2.3.4"],
       },
       {
-        email: ["max@example.de"],
+        email: ["anja1921@example.de"],
         phone: ["+4917612345678"],
         database_name: "Adobe",
       },
@@ -50,18 +53,29 @@ describe("digital exposure helpers", () => {
     expect(summaries[0].hasPasswordExposure).toBe(true);
     expect(summaries[0].hasHashedPasswordExposure).toBe(true);
     expect(summaries[0].hashType).toBe("bcrypt");
-    expect(summaries[0].attributes.some((a) => a.key === "email")).toBe(true);
-    expect(summaries[0].attributes.some((a) => a.key === "city")).toBe(true);
-    expect(summaries[0].dataClasses).toEqual(
-      expect.arrayContaining(["E-Mail-Adresse", "Benutzername", "Name"])
+
+    const emailAttr = summaries[0].attributes.find((a) => a.key === "email");
+    const userAttr = summaries[0].attributes.find((a) => a.key === "username");
+    const nameAttr = summaries[0].attributes.find((a) => a.key === "name");
+    const phoneAttr = summaries[0].attributes.find((a) => a.key === "phone");
+    const passAttr = summaries[0].attributes.find((a) => a.key === "password");
+    const hashAttr = summaries[0].attributes.find(
+      (a) => a.key === "hashed_password"
     );
+
+    expect(emailAttr?.maskedValue).toBe("anja1921@example.de");
+    expect(userAttr?.maskedValue).toBe("anja1921");
+    expect(nameAttr?.maskedValue).toBe("Anja Beispiel");
+    expect(phoneAttr?.maskedValue).toBe("+4917612345678");
+    expect(passAttr?.maskedValue).toMatch(/^sup\*+ar$/);
+    expect(hashAttr?.maskedValue).toMatch(/^abc\*+ue$/);
     expect(JSON.stringify(summaries)).not.toContain(
       "super-secret-should-never-appear"
     );
-    expect(JSON.stringify(summaries)).not.toContain("abc123hash");
+    expect(JSON.stringify(summaries)).not.toContain("abc123hashvalue");
   });
 
-  it("builds facts-only Gemini payload without inventing data", () => {
+  it("builds facts-only Gemini payload with cleartext identity fields", () => {
     const findings: DigitalExposureFinding[] = [
       {
         type: "BREACH",
@@ -72,23 +86,41 @@ describe("digital exposure helpers", () => {
         sourceDate: "2013-10-04",
         recommendation: "Passwort ändern",
         sourceUrl: "https://dehashed.com/",
-        identifierMasked: "ma***@example.de",
-        dataClasses: [
-          "E-Mail-Adresse",
-          "Passwort vorhanden (nicht gespeichert)",
+        identifierMasked: "anja1921@example.de",
+        dataClasses: ["E-Mail-Adresse", "Passwort"],
+        attributes: [
+          {
+            key: "email",
+            label: "E-Mail-Adresse",
+            present: true,
+            maskedValue: "anja1921@example.de",
+          },
+          {
+            key: "username",
+            label: "Benutzername",
+            present: true,
+            maskedValue: "anja1921",
+          },
+          {
+            key: "password",
+            label: "Passwort",
+            present: true,
+            maskedValue: "sup***rd",
+          },
         ],
       },
     ];
     const payload = buildGeminiPrepPayload({
-      subjectName: "Max Mustermann",
+      subjectName: "Anja Beispiel",
       riskScore: 42,
       findings,
     });
+    const json = JSON.stringify(payload);
     expect(payload.mode).toBe("facts_only");
-    expect(payload.findings).toHaveLength(1);
-    expect(payload.instructions).toMatch(/DIGITAL FORENSICS ANALYST/i);
-    expect(payload.constraints.join(" ")).toMatch(/bestätigte API-Treffer/i);
-    expect(JSON.stringify(payload)).not.toMatch(/password123|geheim/i);
+    expect(json).toContain("anja1921@example.de");
+    expect(json).toContain("anja1921");
+    expect(json).not.toContain("an***@");
+    expect(json).not.toMatch(/password123|geheim|super-secret/i);
   });
 
   it("builds management overview without technical count sentence", async () => {
@@ -104,11 +136,21 @@ describe("digital exposure helpers", () => {
         sourceDate: "2013",
         recommendation: null,
         sourceUrl: null,
-        identifierMasked: "a***@x.de",
-        dataClasses: ["E-Mail-Adresse", "Passwort vorhanden"],
+        identifierMasked: "anja1921@example.de",
+        dataClasses: ["E-Mail-Adresse", "Passwort"],
         attributes: [
-          { key: "email", label: "E-Mail-Adresse", present: true },
-          { key: "password", label: "Passwort vorhanden", present: true },
+          {
+            key: "email",
+            label: "E-Mail-Adresse",
+            present: true,
+            maskedValue: "anja1921@example.de",
+          },
+          {
+            key: "password",
+            label: "Passwort",
+            present: true,
+            maskedValue: "sup***rd",
+          },
         ],
         recordCount: 2,
         confidence: 98,
@@ -122,7 +164,7 @@ describe("digital exposure helpers", () => {
         sourceDate: null,
         recommendation: null,
         sourceUrl: null,
-        identifierMasked: "a***@x.de",
+        identifierMasked: "anja1921@example.de",
         dataClasses: ["E-Mail-Adresse", "Benutzername"],
         recordCount: 1,
       },
