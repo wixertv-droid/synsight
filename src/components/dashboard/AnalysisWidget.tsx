@@ -10,8 +10,8 @@ import RadarNetworkBackdrop from "@/components/dashboard/RadarNetworkBackdrop";
 import AiSummaryWithLinks from "@/components/analysis/intelligence/AiSummaryWithLinks";
 import { guidance } from "@/lib/content/guidance";
 
-const CX = 300;
-const CY = 178;
+const CX = 320;
+const CY = 200;
 /** Vertical foreshortening for a 3D disc look. */
 const PERSPECTIVE_Y = 0.42;
 
@@ -19,7 +19,7 @@ const PERSPECTIVE_Y = 0.42;
 const RISK_RINGS = [
   {
     id: "safe",
-    r: 52,
+    r: 70,
     stroke: "rgba(52, 211, 153, 0.55)",
     fill: "rgba(52, 211, 153, 0.07)",
     label: "SICHER",
@@ -27,7 +27,7 @@ const RISK_RINGS = [
   },
   {
     id: "watch",
-    r: 96,
+    r: 128,
     stroke: "rgba(251, 191, 36, 0.5)",
     fill: "rgba(251, 191, 36, 0.055)",
     label: "AUFFÄLLIG",
@@ -35,7 +35,7 @@ const RISK_RINGS = [
   },
   {
     id: "critical",
-    r: 140,
+    r: 186,
     stroke: "rgba(244, 63, 94, 0.5)",
     fill: "rgba(244, 63, 94, 0.055)",
     label: "KRITISCH",
@@ -96,12 +96,12 @@ function zoneColor(zone: RiskZone): string {
  * Extreme risk (>85) breaks past the outer red ring.
  */
 function riskToRadius(risk: number): number {
-  if (risk <= 0) return 18;
+  if (risk <= 0) return 24;
   const greenEnd = RISK_RINGS[0].r;
   const yellowEnd = RISK_RINGS[1].r;
   const redEnd = RISK_RINGS[2].r;
-  const overflow = 186;
-  if (risk < 34) return 22 + (risk / 34) * (greenEnd - 26);
+  const overflow = 248;
+  if (risk < 34) return 28 + (risk / 34) * (greenEnd - 32);
   if (risk < 67) return greenEnd + ((risk - 34) / 33) * (yellowEnd - greenEnd);
   if (risk < 85) return yellowEnd + ((risk - 67) / 18) * (redEnd - yellowEnd);
   return redEnd + ((risk - 85) / 15) * (overflow - redEnd);
@@ -242,6 +242,31 @@ export default function AnalysisWidget({
     correlationActive ? (overallZone === "idle" ? "safe" : overallZone) : "idle"
   );
 
+  /** Fit viewBox so outermost markers nearly touch the panel edge. */
+  const scopeViewBox = useMemo(() => {
+    const maxPointR = Math.max(
+      RISK_RINGS[2].r,
+      ...channels.map((ch) => (ch.active ? ch.targetR : 0)),
+      186
+    );
+    const labelPad = 36;
+    const halfW = maxPointR + labelPad;
+    const halfH = maxPointR * PERSPECTIVE_Y + labelPad + 10;
+    return {
+      x: CX - halfW,
+      y: CY - halfH,
+      w: halfW * 2,
+      h: halfH * 2,
+    };
+  }, [channels]);
+
+  const briefingTone =
+    overallZone === "extreme" || overallZone === "critical"
+      ? "critical"
+      : overallZone === "watch"
+        ? "watch"
+        : "safe";
+
   const sidebarSources = useMemo(() => {
     const ordered = CHANNEL_ORDER.map(
       (label) =>
@@ -289,8 +314,8 @@ export default function AnalysisWidget({
         </button>
       </div>
 
-      <div className="grid min-h-[405px] md:grid-cols-[1fr_220px]">
-        <div className="relative overflow-hidden border-b border-white/[0.06] p-5 md:border-b-0 md:border-r md:p-6">
+      <div className="grid min-h-[460px] md:grid-cols-[1fr_220px]">
+        <div className="relative overflow-hidden border-b border-white/[0.06] p-2 md:border-b-0 md:border-r md:p-3">
           <div
             className="analysis-field absolute inset-0 opacity-20"
             aria-hidden="true"
@@ -298,7 +323,7 @@ export default function AnalysisWidget({
           <RadarNetworkBackdrop />
           {/* HUD corner brackets */}
           <div
-            className="pointer-events-none absolute inset-4 z-[2] border border-cyber-cyan/10"
+            className="pointer-events-none absolute inset-2 z-[2] border border-cyber-cyan/10"
             aria-hidden="true"
           >
             <span className="absolute -left-px -top-px h-3 w-3 border-l-2 border-t-2 border-cyber-cyan/50" />
@@ -307,13 +332,14 @@ export default function AnalysisWidget({
             <span className="absolute -bottom-px -right-px h-3 w-3 border-b-2 border-r-2 border-cyber-cyan/50" />
           </div>
           <div
-            className="pointer-events-none absolute bottom-[16%] left-1/2 z-[1] h-10 w-[68%] -translate-x-1/2 rounded-[100%] bg-cyber-cyan/[0.05] blur-2xl"
+            className="pointer-events-none absolute bottom-[10%] left-1/2 z-[1] h-12 w-[78%] -translate-x-1/2 rounded-[100%] bg-cyber-cyan/[0.05] blur-2xl"
             aria-hidden="true"
           />
           <svg
-            viewBox="-24 -8 648 360"
-            className="relative z-10 h-full min-h-[300px] w-full"
+            viewBox={`${scopeViewBox.x} ${scopeViewBox.y} ${scopeViewBox.w} ${scopeViewBox.h}`}
+            className="relative z-10 h-full min-h-[360px] w-full md:min-h-[400px]"
             aria-label="Threat Scope Risikoanzeige"
+            preserveAspectRatio="xMidYMid meet"
             style={{
               filter:
                 "drop-shadow(0 16px 24px rgba(0,0,0,0.4)) drop-shadow(0 2px 10px rgba(41,182,246,0.1))",
@@ -536,7 +562,7 @@ export default function AnalysisWidget({
               })}
             </g>
           </svg>
-          <div className="absolute bottom-4 left-5 right-5 z-20 flex flex-wrap items-center justify-between gap-2 font-mono text-[7px] tracking-[.14em] text-white/25 md:left-6 md:right-6">
+          <div className="absolute bottom-2 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 font-mono text-[7px] tracking-[.14em] text-white/25 md:left-4 md:right-4">
             <span>
               SCOPE / {correlationActive ? "LIVE" : "STANDBY"} ·{" "}
               {String(Math.min(999, signalCount)).padStart(3, "0")} SIG
@@ -645,93 +671,92 @@ export default function AnalysisWidget({
           </Link>
         </div>
 
-        {/* Cyber SOC briefing panel */}
-        <div className="relative overflow-hidden rounded-xl border border-cyber-cyan/25 bg-gradient-to-br from-cyber-cyan/[0.07] via-[#061018] to-black/60 shadow-[inset_0_1px_0_rgba(112,231,255,0.08),0_0_40px_rgba(41,182,246,0.06)]">
+        {/* Security-warning frame: color by risk, 3D bevel like classified briefing */}
+        <div
+          className={`relative rounded-lg p-[3px] ${
+            briefingTone === "critical"
+              ? "bg-gradient-to-b from-rose-300 via-rose-600 to-rose-950 shadow-[0_0_28px_rgba(244,63,94,0.28),0_10px_28px_rgba(0,0,0,0.45)]"
+              : briefingTone === "watch"
+                ? "bg-gradient-to-b from-amber-200 via-amber-500 to-amber-950 shadow-[0_0_28px_rgba(251,191,36,0.22),0_10px_28px_rgba(0,0,0,0.45)]"
+                : "bg-gradient-to-b from-emerald-200 via-emerald-500 to-emerald-950 shadow-[0_0_28px_rgba(52,211,153,0.2),0_10px_28px_rgba(0,0,0,0.45)]"
+          }`}
+        >
           <div
-            className="pointer-events-none absolute inset-0 opacity-40"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(112,231,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(112,231,255,0.04) 1px, transparent 1px)",
-              backgroundSize: "22px 22px",
-            }}
-            aria-hidden="true"
-          />
-          <span
-            className="pointer-events-none absolute left-3 top-3 h-2.5 w-2.5 border-l border-t border-cyber-cyan/60"
-            aria-hidden="true"
-          />
-          <span
-            className="pointer-events-none absolute right-3 top-3 h-2.5 w-2.5 border-r border-t border-cyber-cyan/60"
-            aria-hidden="true"
-          />
-          <span
-            className="pointer-events-none absolute bottom-3 left-3 h-2.5 w-2.5 border-b border-l border-cyber-cyan/60"
-            aria-hidden="true"
-          />
-          <span
-            className="pointer-events-none absolute bottom-3 right-3 h-2.5 w-2.5 border-b border-r border-cyber-cyan/60"
-            aria-hidden="true"
-          />
-
-          <div className="relative z-10 p-4 md:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.08] pb-3">
-              <div>
-                <p className="font-mono text-[9px] tracking-[.18em] text-cyber-cyan/70">
-                  ANALYSE-BRIEFING
-                </p>
-                <p className="mt-1 text-sm font-medium tracking-[-.01em] text-white/88">
-                  KI-Zusammenfassung Ihrer Sicherheitslage
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded border px-2 py-1 font-mono text-[8px] tracking-[.12em] ${
-                    overallZone === "extreme" || overallZone === "critical"
-                      ? "border-rose-400/40 bg-rose-400/10 text-rose-100"
-                      : overallZone === "watch"
-                        ? "border-amber-300/40 bg-amber-300/10 text-amber-100"
-                        : "border-emerald-300/35 bg-emerald-300/10 text-emerald-100"
-                  }`}
-                >
-                  {overallZone === "extreme" || overallZone === "critical"
-                    ? "STATUS · KRITISCH"
-                    : overallZone === "watch"
-                      ? "STATUS · AUFFÄLLIG"
+            className={`rounded-[5px] p-px ${
+              briefingTone === "critical"
+                ? "bg-gradient-to-b from-rose-200/80 to-rose-950"
+                : briefingTone === "watch"
+                  ? "bg-gradient-to-b from-amber-100/80 to-amber-950"
+                  : "bg-gradient-to-b from-emerald-100/70 to-emerald-950"
+            }`}
+          >
+            <div className="overflow-hidden rounded-[4px] border border-white/10 bg-[#101822]">
+              <div
+                className={`flex items-center justify-between gap-3 px-4 py-2 font-mono text-[9px] tracking-[.2em] ${
+                  briefingTone === "critical"
+                    ? "bg-rose-600 text-white"
+                    : briefingTone === "watch"
+                      ? "bg-amber-500 text-[#1a1203]"
+                      : "bg-emerald-500 text-[#04140e]"
+                }`}
+              >
+                <span>
+                  {briefingTone === "critical"
+                    ? "⚠ SECURITY ALERT · KRITISCH"
+                    : briefingTone === "watch"
+                      ? "⚠ SECURITY WATCH · AUFFÄLLIG"
                       : hasAnyReport
-                        ? "STATUS · STABIL"
-                        : "STATUS · STANDBY"}
+                        ? "● SECURITY CLEARANCE · STABIL"
+                        : "● SECURITY STANDBY"}
                 </span>
                 <Link
                   href="/dashboard/threats"
-                  className="rounded border border-white/15 bg-white/[0.04] px-2.5 py-1 font-mono text-[8px] tracking-[.12em] text-white/55 transition hover:border-cyber-cyan/40 hover:text-cyber-cyan"
+                  className={`underline-offset-2 hover:underline ${
+                    briefingTone === "watch"
+                      ? "text-[#1a1203]/80"
+                      : "text-white/85"
+                  }`}
                 >
-                  DETAILS ÖFFNEN →
+                  DETAILS →
                 </Link>
               </div>
-            </div>
 
-            {lagebildParagraph ? (
-              <div className="mt-4 [&_div]:text-[14px] [&_div]:leading-[1.65] [&_div]:text-white/72">
-                <AiSummaryWithLinks text={lagebildParagraph} />
+              <div className="px-5 py-5 md:px-6 md:py-6">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.08] pb-3">
+                  <div>
+                    <p className="font-mono text-[10px] tracking-[.18em] text-white/45">
+                      ANALYSE-BRIEFING
+                    </p>
+                    <p className="mt-1 text-base font-medium tracking-[-.015em] text-white/92">
+                      KI-Zusammenfassung Ihrer Sicherheitslage
+                    </p>
+                  </div>
+                </div>
+
+                {lagebildParagraph ? (
+                  <div className="mt-4 [&_div]:!text-[16px] [&_div]:!leading-[1.7] [&_div]:!text-white/85 md:[&_div]:!text-[17px]">
+                    <AiSummaryWithLinks text={lagebildParagraph} />
+                  </div>
+                ) : (
+                  <p className="mt-4 text-base leading-relaxed text-white/45 md:text-[17px]">
+                    Noch kein Analyse-Briefing. Nach der ersten Analyse
+                    erscheint hier die KI-Zusammenfassung Ihrer Funde.
+                  </p>
+                )}
+
+                <div className="mt-5 flex flex-wrap gap-4 border-t border-white/[0.08] pt-3 font-mono text-[9px] tracking-[.12em] text-white/35">
+                  <span>SIG / {signalCount}</span>
+                  <span>KANÄLE / {activeChannels}</span>
+                  <span>
+                    KERNEL /{" "}
+                    {briefingTone === "critical"
+                      ? "ALERT"
+                      : briefingTone === "watch"
+                        ? "WATCH"
+                        : "NOMINAL"}
+                  </span>
+                </div>
               </div>
-            ) : (
-              <p className="mt-4 text-sm leading-relaxed text-white/40">
-                Noch kein Analyse-Briefing. Nach der ersten Analyse erscheint
-                hier die KI-Zusammenfassung Ihrer Funde.
-              </p>
-            )}
-
-            <div className="mt-4 flex flex-wrap gap-3 border-t border-white/[0.07] pt-3 font-mono text-[8px] tracking-[.12em] text-white/30">
-              <span>SIG / {signalCount}</span>
-              <span>KANÄLE / {activeChannels}</span>
-              <span>
-                KERNEL /{" "}
-                {overallZone === "extreme" || overallZone === "critical"
-                  ? "ALERT"
-                  : overallZone === "watch"
-                    ? "WATCH"
-                    : "NOMINAL"}
-              </span>
             </div>
           </div>
         </div>
