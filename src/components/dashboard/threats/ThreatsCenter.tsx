@@ -60,54 +60,120 @@ export default function ThreatsCenter({
   const [summary, setSummary] = useState<ThreatsSummaryPayload | null>(
     initialSummary
   );
-  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(
+    Boolean(needsGeneration || initialSummary?.status === "generating")
+  );
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>("all");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
 
   useEffect(() => {
-    if (!needsGeneration || summaryLoading) return;
     let cancelled = false;
-    setSummaryLoading(true);
-    setSummaryError(null);
-    void fetch("/api/dashboard/threats/summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ force: false }),
-    })
-      .then(async (response) => {
+    let pollTimer: number | undefined;
+
+    function applyRow(
+      row: {
+        summaryText?: string;
+        status?: string;
+        generatedAt?: string;
+        threatCount?: number;
+        modules?: string[];
+      } | null
+    ) {
+      if (!row || cancelled) return;
+      setSummary({
+        summaryText: row.summaryText ?? "",
+        status: row.status ?? "ready",
+        generatedAt: row.generatedAt ?? null,
+        threatCount: row.threatCount ?? 0,
+        modules: row.modules ?? [],
+      });
+      if (
+        row.status === "ready" ||
+        row.status === "empty" ||
+        row.status === "failed"
+      ) {
+        setSummaryLoading(false);
+      }
+    }
+
+    async function pollUntilReady(attemptsLeft: number) {
+      if (cancelled || attemptsLeft <= 0) {
+        setSummaryLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch("/api/dashboard/threats/summary");
+        const body = await response.json().catch(() => null);
+        if (response.ok && body?.success) {
+          applyRow(body.data.summary);
+          if (
+            body.data.summary?.status === "generating" ||
+            body.data.needsGeneration
+          ) {
+            pollTimer = window.setTimeout(
+              () => void pollUntilReady(attemptsLeft - 1),
+              2500
+            );
+            return;
+          }
+        }
+      } catch {
+        // keep polling briefly
+        pollTimer = window.setTimeout(
+          () => void pollUntilReady(attemptsLeft - 1),
+          3000
+        );
+        return;
+      }
+      setSummaryLoading(false);
+    }
+
+    async function start() {
+      if (!needsGeneration && initialSummary?.status !== "generating") {
+        return;
+      }
+      setSummaryLoading(true);
+      setSummaryError(null);
+      try {
+        const response = await fetch("/api/dashboard/threats/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force: false }),
+        });
         const body = await response.json().catch(() => null);
         if (!response.ok || !body?.success) {
           throw new Error(body?.error?.message ?? "Lagebild fehlgeschlagen");
         }
-        if (cancelled) return;
-        const row = body.data.summary;
-        if (row) {
-          setSummary({
-            summaryText: row.summaryText,
-            status: row.status,
-            generatedAt: row.generatedAt,
-            threatCount: row.threatCount,
-            modules: row.modules ?? [],
-          });
+        applyRow(body.data.summary);
+        if (
+          body.data.summary?.status === "generating" ||
+          body.data.async === true
+        ) {
+          pollTimer = window.setTimeout(() => void pollUntilReady(24), 2000);
+        } else {
+          setSummaryLoading(false);
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         if (!cancelled) {
           setSummaryError(
             error instanceof Error ? error.message : "Lagebild fehlgeschlagen"
           );
+          setSummaryLoading(false);
         }
-      })
-      .finally(() => {
-        if (!cancelled) setSummaryLoading(false);
-      });
+      }
+    }
+
+    void start();
     return () => {
       cancelled = true;
+      if (pollTimer) window.clearTimeout(pollTimer);
     };
-    // Only on first mount when backfill needed
+    // Only on first mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const showGenerating = summaryLoading || summary?.status === "generating";
 
   const availableModules = useMemo(() => {
     const keys = new Set(threats.map((t) => t.moduleKey));
@@ -168,11 +234,12 @@ export default function ThreatsCenter({
         </div>
 
         <div className="mt-4">
-          {summaryLoading ? (
+          {showGenerating ? (
             <p className="text-sm text-white/40">Lagebild wird erstellt…</p>
           ) : summaryError ? (
             <p className="text-sm text-rose-100/70">{summaryError}</p>
-          ) : summary?.summaryText ? (
+          ) : summary?.summaryText &&
+            summary.summaryText !== "Lagebild wird erstellt…" ? (
             <AiSummaryWithLinks text={summary.summaryText} />
           ) : threats.length === 0 ? (
             <p className="text-sm text-white/40">

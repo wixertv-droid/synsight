@@ -3,9 +3,11 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
 import { validateMutationOrigin } from "@/lib/security/request";
 import {
+  beginThreatsSummaryRegeneration,
   getThreatsSummaryView,
-  regenerateThreatsSummary,
 } from "@/lib/services/threats-summary-service";
+
+export const maxDuration = 30;
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -23,15 +25,27 @@ export async function GET() {
     );
   }
 
-  const view = await getThreatsSummaryView(userId);
-  return NextResponse.json(
-    apiSuccess({
-      summary: view.summary,
-      needsGeneration: view.needsGeneration,
-      fingerprint: view.fingerprint,
-      threatCount: view.threats.length,
-    })
-  );
+  try {
+    const view = await getThreatsSummaryView(userId);
+    return NextResponse.json(
+      apiSuccess({
+        summary: view.summary,
+        needsGeneration: view.needsGeneration,
+        fingerprint: view.fingerprint,
+        threatCount: view.threats.length,
+      })
+    );
+  } catch (error) {
+    console.error("[api/dashboard/threats/summary] GET failed", error);
+    return NextResponse.json(
+      apiSuccess({
+        summary: null,
+        needsGeneration: false,
+        fingerprint: "",
+        threatCount: 0,
+      })
+    );
+  }
 }
 
 export async function POST(request: Request) {
@@ -59,15 +73,13 @@ export async function POST(request: Request) {
   const force = body.force === true;
 
   try {
-    const summary = await regenerateThreatsSummary(userId, { force });
-    return NextResponse.json(apiSuccess({ summary }));
+    // Never await full Gemini on the request path — avoids nginx 502 timeouts.
+    const summary = await beginThreatsSummaryRegeneration(userId, { force });
+    return NextResponse.json(apiSuccess({ summary, async: true }));
   } catch (error) {
     console.error("[api/dashboard/threats/summary] regenerate failed", error);
     return NextResponse.json(
-      apiError(
-        "SUMMARY_FAILED",
-        "KI-Lagebild konnte nicht aktualisiert werden."
-      ),
+      apiError("SUMMARY_FAILED", "KI-Lagebild konnte nicht gestartet werden."),
       { status: 500 }
     );
   }
