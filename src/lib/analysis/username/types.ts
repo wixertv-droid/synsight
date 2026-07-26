@@ -44,6 +44,24 @@ export interface UsernameFinanceSnapshot {
   meetsMinProfit: boolean;
 }
 
+export interface UsernameMatchCheck {
+  label: string;
+  matched: boolean;
+}
+
+export type SynSightOrderType =
+  | "profile_delete"
+  | "google_removal"
+  | "forum_contact"
+  | "gdpr"
+  | "cache_removal"
+  | "privacy_request";
+
+export type SynSightOrderStatus =
+  "offen" | "in_bearbeitung" | "erledigt" | "abgelehnt" | "vorbereitet";
+
+export type UsernameAmpel = "green" | "yellow" | "orange" | "red";
+
 export interface UsernameHit {
   id: string;
   platform: string;
@@ -59,9 +77,13 @@ export interface UsernameHit {
   riskLevel: UsernameRiskLevel;
   firstSeen: string | null;
   queryUsed: string;
+  queriedUsername?: string;
   logoKey: string;
   isProblematic: boolean;
   problemTags: string[];
+  matchChecks?: UsernameMatchCheck[];
+  /** Weak / low-confidence — shown collapsed in the report */
+  isWeakMatch?: boolean;
 }
 
 export interface UsernamePlatformOverviewItem {
@@ -111,16 +133,50 @@ export interface UsernameManagementOverview {
   topCategories: string[];
 }
 
+export interface UsernameSecurityOverview {
+  ampel: UsernameAmpel;
+  ampelLabel: string;
+  ampelDetail: string;
+  foundProfiles: number;
+  linkableIdentities: number;
+  publicPlatforms: number;
+  criticalHits: number;
+  possibleFalsePositives: number;
+  recommendedActions: number;
+}
+
+export interface UsernameIdentityFindings {
+  nameFound: boolean;
+  locationFound: boolean;
+  emailFound: boolean;
+  phoneFound: boolean;
+  datingFound: boolean;
+  gamingCount: number;
+  forumCount: number;
+  socialCount: number;
+  developerCount: number;
+  publicComments: number;
+  interests: string[];
+}
+
 export interface UsernameActionItem {
   priority: UsernameActionPriority;
   title: string;
   why: string;
   riskReduced: string;
   how: string;
+  /** Step-by-step for "Ich kümmere mich selbst" */
+  selfGuide: string[];
   effort: string;
+  effortMinutes: number;
   difficulty: string;
   benefit: string;
   relatedPlatform: string | null;
+  relatedHitId: string | null;
+  relatedUrl: string | null;
+  ampel: UsernameAmpel;
+  /** null = SynSight cannot take over this task */
+  orderType: SynSightOrderType | null;
 }
 
 export interface UsernameReport {
@@ -128,6 +184,8 @@ export interface UsernameReport {
   moduleKey: "username_intelligence";
   subjectName: string;
   subjectUsername: string;
+  /** All usernames scanned from the identity profile */
+  scannedUsernames?: string[];
   status: UsernameScanStatus;
   identityScore: number;
   riskScore: number;
@@ -141,6 +199,8 @@ export interface UsernameReport {
   expiresAt?: string | null;
   hits: UsernameHit[];
   managementOverview: UsernameManagementOverview;
+  securityOverview?: UsernameSecurityOverview;
+  identityFindings?: UsernameIdentityFindings;
   platformOverview: UsernamePlatformOverviewItem[];
   identityGraph: {
     nodes: UsernameIdentityGraphNode[];

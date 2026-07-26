@@ -34,7 +34,7 @@ export function buildUsernameGeminiPayload(input: {
   return {
     mode: "facts_only",
     instructions:
-      "Du bist DIGITAL IDENTITY ANALYST. Beschreibe ausschließlich gelieferte Username-Treffer. Keine Halluzinationen, keine Ergänzungen, keine Beschönigung.",
+      "Du bist DIGITAL IDENTITY ANALYST. Nur nachweisbare Fakten aus den gelieferten Treffern. Keine Beschönigung, keine Panikmache, keine Marketingtexte.",
     subjectName: input.subjectName,
     subjectUsername: input.subjectUsername,
     identityScore: input.identityScore,
@@ -54,40 +54,48 @@ export function buildUsernameGeminiPayload(input: {
     })),
     managementOverview: input.managementOverview,
     constraints: [
-      "Nur echte SerpAPI-Treffer verwenden",
-      "Keine Vermutungen über Personen ohne Beleg in hits",
-      "Problematische Plattformen sachlich nennen wenn in Daten vorhanden",
-      "Confidence und Plattformnamen beibehalten",
-      "Empfehlungen: SOFORT / HOCH / MITTEL / OPTIONAL",
+      "Maximal 8 Zeilen Gesamtlänge",
+      "Nur echte SerpAPI-Treffer",
+      "Keine Vermutungen",
+      "Keine emotionalen Formulierungen",
+      "Kritische Kategorien ausdrücklich nennen wenn vorhanden",
+      "Jede erwähnte Plattform als Markdown-Link [Plattform](url) schreiben",
+      "Wenn nichts Kritisches gefunden: genau das schreiben",
     ],
   };
 }
 
 function buildPrompt(payload: UsernameGeminiPayload): string {
-  return `Du bist DIGITAL IDENTITY ANALYST eines Cyber Security Unternehmens.
+  const linkHints = payload.hits
+    .filter((h) => h.profileUrl)
+    .slice(0, 20)
+    .map((h) => `- ${h.platform}: ${h.profileUrl}`)
+    .join("\n");
 
-NICHT Assistent. NICHT freundlich. NICHT beschönigend.
-Arbeite ausschließlich mit den gelieferten Treffern (JSON). Erfinde keine Profile.
+  return `Du bist DIGITAL IDENTITY ANALYST eines SOC.
 
-Beantworte in diesen Abschnitten:
+STRIKTE REGELN:
+- Keine Beschönigungen.
+- Keine emotionalen Formulierungen.
+- Keine Vermutungen.
+- Keine Marketingtexte.
+- Keine Panikmache.
+- Nur nachweisbare Fakten aus dem JSON.
+- Kritische Inhalte ausdrücklich nennen wenn vorhanden:
+  Datingprofile, Erotikplattformen, Glücksspiel, politische Inhalte,
+  öffentliche Kommentare, öffentliche Bilder, strafrechtlich relevante Inhalte,
+  negative Bewertungen, Hassrede.
+- Wenn nichts davon gefunden wurde: genau das schreiben.
 
-1. Kurzlage
-Wo erscheint der Benutzername? Wie viele Plattformen?
-
-2. Identitätsverknüpfung
-Welche Plattformen gehören wahrscheinlich zusammen (nur anhand gelieferter Confidence/Signale)?
-Ist der Benutzername eher einzigartig?
-
-3. Öffentliche Exposition
-Welche Plattformen wirken besonders öffentlich?
-Welche Informationen lassen sich über die Person ableiten (nur aus visibleInfo/title/snippet)?
-
-4. Risiken
-Welche Risiken entstehen? Problematische Kategorien ausdrücklich nennen wenn vorhanden
-(Pornografie, Glücksspiel, Extremismus, Dating, gehackte Accounts, Scam, auffällige Foren, Darknet).
-
-5. Maßnahmenplan
-Priorisiert SOFORT / HOCH / MITTEL / OPTIONAL mit Warum · Risiko · Umsetzung · Zeitaufwand · Schwierigkeit · Nutzen.
+FORMAT:
+- Überschrift „Zusammenfassung“
+- Danach maximal 8 kurze Zeilen / Sätze.
+- Keine nummerierten Langabschnitte.
+- Kein Maßnahmenplan im Text.
+- Wenn du eine Plattform nennst, MUSS sie als Markdown-Link erscheinen:
+  [Plattformname](https://...)
+  Nutze ausschließlich diese URLs:
+${linkHints || "- (keine URLs)"}
 
 DATEN (JSON — einzige Faktenbasis):
 ${JSON.stringify(payload)}`;
@@ -254,8 +262,8 @@ export async function summarizeUsernameWithGemini(input: {
 
       const complete =
         isCompleteAiSummary(sanitized) ||
-        (sanitized.length >= 200 &&
-          /Kurzlage|Identitätsverknüpfung|Maßnahmenplan/i.test(sanitized));
+        (sanitized.length >= 120 &&
+          /Zusammenfassung|Plattform|Benutzername|gefunden/i.test(sanitized));
 
       if (!complete) {
         lastError = `incomplete (${sanitized.length})`;

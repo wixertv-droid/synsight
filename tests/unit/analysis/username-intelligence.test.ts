@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   confidenceBand,
   confidenceLabel,
+  evaluateUsernameHit,
   scoreUsernameHit,
 } from "@/lib/analysis/username/confidence";
+import {
+  buildSecurityOverview,
+  splitPrimaryAndWeakHits,
+} from "@/lib/analysis/username/report-metrics";
+import type { UsernameHit } from "@/lib/analysis/username/types";
 import {
   detectPlatform,
   detectProblemTags,
@@ -46,14 +52,25 @@ function baseIdentity(overrides?: Partial<IdentityView>): IdentityView {
 }
 
 describe("username intelligence helpers", () => {
-  it("plans 5–8 deduped high-value queries", () => {
-    const { username, queries } = planUsernameQueries(baseIdentity(), 8);
+  it("plans queries across all identity usernames", () => {
+    const identity = baseIdentity({
+      aliases: {
+        publicAlias: "maxbyte",
+        nicknames: [],
+        formerNames: [],
+        usernames: ["maxbyte", "MaxByte99", "m.byte"],
+        gamingNames: ["maxbyte_gaming"],
+      },
+    });
+    const { username, usernames, queries } = planUsernameQueries(identity, 8);
     expect(username).toBe("maxbyte");
+    expect(usernames.length).toBeGreaterThanOrEqual(3);
     expect(queries.length).toBeGreaterThanOrEqual(5);
     expect(queries.length).toBeLessThanOrEqual(8);
     const keys = queries.map((q) => q.query.toLowerCase());
     expect(new Set(keys).size).toBe(keys.length);
-    expect(queries[0].query).toContain('"maxbyte"');
+    expect(queries.some((q) => q.username === "MaxByte99")).toBe(true);
+    expect(queries.every((q) => q.username.length > 0)).toBe(true);
   });
 
   it("detects known platforms and problem tags", () => {
@@ -72,18 +89,96 @@ describe("username intelligence helpers", () => {
     ).toContain("gehackte Accounts");
   });
 
-  it("scores identity confidence and hides below 60", () => {
-    const score = scoreUsernameHit({
+  it("applies weighted confidence and drops SKU noise", () => {
+    const strong = evaluateUsernameHit({
       username: "maxbyte",
       title: "maxbyte · GitHub",
       snippet: "Max Mustermann Berlin SynSight",
       url: "https://github.com/maxbyte",
       identity: baseIdentity(),
     });
-    expect(score).toBeGreaterThanOrEqual(80);
-    expect(confidenceBand(score)).not.toBe("hidden");
+    expect(strong.score).toBe(100);
+    expect(
+      strong.checks.some((c) => c.matched && c.label.includes("Benutzername"))
+    ).toBe(true);
+
+    const alone = scoreUsernameHit({
+      username: "maxbyte",
+      title: "Profil maxbyte",
+      snippet: "Öffentliches Profil",
+      url: "https://example.com/u/maxbyte",
+      identity: null,
+    });
+    expect(alone).toBeGreaterThanOrEqual(70);
+    expect(alone).toBeLessThanOrEqual(80);
+
+    const noise = evaluateUsernameHit({
+      username: "R2306",
+      title: "Artikelnummer R2306 Ersatzteil",
+      snippet: "SKU R2306 im Shopkatalog",
+      url: "https://shop.example.com/sku/R2306",
+      identity: baseIdentity(),
+    });
+    expect(noise.isNoise).toBe(true);
+    expect(noise.score).toBe(0);
+
     expect(confidenceLabel(95)).toBe("Bestätigt");
     expect(confidenceBand(55)).toBe("hidden");
+  });
+
+  it("splits primary and weak hits for SOC overview", () => {
+    const hits: UsernameHit[] = [
+      {
+        id: "1",
+        platform: "Forum",
+        category: "Foren",
+        profileName: "x",
+        profileUrl: "https://a.test/1",
+        title: "a",
+        snippet: "b",
+        visibleInfo: [],
+        identityScore: 90,
+        confidence: 90,
+        confidenceBand: "likely",
+        riskLevel: "high",
+        firstSeen: null,
+        queryUsed: "q",
+        logoKey: "fo",
+        isProblematic: true,
+        problemTags: ["Dating"],
+      },
+      {
+        id: "2",
+        platform: "Shop",
+        category: "Sonstige",
+        profileName: null,
+        profileUrl: "https://a.test/2",
+        title: "c",
+        snippet: "d",
+        visibleInfo: [],
+        identityScore: 45,
+        confidence: 45,
+        confidenceBand: "hidden",
+        riskLevel: "low",
+        firstSeen: null,
+        queryUsed: "q",
+        logoKey: "sh",
+        isProblematic: false,
+        problemTags: [],
+        isWeakMatch: true,
+      },
+    ];
+    const { primary, weak } = splitPrimaryAndWeakHits(hits);
+    expect(primary).toHaveLength(1);
+    expect(weak).toHaveLength(1);
+    const security = buildSecurityOverview({
+      hits,
+      actions: [],
+      overallRisk: "high",
+    });
+    expect(security.ampel).toBe("red");
+    expect(security.criticalHits).toBe(1);
+    expect(security.possibleFalsePositives).toBe(1);
   });
 
   it("computes finance snapshot automatically", () => {

@@ -7,7 +7,7 @@ import {
 import {
   confidenceBand,
   confidenceLabel,
-  scoreUsernameHit,
+  evaluateUsernameHit,
 } from "@/lib/analysis/username/confidence";
 import {
   detectPlatform,
@@ -19,6 +19,10 @@ import {
   buildHeatmap,
   buildIdentityGraph,
   buildManagementOverview,
+  buildSecurityOverview,
+  buildIdentityFindings,
+  sortHitsByRisk,
+  splitPrimaryAndWeakHits,
   buildPlatformOverview,
   buildTimeline,
   computeIdentityScore,
@@ -148,10 +152,11 @@ export async function runUsernameIntelligenceScan(
   }
 
   const subjectName = resolveSubjectName(identity);
-  const { username, queries } = planUsernameQueries(
-    identity,
-    settings.maxQueries
-  );
+  const {
+    username,
+    usernames: scannedUsernames,
+    queries,
+  } = planUsernameQueries(identity, settings.maxQueries);
   if (!username || queries.length === 0) {
     throw new UsernameIntelligenceUnavailableError(
       "Kein Benutzername/Alias im Identitätsprofil hinterlegt."
@@ -271,14 +276,19 @@ export async function runUsernameIntelligenceScan(
           item.title,
           item.snippet || ""
         );
-        const confidence = scoreUsernameHit({
-          username,
+        const queriedUsername = batch.plan.username || username;
+        const evaluation = evaluateUsernameHit({
+          username: queriedUsername,
           title: item.title,
           snippet: item.snippet || "",
           url: item.link,
           identity,
         });
-        if (confidence < settings.confidenceMin) continue;
+        if (evaluation.isNoise || evaluation.score === 0) continue;
+        // Keep weak matches for collapsed section (score >= 40)
+        if (evaluation.score < 40) continue;
+        const confidence = evaluation.score;
+        const isWeakMatch = confidence < settings.confidenceMin;
 
         const band = confidenceBand(confidence);
         const riskLevel = riskFromHit(
@@ -294,7 +304,7 @@ export async function runUsernameIntelligenceScan(
           id: `uh-${++seq}`,
           platform: platform.platform,
           category: platform.category,
-          profileName: profileNameFrom(username, item.title, item.link),
+          profileName: profileNameFrom(queriedUsername, item.title, item.link),
           profileUrl: item.link,
           title: item.title,
           snippet: item.snippet || "—",
@@ -305,21 +315,18 @@ export async function runUsernameIntelligenceScan(
           riskLevel,
           firstSeen: extractYear(`${item.title} ${item.snippet || ""}`),
           queryUsed: batch.plan.query,
+          queriedUsername,
           logoKey: platform.logoKey,
           isProblematic: problemTags.length > 0,
           problemTags,
+          matchChecks: evaluation.checks,
+          isWeakMatch,
         });
       }
     }
 
-    // Group by platform, keep best confidence per URL already deduped;
-    // sort and apply result limit
-    const hits = rawHits
-      .sort(
-        (a, b) =>
-          b.confidence - a.confidence || a.platform.localeCompare(b.platform)
-      )
-      .slice(0, settings.resultLimit);
+    // Deduped by URL already; risk-sort and apply result limit
+    const hits = sortHitsByRisk(rawHits).slice(0, settings.resultLimit);
 
     const identityScore = computeIdentityScore(hits);
     const riskScore = computeRiskScore(hits);
@@ -342,13 +349,20 @@ export async function runUsernameIntelligenceScan(
     const timeline = buildTimeline(hits);
     const heatmap = buildHeatmap(hits);
     const actions = buildActionPlan(hits, managementOverview);
+    const securityOverview = buildSecurityOverview({
+      hits,
+      actions,
+      overallRisk: managementOverview.overallRisk,
+    });
+    const identityFindings = buildIdentityFindings(hits);
+    const { primary: primaryHits } = splitPrimaryAndWeakHits(hits);
 
     const geminiPayload = buildUsernameGeminiPayload({
       subjectName,
       subjectUsername: username,
       identityScore,
       riskScore,
-      hits,
+      hits: primaryHits.length > 0 ? primaryHits : hits,
       managementOverview,
     });
 
@@ -380,6 +394,7 @@ export async function runUsernameIntelligenceScan(
       moduleKey: "username_intelligence",
       subjectName,
       subjectUsername: username,
+      scannedUsernames,
       status: "completed",
       identityScore,
       riskScore,
@@ -393,6 +408,8 @@ export async function runUsernameIntelligenceScan(
       expiresAt,
       hits,
       managementOverview,
+      securityOverview,
+      identityFindings,
       platformOverview,
       identityGraph,
       timeline,

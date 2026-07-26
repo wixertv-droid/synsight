@@ -5,6 +5,7 @@ import ResultsCenterClient, {
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
 import { getLatestDigitalExposureReport } from "@/lib/analysis/digital-exposure/repository";
 import { getLatestUsernameReport } from "@/lib/analysis/username/repository";
+import { filterIgnoredFromUsernameReport } from "@/lib/services/username-actions-service";
 import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/types";
 import type { UsernameReport } from "@/lib/analysis/username/types";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
@@ -137,7 +138,11 @@ async function loadResultsData(): Promise<{
     }
 
     try {
-      usernameReport = await getLatestUsernameReport(userId);
+      const rawUsername = await getLatestUsernameReport(userId);
+      usernameReport = await filterIgnoredFromUsernameReport(
+        userId,
+        rawUsername
+      );
     } catch (error) {
       console.error("[ResultsCenter] username report load failed", error);
       usernameReport = null;

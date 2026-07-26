@@ -1,6 +1,7 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getLatestUsernameReport } from "@/lib/analysis/username/repository";
+import { filterIgnoredFromUsernameReport } from "@/lib/services/username-actions-service";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -21,7 +22,8 @@ export async function GET() {
   }
 
   try {
-    const report = await getLatestUsernameReport(userId);
+    const raw = await getLatestUsernameReport(userId);
+    const report = await filterIgnoredFromUsernameReport(userId, raw);
     return NextResponse.json(apiSuccess({ report }));
   } catch (error) {
     console.error("[analysis/username/latest] failed", error);

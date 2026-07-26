@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–027 migration files", () => {
+  it("ships ordered 001–028 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -37,6 +37,7 @@ describe("database migrations workflow", () => {
       "025_rc2_hardening.sql",
       "026_support_tickets_and_public_emails.sql",
       "027_support_role_and_hours.sql",
+      "028_username_hit_actions_and_orders.sql",
     ]);
   });
 

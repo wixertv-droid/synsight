@@ -3,6 +3,7 @@ import ThreatsCenter from "@/components/dashboard/threats/ThreatsCenter";
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
 import { getLatestDigitalExposureReport } from "@/lib/analysis/digital-exposure/repository";
 import { getLatestUsernameReport } from "@/lib/analysis/username/repository";
+import { filterIgnoredFromUsernameReport } from "@/lib/services/username-actions-service";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import { buildThreatsFromReports } from "@/lib/dashboard/build-threats-from-reports";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -34,7 +35,8 @@ export default async function DashboardThreatsPage() {
       console.error("[Threats] exposure report load failed", error);
     }
     try {
-      username = await getLatestUsernameReport(userId);
+      const rawUsername = await getLatestUsernameReport(userId);
+      username = await filterIgnoredFromUsernameReport(userId, rawUsername);
     } catch (error) {
       console.error("[Threats] username report load failed", error);
     }

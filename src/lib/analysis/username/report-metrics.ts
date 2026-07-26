@@ -1,13 +1,17 @@
 import type {
   UsernameActionItem,
+  UsernameAmpel,
   UsernameHeatmapCell,
   UsernameHit,
+  UsernameIdentityFindings,
   UsernameIdentityGraphEdge,
   UsernameIdentityGraphNode,
   UsernameManagementOverview,
   UsernamePlatformOverviewItem,
   UsernameRiskLevel,
+  UsernameSecurityOverview,
   UsernameTimelineItem,
+  SynSightOrderType,
 } from "@/lib/analysis/username/types";
 
 function maxRisk(
@@ -16,6 +20,42 @@ function maxRisk(
 ): UsernameRiskLevel {
   const rank = { low: 0, medium: 1, high: 2 };
   return rank[a] >= rank[b] ? a : b;
+}
+
+function riskRank(level: UsernameRiskLevel): number {
+  return { high: 3, medium: 2, low: 1 }[level];
+}
+
+export function sortHitsByRisk(hits: UsernameHit[]): UsernameHit[] {
+  return [...hits].sort(
+    (a, b) =>
+      riskRank(b.riskLevel) - riskRank(a.riskLevel) ||
+      Number(b.isProblematic) - Number(a.isProblematic) ||
+      b.confidence - a.confidence ||
+      a.platform.localeCompare(b.platform)
+  );
+}
+
+export function splitPrimaryAndWeakHits(hits: UsernameHit[]): {
+  primary: UsernameHit[];
+  weak: UsernameHit[];
+} {
+  const primary: UsernameHit[] = [];
+  const weak: UsernameHit[] = [];
+  for (const hit of hits) {
+    if (
+      hit.isWeakMatch ||
+      (hit.confidence < 70 && hit.riskLevel === "low" && !hit.isProblematic)
+    ) {
+      weak.push(hit);
+    } else {
+      primary.push(hit);
+    }
+  }
+  return {
+    primary: sortHitsByRisk(primary),
+    weak: sortHitsByRisk(weak),
+  };
 }
 
 export function buildPlatformOverview(
@@ -169,7 +209,7 @@ export function buildManagementOverview(input: {
 
   const headline =
     input.hits.length === 0
-      ? `Keine belastbaren öffentlichen Treffer zu „${input.username}“ ab Confidence ≥ 60 %.`
+      ? `Keine belastbaren öffentlichen Treffer zu „${input.username}“.`
       : `${platforms.size} Plattformen · ${input.hits.length} Identity-Treffer zu „${input.username}“.`;
 
   return {
@@ -192,24 +232,215 @@ export function buildManagementOverview(input: {
   };
 }
 
+export function buildSecurityOverview(input: {
+  hits: UsernameHit[];
+  actions: UsernameActionItem[];
+  overallRisk: UsernameRiskLevel;
+}): UsernameSecurityOverview {
+  const { primary, weak } = splitPrimaryAndWeakHits(input.hits);
+  const critical = primary.filter(
+    (h) => h.riskLevel === "high" || h.isProblematic
+  ).length;
+  const linkable = primary.filter((h) => h.confidence >= 80).length;
+  const publicPlatforms = new Set(
+    primary
+      .filter((h) =>
+        ["Social", "Foren", "Communities", "Dating", "Gaming"].includes(
+          h.category
+        )
+      )
+      .map((h) => h.platform)
+  ).size;
+
+  let ampel: UsernameAmpel = "green";
+  let ampelLabel = "Geringes Risiko";
+  let ampelDetail =
+    "Keine kritischen öffentlichen Identitätsverknüpfungen erkannt.";
+  if (critical >= 2 || input.overallRisk === "high") {
+    ampel = "red";
+    ampelLabel = "Kritisches Risiko";
+    ampelDetail =
+      "Mehrere kritische oder problematische Treffer erfordern Maßnahmen.";
+  } else if (critical === 1 || input.overallRisk === "medium") {
+    ampel = "orange";
+    ampelLabel = "Erhöhtes Risiko";
+    ampelDetail =
+      "Verknüpfbare Profile und sensible Kategorien wurden gefunden.";
+  } else if (primary.length >= 3) {
+    ampel = "yellow";
+    ampelLabel = "Auffällige Exposition";
+    ampelDetail =
+      "Mehrere öffentliche Profile — Beobachtung und Bereinigung sinnvoll.";
+  }
+
+  return {
+    ampel,
+    ampelLabel,
+    ampelDetail,
+    foundProfiles: primary.length,
+    linkableIdentities: linkable,
+    publicPlatforms,
+    criticalHits: critical,
+    possibleFalsePositives: weak.length,
+    recommendedActions: input.actions.length,
+  };
+}
+
+export function buildIdentityFindings(
+  hits: UsernameHit[]
+): UsernameIdentityFindings {
+  const text = hits
+    .map((h) => `${h.title} ${h.snippet} ${h.visibleInfo.join(" ")}`)
+    .join(" ")
+    .toLowerCase();
+
+  const matched = (re: RegExp) => re.test(text);
+  const countCat = (...cats: string[]) =>
+    hits.filter((h) => cats.includes(h.category)).length;
+
+  const interests = new Set<string>();
+  for (const hit of hits) {
+    if (/auto|bmw|audi|motor|fahrzeug/i.test(`${hit.title} ${hit.snippet}`))
+      interests.add("Autos");
+    if (
+      /game|gaming|steam|xbox|playstation|sim/i.test(
+        `${hit.title} ${hit.snippet}`
+      )
+    )
+      interests.add("Gaming");
+    if (/flug|flight|simulat/i.test(`${hit.title} ${hit.snippet}`))
+      interests.add("Flugsimulation");
+    if (/musik|music|spotify|soundcloud/i.test(`${hit.title} ${hit.snippet}`))
+      interests.add("Musik");
+    if (/code|github|dev|programmier/i.test(`${hit.title} ${hit.snippet}`))
+      interests.add("Entwicklung");
+    if (/forum|community/i.test(hit.category)) interests.add("Foren");
+  }
+
+  return {
+    nameFound:
+      matched(/\b(name|vorname|nachname)\b/) ||
+      hits.some((h) =>
+        (h.matchChecks ?? []).some(
+          (c) =>
+            c.matched &&
+            (c.label.includes("Vorname") || c.label.includes("Nachname"))
+        )
+      ),
+    locationFound:
+      matched(/\b(berlin|hamburg|münchen|köln|wohnort|stadt)\b/) ||
+      hits.some((h) =>
+        (h.matchChecks ?? []).some(
+          (c) => c.matched && c.label.includes("Wohnort")
+        )
+      ),
+    emailFound:
+      matched(/@/) ||
+      hits.some((h) =>
+        (h.matchChecks ?? []).some(
+          (c) => c.matched && c.label.includes("E-Mail")
+        )
+      ),
+    phoneFound: matched(/\+?\d[\d\s/-]{6,}\d/),
+    datingFound:
+      countCat("Dating") > 0 ||
+      hits.some((h) => /dating|singletreff|tinder|lovoo/i.test(h.platform)),
+    gamingCount: countCat("Gaming"),
+    forumCount: countCat("Foren", "Communities"),
+    socialCount: countCat("Social"),
+    developerCount: countCat("Developer", "Code"),
+    publicComments: hits.filter((h) =>
+      /kommentar|comment|antwort|reply/i.test(`${h.title} ${h.snippet}`)
+    ).length,
+    interests: [...interests].slice(0, 10),
+  };
+}
+
+function orderTypeForHit(hit: UsernameHit): SynSightOrderType | null {
+  const cat = hit.category.toLowerCase();
+  const platform = hit.platform.toLowerCase();
+  if (/dating|forum|social|community|gaming/.test(cat)) return "profile_delete";
+  if (/google|bing|suche/.test(platform)) return "google_removal";
+  if (/forum|community/.test(cat)) return "forum_contact";
+  if (hit.isProblematic) return "gdpr";
+  if (hit.confidence >= 80) return "privacy_request";
+  return "cache_removal";
+}
+
+function selfGuideFor(title: string, platform: string | null): string[] {
+  const p = platform ?? "der Plattform";
+  if (/löschen|profil/i.test(title)) {
+    return [
+      `Auf ${p} einloggen.`,
+      "Profil löschen oder vollständig anonymisieren.",
+      "Sichtbarkeit und öffentliche Beiträge prüfen.",
+      "Danach den Username Intelligence Scan erneut starten.",
+    ];
+  }
+  if (/google|löschanfrage|cache/i.test(title)) {
+    return [
+      "Direkten Profil-Link bereithalten.",
+      "Über das Entfernungsformular der Suchmaschine eine Löschanfrage stellen.",
+      "Alternativ: Inhaltsentfernung beim Seitenbetreiber anfordern.",
+      "Scan nach einigen Tagen wiederholen.",
+    ];
+  }
+  return [
+    `Kontext auf ${p} öffnen und eigenen Account prüfen.`,
+    "Persönliche Angaben entfernen oder Profil privat schalten.",
+    "Öffentliche Kommentare und Bilder kontrollieren.",
+    "Scan erneut ausführen, um den Fortschritt zu prüfen.",
+  ];
+}
+
+function ampelFromRisk(level: UsernameRiskLevel): UsernameAmpel {
+  if (level === "high") return "red";
+  if (level === "medium") return "orange";
+  return "yellow";
+}
+
 export function buildActionPlan(
   hits: UsernameHit[],
   overview: UsernameManagementOverview
 ): UsernameActionItem[] {
+  const { primary } = splitPrimaryAndWeakHits(hits);
   const actions: UsernameActionItem[] = [];
+  const seenPlatforms = new Set<string>();
 
-  if (overview.problematicCount > 0) {
-    const sample = hits.find((h) => h.isProblematic);
+  for (const hit of sortHitsByRisk(primary).slice(0, 8)) {
+    if (seenPlatforms.has(hit.platform) && !hit.isProblematic) continue;
+    seenPlatforms.add(hit.platform);
+
+    const orderType = orderTypeForHit(hit);
+    const title =
+      hit.isProblematic || hit.riskLevel === "high"
+        ? `Profil löschen · ${hit.platform}`
+        : `Präsenz prüfen · ${hit.platform}`;
+
     actions.push({
-      priority: "SOFORT",
-      title: "Problematische Plattform-Präsenz prüfen",
-      why: `Es wurden ${overview.problematicCount} Treffer mit sensiblen Kategorien erkannt.`,
-      riskReduced: "Reputations- und Erpressungspotenzial",
-      how: "Konten prüfen, Inhalte entfernen oder Profile privat schalten; ggf. Betreiber kontaktieren.",
-      effort: "30–90 Min.",
+      priority:
+        hit.riskLevel === "high" || hit.isProblematic
+          ? "SOFORT"
+          : hit.riskLevel === "medium"
+            ? "HOCH"
+            : "MITTEL",
+      title,
+      why: `Treffer auf ${hit.platform} (${hit.category}) mit ${hit.confidence}% Confidence.`,
+      riskReduced:
+        hit.riskLevel === "high"
+          ? "Hohes Reputations- und Verknüpfungsrisiko"
+          : "Öffentliche Identitätsverknüpfung",
+      how: "Profil löschen, anonymisieren oder Sichtbarkeit stark einschränken.",
+      selfGuide: selfGuideFor(title, hit.platform),
+      effort: hit.riskLevel === "high" ? "15 Minuten" : "20–40 Minuten",
+      effortMinutes: hit.riskLevel === "high" ? 15 : 30,
       difficulty: "mittel",
-      benefit: "Sichtbare Risikoflächen werden reduziert.",
-      relatedPlatform: sample?.platform ?? null,
+      benefit: hit.riskLevel === "high" ? "Sehr hoch" : "Hoch",
+      relatedPlatform: hit.platform,
+      relatedHitId: hit.id,
+      relatedUrl: hit.profileUrl,
+      ampel: ampelFromRisk(hit.riskLevel),
+      orderType,
     });
   }
 
@@ -217,82 +448,78 @@ export function buildActionPlan(
     actions.push({
       priority: "HOCH",
       title: "Benutzername-Wiederverwendung reduzieren",
-      why: "Derselbe Username erscheint auf mehreren Plattformen und erleichtert Identitätsverknüpfung.",
+      why: "Derselbe Username erscheint auf mehreren Plattformen.",
       riskReduced: "Cross-Platform Tracking",
-      how: "Neue Handles wählen, alte Profile bereinigen oder auf Privat stellen.",
+      how: "Neue Handles wählen und alte Profile bereinigen.",
+      selfGuide: [
+        "Liste aller betroffenen Plattformen erstellen.",
+        "Pro Plattform Handle ändern oder Konto schließen.",
+        "Alte öffentlichen Beiträge prüfen.",
+        "Scan erneut starten.",
+      ],
       effort: "1–2 Std.",
+      effortMinutes: 90,
       difficulty: "mittel",
-      benefit: "Verknüpfbarkeit sinkt deutlich.",
+      benefit: "Hoch",
       relatedPlatform: null,
+      relatedHitId: null,
+      relatedUrl: null,
+      ampel: "orange",
+      orderType: null, // local / account hygiene — SynSight cannot do this
     });
   }
-
-  const social = hits.filter((h) =>
-    ["Social", "Communities", "Foren"].includes(h.category)
-  );
-  if (social.length > 0) {
-    actions.push({
-      priority: "MITTEL",
-      title: "Öffentliche Profilinformationen minimieren",
-      why: "In Foren und Social-Profilen sind zusätzliche Identitätsmerkmale sichtbar.",
-      riskReduced: "Social Engineering",
-      how: "Profilfelder (Wohnort, Firma, E-Mail) entfernen und Sichtbarkeit einschränken.",
-      effort: "20–45 Min.",
-      difficulty: "leicht",
-      benefit: "Weniger Ableitbarkeit der Person hinter dem Username.",
-      relatedPlatform: social[0]?.platform ?? null,
-    });
-  }
-
-  actions.push({
-    priority: "OPTIONAL",
-    title: "Monitoring für Username-Treffer einrichten",
-    why: "Neue öffentliche Indexierungen können jederzeit entstehen.",
-    riskReduced: "Früherkennung neuer Exposition",
-    how: "Periodisch Username Intelligence Scan wiederholen und Alerts prüfen.",
-    effort: "10 Min. / Monat",
-    difficulty: "leicht",
-    benefit: "Kontinuierliche Kontrolle der digitalen Identität.",
-    relatedPlatform: null,
-  });
 
   if (overview.hitCount === 0) {
     return [
       {
         priority: "OPTIONAL",
         title: "Alias-Angaben im Profil ergänzen",
-        why: "Ohne belastbare Treffer bleibt die Lage unklar — mehr Alias-Signale verbessern künftige Scans.",
+        why: "Ohne belastbare Treffer bleibt die Lage unklar.",
         riskReduced: "Blind spots",
-        how: "Weitere Benutzernamen/Gaming-Namen im Identitätsprofil hinterlegen und Scan wiederholen.",
+        how: "Weitere Benutzernamen im Identitätsprofil hinterlegen und Scan wiederholen.",
+        selfGuide: [
+          "Identitätsprofil öffnen.",
+          "Alle bekannten Benutzernamen und Gamertags eintragen.",
+          "Speichern und Username Intelligence erneut starten.",
+        ],
         effort: "5 Min.",
+        effortMinutes: 5,
         difficulty: "leicht",
-        benefit: "Höhere Trefferqualität beim nächsten Lauf.",
+        benefit: "Mittel",
         relatedPlatform: null,
+        relatedHitId: null,
+        relatedUrl: null,
+        ampel: "green",
+        orderType: null,
       },
     ];
   }
 
-  return actions;
+  return actions.slice(0, 10);
 }
 
 export function computeRiskScore(hits: UsernameHit[]): number {
-  if (hits.length === 0) return 8;
-  let score = Math.min(40, hits.length * 4);
-  score += hits.filter((h) => h.isProblematic).length * 18;
-  score += hits.filter((h) => h.riskLevel === "high").length * 10;
-  score += hits.filter((h) => h.riskLevel === "medium").length * 5;
+  const { primary } = splitPrimaryAndWeakHits(hits);
+  if (primary.length === 0) return hits.length === 0 ? 8 : 18;
+  let score = Math.min(40, primary.length * 4);
+  score += primary.filter((h) => h.isProblematic).length * 18;
+  score += primary.filter((h) => h.riskLevel === "high").length * 10;
+  score += primary.filter((h) => h.riskLevel === "medium").length * 5;
   const avgConf =
-    hits.reduce((sum, h) => sum + h.confidence, 0) / Math.max(1, hits.length);
+    primary.reduce((sum, h) => sum + h.confidence, 0) /
+    Math.max(1, primary.length);
   if (avgConf >= 90) score += 8;
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
 export function computeIdentityScore(hits: UsernameHit[]): number {
-  if (hits.length === 0) return 0;
-  const avg = hits.reduce((sum, h) => sum + h.identityScore, 0) / hits.length;
+  const { primary } = splitPrimaryAndWeakHits(hits);
+  const use = primary.length > 0 ? primary : hits;
+  if (use.length === 0) return 0;
+  const avg = use.reduce((sum, h) => sum + h.identityScore, 0) / use.length;
   const platformBonus = Math.min(
     20,
-    new Set(hits.map((h) => h.platform)).size * 4
+    new Set(use.map((h) => h.platform)).size * 4
   );
   return Math.max(0, Math.min(100, Math.round(avg * 0.75 + platformBonus)));
 }

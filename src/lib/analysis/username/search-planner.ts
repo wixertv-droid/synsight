@@ -4,6 +4,8 @@ export interface UsernameQueryPlan {
   id: string;
   label: string;
   query: string;
+  /** Which identity username this query targets */
+  username: string;
 }
 
 function uniqueUsernames(identity: IdentityView | null): string[] {
@@ -21,11 +23,15 @@ function uniqueUsernames(identity: IdentityView | null): string[] {
   for (const name of identity.aliases.usernames) push(name);
   for (const name of identity.aliases.gamingNames) push(name);
   for (const name of identity.aliases.nicknames ?? []) push(name);
+  for (const name of identity.aliases.formerNames ?? []) {
+    // former display names often have spaces — only keep handle-like ones
+    if (name && !/\s/.test(name)) push(name);
+  }
   for (const account of identity.socialAccounts ?? []) {
     push(account.username);
   }
 
-  return [...set].slice(0, 3);
+  return [...set].slice(0, 12);
 }
 
 function quote(username: string): string {
@@ -34,69 +40,78 @@ function quote(username: string): string {
 }
 
 /**
- * Build 5–8 high-value SerpAPI queries. No combinatorial explosion.
- * Priority order from Sprint 6E brief; skip duplicates.
+ * Build SerpAPI queries across ALL identity usernames (merged later).
+ * Budget: exact query per username first, then category queries for primary.
  */
 export function planUsernameQueries(
   identity: IdentityView | null,
   maxQueries = 8
-): { username: string; queries: UsernameQueryPlan[] } {
+): { username: string; usernames: string[]; queries: UsernameQueryPlan[] } {
   const usernames = uniqueUsernames(identity);
   const primary = usernames[0] ?? "";
   if (!primary) {
-    return { username: "", queries: [] };
+    return { username: "", usernames: [], queries: [] };
   }
 
-  const q = quote(primary);
-  const hasGaming =
-    (identity?.aliases.gamingNames.length ?? 0) > 0 ||
-    /gamer|xbox|psn|steam|epic/i.test(primary);
-  const hasDevSignal =
-    Boolean(
-      identity?.websites.some((w) => /github|gitlab|code/i.test(w)) ||
-      identity?.domains.some((d) => /github|gitlab/i.test(d))
-    ) || /dev|code|git/i.test(primary);
+  const capped = Math.min(12, Math.max(5, maxQueries));
+  const candidates: UsernameQueryPlan[] = [];
 
-  const candidates: UsernameQueryPlan[] = [
-    { id: "exact", label: "Username exact", query: q },
-    { id: "profile", label: "Username profile", query: `${q} profile` },
-    { id: "forum", label: "Username forum", query: `${q} forum` },
-    { id: "social", label: "Username social", query: `${q} social` },
-  ];
-
-  if (hasGaming || candidates.length < 6) {
+  // 1) Exact match for every stored username / alias
+  for (const [index, handle] of usernames.entries()) {
     candidates.push({
-      id: "gaming",
-      label: "Username gaming",
-      query: `${q} gaming`,
+      id: `exact-${index}`,
+      label: `Exact · ${handle}`,
+      query: quote(handle),
+      username: handle,
     });
   }
 
-  if (hasDevSignal || candidates.length < 7) {
+  // 2) Category deepening for the primary handle (and secondary if budget)
+  const deepen = (handle: string, prefix: string) => {
+    const q = quote(handle);
+    candidates.push(
+      {
+        id: `${prefix}-profile`,
+        label: `Profile · ${handle}`,
+        query: `${q} profile`,
+        username: handle,
+      },
+      {
+        id: `${prefix}-forum`,
+        label: `Forum · ${handle}`,
+        query: `${q} forum`,
+        username: handle,
+      },
+      {
+        id: `${prefix}-social`,
+        label: `Social · ${handle}`,
+        query: `${q} social`,
+        username: handle,
+      }
+    );
+  };
+
+  deepen(primary, "p0");
+  if (usernames[1]) deepen(usernames[1], "p1");
+
+  const hasGaming = (identity?.aliases.gamingNames.length ?? 0) > 0;
+  if (hasGaming) {
+    const gamer = identity!.aliases.gamingNames[0]!;
     candidates.push({
-      id: "github",
-      label: "Username github",
-      query: `${q} github`,
+      id: "gaming",
+      label: `Gaming · ${gamer}`,
+      query: `${quote(gamer)} gaming`,
+      username: gamer,
     });
   }
 
   candidates.push({
-    id: "reddit",
-    label: "Username reddit",
-    query: `${q} reddit`,
+    id: "github-primary",
+    label: `GitHub · ${primary}`,
+    query: `${quote(primary)} github`,
+    username: primary,
   });
 
-  // Secondary username only if room and clearly distinct
-  const secondary = usernames[1];
-  if (secondary && secondary.toLowerCase() !== primary.toLowerCase()) {
-    candidates.push({
-      id: "alias2",
-      label: "Secondary username",
-      query: quote(secondary),
-    });
-  }
-
-  const capped = Math.min(8, Math.max(5, maxQueries));
   const seen = new Set<string>();
   const queries: UsernameQueryPlan[] = [];
   for (const plan of candidates) {
@@ -107,5 +122,5 @@ export function planUsernameQueries(
     if (queries.length >= capped) break;
   }
 
-  return { username: primary, queries };
+  return { username: primary, usernames, queries };
 }

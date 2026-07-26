@@ -16,6 +16,7 @@ import { getProfileRepository } from "@/lib/repositories";
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
 import { getLatestDigitalExposureReport } from "@/lib/analysis/digital-exposure/repository";
 import { getLatestUsernameReport } from "@/lib/analysis/username/repository";
+import { filterIgnoredFromUsernameReport } from "@/lib/services/username-actions-service";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import {
   buildDashboardOverview,
@@ -47,7 +48,8 @@ async function loadModuleReport(
     return getLatestDigitalExposureReport(userId);
   }
   if (key === "username_intelligence") {
-    return getLatestUsernameReport(userId);
+    const report = await getLatestUsernameReport(userId);
+    return filterIgnoredFromUsernameReport(userId, report);
   }
   return null;
 }
