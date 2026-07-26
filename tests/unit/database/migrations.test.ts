@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–031 migration files", () => {
+  it("ships ordered 001–032 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -41,6 +41,7 @@ describe("database migrations workflow", () => {
       "029_rc3_hardening.sql",
       "030_user_threats_summaries.sql",
       "031_worker_role.sql",
+      "032_order_workflow.sql",
     ]);
   });
 
@@ -191,6 +192,14 @@ describe("database migrations workflow", () => {
   it("adds worker role in 031", () => {
     const sql = readFileSync(path.join(dir, "031_worker_role.sql"), "utf8");
     expect(sql).toContain("ENUM('admin', 'support', 'worker', 'user')");
+  });
+
+  it("adds order workflow tables in 032", () => {
+    const sql = readFileSync(path.join(dir, "032_order_workflow.sql"), "utf8");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `order_pricing`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `order_vollmachten`");
+    expect(sql).toContain("requires_vollmacht");
+    expect(sql).toContain("'order'");
   });
 
   it("adds platform settings and api credentials in 013", () => {

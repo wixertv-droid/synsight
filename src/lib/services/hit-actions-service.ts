@@ -323,6 +323,44 @@ export async function listSynSightOrders(
   }));
 }
 
+export async function updateSynSightOrderStatus(input: {
+  userId: number;
+  orderId: number;
+  status: SynSightOrderStatus;
+  creditsCharged?: number | null;
+}): Promise<boolean> {
+  await ensureHitActionsSchema();
+  const db = getDatabase();
+  if (!db) {
+    const order = memoryOrders.find(
+      (row) => row.id === input.orderId && row.userId === input.userId
+    );
+    if (!order) return false;
+    order.status = input.status;
+    order.updatedAt = new Date().toISOString();
+    return true;
+  }
+
+  const result = await db.execute(sql`
+    UPDATE synsight_orders
+    SET
+      status = ${input.status},
+      credits_charged = COALESCE(${input.creditsCharged ?? null}, credits_charged),
+      submitted_at = CASE
+        WHEN ${input.status} = 'offen' THEN CURRENT_TIMESTAMP(3)
+        ELSE submitted_at
+      END
+    WHERE id = ${input.orderId} AND user_id = ${input.userId}
+  `);
+  const header = Array.isArray(result) ? result[0] : result;
+  return Number((header as { affectedRows?: number })?.affectedRows ?? 0) > 0;
+}
+
+/** All non-draft orders for memory/tests. */
+export function listMemoryOrdersForDesk(): SynSightOrderRecord[] {
+  return memoryOrders.filter((order) => order.status !== "vorbereitet");
+}
+
 /** Delete a user's SynSight order and clear the related „ordered“ hit action. */
 export async function deleteSynSightOrder(input: {
   userId: number;

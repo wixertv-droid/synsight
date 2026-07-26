@@ -683,6 +683,7 @@ export const creditTransactions = mysqlTable(
       "admin_remove",
       "adjustment",
       "promotion",
+      "order",
     ])
       .notNull()
       .default("adjustment"),
@@ -1678,6 +1679,13 @@ export const synsightOrders = mysqlTable(
       .notNull()
       .default("vorbereitet"),
     note: text("note"),
+    creditsCharged: int("credits_charged", { unsigned: true }),
+    requiresVollmacht: boolean("requires_vollmacht").notNull().default(false),
+    vollmachtId: bigint("vollmacht_id", { mode: "number", unsigned: true }),
+    capabilityOk: boolean("capability_ok"),
+    capabilityReason: varchar("capability_reason", { length: 500 }),
+    reviewedAt: timestamp("reviewed_at", { mode: "string", fsp: 3 }),
+    submittedAt: timestamp("submitted_at", { mode: "string", fsp: 3 }),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
       .notNull()
       .default(sql`CURRENT_TIMESTAMP(3)`),
@@ -1690,6 +1698,78 @@ export const synsightOrders = mysqlTable(
     index("synsight_orders_user_idx").on(table.userId),
     index("synsight_orders_status_idx").on(table.status),
     index("synsight_orders_module_idx").on(table.sourceModule),
+  ]
+);
+
+export const orderPricing = mysqlTable(
+  "order_pricing",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    orderType: varchar("order_type", { length: 64 }).notNull(),
+    label: varchar("label", { length: 150 }).notNull(),
+    description: varchar("description", { length: 500 }),
+    credits: int("credits", { unsigned: true }).notNull().default(0),
+    requiresVollmacht: boolean("requires_vollmacht").notNull().default(true),
+    synsightCapable: boolean("synsight_capable").notNull().default(true),
+    capabilityHint: varchar("capability_hint", { length: 500 }),
+    sortOrder: int("sort_order", { unsigned: true }).notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    updatedByAdminId: bigint("updated_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("order_pricing_type_unique").on(table.orderType),
+    index("order_pricing_active_idx").on(table.isActive, table.sortOrder),
+  ]
+);
+
+export const orderVollmachten = mysqlTable(
+  "order_vollmachten",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    orderId: bigint("order_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => synsightOrders.id, { onDelete: "cascade" }),
+    status: mysqlEnum("status", ["generated", "uploaded", "verified"])
+      .notNull()
+      .default("generated"),
+    templateHtml: text("template_html").notNull(),
+    templatePath: varchar("template_path", { length: 500 }),
+    signedPath: varchar("signed_path", { length: 500 }),
+    signedMime: varchar("signed_mime", { length: 120 }),
+    signedFileName: varchar("signed_file_name", { length: 255 }),
+    generatedAt: timestamp("generated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    uploadedAt: timestamp("uploaded_at", { mode: "string", fsp: 3 }),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("order_vollmachten_order_unique").on(table.orderId),
+    index("order_vollmachten_user_idx").on(table.userId),
+    index("order_vollmachten_status_idx").on(table.status),
   ]
 );
 

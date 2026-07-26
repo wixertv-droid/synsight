@@ -1,5 +1,6 @@
 import AdminCommunicationsControl from "@/components/admin/AdminCommunicationsControl";
 import AdminPricingControl from "@/components/admin/AdminPricingControl";
+import AdminOrderPricingControl from "@/components/admin/AdminOrderPricingControl";
 import AdminPromotionsControl from "@/components/admin/AdminPromotionsControl";
 import AdminUserControl from "@/components/admin/AdminUserControl";
 import AdminAuditView from "@/components/admin/views/AdminAuditView";
@@ -40,7 +41,12 @@ export default function AdminViewHost({
     case "user-blocked":
       return <AdminUserTable statusFilter="suspended" />;
     case "marketing-pricing":
-      return <AdminPricingControl />;
+      return (
+        <>
+          <AdminPricingControl />
+          <AdminOrderPricingControl />
+        </>
+      );
     case "marketing-promotions":
       return <AdminPromotionsControl />;
     case "website-system":

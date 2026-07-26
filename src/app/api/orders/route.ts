@@ -7,6 +7,7 @@ import {
   deleteSynSightOrder,
   listSynSightOrders,
 } from "@/lib/services/hit-actions-service";
+import { ensureOrderWorkflowSchema } from "@/lib/orders/ensure-order-workflow-schema";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export async function GET() {
       status: 401,
     });
   }
+  await ensureOrderWorkflowSchema();
   const orders = await listSynSightOrders(Number(user.id));
   return NextResponse.json(apiSuccess({ orders }));
 }

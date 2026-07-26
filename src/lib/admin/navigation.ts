@@ -84,8 +84,8 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
       {
         slug: "preise",
         label: "Preisverwaltung",
-        description: "Analysepreise und SynCredits-Pakete.",
-        help: "analysis_pricing und credit_packages — keine Hardcoded-Preise.",
+        description: "Analysepreise, Auftragspreise und SynCredits-Pakete.",
+        help: "analysis_pricing, order_pricing und credit_packages — keine Hardcoded-Preise.",
         view: "marketing-pricing",
       },
       {
