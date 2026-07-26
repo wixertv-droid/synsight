@@ -207,9 +207,7 @@ export default function GoogleIntelligenceReport({
       liveHitsAll,
       verifiedLive,
       possibleLive,
-      profileHits: enriched.filter(
-        (hit) => hit.sourceType === "identity_profile"
-      ),
+      profileHits,
       scorecard,
       analysisSummary,
       severityCounts,

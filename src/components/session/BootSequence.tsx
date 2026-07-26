@@ -41,7 +41,6 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
     ) as HTMLElement;
     const hexStream = container.querySelector("#hex-stream") as HTMLElement;
 
-    let bootInterval: ReturnType<typeof setInterval> | undefined;
     let animationFrameId = 0;
     const panelIntervals: Array<ReturnType<typeof setInterval>> = [];
     const timeouts: Array<ReturnType<typeof setTimeout>> = [];
@@ -261,7 +260,7 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
     }, 40);
 
     let progress = 0;
-    bootInterval = setInterval(() => {
+    const bootInterval = setInterval(() => {
       hexStream.innerText = `0x${Math.floor(Math.random() * 65535)
         .toString(16)
         .toUpperCase()
@@ -405,7 +404,7 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      if (bootInterval) clearInterval(bootInterval);
+      clearInterval(bootInterval);
       clearInterval(decryptInterval);
       panelIntervals.forEach((id) => clearInterval(id));
       timeouts.forEach((id) => clearTimeout(id));
