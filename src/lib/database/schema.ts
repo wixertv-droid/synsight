@@ -1730,6 +1730,45 @@ export const usernameModuleSettings = mysqlTable("username_module_settings", {
     .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
 });
 
+const threatsSummaryStatusEnum = mysqlEnum("status", [
+  "ready",
+  "generating",
+  "failed",
+  "empty",
+]);
+
+/** Combined Bedrohungen KI-Lagebild — regenerated after each analysis. */
+export const userThreatsSummaries = mysqlTable(
+  "user_threats_summaries",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    summaryText: text("summary_text").notNull(),
+    model: varchar("model", { length: 120 }),
+    promptHash: varchar("prompt_hash", { length: 64 }),
+    inputFingerprint: varchar("input_fingerprint", { length: 64 }).notNull(),
+    threatCount: int("threat_count", { unsigned: true }).notNull().default(0),
+    modulesJson: json("modules_json"),
+    status: threatsSummaryStatusEnum.notNull().default("ready"),
+    errorMessage: varchar("error_message", { length: 500 }),
+    generatedAt: timestamp("generated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("user_threats_summaries_user_uq").on(table.userId),
+    index("user_threats_summaries_fingerprint_idx").on(table.inputFingerprint),
+  ]
+);
+
 export type DbUser = typeof users.$inferSelect;
 export type DbProfile = typeof profiles.$inferSelect;
 export type DbSession = typeof sessions.$inferSelect;

@@ -1,8 +1,21 @@
 import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/types";
+import {
+  orderTypeForDigitalExposureFinding,
+  selfGuideForDigitalExposureFinding,
+  digitalExposureFindingToIntelligenceHit,
+} from "@/lib/analysis/digital-exposure/to-intelligence-hit";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 import { isLiveSerpSource } from "@/lib/analysis/types";
 import type { UsernameReport } from "@/lib/analysis/username/types";
+import type { SynSightOrderType } from "@/lib/analysis/username/types";
+import {
+  orderTypeForUsernameHit,
+  selfGuideForUsernameHit,
+} from "@/lib/analysis/username/to-intelligence-hit";
 import type { RiskLevel } from "@/types/platform";
+
+export type ThreatModuleKey =
+  "google_search" | "digital_leak_exposure" | "username_intelligence";
 
 export interface PlatformThreat {
   id: string;
@@ -12,7 +25,41 @@ export interface PlatformThreat {
   whyItMatters: string;
   userAction: string;
   source: string;
+  /** Analysis module that produced this threat. */
+  moduleKey: ThreatModuleKey;
+  /** Human label for filters / tabs. */
+  moduleLabel: string;
+  /** Original hit URL for „Original öffnen“ + action fingerprint. */
+  url: string | null;
+  /** Platform label used by hit-actions fingerprint (must match analysis cards). */
+  actionPlatform: string;
+  /** Original hit title for fingerprint (must match analysis cards). */
+  actionTitle: string;
+  /** SynSight order type — null hides „SynSight soll das übernehmen“. */
+  orderType: SynSightOrderType | null;
+  /** Steps for „Erledige ich selbst“. */
+  selfGuide: string[];
+  /** Short plain-language blocks for „KI erklären“. */
+  aiExplain: {
+    whyFound: string;
+    whyRelevant: string;
+  };
 }
+
+export const THREAT_MODULE_META: Record<
+  ThreatModuleKey,
+  { label: string; short: string }
+> = {
+  google_search: { label: "Google Analyse", short: "GOOGLE" },
+  digital_leak_exposure: {
+    label: "Digital Leak & Exposure",
+    short: "LEAK",
+  },
+  username_intelligence: {
+    label: "Username Intelligence",
+    short: "USERNAME",
+  },
+};
 
 export const threatLevelMeta: Record<
   RiskLevel,
@@ -35,6 +82,13 @@ export const threatLevelMeta: Record<
   },
 };
 
+const DEFAULT_SELF_GUIDE = [
+  "Originaltreffer öffnen und prüfen.",
+  "Persönliche Angaben entfernen oder Profil privat / löschen.",
+  "Sichtbarkeit und öffentliche Beiträge prüfen.",
+  "Analyse erneut starten und bei Erledigung „Als gelöst markieren“.",
+];
+
 function levelRank(level: RiskLevel): number {
   if (level === "high") return 0;
   if (level === "medium") return 1;
@@ -49,6 +103,18 @@ function mapGoogleRisk(
   if (severity === "high" || risk === "review") return "medium";
   if (severity === "medium" || risk === "watch") return "medium";
   return "low";
+}
+
+function orderTypeForGoogle(hit: {
+  isProblematic?: boolean;
+  severity?: string;
+  category: string;
+  source: string;
+}): SynSightOrderType {
+  if (hit.isProblematic || hit.severity === "critical") return "gdpr";
+  if (/forum|community/i.test(hit.category + hit.source))
+    return "forum_contact";
+  return "google_removal";
 }
 
 /**
@@ -78,6 +144,7 @@ export function buildThreatsFromReports(input: {
               .toLowerCase()
               .includes(finding.sourceName.toLowerCase())
         ) ?? actions[0];
+      const asHit = digitalExposureFindingToIntelligenceHit(finding);
       threats.push({
         id: `threat-leak-${finding.sourceName ?? finding.title}-${finding.type}`,
         level: finding.riskLevel === "high" ? "high" : finding.riskLevel,
@@ -96,6 +163,18 @@ export function buildThreatsFromReports(input: {
           finding.recommendation ||
           "Passwort ändern, 2FA aktivieren und betroffene Konten prüfen.",
         source: finding.sourceName || "Digital Leak Scan",
+        moduleKey: "digital_leak_exposure",
+        moduleLabel: THREAT_MODULE_META.digital_leak_exposure.label,
+        url: finding.sourceUrl?.startsWith("http") ? finding.sourceUrl : null,
+        actionPlatform:
+          asHit.source || asHit.displayCategory || asHit.category || "DeHashed",
+        actionTitle: asHit.title,
+        orderType: orderTypeForDigitalExposureFinding(finding),
+        selfGuide: selfGuideForDigitalExposureFinding(finding),
+        aiExplain: {
+          whyFound: asHit.whyFoundPlain ?? asHit.whyFound,
+          whyRelevant: asHit.whyRelevantPlain ?? asHit.whyRelevant,
+        },
       });
     }
   }
@@ -140,6 +219,17 @@ export function buildThreatsFromReports(input: {
           "Treffer prüfen und Sichtbarkeit bei der Quelle reduzieren."
         ).slice(0, 220),
         source: hit.source || "Google Analyse",
+        moduleKey: "google_search",
+        moduleLabel: THREAT_MODULE_META.google_search.label,
+        url: hit.url?.startsWith("http") ? hit.url : null,
+        actionPlatform: hit.source || hit.displayCategory || hit.category,
+        actionTitle: hit.title,
+        orderType: orderTypeForGoogle(hit),
+        selfGuide: DEFAULT_SELF_GUIDE,
+        aiExplain: {
+          whyFound: hit.whyFoundPlain ?? hit.whyFound,
+          whyRelevant: hit.whyRelevantPlain ?? hit.whyRelevant,
+        },
       });
     }
   }
@@ -177,6 +267,28 @@ export function buildThreatsFromReports(input: {
           "Profil privat stellen, löschen oder Benutzernamen ändern."
         ).slice(0, 220),
         source: hit.platform || "Username Intelligence",
+        moduleKey: "username_intelligence",
+        moduleLabel: THREAT_MODULE_META.username_intelligence.label,
+        url: hit.profileUrl?.startsWith("http") ? hit.profileUrl : null,
+        actionPlatform: hit.platform,
+        actionTitle: hit.title,
+        orderType: orderTypeForUsernameHit(hit),
+        selfGuide: selfGuideForUsernameHit(hit),
+        aiExplain: {
+          whyFound:
+            hit.matchChecks
+              ?.filter((c) => c.matched)
+              .map((c) => c.label)
+              .slice(0, 4)
+              .join(", ") ||
+            hit.snippet ||
+            `Username-Treffer auf ${hit.platform}.`,
+          whyRelevant:
+            action?.why ||
+            (hit.isProblematic
+              ? "Problematischer öffentlicher Profiltreffer mit Identitätsbezug."
+              : "Öffentlicher Username-Treffer kann Ihre digitale Auffindbarkeit erhöhen."),
+        },
       });
     }
   }

@@ -6,6 +6,7 @@ import { runGoogleIntelligenceAnalysis } from "@/lib/analysis/google/run-analysi
 import { saveIntelligenceReport } from "@/lib/analysis/session-store";
 import { parseRetentionDays } from "@/lib/analysis/retention";
 import { getIdentityForUser } from "@/lib/services/identity-service";
+import { queueThreatsSummaryRegeneration } from "@/lib/services/threats-summary-service";
 import { NextResponse } from "next/server";
 import { validateMutationOrigin } from "@/lib/security/request";
 
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
           userId,
         });
         await saveIntelligenceReport(userId, next);
+        queueThreatsSummaryRegeneration(userId);
         return next;
       }
     );

@@ -241,6 +241,10 @@ export async function resolveGeminiCredentials(): Promise<GeminiCredentials | nu
   return null;
 }
 
+function mysqlDateTimeNow(): string {
+  return new Date().toISOString().slice(0, 23).replace("T", " ");
+}
+
 export async function markApiCredentialSuccess(
   provider: ApiProvider
 ): Promise<void> {
@@ -250,7 +254,7 @@ export async function markApiCredentialSuccess(
     await db
       .update(apiCredentials)
       .set({
-        lastSuccessAt: new Date().toISOString(),
+        lastSuccessAt: mysqlDateTimeNow(),
         lastErrorAt: null,
         lastErrorMessage: null,
       })
@@ -270,7 +274,7 @@ export async function markApiCredentialError(
     await db
       .update(apiCredentials)
       .set({
-        lastErrorAt: new Date().toISOString(),
+        lastErrorAt: mysqlDateTimeNow(),
         lastErrorMessage: message.slice(0, 1000),
       })
       .where(eq(apiCredentials.provider, provider));
