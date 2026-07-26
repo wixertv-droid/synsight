@@ -100,7 +100,6 @@ export function createSharedRateLimitStore(_redisUrl?: string): RateLimitStore {
 export const createRedisRateLimitStore = createSharedRateLimitStore;
 
 let activeStore: RateLimitStore | null = null;
-let resolvedFromEnv = false;
 
 /** Always returns the same process singleton store instance. */
 export function getRateLimitStore(): RateLimitStore {
@@ -112,7 +111,6 @@ export function getRateLimitStore(): RateLimitStore {
 
 export function setRateLimitStore(store: RateLimitStore): void {
   activeStore = store;
-  resolvedFromEnv = true;
 }
 
 /** Resolve store from env once (call at boot / first use). */
@@ -121,6 +119,5 @@ export function resolveRateLimitStoreFromEnv(): RateLimitStore {
   activeStore = redisUrl
     ? createSharedRateLimitStore(redisUrl)
     : memoryRateLimitStore;
-  resolvedFromEnv = true;
   return activeStore;
 }

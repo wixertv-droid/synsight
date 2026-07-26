@@ -42,8 +42,7 @@ export async function POST(request: Request) {
     typeof body.requestId === "string" ? body.requestId.trim() : "";
   const platform = await getPublicPlatformSettings();
   const retentionDays = parseDigitalLeakRetentionDays(
-    body.retentionDays,
-    platform.digitalLeakDefaultRetentionDays
+    body.retentionDays ?? platform.digitalLeakDefaultRetentionDays
   );
 
   try {
