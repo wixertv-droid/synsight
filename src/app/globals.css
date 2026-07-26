@@ -809,22 +809,83 @@ body::before {
   }
 }
 
-@keyframes briefing-hatch-spin {
+/* Hazard-tape: stripes march along each edge (perimeter), not spin in place */
+@keyframes briefing-hatch-march-x {
   from {
-    transform: translate(-50%, -50%) rotate(0deg);
+    transform: translateX(0);
   }
   to {
-    transform: translate(-50%, -50%) rotate(360deg);
+    transform: translateX(-16px);
   }
 }
 
-.briefing-hatch-spin {
-  animation: briefing-hatch-spin 18s linear infinite;
+@keyframes briefing-hatch-march-x-rev {
+  from {
+    transform: translateX(-16px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes briefing-hatch-march-y {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-16px);
+  }
+}
+
+@keyframes briefing-hatch-march-y-rev {
+  from {
+    transform: translateY(-16px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes briefing-hatch-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.briefing-hatch-march-x {
+  animation: briefing-hatch-march-x 0.55s linear infinite;
   will-change: transform;
 }
 
+.briefing-hatch-march-x-rev {
+  animation: briefing-hatch-march-x-rev 0.55s linear infinite;
+  will-change: transform;
+}
+
+.briefing-hatch-march-y {
+  animation: briefing-hatch-march-y 0.55s linear infinite;
+  will-change: transform;
+}
+
+.briefing-hatch-march-y-rev {
+  animation: briefing-hatch-march-y-rev 0.55s linear infinite;
+  will-change: transform;
+}
+
+.briefing-hatch-pulse {
+  animation: briefing-hatch-pulse 2.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .briefing-hatch-spin {
+  .briefing-hatch-march-x,
+  .briefing-hatch-march-x-rev,
+  .briefing-hatch-march-y,
+  .briefing-hatch-march-y-rev,
+  .briefing-hatch-pulse {
     animation: none;
   }
 }

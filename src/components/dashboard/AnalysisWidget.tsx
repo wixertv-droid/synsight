@@ -714,26 +714,87 @@ export default function AnalysisWidget({
           </Link>
         </div>
 
-        {/* Hatched security frame — rotating hazard stripes, score-colored */}
+        {/* CIA-style hazard frame — hatched tape marches along perimeter */}
         <div
-          className="relative overflow-hidden rounded-lg p-[7px]"
+          className="relative overflow-hidden rounded-lg p-[8px]"
           style={{
-            boxShadow: `0 0 0 1px ${hatchColors.a}, 0 0 26px ${hatchColors.glow}, 0 12px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.2)`,
+            boxShadow: `0 0 0 1px ${hatchColors.a}, 0 0 28px ${hatchColors.glow}, 0 12px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)`,
           }}
         >
           <div
-            className="briefing-hatch-spin pointer-events-none absolute left-1/2 top-1/2 h-[220%] w-[220%] -translate-x-1/2 -translate-y-1/2"
-            style={{
-              backgroundImage: `repeating-linear-gradient(
-                -45deg,
-                ${hatchColors.a} 0px,
-                ${hatchColors.a} 8px,
-                ${hatchColors.b} 8px,
-                ${hatchColors.b} 16px
-              )`,
-            }}
+            className="pointer-events-none absolute inset-0 rounded-lg"
+            style={{ background: hatchColors.b }}
             aria-hidden="true"
           />
+          {/* Four edge rails: stripes convey clockwise around the frame */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            aria-hidden="true"
+          >
+            <div className="absolute inset-x-0 top-0 h-[8px] overflow-hidden">
+              <div
+                className="briefing-hatch-march-x absolute inset-y-0 left-0 h-full"
+                style={{
+                  width: "calc(100% + 32px)",
+                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 8px, ${hatchColors.b} 8px 16px)`,
+                }}
+              />
+            </div>
+            <div className="absolute inset-y-0 right-0 w-[8px] overflow-hidden">
+              <div
+                className="briefing-hatch-march-y absolute inset-x-0 top-0 w-full"
+                style={{
+                  height: "calc(100% + 32px)",
+                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 8px, ${hatchColors.b} 8px 16px)`,
+                }}
+              />
+            </div>
+            <div className="absolute inset-x-0 bottom-0 h-[8px] overflow-hidden">
+              <div
+                className="briefing-hatch-march-x-rev absolute inset-y-0 left-0 h-full"
+                style={{
+                  width: "calc(100% + 32px)",
+                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 8px, ${hatchColors.b} 8px 16px)`,
+                }}
+              />
+            </div>
+            <div className="absolute inset-y-0 left-0 w-[8px] overflow-hidden">
+              <div
+                className="briefing-hatch-march-y-rev absolute inset-x-0 top-0 w-full"
+                style={{
+                  height: "calc(100% + 32px)",
+                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 8px, ${hatchColors.b} 8px 16px)`,
+                }}
+              />
+            </div>
+          </div>
+          {/* Corner brackets + hairline — classified warning chrome */}
+          <svg
+            className="briefing-hatch-pulse pointer-events-none absolute inset-0 z-[1] h-full w-full"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <rect
+              x="1.2"
+              y="1.2"
+              width="97.6"
+              height="97.6"
+              rx="1.4"
+              fill="none"
+              stroke={hatchColors.a}
+              strokeWidth="0.35"
+              opacity="0.85"
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              d="M 4 12 L 4 4 L 12 4 M 88 4 L 96 4 L 96 12 M 96 88 L 96 96 L 88 96 M 12 96 L 4 96 L 4 88"
+              fill="none"
+              stroke={hatchColors.a}
+              strokeWidth="1.1"
+              strokeLinecap="square"
+            />
+          </svg>
           <div className="relative z-10 overflow-hidden rounded-md border border-white/10 bg-[#0d141e]">
             {/* Grid: transparent left → ~80% visible right */}
             <div
