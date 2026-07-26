@@ -274,8 +274,8 @@ export default function AnalysisWidget({
               {guidance.dashboard.analysisCenter}
             </InfoTooltip>
           </p>
-          <p className="mt-1 text-[10px] text-white/22">
-            Risiko-Radar · kritische Funde brechen aus dem äußeren Ring
+          <p className="mt-1 text-[10px] text-white/28">
+            Threat Scope · Kanäle nach Risiko von innen nach außen
           </p>
         </div>
         <button
@@ -285,33 +285,38 @@ export default function AnalysisWidget({
           className="flex items-center gap-2 rounded-lg border border-cyber-blue/15 bg-cyber-blue/[0.035] px-3 py-2 font-mono text-[8px] tracking-[.12em] text-cyber-cyan/60 transition-all hover:border-cyber-blue/30 disabled:cursor-default disabled:opacity-60"
         >
           <StatusDot pulse={running} tone={running ? "online" : "idle"} />
-          {running ? "KORRELATION LÄUFT" : "NEU KORRELIEREN"}
+          {running ? "SCAN LÄUFT" : "SCOPE NEU LADEN"}
         </button>
       </div>
 
       <div className="grid min-h-[405px] md:grid-cols-[1fr_220px]">
         <div className="relative overflow-hidden border-b border-white/[0.06] p-5 md:border-b-0 md:border-r md:p-6">
           <div
-            className="analysis-field absolute inset-0 opacity-25"
+            className="analysis-field absolute inset-0 opacity-20"
             aria-hidden="true"
           />
           <RadarNetworkBackdrop />
+          {/* HUD corner brackets */}
           <div
-            className={`analysis-scan-line pointer-events-none absolute inset-x-0 z-[1] h-20 ${running ? "block" : "hidden"}`}
+            className="pointer-events-none absolute inset-4 z-[2] border border-cyber-cyan/10"
             aria-hidden="true"
-          />
-          {/* Soft floor under the 3D disc */}
+          >
+            <span className="absolute -left-px -top-px h-3 w-3 border-l-2 border-t-2 border-cyber-cyan/50" />
+            <span className="absolute -right-px -top-px h-3 w-3 border-r-2 border-t-2 border-cyber-cyan/50" />
+            <span className="absolute -bottom-px -left-px h-3 w-3 border-b-2 border-l-2 border-cyber-cyan/50" />
+            <span className="absolute -bottom-px -right-px h-3 w-3 border-b-2 border-r-2 border-cyber-cyan/50" />
+          </div>
           <div
-            className="pointer-events-none absolute bottom-[18%] left-1/2 z-[1] h-8 w-[72%] -translate-x-1/2 rounded-[100%] bg-cyber-cyan/[0.06] blur-xl"
+            className="pointer-events-none absolute bottom-[16%] left-1/2 z-[1] h-10 w-[68%] -translate-x-1/2 rounded-[100%] bg-cyber-cyan/[0.05] blur-2xl"
             aria-hidden="true"
           />
           <svg
             viewBox="-24 -8 648 360"
             className="relative z-10 h-full min-h-[300px] w-full"
-            aria-label="Risiko-Radar mit drei Zonen"
+            aria-label="Threat Scope Risikoanzeige"
             style={{
               filter:
-                "drop-shadow(0 18px 28px rgba(0,0,0,0.45)) drop-shadow(0 2px 12px rgba(41,182,246,0.12))",
+                "drop-shadow(0 16px 24px rgba(0,0,0,0.4)) drop-shadow(0 2px 10px rgba(41,182,246,0.1))",
             }}
           >
             <defs>
@@ -421,130 +426,51 @@ export default function AnalysisWidget({
               ) : null}
             </g>
 
-            {/* Zone labels along near rim */}
-            <g fontFamily="monospace" fontSize="7" letterSpacing="1.4">
-              {RISK_RINGS.map((ring) => (
-                <text
-                  key={`zl-${ring.id}`}
-                  x={CX + 8}
-                  y={CY - ring.r * PERSPECTIVE_Y + 10}
-                  fill={ring.labelColor}
-                >
-                  {ring.label}
-                </text>
-              ))}
-            </g>
-
-            {/* Spokes */}
+            {/* Thin spokes — only for active channels */}
             <g strokeWidth="1" fill="none">
-              {channels.map((ch) => {
-                const end = polar(ch.angle, RISK_RINGS[2].r);
-                return (
-                  <path
-                    key={`spoke-${ch.label}`}
-                    d={`M${CX} ${CY} ${end.x} ${end.y}`}
-                    stroke={zoneColor(ch.active ? ch.zone : "idle")}
-                    strokeOpacity={ch.active ? 0.28 : 0.08}
-                  />
-                );
-              })}
-            </g>
-
-            {/* Packets traveling outward along spokes toward risk position */}
-            <g>
               {channels
                 .filter((ch) => ch.active)
-                .map((ch, idx) => {
-                  const packets = Math.max(
-                    1,
-                    Math.min(5, Math.ceil(ch.risk / 22))
+                .map((ch) => {
+                  const end = polar(ch.angle, Math.max(ch.targetR, 40));
+                  return (
+                    <path
+                      key={`spoke-${ch.label}`}
+                      d={`M${CX} ${CY} ${end.x} ${end.y}`}
+                      stroke={zoneColor(ch.zone)}
+                      strokeOpacity={0.22}
+                    />
                   );
-                  return Array.from({ length: packets }).map((_, i) => {
-                    const phase =
-                      ((tick / 360) * (0.55 + ch.risk / 140) +
-                        i / packets +
-                        idx * 0.11) %
-                      1;
-                    // Travel from hub to target radius (settled)
-                    const r = 16 + phase * ch.targetR * settle;
-                    const pos = polar(ch.angle, r);
-                    return (
-                      <circle
-                        key={`${ch.label}-pkt-${i}`}
-                        cx={pos.x}
-                        cy={pos.y}
-                        r={1.4 + (i % 2) * 0.55}
-                        fill={zoneColor(ch.zone)}
-                        opacity={0.45 + (1 - Math.abs(phase - 0.55)) * 0.45}
-                      />
-                    );
-                  });
                 })}
             </g>
 
-            {/* Channel risk points — slide outward; extreme breaks past red */}
+            {/* One marker per channel — clean, no particle clutter */}
             <g filter="url(#point-glow)">
               {channels.map((ch) => {
                 const r = 16 + (ch.targetR - 16) * settle;
                 const pos = polar(ch.angle, r);
                 const color = zoneColor(ch.active ? ch.zone : "idle");
                 const extreme = ch.zone === "extreme";
-                const core = ch.active
-                  ? extreme
-                    ? 6.2 + ch.risk / 40
-                    : 3.6 + ch.risk / 50
-                  : 2.4;
+                const core = ch.active ? (extreme ? 5.5 : 4) : 2.2;
                 return (
                   <g key={`pt-${ch.label}`}>
                     {ch.active ? (
                       <circle
                         cx={pos.x}
                         cy={pos.y}
-                        r={core + (extreme ? 16 : 10)}
+                        r={core + (extreme ? 11 : 7)}
                         fill={color}
-                        opacity={extreme ? 0.2 : 0.12}
+                        opacity={extreme ? 0.16 : 0.1}
                       />
                     ) : null}
                     <circle
                       cx={pos.x}
                       cy={pos.y}
-                      r={core + 5}
-                      fill="none"
-                      stroke={color}
-                      strokeOpacity={ch.active ? 0.5 : 0.15}
-                      strokeWidth={extreme ? 1.8 : 1.2}
-                    />
-                    <circle
-                      cx={pos.x}
-                      cy={pos.y}
                       r={core}
                       fill={color}
-                      opacity={ch.active ? 0.95 : 0.35}
+                      opacity={ch.active ? 0.95 : 0.25}
+                      stroke="rgba(3,7,14,0.55)"
+                      strokeWidth="1"
                     />
-                    {extreme ? (
-                      <circle
-                        cx={pos.x}
-                        cy={pos.y}
-                        r={core + 9}
-                        fill="none"
-                        stroke={color}
-                        strokeOpacity="0.35"
-                        strokeDasharray="2 3"
-                      >
-                        <animate
-                          attributeName="r"
-                          values={`${core + 7};${core + 14};${core + 7}`}
-                          dur="1.6s"
-                          repeatCount="indefinite"
-                        />
-                        <animate
-                          attributeName="stroke-opacity"
-                          values="0.45;0.05;0.45"
-                          dur="1.6s"
-                          repeatCount="indefinite"
-                        />
-                      </circle>
-                    ) : null}
                   </g>
                 );
               })}
@@ -585,59 +511,40 @@ export default function AnalysisWidget({
               CORE
             </text>
 
-            {/* Channel labels at outer ring */}
-            <g fontFamily="monospace" fontSize="8.5" letterSpacing="1.1">
+            {/* Short channel labels only */}
+            <g fontFamily="monospace" fontSize="8" letterSpacing="1">
               {channels.map((ch) => {
-                const anchor = labelAnchor(ch.angle, RISK_RINGS[2].r);
+                const anchor = labelAnchor(
+                  ch.angle,
+                  Math.max(ch.active ? ch.targetR : RISK_RINGS[0].r, 48)
+                );
                 return (
-                  <g key={`lbl-${ch.label}`}>
-                    <text
-                      x={anchor.x}
-                      y={anchor.y}
-                      textAnchor={anchor.anchor}
-                      fill={
-                        ch.active
-                          ? "rgba(255,255,255,.58)"
-                          : "rgba(255,255,255,.22)"
-                      }
-                    >
-                      {ch.label.toUpperCase()}
-                    </text>
-                    {ch.count > 0 ? (
-                      <text
-                        x={anchor.x}
-                        y={anchor.y + 11}
-                        textAnchor={anchor.anchor}
-                        fill={zoneColor(ch.zone)}
-                        fontSize="7.5"
-                        opacity="0.85"
-                      >
-                        {ch.count} ·{" "}
-                        {ch.zone === "extreme"
-                          ? "EXTREM"
-                          : ch.zone === "critical"
-                            ? "HOT"
-                            : ch.zone === "watch"
-                              ? "WARN"
-                              : "OK"}
-                      </text>
-                    ) : null}
-                  </g>
+                  <text
+                    key={`lbl-${ch.label}`}
+                    x={anchor.x}
+                    y={anchor.y}
+                    textAnchor={anchor.anchor}
+                    fill={
+                      ch.active
+                        ? "rgba(255,255,255,.62)"
+                        : "rgba(255,255,255,.2)"
+                    }
+                  >
+                    {ch.label.toUpperCase()}
+                  </text>
                 );
               })}
             </g>
           </svg>
-          <div className="absolute bottom-5 left-5 right-5 z-20 flex flex-wrap items-center justify-between gap-2 font-mono text-[7px] tracking-[.12em] text-white/18 md:left-6 md:right-6">
+          <div className="absolute bottom-4 left-5 right-5 z-20 flex flex-wrap items-center justify-between gap-2 font-mono text-[7px] tracking-[.14em] text-white/25 md:left-6 md:right-6">
             <span>
-              SIGNALS / {String(Math.min(999, signalCount)).padStart(3, "0")}
+              SCOPE / {correlationActive ? "LIVE" : "STANDBY"} ·{" "}
+              {String(Math.min(999, signalCount)).padStart(3, "0")} SIG
             </span>
-            <span className="flex items-center gap-2">
-              <span className="text-emerald-300/50">● SICHER</span>
-              <span className="text-amber-300/50">● AUFFÄLLIG</span>
-              <span className="text-rose-300/55">● KRITISCH+</span>
-            </span>
-            <span>
-              CORRELATION / {correlationActive ? "ACTIVE" : "STANDBY"}
+            <span className="flex items-center gap-3">
+              <span className="text-emerald-300/55">INNEN SICHER</span>
+              <span className="text-amber-300/55">MITTE WARN</span>
+              <span className="text-rose-300/60">AUSSEN KRITISCH</span>
             </span>
           </div>
         </div>
@@ -694,11 +601,10 @@ export default function AnalysisWidget({
           <div className="mt-7 border-t border-white/[0.06] pt-5">
             <p className="flex items-center gap-2 font-mono text-[8px] tracking-[.14em] text-white/22">
               AKTUELLER PROZESS
-              <InfoTooltip label="Risiko-Radar">
-                Grüne Zone = geringes Risiko. Gelb = auffällig. Rot = kritisch.
-                Extreme Funde brechen aus dem äußeren Ring. Ignorierte oder als
-                erledigt markierte Treffer zählen nicht mehr — der Punkt wandert
-                zurück Richtung Grün.
+              <InfoTooltip label="Threat Scope">
+                Innen = sicherer. Nach außen steigt das Risiko. Extreme Funde
+                liegen außerhalb des kritischen Rings. Ignorierte oder erledigte
+                Treffer zählen nicht mehr.
               </InfoTooltip>
             </p>
             <p className="mt-3 text-[10px] leading-relaxed text-white/42">
@@ -718,7 +624,7 @@ export default function AnalysisWidget({
         </div>
       </div>
       <div className="border-t border-white/[0.06] p-5 md:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2 font-mono text-[8px] tracking-[.14em] text-cyber-cyan/45">
             ANALYSE STARTEN
             <InfoTooltip label="Analysecenter">
@@ -727,11 +633,11 @@ export default function AnalysisWidget({
           </p>
           <Link
             href="/dashboard/analysis"
-            className="inline-flex items-center gap-2 rounded-lg border border-cyber-blue/20 bg-cyber-blue/[0.06] px-4 py-2.5 text-xs text-cyber-cyan/80 transition hover:border-cyber-blue/35 hover:text-cyber-cyan"
+            className="inline-flex items-center gap-2 rounded-lg border border-cyber-blue/25 bg-cyber-blue/[0.08] px-4 py-2.5 text-xs font-medium text-cyber-cyan transition hover:border-cyber-blue/45"
           >
             Zum Analysecenter
             {activeModuleCount > 0 ? (
-              <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              <span className="font-mono text-[8px] tracking-[.12em] text-white/35">
                 {activeModuleCount} MODULE
               </span>
             ) : null}
@@ -739,28 +645,95 @@ export default function AnalysisWidget({
           </Link>
         </div>
 
-        <div className="mt-5 min-h-[120px] rounded-xl border border-white/[0.07] bg-black/25 px-4 py-4 md:px-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-mono text-[8px] tracking-[.14em] text-amber-200/45">
-              1. LAGEBILD · BEDROHUNGEN &amp; SCHUTZMASSNAHMEN
-            </p>
-            <Link
-              href="/dashboard/threats"
-              className="font-mono text-[8px] tracking-[.12em] text-white/30 transition hover:text-cyber-cyan/70"
-            >
-              VOLLSTÄNDIG →
-            </Link>
-          </div>
-          {lagebildParagraph ? (
-            <div className="mt-3 line-clamp-6 [&_div]:text-[13px] [&_div]:leading-relaxed [&_div]:text-white/55">
-              <AiSummaryWithLinks text={lagebildParagraph} />
+        {/* Cyber SOC briefing panel */}
+        <div className="relative overflow-hidden rounded-xl border border-cyber-cyan/25 bg-gradient-to-br from-cyber-cyan/[0.07] via-[#061018] to-black/60 shadow-[inset_0_1px_0_rgba(112,231,255,0.08),0_0_40px_rgba(41,182,246,0.06)]">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-40"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(112,231,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(112,231,255,0.04) 1px, transparent 1px)",
+              backgroundSize: "22px 22px",
+            }}
+            aria-hidden="true"
+          />
+          <span
+            className="pointer-events-none absolute left-3 top-3 h-2.5 w-2.5 border-l border-t border-cyber-cyan/60"
+            aria-hidden="true"
+          />
+          <span
+            className="pointer-events-none absolute right-3 top-3 h-2.5 w-2.5 border-r border-t border-cyber-cyan/60"
+            aria-hidden="true"
+          />
+          <span
+            className="pointer-events-none absolute bottom-3 left-3 h-2.5 w-2.5 border-b border-l border-cyber-cyan/60"
+            aria-hidden="true"
+          />
+          <span
+            className="pointer-events-none absolute bottom-3 right-3 h-2.5 w-2.5 border-b border-r border-cyber-cyan/60"
+            aria-hidden="true"
+          />
+
+          <div className="relative z-10 p-4 md:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.08] pb-3">
+              <div>
+                <p className="font-mono text-[9px] tracking-[.18em] text-cyber-cyan/70">
+                  ANALYSE-BRIEFING
+                </p>
+                <p className="mt-1 text-sm font-medium tracking-[-.01em] text-white/88">
+                  KI-Zusammenfassung Ihrer Sicherheitslage
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded border px-2 py-1 font-mono text-[8px] tracking-[.12em] ${
+                    overallZone === "extreme" || overallZone === "critical"
+                      ? "border-rose-400/40 bg-rose-400/10 text-rose-100"
+                      : overallZone === "watch"
+                        ? "border-amber-300/40 bg-amber-300/10 text-amber-100"
+                        : "border-emerald-300/35 bg-emerald-300/10 text-emerald-100"
+                  }`}
+                >
+                  {overallZone === "extreme" || overallZone === "critical"
+                    ? "STATUS · KRITISCH"
+                    : overallZone === "watch"
+                      ? "STATUS · AUFFÄLLIG"
+                      : hasAnyReport
+                        ? "STATUS · STABIL"
+                        : "STATUS · STANDBY"}
+                </span>
+                <Link
+                  href="/dashboard/threats"
+                  className="rounded border border-white/15 bg-white/[0.04] px-2.5 py-1 font-mono text-[8px] tracking-[.12em] text-white/55 transition hover:border-cyber-cyan/40 hover:text-cyber-cyan"
+                >
+                  DETAILS ÖFFNEN →
+                </Link>
+              </div>
             </div>
-          ) : (
-            <p className="mt-3 text-sm leading-relaxed text-white/35">
-              Noch kein Lagebild. Nach der ersten Analyse erscheint hier der
-              erste Absatz aus Bedrohungen &amp; Schutzmaßnahmen.
-            </p>
-          )}
+
+            {lagebildParagraph ? (
+              <div className="mt-4 [&_div]:text-[14px] [&_div]:leading-[1.65] [&_div]:text-white/72">
+                <AiSummaryWithLinks text={lagebildParagraph} />
+              </div>
+            ) : (
+              <p className="mt-4 text-sm leading-relaxed text-white/40">
+                Noch kein Analyse-Briefing. Nach der ersten Analyse erscheint
+                hier die KI-Zusammenfassung Ihrer Funde.
+              </p>
+            )}
+
+            <div className="mt-4 flex flex-wrap gap-3 border-t border-white/[0.07] pt-3 font-mono text-[8px] tracking-[.12em] text-white/30">
+              <span>SIG / {signalCount}</span>
+              <span>KANÄLE / {activeChannels}</span>
+              <span>
+                KERNEL /{" "}
+                {overallZone === "extreme" || overallZone === "critical"
+                  ? "ALERT"
+                  : overallZone === "watch"
+                    ? "WATCH"
+                    : "NOMINAL"}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </section>

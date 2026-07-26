@@ -114,7 +114,7 @@ export default function RadarNetworkBackdrop({
   return (
     <canvas
       ref={canvasRef}
-      className={`pointer-events-none absolute inset-0 opacity-[0.55] ${className}`}
+      className={`pointer-events-none absolute inset-0 opacity-[0.28] ${className}`}
       aria-hidden="true"
     />
   );
