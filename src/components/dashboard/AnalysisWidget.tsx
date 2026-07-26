@@ -714,28 +714,38 @@ export default function AnalysisWidget({
           </Link>
         </div>
 
-        {/* Hatched security frame — color from worst channel / briefing score */}
+        {/* Hatched security frame — rotating hazard stripes, score-colored */}
         <div
-          className="relative rounded-lg p-[7px]"
+          className="relative overflow-hidden rounded-lg p-[7px]"
           style={{
-            backgroundImage: `repeating-linear-gradient(
-              -45deg,
-              ${hatchColors.a} 0px,
-              ${hatchColors.a} 7px,
-              ${hatchColors.b} 7px,
-              ${hatchColors.b} 14px
-            )`,
-            boxShadow: `0 0 0 1px ${hatchColors.a}, 0 0 26px ${hatchColors.glow}, 0 12px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)`,
+            boxShadow: `0 0 0 1px ${hatchColors.a}, 0 0 26px ${hatchColors.glow}, 0 12px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.2)`,
           }}
         >
-          <div className="relative overflow-hidden rounded-md border border-white/10 bg-[#0d141e]">
-            {/* Soft grid under text (like earlier cyber panel) */}
+          <div
+            className="briefing-hatch-spin pointer-events-none absolute left-1/2 top-1/2 h-[220%] w-[220%] -translate-x-1/2 -translate-y-1/2"
+            style={{
+              backgroundImage: `repeating-linear-gradient(
+                -45deg,
+                ${hatchColors.a} 0px,
+                ${hatchColors.a} 8px,
+                ${hatchColors.b} 8px,
+                ${hatchColors.b} 16px
+              )`,
+            }}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 overflow-hidden rounded-md border border-white/10 bg-[#0d141e]">
+            {/* Grid: transparent left → ~80% visible right */}
             <div
-              className="pointer-events-none absolute inset-0 opacity-[0.55]"
+              className="pointer-events-none absolute inset-0"
               style={{
                 backgroundImage:
-                  "linear-gradient(rgba(112,231,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(112,231,255,0.05) 1px, transparent 1px)",
+                  "linear-gradient(rgba(112,231,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(112,231,255,0.07) 1px, transparent 1px)",
                 backgroundSize: "22px 22px",
+                WebkitMaskImage:
+                  "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%)",
+                maskImage:
+                  "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%)",
               }}
               aria-hidden="true"
             />
@@ -743,10 +753,10 @@ export default function AnalysisWidget({
             <div
               className={`relative z-10 flex items-center justify-between gap-3 border-b px-4 py-2 font-mono text-[9px] tracking-[.18em] ${
                 briefingTone === "critical"
-                  ? "border-rose-400/30 bg-rose-600/90 text-white"
+                  ? "border-rose-400/20 bg-gradient-to-r from-rose-950/90 via-rose-700/75 to-rose-900/55 text-rose-50"
                   : briefingTone === "watch"
-                    ? "border-amber-300/30 bg-amber-500/90 text-[#1a1203]"
-                    : "border-emerald-300/30 bg-emerald-600/85 text-white"
+                    ? "border-amber-300/25 bg-gradient-to-r from-amber-950/85 via-amber-600/70 to-amber-800/50 text-amber-50"
+                    : "border-emerald-300/25 bg-gradient-to-r from-emerald-950/85 via-emerald-700/70 to-emerald-900/50 text-emerald-50"
               }`}
             >
               <span>

@@ -809,6 +809,26 @@ body::before {
   }
 }
 
+@keyframes briefing-hatch-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.briefing-hatch-spin {
+  animation: briefing-hatch-spin 18s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .briefing-hatch-spin {
+    animation: none;
+  }
+}
+
 @media (max-width: 767px) {
   .hero-atmosphere {
     background:
