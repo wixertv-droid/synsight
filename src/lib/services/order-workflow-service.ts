@@ -479,7 +479,7 @@ export async function uploadSignedVollmacht(input: {
   bytes: Buffer;
 }): Promise<VollmachtRecord> {
   await ensureOrderWorkflowSchema();
-  let vollmacht = await getVollmachtForOrder(input.orderId);
+  const vollmacht = await getVollmachtForOrder(input.orderId);
   if (!vollmacht || vollmacht.userId !== input.userId) {
     // auto-generate template first
     throw new Error("VOLLMACHT_NOT_GENERATED");

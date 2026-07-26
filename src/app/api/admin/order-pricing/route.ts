@@ -77,9 +77,16 @@ export async function PUT(request: Request) {
     );
   }
 
-  const { action: _action, ...payload } = parsed.data;
   const row = await upsertOrderPricing({
-    ...payload,
+    orderType: parsed.data.orderType,
+    label: parsed.data.label,
+    description: parsed.data.description,
+    credits: parsed.data.credits,
+    requiresVollmacht: parsed.data.requiresVollmacht,
+    synsightCapable: parsed.data.synsightCapable,
+    capabilityHint: parsed.data.capabilityHint,
+    sortOrder: parsed.data.sortOrder,
+    isActive: parsed.data.isActive,
     adminId: Number(user.id),
   });
   return NextResponse.json(apiSuccess({ pricing: row }));
