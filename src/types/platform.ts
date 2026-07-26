@@ -22,7 +22,7 @@ export interface RiskSignal {
 
 export interface AnalysisSource {
   label: string;
-  /** 0–100 intensity for bars / diagram glow. */
+  /** 0–100 risk/intensity — higher pushes the radar point toward red. */
   value: number;
   status: "ready" | "scanning";
   /** Absolute signal/hit count when known. */

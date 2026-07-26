@@ -231,6 +231,11 @@ export default async function DashboardPage() {
           signalCount={overview.signalCount}
           activeModuleCount={activeModules.length}
           hasAnyReport={overview.hasAnyReport}
+          overallRiskScore={
+            overview.hasAnyReport
+              ? Math.max(0, Math.min(100, 100 - overview.security.score))
+              : 0
+          }
         />
 
         <div className="space-y-6">
