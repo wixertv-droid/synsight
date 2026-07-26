@@ -9,6 +9,7 @@ import {
 import { parseDigitalLeakRetentionDays } from "@/lib/analysis/retention";
 import { getPublicPlatformSettings } from "@/lib/services/admin-platform-service";
 import { getIdentityForUser } from "@/lib/services/identity-service";
+import { queueThreatsSummaryRegeneration } from "@/lib/services/threats-summary-service";
 import { NextResponse } from "next/server";
 import { validateMutationOrigin } from "@/lib/security/request";
 
@@ -54,10 +55,12 @@ export async function POST(request: Request) {
       },
       async () => {
         const identity = await getIdentityForUser(userId);
-        return runDigitalLeakExposureScan(identity, {
+        const report = await runDigitalLeakExposureScan(identity, {
           userId,
           retentionDays,
         });
+        queueThreatsSummaryRegeneration(userId);
+        return report;
       }
     );
     return NextResponse.json(apiSuccess({ report }));

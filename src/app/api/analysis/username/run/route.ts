@@ -8,6 +8,7 @@ import {
 } from "@/lib/analysis/username/run-analysis";
 import { parseRetentionDays } from "@/lib/analysis/retention";
 import { getIdentityForUser } from "@/lib/services/identity-service";
+import { queueThreatsSummaryRegeneration } from "@/lib/services/threats-summary-service";
 import { NextResponse } from "next/server";
 import { validateMutationOrigin } from "@/lib/security/request";
 
@@ -50,10 +51,12 @@ export async function POST(request: Request) {
       },
       async () => {
         const identity = await getIdentityForUser(userId);
-        return runUsernameIntelligenceScan(identity, {
+        const report = await runUsernameIntelligenceScan(identity, {
           userId,
           retentionDays,
         });
+        queueThreatsSummaryRegeneration(userId);
+        return report;
       }
     );
     return NextResponse.json(apiSuccess({ report }));

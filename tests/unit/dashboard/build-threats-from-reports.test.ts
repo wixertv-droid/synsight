@@ -40,6 +40,7 @@ describe("buildThreatsFromReports", () => {
     expect(threats.length).toBe(1);
     expect(threats[0]?.level).toBe("high");
     expect(threats[0]?.source).toBe("Adobe");
+    expect(threats[0]?.moduleKey).toBe("digital_leak_exposure");
     expect(threats[0]?.userAction).toMatch(/ändern/i);
   });
 
@@ -67,5 +68,6 @@ describe("buildThreatsFromReports", () => {
     expect(threats.length).toBe(1);
     expect(threats[0]?.title).toMatch(/Profil/i);
     expect(threats[0]?.level).toBe("medium");
+    expect(threats[0]?.moduleKey).toBe("google_search");
   });
 });

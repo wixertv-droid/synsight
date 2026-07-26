@@ -1,8 +1,12 @@
+import { createHash } from "node:crypto";
 import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/types";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 import { isLiveSerpSource } from "@/lib/analysis/types";
 import type { UsernameReport } from "@/lib/analysis/username/types";
 import type { RiskLevel } from "@/types/platform";
+
+export type ThreatModuleKey =
+  "google_search" | "digital_leak_exposure" | "username_intelligence";
 
 export interface PlatformThreat {
   id: string;
@@ -12,7 +16,26 @@ export interface PlatformThreat {
   whyItMatters: string;
   userAction: string;
   source: string;
+  /** Analysis module that produced this threat. */
+  moduleKey: ThreatModuleKey;
+  /** Human label for filters / tabs. */
+  moduleLabel: string;
 }
+
+export const THREAT_MODULE_META: Record<
+  ThreatModuleKey,
+  { label: string; short: string }
+> = {
+  google_search: { label: "Google Analyse", short: "GOOGLE" },
+  digital_leak_exposure: {
+    label: "Digital Leak & Exposure",
+    short: "LEAK",
+  },
+  username_intelligence: {
+    label: "Username Intelligence",
+    short: "USERNAME",
+  },
+};
 
 export const threatLevelMeta: Record<
   RiskLevel,
@@ -96,6 +119,8 @@ export function buildThreatsFromReports(input: {
           finding.recommendation ||
           "Passwort ändern, 2FA aktivieren und betroffene Konten prüfen.",
         source: finding.sourceName || "Digital Leak Scan",
+        moduleKey: "digital_leak_exposure",
+        moduleLabel: THREAT_MODULE_META.digital_leak_exposure.label,
       });
     }
   }
@@ -140,6 +165,8 @@ export function buildThreatsFromReports(input: {
           "Treffer prüfen und Sichtbarkeit bei der Quelle reduzieren."
         ).slice(0, 220),
         source: hit.source || "Google Analyse",
+        moduleKey: "google_search",
+        moduleLabel: THREAT_MODULE_META.google_search.label,
       });
     }
   }
@@ -177,10 +204,21 @@ export function buildThreatsFromReports(input: {
           "Profil privat stellen, löschen oder Benutzernamen ändern."
         ).slice(0, 220),
         source: hit.platform || "Username Intelligence",
+        moduleKey: "username_intelligence",
+        moduleLabel: THREAT_MODULE_META.username_intelligence.label,
       });
     }
   }
 
   threats.sort((a, b) => levelRank(a.level) - levelRank(b.level));
   return threats;
+}
+
+/** Stable fingerprint of the current threat set (for cache invalidation). */
+export function threatsInputFingerprint(threats: PlatformThreat[]): string {
+  const payload = threats
+    .map((t) => `${t.id}|${t.level}|${t.moduleKey}`)
+    .sort()
+    .join("\n");
+  return createHash("sha256").update(payload).digest("hex").slice(0, 64);
 }
