@@ -230,6 +230,7 @@ export default async function DashboardPage() {
           sources={overview.analysisSources}
           signalCount={overview.signalCount}
           activeModuleCount={activeModules.length}
+          hasAnyReport={overview.hasAnyReport}
         />
 
         <div className="space-y-6">

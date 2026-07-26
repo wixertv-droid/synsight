@@ -292,14 +292,9 @@ const googleAdapter: ModuleAdapter = (label, raw) => {
   );
 
   const overview = google.managementOverview;
-  const maxCat = Math.max(
-    overview?.social ?? 0,
-    overview?.websites ?? 0,
-    overview?.mentions ?? 0,
-    overview?.documents ?? 0,
-    1
-  );
-  const pct = (n: number) => clampScore((n / maxCat) * 100);
+  const social = overview?.social ?? 0;
+  const websites = overview?.websites ?? 0;
+  const mentions = overview?.mentions ?? 0;
 
   return {
     metrics,
@@ -308,23 +303,27 @@ const googleAdapter: ModuleAdapter = (label, raw) => {
     analysisSources: [
       {
         label: "Datenquellen",
-        value: clampScore(40 + totalLive * 3),
+        value: clampScore(totalLive === 0 ? 0 : 28 + totalLive * 4),
         status: "ready",
+        count: totalLive,
       },
       {
         label: "Profile",
-        value: overview ? pct(overview.social) : 0,
+        value: clampScore(social === 0 ? 0 : 20 + social * 18),
         status: "ready",
+        count: social,
       },
       {
         label: "Webseiten",
-        value: overview ? pct(overview.websites) : 0,
+        value: clampScore(websites === 0 ? 0 : 20 + websites * 16),
         status: "ready",
+        count: websites,
       },
       {
         label: "Erwähnungen",
-        value: overview ? pct(overview.mentions) : 0,
+        value: clampScore(mentions === 0 ? 0 : 18 + mentions * 12),
         status: "ready",
+        count: mentions,
       },
     ],
     lastAnalysisAt: google.generatedAt ?? null,
@@ -419,9 +418,12 @@ const exposureAdapter: ModuleAdapter = (label, raw) => {
         value: clampScore(
           confirmedSources > 0
             ? 35 + confirmedSources * 15 + leakScore * 0.3
-            : 8
+            : leakFindings.length > 0
+              ? 22
+              : 0
         ),
         status: "ready",
+        count: confirmedSources || leakFindings.length,
       },
     ],
     lastAnalysisAt: exposure.completedAt ?? null,
@@ -516,9 +518,10 @@ const usernameAdapter: ModuleAdapter = (label, raw) => {
       {
         label: "Usernames",
         value: clampScore(
-          hitCount > 0 ? 25 + platformCount * 12 + riskScore * 0.25 : 8
+          hitCount > 0 ? 25 + platformCount * 12 + riskScore * 0.25 : 0
         ),
         status: "ready",
+        count: hitCount,
       },
     ],
     lastAnalysisAt: username.completedAt ?? null,

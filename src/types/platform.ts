@@ -22,8 +22,11 @@ export interface RiskSignal {
 
 export interface AnalysisSource {
   label: string;
+  /** 0–100 intensity for bars / diagram glow. */
   value: number;
   status: "ready" | "scanning";
+  /** Absolute signal/hit count when known. */
+  count?: number;
 }
 
 export interface Recommendation {
