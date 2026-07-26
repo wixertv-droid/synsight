@@ -323,6 +323,58 @@ export async function listSynSightOrders(
   }));
 }
 
+/** Delete a user's SynSight order and clear the related „ordered“ hit action. */
+export async function deleteSynSightOrder(input: {
+  userId: number;
+  orderId: number;
+}): Promise<boolean> {
+  await ensureHitActionsSchema();
+  const db = getDatabase();
+
+  if (!db) {
+    const index = memoryOrders.findIndex(
+      (order) => order.id === input.orderId && order.userId === input.userId
+    );
+    if (index < 0) return false;
+    const [removed] = memoryOrders.splice(index, 1);
+    if (removed) {
+      memoryActions.delete(
+        memoryKey(input.userId, removed.sourceModule, removed.hitFingerprint)
+      );
+    }
+    return true;
+  }
+
+  const existing = await db.execute(sql`
+    SELECT
+      id,
+      source_module AS sourceModule,
+      hit_fingerprint AS hitFingerprint
+    FROM synsight_orders
+    WHERE id = ${input.orderId} AND user_id = ${input.userId}
+    LIMIT 1
+  `);
+  const row = asRowArray<{
+    id: number;
+    sourceModule: string;
+    hitFingerprint: string;
+  }>(existing)[0];
+  if (!row) return false;
+
+  await db.execute(sql`
+    DELETE FROM synsight_orders
+    WHERE id = ${input.orderId} AND user_id = ${input.userId}
+  `);
+  await db.execute(sql`
+    DELETE FROM username_hit_actions
+    WHERE user_id = ${input.userId}
+      AND source_module = ${row.sourceModule}
+      AND hit_fingerprint = ${row.hitFingerprint}
+      AND action = 'ordered'
+  `);
+  return true;
+}
+
 /** Strip ignored hits and recompute overview metrics for username reports. */
 export async function filterIgnoredFromUsernameReport(
   userId: number,

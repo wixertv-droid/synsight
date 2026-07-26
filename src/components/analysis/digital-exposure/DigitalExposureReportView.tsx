@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type {
   DigitalExposureFinding,
   DigitalExposureReport,
@@ -23,6 +23,12 @@ import { fingerprintForIntelligenceHit } from "@/lib/analysis/hit-action-state";
 import { useAnalysisHitActions } from "@/hooks/use-analysis-hit-actions";
 import IntelligenceHitCard from "@/components/analysis/intelligence/IntelligenceHitCard";
 import SectionReveal from "@/components/analysis/intelligence/SectionReveal";
+import {
+  countSeverities,
+  matchesSeverityFilter,
+  SeverityRiskFilterBar,
+  type SeverityRiskFilterId,
+} from "@/components/analysis/intelligence/SeverityRiskFilterBar";
 import SystemRail, {
   type SystemRailSection,
 } from "@/components/layout/SystemRail";
@@ -151,6 +157,8 @@ export default function DigitalExposureReportView({
   report: DigitalExposureReport;
   revealSections?: boolean;
 }) {
+  const [severityFilter, setSeverityFilter] =
+    useState<SeverityRiskFilterId>("all");
   const { actionFor, onActionChange, isExcluded } = useAnalysisHitActions(
     "digital_leak_exposure"
   );
@@ -167,11 +175,27 @@ export default function DigitalExposureReportView({
     const overview = buildManagementOverview(activeFindings, report.riskScore);
     const matrix = buildThreatMatrix(activeFindings, report.riskScore);
     const ai = report.aiSummary ?? extractAiSummary(report.findings) ?? null;
-    const leaks = breachFindings(report.findings);
-    const other = allVisible.filter(
+    const leaksAll = breachFindings(report.findings);
+    const otherAll = allVisible.filter(
       (f) =>
         f.type !== "BREACH" &&
         (f.riskLevel !== "low" || f.type === "PASSWORD_EXPOSURE")
+    );
+    const listed = [...leaksAll, ...otherAll];
+    const severityCounts = countSeverities(
+      listed.map((f) => digitalExposureFindingToIntelligenceHit(f).severity)
+    );
+    const leaks = leaksAll.filter((f) =>
+      matchesSeverityFilter(
+        digitalExposureFindingToIntelligenceHit(f).severity,
+        severityFilter
+      )
+    );
+    const other = otherAll.filter((f) =>
+      matchesSeverityFilter(
+        digitalExposureFindingToIntelligenceHit(f).severity,
+        severityFilter
+      )
     );
     return {
       overview,
@@ -179,11 +203,13 @@ export default function DigitalExposureReportView({
       ai,
       leaks,
       other,
+      severityCounts,
       excludedCount: allVisible.length - activeFindings.length,
     };
-  }, [report, isExcluded]);
+  }, [report, isExcluded, severityFilter]);
 
-  const { overview, matrix, ai, leaks, other, excludedCount } = derived;
+  const { overview, matrix, ai, leaks, other, severityCounts, excludedCount } =
+    derived;
 
   return (
     <div className="relative isolate">
@@ -369,13 +395,20 @@ export default function DigitalExposureReportView({
                 </p>
               </div>
 
+              <SeverityRiskFilterBar
+                value={severityFilter}
+                counts={severityCounts}
+                onChange={setSeverityFilter}
+              />
+
               {leaks.length === 0 && other.length === 0 ? (
                 <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.04] px-4 py-8 text-center">
                   <p className="font-mono text-[9px] tracking-[.16em] text-emerald-100/70">
                     CLEAR CHANNEL
                   </p>
                   <p className="mt-3 text-sm text-emerald-100/75">
-                    Keine bekannten Datenlecks zu diesem Identifikator gefunden.
+                    Keine Treffer für diesen Filter. Filter zurücksetzen oder
+                    Analyse erneut starten.
                   </p>
                 </div>
               ) : (

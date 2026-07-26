@@ -24,6 +24,12 @@ import { useAnalysisHitActions } from "@/hooks/use-analysis-hit-actions";
 import type { HitActionState } from "@/lib/analysis/hit-action-state";
 import IntelligenceHitCard from "@/components/analysis/intelligence/IntelligenceHitCard";
 import SectionReveal from "@/components/analysis/intelligence/SectionReveal";
+import {
+  countSeverities,
+  matchesSeverityFilter,
+  SeverityRiskFilterBar,
+  type SeverityRiskFilterId,
+} from "@/components/analysis/intelligence/SeverityRiskFilterBar";
 import SystemRail, {
   type SystemRailSection,
 } from "@/components/layout/SystemRail";
@@ -138,6 +144,8 @@ export default function UsernameIntelligenceReportView({
   revealSections?: boolean;
 }) {
   const [possibleOpen, setPossibleOpen] = useState(false);
+  const [severityFilter, setSeverityFilter] =
+    useState<SeverityRiskFilterId>("all");
   const { actionFor, onActionChange, isExcluded } = useAnalysisHitActions(
     "username_intelligence"
   );
@@ -164,19 +172,30 @@ export default function UsernameIntelligenceReportView({
       buildIdentityFindings(activeHits);
     // Show all hits in lists (ignored/resolved stay visible with badges)
     const { primary, weak } = splitPrimaryAndWeakHits(report.hits);
+    const primaryWithSeverity = primary.map((hit) => ({
+      hit,
+      severity: usernameHitToIntelligenceHit(hit).severity,
+    }));
+    const severityCounts = countSeverities(
+      primaryWithSeverity.map((item) => item.severity)
+    );
+    const filteredPrimary = primaryWithSeverity
+      .filter((item) => matchesSeverityFilter(item.severity, severityFilter))
+      .map((item) => item.hit);
     return {
       overview,
       security,
       findings,
-      primary,
+      primary: filteredPrimary,
       weak,
+      severityCounts,
       excludedCount: report.hits.length - activeHits.length,
       ai: report.aiSummary,
       scanned: report.scannedUsernames?.length
         ? report.scannedUsernames
         : [report.subjectUsername],
     };
-  }, [report, isExcluded]);
+  }, [report, isExcluded, severityFilter]);
 
   const visual = ampelVisual(derived.security.ampel);
 
@@ -379,13 +398,20 @@ export default function UsernameIntelligenceReportView({
                 </p>
               </div>
 
+              <SeverityRiskFilterBar
+                value={severityFilter}
+                counts={derived.severityCounts}
+                onChange={setSeverityFilter}
+              />
+
               {derived.primary.length === 0 ? (
                 <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
                   <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/50">
                     CLEAR CHANNEL
                   </p>
                   <p className="mt-3 text-sm text-white/50">
-                    Keine belastbaren Treffer mit ausreichender Übereinstimmung.
+                    Keine belastbaren Treffer für diesen Filter. Filter
+                    zurücksetzen oder Analyse erneut starten.
                   </p>
                 </div>
               ) : (
@@ -397,7 +423,7 @@ export default function UsernameIntelligenceReportView({
                 />
               )}
 
-              {derived.weak.length > 0 ? (
+              {derived.weak.length > 0 && severityFilter === "all" ? (
                 <section className="rounded-xl border border-white/[0.07] bg-white/[0.015]">
                   <button
                     type="button"

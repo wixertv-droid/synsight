@@ -31,6 +31,8 @@ const STATUS_LABEL: Record<SynSightOrderStatus, string> = {
 export default function OrdersClient() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/orders")
@@ -40,6 +42,30 @@ export default function OrdersClient() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  async function deleteOrder(orderId: number) {
+    setDeletingId(orderId);
+    setError(null);
+    try {
+      const response = await fetch("/api/orders", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.success) {
+        setError(
+          body.error?.message ?? "Auftrag konnte nicht gelöscht werden."
+        );
+        return;
+      }
+      setOrders((prev) => prev.filter((order) => order.id !== orderId));
+    } catch {
+      setError("Verbindung fehlgeschlagen.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <main className="mx-auto max-w-4xl">
@@ -56,6 +82,12 @@ export default function OrdersClient() {
         </p>
       </header>
 
+      {error ? (
+        <p className="mb-4 rounded-lg border border-rose-400/25 bg-rose-400/[0.06] px-3 py-2 text-sm text-rose-100/80">
+          {error}
+        </p>
+      ) : null}
+
       {loading ? (
         <p className="text-sm text-white/35">Aufträge werden geladen…</p>
       ) : orders.length === 0 ? (
@@ -71,7 +103,7 @@ export default function OrdersClient() {
               className="rounded-xl border border-white/[0.08] bg-black/25 px-4 py-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="font-mono text-[8px] tracking-[.12em] text-white/30">
                     {(order.sourceModule
                       ? (MODULE_LABEL[order.sourceModule] ?? order.sourceModule)
@@ -87,9 +119,21 @@ export default function OrdersClient() {
                     {order.hitPlatform}
                   </p>
                 </div>
-                <span className="rounded-md border border-emerald-300/25 bg-emerald-300/[0.06] px-2.5 py-1 font-mono text-[9px] text-emerald-100/80">
-                  {STATUS_LABEL[order.status] ?? order.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md border border-emerald-300/25 bg-emerald-300/[0.06] px-2.5 py-1 font-mono text-[9px] text-emerald-100/80">
+                    {STATUS_LABEL[order.status] ?? order.status}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Auftrag löschen"
+                    title="Auftrag löschen"
+                    disabled={deletingId === order.id}
+                    onClick={() => void deleteOrder(order.id)}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 text-white/45 transition hover:border-rose-300/40 hover:bg-rose-400/[0.08] hover:text-rose-100 disabled:opacity-40"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
               {order.hitUrl ? (
                 <a

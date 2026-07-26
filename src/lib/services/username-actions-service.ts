@@ -4,6 +4,7 @@
 export {
   clearHitAction,
   createSynSightOrder,
+  deleteSynSightOrder,
   filterIgnoredFromUsernameReport,
   listHitActions,
   listIgnoredFingerprints,
