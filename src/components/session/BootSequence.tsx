@@ -79,18 +79,18 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
       "                                           ####                                                                         ",
     ];
 
-    const width = 800;
-    const height = 800;
-    const RADIUS = 230;
-    const ATMOS_RADIUS = 265;
+    const width = 960;
+    const height = 960;
+    const RADIUS = 290;
+    const ATMOS_RADIUS = 335;
     const earthNodes: Vec3[] = [];
     const atmosNodes: AtmosNode[] = [];
     const signals: Signal[] = [];
     let rotationY = 4.3;
     const rotationX = 0.25;
 
-    const latLines = 60;
-    const lonLines = 120;
+    const latLines = 68;
+    const lonLines = 140;
     for (let lat = 0; lat <= latLines; lat++) {
       const phi = (lat / latLines) * Math.PI;
       let currentLonLines = Math.floor(lonLines * Math.sin(phi));
@@ -111,9 +111,10 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
       }
     }
 
-    for (let i = 0; i < 450; i++) {
-      const phi = Math.acos(-1 + (2 * i) / 450);
-      const theta = Math.sqrt(450 * Math.PI) * phi;
+    const ATMOS_COUNT = 720;
+    for (let i = 0; i < ATMOS_COUNT; i++) {
+      const phi = Math.acos(-1 + (2 * i) / ATMOS_COUNT);
+      const theta = Math.sqrt(ATMOS_COUNT * Math.PI) * phi;
       atmosNodes.push({
         x: ATMOS_RADIUS * Math.sin(phi) * Math.cos(theta),
         y: ATMOS_RADIUS * Math.cos(phi),
@@ -126,13 +127,13 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
         const dx = atmosNodes[i].x - atmosNodes[j].x;
         const dy = atmosNodes[i].y - atmosNodes[j].y;
         const dz = atmosNodes[i].z - atmosNodes[j].z;
-        if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 48) {
+        if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 52) {
           atmosNodes[i].neighbors.push(atmosNodes[j]);
           atmosNodes[j].neighbors.push(atmosNodes[i]);
         }
       }
     }
-    for (let i = 0; i < 250; i++) {
+    for (let i = 0; i < 520; i++) {
       const startNode =
         atmosNodes[Math.floor(Math.random() * atmosNodes.length)];
       signals.push({
@@ -142,7 +143,7 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
             Math.floor(Math.random() * startNode.neighbors.length)
           ] || startNode,
         progress: Math.random(),
-        speed: 0.015 + Math.random() * 0.03,
+        speed: 0.018 + Math.random() * 0.035,
       });
     }
 
@@ -164,13 +165,13 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
         const p = project(earthNodes[i]);
         if (p.z < 0) continue;
         const depth = (p.z + RADIUS) / (RADIUS * 2);
-        ctx.fillStyle = `rgba(29, 210, 255, ${Math.max(0.2, depth)})`;
+        ctx.fillStyle = `rgba(41, 182, 246, ${Math.max(0.22, depth)})`;
         ctx.beginPath();
-        ctx.arc(width / 2 + p.x, height / 2 + p.y, 1.0, 0, Math.PI * 2);
+        ctx.arc(width / 2 + p.x, height / 2 + p.y, 1.15, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      ctx.strokeStyle = "rgba(29, 210, 255, 0.05)";
+      ctx.strokeStyle = "rgba(41, 182, 246, 0.06)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       const projectedAtmos = atmosNodes.map((n) => project(n));
@@ -211,14 +212,14 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
           sig.current.z + (sig.target.z - sig.current.z) * sig.progress;
         const p = project({ x: cX, y: cY, z: cZ });
         if (p.z > 0) {
-          ctx.fillStyle = "#fff";
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = "#1dd2ff";
+          ctx.fillStyle = i % 4 === 0 ? "#70e7ff" : "#ffffff";
+          ctx.shadowBlur = 7;
+          ctx.shadowColor = "#29b6f6";
           ctx.beginPath();
           ctx.arc(
             width / 2 + p.x,
             height / 2 + p.y,
-            i % 3 === 0 ? 2 : 1.2,
+            i % 3 === 0 ? 2.2 : 1.35,
             0,
             Math.PI * 2
           );
@@ -386,7 +387,7 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
             ) as HTMLElement | null;
             if (threatLabel) threatLabel.innerText = "THREAT NEUTRALIZED";
           } else {
-            tEl.style.color = "#1dd2ff";
+            tEl.style.color = "#29b6f6";
             pEl.innerText = "Verbunden";
           }
           bEl.style.width = "100%";
@@ -415,7 +416,7 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
     <div className="boot-container" ref={containerRef}>
       <div className="ambient-glow" />
       <div className="globe-wrapper" id="globe-system">
-        <canvas id="globe-canvas" width="800" height="800" />
+        <canvas id="globe-canvas" width="960" height="960" />
         <div className="hotspot node-eu">
           <div className="pulse" />
           <div className="hotspot-label">DEHASHED NODE ONLINE</div>

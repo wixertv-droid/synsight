@@ -2,9 +2,26 @@
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background-color: #070c14;
-  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #fff;
+  background-color: #03050a;
+  background-image:
+    radial-gradient(
+      circle at 76% 5%,
+      rgba(20, 119, 176, 0.13),
+      transparent 32rem
+    ),
+    radial-gradient(
+      circle at 8% 42%,
+      rgba(0, 79, 125, 0.08),
+      transparent 38rem
+    ),
+    linear-gradient(180deg, #03050a 0%, #050913 46%, #03050a 100%);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #e8edf5;
   display: flex;
   overflow: hidden;
   align-items: center;
@@ -12,11 +29,11 @@
 }
 .ambient-glow {
   position: absolute;
-  width: 800px;
-  height: 800px;
+  width: 980px;
+  height: 980px;
   background: radial-gradient(
     circle,
-    rgba(29, 210, 255, 0.05) 0%,
+    rgba(41, 182, 246, 0.08) 0%,
     transparent 60%
   );
   border-radius: 50%;
@@ -24,11 +41,11 @@
 }
 .globe-wrapper {
   position: relative;
-  width: 800px;
-  height: 800px;
+  width: 960px;
+  height: 960px;
   z-index: 5;
   opacity: 0;
-  transform: scale(0.8);
+  transform: scale(0.82);
   transition: all 1.5s cubic-bezier(0.1, 1, 0.1, 1);
   display: flex;
   align-items: center;
@@ -41,8 +58,10 @@
 #globe-canvas {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  filter: drop-shadow(0 0 20px rgba(29, 210, 255, 0.15));
+  filter: drop-shadow(0 0 28px rgba(41, 182, 246, 0.22));
 }
 .hotspot {
   position: absolute;
@@ -50,7 +69,7 @@
   height: 6px;
   background: #fff;
   border-radius: 50%;
-  box-shadow: 0 0 15px 3px #1dd2ff;
+  box-shadow: 0 0 15px 3px #29b6f6;
   opacity: 0;
   transition:
     opacity 1s,
@@ -66,7 +85,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 1px solid #1dd2ff;
+  border: 1px solid #29b6f6;
   animation: radarPulse 2s infinite ease-out;
   transition: border-color 0.5s;
 }
@@ -84,7 +103,7 @@
   left: 15px;
   font-size: 10px;
   color: #fff;
-  text-shadow: 0 0 8px #1dd2ff;
+  text-shadow: 0 0 8px #29b6f6;
   white-space: nowrap;
   letter-spacing: 1px;
   transition:
@@ -128,15 +147,19 @@
 .ui-panel {
   position: absolute;
   z-index: 10;
-  background: #0e1726;
-  border: 1px solid rgba(29, 210, 255, 0.25);
-  border-radius: 6px;
+  background: linear-gradient(
+    145deg,
+    rgba(18, 27, 43, 0.88),
+    rgba(7, 11, 19, 0.72)
+  );
+  border: 1px solid rgba(139, 217, 255, 0.16);
+  border-radius: 10px;
   padding: 15px 20px;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
   width: 280px;
   opacity: 0;
   pointer-events: none;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
   transition:
     opacity 0.4s,
     transform 0.4s;
@@ -148,9 +171,9 @@
   left: -1px;
   width: 12px;
   height: 12px;
-  border-top: 2px solid #1dd2ff;
-  border-left: 2px solid #1dd2ff;
-  border-radius: 6px 0 0 0;
+  border-top: 2px solid #29b6f6;
+  border-left: 2px solid #29b6f6;
+  border-radius: 10px 0 0 0;
 }
 .ui-panel::after {
   content: "";
@@ -159,16 +182,16 @@
   right: -1px;
   width: 12px;
   height: 12px;
-  border-bottom: 2px solid #1dd2ff;
-  border-right: 2px solid #1dd2ff;
-  border-radius: 0 0 6px 0;
+  border-bottom: 2px solid #29b6f6;
+  border-right: 2px solid #29b6f6;
+  border-radius: 0 0 10px 0;
 }
 .panel-header {
   font-size: 13px;
-  color: #1dd2ff;
+  color: #29b6f6;
   letter-spacing: 1px;
   margin-bottom: 10px;
-  font-weight: bold;
+  font-weight: 700;
 }
 .alert-header {
   color: #ff2a55 !important;
@@ -180,11 +203,11 @@
 }
 .panel-body {
   font-size: 11px;
-  color: #a0aec0;
+  color: rgba(232, 237, 245, 0.58);
   line-height: 1.8;
 }
 .cyan-text {
-  color: #1dd2ff;
+  color: #29b6f6;
   font-weight: bold;
 }
 .red-text {
@@ -209,8 +232,8 @@
 .panel-progress-fill {
   width: 0%;
   height: 100%;
-  background: #1dd2ff;
-  box-shadow: 0 0 8px #1dd2ff;
+  background: #29b6f6;
+  box-shadow: 0 0 8px rgba(41, 182, 246, 0.7);
   transition: width 0.1s;
 }
 .alert-fill {
@@ -221,20 +244,22 @@
   background: #00ff88 !important;
   box-shadow: 0 0 8px #00ff88 !important;
 }
+
+/* Panels closer to the globe */
 .panel-top-left {
-  top: 12%;
-  left: 8%;
-  transform: translateX(-30px);
+  top: 16%;
+  left: calc(50% - 560px);
+  transform: translateX(-24px);
 }
 .panel-mid-left {
-  top: 40%;
-  left: 5%;
-  transform: translateX(-30px);
+  top: 44%;
+  left: calc(50% - 580px);
+  transform: translateX(-24px);
 }
 .panel-mid-right {
-  top: 40%;
-  right: 5%;
-  transform: translateX(30px);
+  top: 42%;
+  right: calc(50% - 580px);
+  transform: translateX(24px);
 }
 .ui-panel.visible {
   opacity: 1;
@@ -242,15 +267,15 @@
 }
 .connect-line {
   position: absolute;
-  width: 130px;
+  width: 110px;
   height: 2px;
   pointer-events: none;
 }
 .connect-line line {
-  stroke: #1dd2ff;
+  stroke: #29b6f6;
   stroke-width: 1.5;
-  opacity: 0.5;
-  filter: drop-shadow(0 0 5px #1dd2ff);
+  opacity: 0.45;
+  filter: drop-shadow(0 0 5px rgba(41, 182, 246, 0.7));
   transition: stroke 0.4s;
 }
 .line-tl {
@@ -276,67 +301,102 @@
     transform 1s cubic-bezier(0.2, 1, 0.3, 1);
 }
 .boot-interface.finished {
-  transform: translateY(300px) scale(0.65);
+  transform: translateY(340px) scale(0.58);
 }
 
-/* ANGEPASSTES LOGO (Wie im Dashboard Header) */
+/* Brand + loader — larger, site-aligned */
 .brand-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
   font-family:
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
-    Roboto,
     sans-serif;
-  font-size: 50px;
+  font-size: clamp(64px, 9vw, 108px);
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 0.06em;
+  line-height: 1;
 }
 #brand-syn {
-  color: #e2e8f0;
+  color: rgba(255, 255, 255, 0.92);
 }
 #brand-sight {
-  color: #1dd2ff;
+  color: #29b6f6;
 }
 .sub-brand {
-  font-size: 12px;
-  letter-spacing: 5px;
-  color: #1dd2ff;
-  margin-bottom: 45px;
-  opacity: 0.8;
+  font-size: 13px;
+  letter-spacing: 0.42em;
+  color: #70e7ff;
+  margin-bottom: 36px;
+  opacity: 0.75;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .cyber-loader {
-  width: 480px;
+  width: min(720px, 86vw);
 }
 .loader-header,
 .loader-footer {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
-  color: #1dd2ff;
-  margin-bottom: 8px;
-  letter-spacing: 1.5px;
+  font-size: 12px;
+  color: #29b6f6;
+  margin-bottom: 10px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .loader-footer {
-  margin-top: 8px;
-  color: #64748b;
+  margin-top: 10px;
+  color: rgba(232, 237, 245, 0.35);
 }
 .segmented-bar-container {
   display: flex;
   gap: 4px;
-  height: 6px;
+  height: 9px;
 }
 .segment {
   flex: 1;
-  background: rgba(29, 210, 255, 0.1);
+  background: rgba(41, 182, 246, 0.12);
   border-radius: 1px;
 }
 .segment.filled {
-  background: #1dd2ff;
-  box-shadow: 0 0 10px #1dd2ff;
+  background: #29b6f6;
+  box-shadow: 0 0 12px rgba(41, 182, 246, 0.75);
+}
+
+@media (max-width: 1280px) {
+  .globe-wrapper {
+    width: min(86vw, 820px);
+    height: min(86vw, 820px);
+  }
+  .ambient-glow {
+    width: min(90vw, 860px);
+    height: min(90vw, 860px);
+  }
+  .panel-top-left {
+    left: 4%;
+  }
+  .panel-mid-left {
+    left: 3%;
+  }
+  .panel-mid-right {
+    right: 3%;
+  }
+}
+
+@media (max-width: 900px) {
+  .ui-panel {
+    display: none;
+  }
+  .globe-wrapper {
+    width: min(94vw, 640px);
+    height: min(94vw, 640px);
+  }
+  .boot-interface.finished {
+    transform: translateY(220px) scale(0.7);
+  }
 }
