@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDatabase } from "@/lib/database/client";
 import { userThreatsSummaries } from "@/lib/database/schema";
 import type { PlatformThreat } from "@/lib/dashboard/build-threats-from-reports";
+import { ensureThreatsSummarySchema } from "@/lib/dashboard/ensure-threats-summary-schema";
 
 export type ThreatsSummaryStatus = "ready" | "generating" | "failed" | "empty";
 
@@ -48,6 +49,7 @@ export async function getThreatsSummaryForUser(
 ): Promise<ThreatsSummaryRecord | null> {
   const db = getDatabase();
   if (!db) return null;
+  await ensureThreatsSummarySchema();
   try {
     const rows = await db
       .select()
@@ -57,7 +59,20 @@ export async function getThreatsSummaryForUser(
     return rows[0] ? mapRow(rows[0]) : null;
   } catch (error) {
     console.error("[threats-summary] read failed", error);
-    return null;
+    // Retry once after forced schema ensure (e.g. first deploy without migrate).
+    const ok = await ensureThreatsSummarySchema(true);
+    if (!ok) return null;
+    try {
+      const rows = await db
+        .select()
+        .from(userThreatsSummaries)
+        .where(eq(userThreatsSummaries.userId, userId))
+        .limit(1);
+      return rows[0] ? mapRow(rows[0]) : null;
+    } catch (retryError) {
+      console.error("[threats-summary] read retry failed", retryError);
+      return null;
+    }
   }
 }
 
@@ -74,10 +89,12 @@ export async function upsertThreatsSummary(input: {
 }): Promise<ThreatsSummaryRecord | null> {
   const db = getDatabase();
   if (!db) return null;
+  await ensureThreatsSummarySchema();
 
   const now = new Date().toISOString().slice(0, 23).replace("T", " ");
-  try {
-    await db
+
+  async function writeOnce(): Promise<ThreatsSummaryRecord | null> {
+    await db!
       .insert(userThreatsSummaries)
       .values({
         userId: input.userId,
@@ -105,9 +122,20 @@ export async function upsertThreatsSummary(input: {
         },
       });
     return getThreatsSummaryForUser(input.userId);
+  }
+
+  try {
+    return await writeOnce();
   } catch (error) {
     console.error("[threats-summary] upsert failed", error);
-    return null;
+    const ok = await ensureThreatsSummarySchema(true);
+    if (!ok) return null;
+    try {
+      return await writeOnce();
+    } catch (retryError) {
+      console.error("[threats-summary] upsert retry failed", retryError);
+      return null;
+    }
   }
 }
 

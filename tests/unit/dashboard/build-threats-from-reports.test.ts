@@ -23,6 +23,8 @@ describe("buildThreatsFromReports", () => {
           sourceName: "Adobe",
           recommendation: "Passwort ändern",
           identifierMasked: "a***@x.de",
+          dataClasses: ["Email"],
+          sourceUrl: "https://example.com/leak",
         },
       ],
       actions: [
@@ -42,6 +44,8 @@ describe("buildThreatsFromReports", () => {
     expect(threats[0]?.source).toBe("Adobe");
     expect(threats[0]?.moduleKey).toBe("digital_leak_exposure");
     expect(threats[0]?.userAction).toMatch(/ändern/i);
+    expect(threats[0]?.orderType).toBeTruthy();
+    expect(threats[0]?.selfGuide.length).toBeGreaterThan(0);
   });
 
   it("maps actionable google hits into threats", () => {
@@ -52,12 +56,15 @@ describe("buildThreatsFromReports", () => {
           id: "h1",
           title: "Öffentliches Profil",
           snippet: "Sichtbare Daten",
+          url: "https://example.com/p",
           source: "example.com",
+          category: "social",
           sourceType: "serpapi_google",
           severity: "high",
           risk: "review",
           shouldAct: true,
           whyRelevantPlain: "Zuordenbar",
+          whyFound: "Über Google gefunden",
           recommendation: "Privat stellen",
         },
       ],
@@ -69,5 +76,8 @@ describe("buildThreatsFromReports", () => {
     expect(threats[0]?.title).toMatch(/Profil/i);
     expect(threats[0]?.level).toBe("medium");
     expect(threats[0]?.moduleKey).toBe("google_search");
+    expect(threats[0]?.url).toBe("https://example.com/p");
+    expect(threats[0]?.actionTitle).toBe("Öffentliches Profil");
+    expect(threats[0]?.orderType).toBe("google_removal");
   });
 });

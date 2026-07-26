@@ -17,6 +17,12 @@ const sample: PlatformThreat[] = [
     source: "Adobe",
     moduleKey: "digital_leak_exposure",
     moduleLabel: "Digital Leak & Exposure",
+    url: null,
+    actionPlatform: "Adobe",
+    actionTitle: "Leak",
+    orderType: "privacy_request",
+    selfGuide: ["Passwort ändern"],
+    aiExplain: { whyFound: "Leak", whyRelevant: "Risiko" },
   },
   {
     id: "threat-google-b",
@@ -28,6 +34,12 @@ const sample: PlatformThreat[] = [
     source: "example.com",
     moduleKey: "google_search",
     moduleLabel: "Google Analyse",
+    url: "https://example.com/profile",
+    actionPlatform: "example.com",
+    actionTitle: "Profil",
+    orderType: "google_removal",
+    selfGuide: ["Öffnen und prüfen"],
+    aiExplain: { whyFound: "SERP", whyRelevant: "Öffentlich" },
   },
 ];
 

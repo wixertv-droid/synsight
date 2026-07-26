@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
 import AiSummaryWithLinks from "@/components/analysis/intelligence/AiSummaryWithLinks";
+import ThreatHitActions from "@/components/dashboard/threats/ThreatHitActions";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import StatusDot from "@/components/ui/StatusDot";
 import {
@@ -12,6 +13,7 @@ import {
   type PlatformThreat,
   type ThreatModuleKey,
 } from "@/lib/dashboard/build-threats-from-reports";
+import type { HitActionState } from "@/lib/analysis/hit-action-state";
 import type { RiskLevel } from "@/types/platform";
 
 const levelTone: Record<
@@ -66,6 +68,97 @@ export default function ThreatsCenter({
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>("all");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
+
+  const queueLagebildRefresh = useCallback(() => {
+    let pollTimer: number | undefined;
+    let cancelled = false;
+
+    async function pollUntilReady(attemptsLeft: number) {
+      if (cancelled || attemptsLeft <= 0) {
+        setSummaryLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch("/api/dashboard/threats/summary");
+        const body = await response.json().catch(() => null);
+        if (response.ok && body?.success && body.data?.summary) {
+          const row = body.data.summary;
+          setSummary({
+            summaryText: row.summaryText ?? "",
+            status: row.status ?? "ready",
+            generatedAt: row.generatedAt ?? null,
+            threatCount: row.threatCount ?? 0,
+            modules: row.modules ?? [],
+          });
+          if (row.status === "generating" || body.data.needsGeneration) {
+            pollTimer = window.setTimeout(
+              () => void pollUntilReady(attemptsLeft - 1),
+              2500
+            );
+            return;
+          }
+        }
+      } catch {
+        pollTimer = window.setTimeout(
+          () => void pollUntilReady(attemptsLeft - 1),
+          3000
+        );
+        return;
+      }
+      setSummaryLoading(false);
+    }
+
+    setSummaryLoading(true);
+    void fetch("/api/dashboard/threats/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ force: true }),
+    })
+      .then((r) => r.json())
+      .then((body) => {
+        if (!body?.success) {
+          setSummaryLoading(false);
+          return;
+        }
+        const row = body.data?.summary;
+        if (row) {
+          setSummary({
+            summaryText: row.summaryText ?? "",
+            status: row.status ?? "generating",
+            generatedAt: row.generatedAt ?? null,
+            threatCount: row.threatCount ?? 0,
+            modules: row.modules ?? [],
+          });
+        }
+        if (row?.status === "generating" || body.data?.async) {
+          pollTimer = window.setTimeout(() => void pollUntilReady(24), 2000);
+        } else {
+          setSummaryLoading(false);
+        }
+      })
+      .catch(() => {
+        setSummaryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (pollTimer) window.clearTimeout(pollTimer);
+    };
+  }, []);
+
+  const handleExcluded = useCallback(
+    (threatId: string, action: HitActionState) => {
+      if (action !== "ignored" && action !== "resolved") return;
+      setHiddenIds((prev) => {
+        const next = new Set(prev);
+        next.add(threatId);
+        return next;
+      });
+      queueLagebildRefresh();
+    },
+    [queueLagebildRefresh]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -175,15 +268,20 @@ export default function ThreatsCenter({
 
   const showGenerating = summaryLoading || summary?.status === "generating";
 
+  const visibleThreats = useMemo(
+    () => threats.filter((threat) => !hiddenIds.has(threat.id)),
+    [threats, hiddenIds]
+  );
+
   const availableModules = useMemo(() => {
-    const keys = new Set(threats.map((t) => t.moduleKey));
+    const keys = new Set(visibleThreats.map((t) => t.moduleKey));
     return (Object.keys(THREAT_MODULE_META) as ThreatModuleKey[]).filter((k) =>
       keys.has(k)
     );
-  }, [threats]);
+  }, [visibleThreats]);
 
   const filtered = useMemo(() => {
-    return threats.filter((threat) => {
+    return visibleThreats.filter((threat) => {
       if (moduleFilter !== "all" && threat.moduleKey !== moduleFilter) {
         return false;
       }
@@ -192,7 +290,7 @@ export default function ThreatsCenter({
       }
       return true;
     });
-  }, [threats, moduleFilter, levelFilter]);
+  }, [visibleThreats, moduleFilter, levelFilter]);
 
   const counts = levels.map((level) => ({
     level,
@@ -263,10 +361,12 @@ export default function ThreatsCenter({
           <FilterChip
             active={moduleFilter === "all"}
             onClick={() => setModuleFilter("all")}
-            label={`Alle Module (${threats.length})`}
+            label={`Alle Module (${visibleThreats.length})`}
           />
           {availableModules.map((key) => {
-            const count = threats.filter((t) => t.moduleKey === key).length;
+            const count = visibleThreats.filter(
+              (t) => t.moduleKey === key
+            ).length;
             return (
               <FilterChip
                 key={key}
@@ -336,16 +436,16 @@ export default function ThreatsCenter({
               KEINE BEDROHUNGEN
             </p>
             <h3 className="mt-3 text-lg font-medium text-white/80">
-              {threats.length === 0
+              {visibleThreats.length === 0
                 ? "Noch keine priorisierten Funde"
                 : "Keine Treffer für diesen Filter"}
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/35">
-              {threats.length === 0
+              {visibleThreats.length === 0
                 ? "Sobald Google-, Leak- oder Username-Analysen vorliegen, erscheinen hier die relevanten Risiken mit Handlungsschritten."
                 : "Passen Sie Modul- oder Risiko-Filter an, um weitere Einträge zu sehen."}
             </p>
-            {threats.length === 0 ? (
+            {visibleThreats.length === 0 ? (
               <Link
                 href="/dashboard/analysis"
                 className="mt-5 inline-flex text-xs text-cyber-blue/80 transition hover:text-cyber-cyan"
@@ -418,6 +518,8 @@ export default function ThreatsCenter({
                     </p>
                   </div>
                 </div>
+
+                <ThreatHitActions threat={threat} onExcluded={handleExcluded} />
               </article>
             );
           })
