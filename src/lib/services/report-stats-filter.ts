@@ -1,5 +1,7 @@
 /**
  * Server-side exclusion of ignored/resolved hits from dashboard KPIs (RC-3 H-01).
+ * Rebuilds scorecards / category stats so radar channels move back toward green
+ * when hits are ignored or marked resolved.
  */
 import { computeOverallRisk } from "@/lib/analysis/risk-assessment";
 import {
@@ -13,7 +15,9 @@ import {
   type DigitalExposureReport,
 } from "@/lib/analysis/digital-exposure/types";
 import { fingerprintForIntelligenceHit } from "@/lib/analysis/hit-action-state";
+import { buildReportScorecard } from "@/lib/analysis/hit-intel";
 import type { IntelligenceReport } from "@/lib/analysis/types";
+import { rebuildGoogleCategoryStats } from "@/lib/dashboard/channel-risk";
 import {
   filterIgnoredFromUsernameReport,
   listExcludedFromStatsFingerprints,
@@ -36,11 +40,16 @@ export async function filterIgnoredFromGoogleReport(
     return !excluded.has(fp);
   });
   const { riskScore, riskLevel } = computeOverallRisk(hits);
+  const scorecard = buildReportScorecard(hits);
+  const managementOverview = rebuildGoogleCategoryStats(hits);
+
   return {
     ...report,
     hits,
     riskScore,
     riskLevel,
+    scorecard,
+    managementOverview,
     buckets: {
       ...report.buckets,
       total: hits.length,

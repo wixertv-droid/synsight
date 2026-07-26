@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { AnalysisSource } from "@/types/platform";
 import StatusDot from "@/components/ui/StatusDot";
 import InfoTooltip from "@/components/ui/InfoTooltip";
@@ -57,7 +58,7 @@ const CHANNEL_ORDER = [
   "Usernames",
 ] as const;
 
-type RiskZone = "safe" | "watch" | "critical" | "idle";
+type RiskZone = "safe" | "watch" | "critical" | "extreme" | "idle";
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
@@ -74,23 +75,32 @@ function zoneForRisk(risk: number): RiskZone {
   if (risk <= 0) return "idle";
   if (risk < 34) return "safe";
   if (risk < 67) return "watch";
-  return "critical";
+  if (risk < 85) return "critical";
+  return "extreme";
 }
 
 function zoneColor(zone: RiskZone): string {
   if (zone === "safe") return "#34d399";
   if (zone === "watch") return "#fbbf24";
   if (zone === "critical") return "#f43f5e";
+  if (zone === "extreme") return "#ff6b8a";
   return "rgba(112,231,255,.35)";
 }
 
-/** Map 0–100 risk → radius inside the three rings. */
+/**
+ * Map 0–100 risk → radius.
+ * Extreme risk (>85) breaks past the outer red ring.
+ */
 function riskToRadius(risk: number): number {
   if (risk <= 0) return 18;
-  const t = clamp(risk / 100, 0, 1);
-  // Ease toward outer rings so medium stays readable in yellow
-  const eased = t ** 0.92;
-  return 28 + eased * (RISK_RINGS[2].r - 10);
+  const greenEnd = RISK_RINGS[0].r;
+  const yellowEnd = RISK_RINGS[1].r;
+  const redEnd = RISK_RINGS[2].r;
+  const overflow = 186;
+  if (risk < 34) return 22 + (risk / 34) * (greenEnd - 26);
+  if (risk < 67) return greenEnd + ((risk - 34) / 33) * (yellowEnd - greenEnd);
+  if (risk < 85) return yellowEnd + ((risk - 67) / 18) * (redEnd - yellowEnd);
+  return redEnd + ((risk - 85) / 15) * (overflow - redEnd);
 }
 
 function polar(angleDeg: number, radius: number): { x: number; y: number } {
@@ -130,11 +140,26 @@ export default function AnalysisWidget({
   /** 0–100 aggregated risk (worse = higher). */
   overallRiskScore?: number;
 }) {
+  const router = useRouter();
   const [running, setRunning] = useState(true);
   const [cycle, setCycle] = useState(0);
   const [tick, setTick] = useState(0);
   /** 0→1 settle animation for points sliding outward. */
   const [settle, setSettle] = useState(0);
+
+  // After ignore/resolve on analysis pages, refresh KPIs when returning.
+  useEffect(() => {
+    const onFocus = () => router.refresh();
+    const onVis = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [router]);
 
   useEffect(() => {
     if (!running) return;
@@ -242,7 +267,7 @@ export default function AnalysisWidget({
             </InfoTooltip>
           </p>
           <p className="mt-1 text-[10px] text-white/22">
-            Risiko-Radar · je kritischer, desto weiter außen
+            Risiko-Radar · kritische Funde brechen aus dem äußeren Ring
           </p>
         </div>
         <button
@@ -267,7 +292,7 @@ export default function AnalysisWidget({
             />
           </div>
           <svg
-            viewBox="0 0 600 336"
+            viewBox="-24 -16 648 368"
             className="relative z-10 h-full min-h-[285px] w-full"
             aria-label="Risiko-Radar mit drei Zonen"
           >
@@ -380,22 +405,27 @@ export default function AnalysisWidget({
                 })}
             </g>
 
-            {/* Channel risk points — slide outward with settle */}
+            {/* Channel risk points — slide outward; extreme breaks past red */}
             <g filter="url(#point-glow)">
               {channels.map((ch) => {
                 const r = 16 + (ch.targetR - 16) * settle;
                 const pos = polar(ch.angle, r);
                 const color = zoneColor(ch.active ? ch.zone : "idle");
-                const core = ch.active ? 4.2 + ch.risk / 45 : 2.4;
+                const extreme = ch.zone === "extreme";
+                const core = ch.active
+                  ? extreme
+                    ? 6.2 + ch.risk / 40
+                    : 3.6 + ch.risk / 50
+                  : 2.4;
                 return (
                   <g key={`pt-${ch.label}`}>
                     {ch.active ? (
                       <circle
                         cx={pos.x}
                         cy={pos.y}
-                        r={core + 10}
+                        r={core + (extreme ? 16 : 10)}
                         fill={color}
-                        opacity={0.12}
+                        opacity={extreme ? 0.2 : 0.12}
                       />
                     ) : null}
                     <circle
@@ -404,8 +434,8 @@ export default function AnalysisWidget({
                       r={core + 5}
                       fill="none"
                       stroke={color}
-                      strokeOpacity={ch.active ? 0.45 : 0.15}
-                      strokeWidth="1.2"
+                      strokeOpacity={ch.active ? 0.5 : 0.15}
+                      strokeWidth={extreme ? 1.8 : 1.2}
                     />
                     <circle
                       cx={pos.x}
@@ -414,6 +444,30 @@ export default function AnalysisWidget({
                       fill={color}
                       opacity={ch.active ? 0.95 : 0.35}
                     />
+                    {extreme ? (
+                      <circle
+                        cx={pos.x}
+                        cy={pos.y}
+                        r={core + 9}
+                        fill="none"
+                        stroke={color}
+                        strokeOpacity="0.35"
+                        strokeDasharray="2 3"
+                      >
+                        <animate
+                          attributeName="r"
+                          values={`${core + 7};${core + 14};${core + 7}`}
+                          dur="1.6s"
+                          repeatCount="indefinite"
+                        />
+                        <animate
+                          attributeName="stroke-opacity"
+                          values="0.45;0.05;0.45"
+                          dur="1.6s"
+                          repeatCount="indefinite"
+                        />
+                      </circle>
+                    ) : null}
                   </g>
                 );
               })}
@@ -469,11 +523,13 @@ export default function AnalysisWidget({
                         opacity="0.85"
                       >
                         {ch.count} ·{" "}
-                        {ch.zone === "critical"
-                          ? "HOT"
-                          : ch.zone === "watch"
-                            ? "WARN"
-                            : "OK"}
+                        {ch.zone === "extreme"
+                          ? "EXTREM"
+                          : ch.zone === "critical"
+                            ? "HOT"
+                            : ch.zone === "watch"
+                              ? "WARN"
+                              : "OK"}
                       </text>
                     ) : null}
                   </g>
@@ -488,7 +544,7 @@ export default function AnalysisWidget({
             <span className="flex items-center gap-2">
               <span className="text-emerald-300/50">● SICHER</span>
               <span className="text-amber-300/50">● AUFFÄLLIG</span>
-              <span className="text-rose-300/55">● KRITISCH</span>
+              <span className="text-rose-300/55">● KRITISCH+</span>
             </span>
             <span>
               CORRELATION / {correlationActive ? "ACTIVE" : "STANDBY"}
@@ -550,8 +606,9 @@ export default function AnalysisWidget({
               AKTUELLER PROZESS
               <InfoTooltip label="Risiko-Radar">
                 Grüne Zone = geringes Risiko. Gelb = auffällig. Rot = kritisch.
-                Je schlechter der Kanal, desto weiter rutscht der Punkt nach
-                außen.
+                Extreme Funde brechen aus dem äußeren Ring. Ignorierte oder als
+                erledigt markierte Treffer zählen nicht mehr — der Punkt wandert
+                zurück Richtung Grün.
               </InfoTooltip>
             </p>
             <p className="mt-3 text-[10px] leading-relaxed text-white/42">
@@ -560,7 +617,7 @@ export default function AnalysisWidget({
                 : running
                   ? "Signale werden auf dem Risiko-Radar positioniert…"
                   : `${signalCount} Signal(e) · ${activeChannels} Kanäle · Kernlage ${
-                      overallZone === "critical"
+                      overallZone === "extreme" || overallZone === "critical"
                         ? "kritisch"
                         : overallZone === "watch"
                           ? "auffällig"

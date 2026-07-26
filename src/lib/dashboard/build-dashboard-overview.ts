@@ -14,6 +14,12 @@ import type {
   RiskLevel,
   RiskSignal,
 } from "@/types/platform";
+import {
+  partitionGoogleHits,
+  scoreHitsRisk,
+  scoreLeakFindings,
+  scoreUsernameHits,
+} from "@/lib/dashboard/channel-risk";
 
 export interface DashboardSecurityStatus {
   score: number;
@@ -292,9 +298,11 @@ const googleAdapter: ModuleAdapter = (label, raw) => {
   );
 
   const overview = google.managementOverview;
-  const social = overview?.social ?? 0;
-  const websites = overview?.websites ?? 0;
-  const mentions = overview?.mentions ?? 0;
+  const parts = partitionGoogleHits(liveHits);
+  const profileRisk = scoreHitsRisk(parts.profile);
+  const websiteRisk = scoreHitsRisk(parts.websites);
+  const mentionRisk = scoreHitsRisk(parts.mentions);
+  const dataSourceRisk = scoreHitsRisk(parts.allLive);
 
   return {
     metrics,
@@ -303,27 +311,27 @@ const googleAdapter: ModuleAdapter = (label, raw) => {
     analysisSources: [
       {
         label: "Datenquellen",
-        value: clampScore(totalLive === 0 ? 0 : 28 + totalLive * 4),
+        value: dataSourceRisk,
         status: "ready",
-        count: totalLive,
+        count: parts.allLive.length,
       },
       {
         label: "Profile",
-        value: clampScore(social === 0 ? 0 : 20 + social * 18),
+        value: profileRisk,
         status: "ready",
-        count: social,
+        count: parts.profile.length || overview?.social || 0,
       },
       {
         label: "Webseiten",
-        value: clampScore(websites === 0 ? 0 : 20 + websites * 16),
+        value: websiteRisk,
         status: "ready",
-        count: websites,
+        count: parts.websites.length || overview?.websites || 0,
       },
       {
         label: "Erwähnungen",
-        value: clampScore(mentions === 0 ? 0 : 18 + mentions * 12),
+        value: mentionRisk,
         status: "ready",
-        count: mentions,
+        count: parts.mentions.length || overview?.mentions || 0,
       },
     ],
     lastAnalysisAt: google.generatedAt ?? null,
@@ -408,6 +416,8 @@ const exposureAdapter: ModuleAdapter = (label, raw) => {
     })
   );
 
+  const leakScored = scoreLeakFindings(leakFindings);
+
   return {
     metrics,
     riskSignals,
@@ -415,15 +425,9 @@ const exposureAdapter: ModuleAdapter = (label, raw) => {
     analysisSources: [
       {
         label: "Leaks",
-        value: clampScore(
-          confirmedSources > 0
-            ? 35 + confirmedSources * 15 + leakScore * 0.3
-            : leakFindings.length > 0
-              ? 22
-              : 0
-        ),
+        value: leakScored.value,
         status: "ready",
-        count: confirmedSources || leakFindings.length,
+        count: leakScored.count,
       },
     ],
     lastAnalysisAt: exposure.completedAt ?? null,
@@ -510,6 +514,8 @@ const usernameAdapter: ModuleAdapter = (label, raw) => {
     })
   );
 
+  const usernameScored = scoreUsernameHits(username.hits ?? []);
+
   return {
     metrics,
     riskSignals,
@@ -517,11 +523,9 @@ const usernameAdapter: ModuleAdapter = (label, raw) => {
     analysisSources: [
       {
         label: "Usernames",
-        value: clampScore(
-          hitCount > 0 ? 25 + platformCount * 12 + riskScore * 0.25 : 0
-        ),
+        value: usernameScored.value,
         status: "ready",
-        count: hitCount,
+        count: usernameScored.count,
       },
     ],
     lastAnalysisAt: username.completedAt ?? null,
