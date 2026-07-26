@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–030 migration files", () => {
+  it("ships ordered 001–031 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -40,6 +40,7 @@ describe("database migrations workflow", () => {
       "028_username_hit_actions_and_orders.sql",
       "029_rc3_hardening.sql",
       "030_user_threats_summaries.sql",
+      "031_worker_role.sql",
     ]);
   });
 
@@ -185,6 +186,11 @@ describe("database migrations workflow", () => {
     expect(sql).toContain("ENUM('admin', 'support', 'user')");
     expect(sql).toContain("supportHoursStart");
     expect(sql).toContain("Europe/Berlin");
+  });
+
+  it("adds worker role in 031", () => {
+    const sql = readFileSync(path.join(dir, "031_worker_role.sql"), "utf8");
+    expect(sql).toContain("ENUM('admin', 'support', 'worker', 'user')");
   });
 
   it("adds platform settings and api credentials in 013", () => {

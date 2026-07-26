@@ -52,6 +52,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  if (
+    pathname === "/dashboard/auftraege" ||
+    pathname.startsWith("/dashboard/auftraege/")
+  ) {
+    if (session.role !== "admin" && session.role !== "worker") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
   return NextResponse.next();
 }
 

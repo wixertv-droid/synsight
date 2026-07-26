@@ -194,7 +194,9 @@ export default function DashboardSidebar({
                 ? "ADMIN ACCOUNT"
                 : user.role === "support"
                   ? "SUPPORT ACCOUNT"
-                  : "USER ACCOUNT"}
+                  : user.role === "worker"
+                    ? "WORKER ACCOUNT"
+                    : "USER ACCOUNT"}
             </p>
           </div>
           <LogoutButton />

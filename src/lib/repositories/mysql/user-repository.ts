@@ -12,7 +12,14 @@ function normalizeRole(
   role: string | null | undefined,
   username: string
 ): UserRole {
-  if (role === "admin" || role === "support" || role === "user") return role;
+  if (
+    role === "admin" ||
+    role === "support" ||
+    role === "worker" ||
+    role === "user"
+  ) {
+    return role;
+  }
   return username.toLowerCase() === "admin" ? "admin" : "user";
 }
 

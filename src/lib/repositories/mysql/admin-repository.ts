@@ -32,7 +32,7 @@ const userFields = {
 
 function mapUser(
   row: Omit<AdminUserSummary, "aliases"> & {
-    role: "admin" | "support" | "user";
+    role: "admin" | "support" | "worker" | "user";
   },
   aliases: string[] = []
 ): AdminUserSummary {
@@ -82,7 +82,7 @@ export function createMysqlAdminRepository(
         rows.map(async (row) =>
           mapUser(
             row as Omit<AdminUserSummary, "aliases"> & {
-              role: "admin" | "support" | "user";
+              role: "admin" | "support" | "worker" | "user";
             },
             await aliasesFor(row.id)
           )
@@ -101,7 +101,7 @@ export function createMysqlAdminRepository(
       if (!row) return null;
       return mapUser(
         row as Omit<AdminUserSummary, "aliases"> & {
-          role: "admin" | "support" | "user";
+          role: "admin" | "support" | "worker" | "user";
         },
         await aliasesFor(userId)
       );
@@ -262,7 +262,7 @@ export function createMysqlAdminRepository(
         rows.map(async (row) => ({
           ...mapUser(
             row as Omit<AdminUserSummary, "aliases"> & {
-              role: "admin" | "support" | "user";
+              role: "admin" | "support" | "worker" | "user";
             },
             await aliasesFor(row.id)
           ),

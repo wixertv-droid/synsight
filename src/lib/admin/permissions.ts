@@ -15,6 +15,11 @@ export function canAccessSupportDesk(role: UserRole): boolean {
   return isStaffRole(role);
 }
 
+/** Orders desk (Aufträge): admin and worker only — not normal users or support. */
+export function canAccessOrdersDesk(role: UserRole): boolean {
+  return role === "admin" || role === "worker";
+}
+
 export function canAccessAdminSection(
   role: UserRole,
   sectionId: AdminSectionId | "overview"
