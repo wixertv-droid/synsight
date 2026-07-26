@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import BootSequence from "@/components/session/BootScreen";
+import BootSequence from "@/components/session/BootSequence";
 import ShutdownSequence from "@/components/session/ShutdownScreen";
 import {
   PlatformSessionFxProvider,
