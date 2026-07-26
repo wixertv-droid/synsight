@@ -237,7 +237,31 @@ export default function AnalysisWidget({
 
   const activeChannels = channels.filter((c) => c.active).length;
   const correlationActive = hasAnyReport && signalCount > 0;
-  const overallZone = zoneForRisk(overallRiskScore);
+
+  /** Worst channel risk + passed score — matches Threat Scope, not inverted security %. */
+  const effectiveRiskScore = useMemo(() => {
+    const channelMax = channels.reduce(
+      (max, ch) => Math.max(max, ch.active ? ch.risk : 0),
+      0
+    );
+    let score = Math.max(overallRiskScore, channelMax);
+    // Align frame with briefing wording when KI text is more severe than KPI score.
+    const brief = lagebildParagraph.toLowerCase();
+    if (
+      /kritisch|hohem risiko|hohe[rn]? risiko|extre|alarm/.test(brief) &&
+      score < 67
+    ) {
+      score = Math.max(score, 78);
+    } else if (
+      /auffällig|mittlerem risiko|mittlere[rn]? risiko|erhöht/.test(brief) &&
+      score < 34
+    ) {
+      score = Math.max(score, 50);
+    }
+    return clamp(score, 0, 100);
+  }, [channels, overallRiskScore, lagebildParagraph]);
+
+  const overallZone = zoneForRisk(effectiveRiskScore);
   const hubColor = zoneColor(
     correlationActive ? (overallZone === "idle" ? "safe" : overallZone) : "idle"
   );
@@ -266,6 +290,25 @@ export default function AnalysisWidget({
       : overallZone === "watch"
         ? "watch"
         : "safe";
+
+  const hatchColors =
+    briefingTone === "critical"
+      ? {
+          a: "rgba(244,63,94,0.95)",
+          b: "rgba(80,10,24,0.92)",
+          glow: "rgba(244,63,94,0.35)",
+        }
+      : briefingTone === "watch"
+        ? {
+            a: "rgba(251,191,36,0.95)",
+            b: "rgba(70,45,8,0.92)",
+            glow: "rgba(251,191,36,0.3)",
+          }
+        : {
+            a: "rgba(52,211,153,0.9)",
+            b: "rgba(8,45,32,0.92)",
+            glow: "rgba(52,211,153,0.25)",
+          };
 
   const sidebarSources = useMemo(() => {
     const ordered = CHANNEL_ORDER.map(
@@ -671,91 +714,97 @@ export default function AnalysisWidget({
           </Link>
         </div>
 
-        {/* Security-warning frame: color by risk, 3D bevel like classified briefing */}
+        {/* Hatched security frame — color from worst channel / briefing score */}
         <div
-          className={`relative rounded-lg p-[3px] ${
-            briefingTone === "critical"
-              ? "bg-gradient-to-b from-rose-300 via-rose-600 to-rose-950 shadow-[0_0_28px_rgba(244,63,94,0.28),0_10px_28px_rgba(0,0,0,0.45)]"
-              : briefingTone === "watch"
-                ? "bg-gradient-to-b from-amber-200 via-amber-500 to-amber-950 shadow-[0_0_28px_rgba(251,191,36,0.22),0_10px_28px_rgba(0,0,0,0.45)]"
-                : "bg-gradient-to-b from-emerald-200 via-emerald-500 to-emerald-950 shadow-[0_0_28px_rgba(52,211,153,0.2),0_10px_28px_rgba(0,0,0,0.45)]"
-          }`}
+          className="relative rounded-lg p-[7px]"
+          style={{
+            backgroundImage: `repeating-linear-gradient(
+              -45deg,
+              ${hatchColors.a} 0px,
+              ${hatchColors.a} 7px,
+              ${hatchColors.b} 7px,
+              ${hatchColors.b} 14px
+            )`,
+            boxShadow: `0 0 0 1px ${hatchColors.a}, 0 0 26px ${hatchColors.glow}, 0 12px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)`,
+          }}
         >
-          <div
-            className={`rounded-[5px] p-px ${
-              briefingTone === "critical"
-                ? "bg-gradient-to-b from-rose-200/80 to-rose-950"
-                : briefingTone === "watch"
-                  ? "bg-gradient-to-b from-amber-100/80 to-amber-950"
-                  : "bg-gradient-to-b from-emerald-100/70 to-emerald-950"
-            }`}
-          >
-            <div className="overflow-hidden rounded-[4px] border border-white/10 bg-[#101822]">
-              <div
-                className={`flex items-center justify-between gap-3 px-4 py-2 font-mono text-[9px] tracking-[.2em] ${
-                  briefingTone === "critical"
-                    ? "bg-rose-600 text-white"
-                    : briefingTone === "watch"
-                      ? "bg-amber-500 text-[#1a1203]"
-                      : "bg-emerald-500 text-[#04140e]"
+          <div className="relative overflow-hidden rounded-md border border-white/10 bg-[#0d141e]">
+            {/* Soft grid under text (like earlier cyber panel) */}
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.55]"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(112,231,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(112,231,255,0.05) 1px, transparent 1px)",
+                backgroundSize: "22px 22px",
+              }}
+              aria-hidden="true"
+            />
+
+            <div
+              className={`relative z-10 flex items-center justify-between gap-3 border-b px-4 py-2 font-mono text-[9px] tracking-[.18em] ${
+                briefingTone === "critical"
+                  ? "border-rose-400/30 bg-rose-600/90 text-white"
+                  : briefingTone === "watch"
+                    ? "border-amber-300/30 bg-amber-500/90 text-[#1a1203]"
+                    : "border-emerald-300/30 bg-emerald-600/85 text-white"
+              }`}
+            >
+              <span>
+                {briefingTone === "critical"
+                  ? "⚠ SECURITY ALERT · KRITISCH"
+                  : briefingTone === "watch"
+                    ? "⚠ SECURITY WATCH · AUFFÄLLIG"
+                    : hasAnyReport
+                      ? "● SECURITY CLEARANCE · STABIL"
+                      : "● SECURITY STANDBY"}
+                <span className="ml-2 opacity-70">
+                  SCORE {Math.round(effectiveRiskScore)}
+                </span>
+              </span>
+              <Link
+                href="/dashboard/threats"
+                className={`underline-offset-2 hover:underline ${
+                  briefingTone === "watch"
+                    ? "text-[#1a1203]/80"
+                    : "text-white/90"
                 }`}
               >
-                <span>
-                  {briefingTone === "critical"
-                    ? "⚠ SECURITY ALERT · KRITISCH"
-                    : briefingTone === "watch"
-                      ? "⚠ SECURITY WATCH · AUFFÄLLIG"
-                      : hasAnyReport
-                        ? "● SECURITY CLEARANCE · STABIL"
-                        : "● SECURITY STANDBY"}
-                </span>
-                <Link
-                  href="/dashboard/threats"
-                  className={`underline-offset-2 hover:underline ${
-                    briefingTone === "watch"
-                      ? "text-[#1a1203]/80"
-                      : "text-white/85"
-                  }`}
-                >
-                  DETAILS →
-                </Link>
+                DETAILS →
+              </Link>
+            </div>
+
+            <div className="relative z-10 px-5 py-5 md:px-6 md:py-6">
+              <div className="border-b border-white/[0.08] pb-3">
+                <p className="font-mono text-[10px] tracking-[.18em] text-cyber-cyan/65">
+                  ANALYSE-BRIEFING
+                </p>
+                <p className="mt-1 text-base font-medium tracking-[-.015em] text-white/92">
+                  KI-Zusammenfassung Ihrer Sicherheitslage
+                </p>
               </div>
 
-              <div className="px-5 py-5 md:px-6 md:py-6">
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.08] pb-3">
-                  <div>
-                    <p className="font-mono text-[10px] tracking-[.18em] text-white/45">
-                      ANALYSE-BRIEFING
-                    </p>
-                    <p className="mt-1 text-base font-medium tracking-[-.015em] text-white/92">
-                      KI-Zusammenfassung Ihrer Sicherheitslage
-                    </p>
-                  </div>
+              {lagebildParagraph ? (
+                <div className="mt-4 [&_div]:!text-[16px] [&_div]:!leading-[1.7] [&_div]:!text-white/85 md:[&_div]:!text-[17px]">
+                  <AiSummaryWithLinks text={lagebildParagraph} />
                 </div>
+              ) : (
+                <p className="mt-4 text-base leading-relaxed text-white/45 md:text-[17px]">
+                  Noch kein Analyse-Briefing. Nach der ersten Analyse erscheint
+                  hier die KI-Zusammenfassung Ihrer Funde.
+                </p>
+              )}
 
-                {lagebildParagraph ? (
-                  <div className="mt-4 [&_div]:!text-[16px] [&_div]:!leading-[1.7] [&_div]:!text-white/85 md:[&_div]:!text-[17px]">
-                    <AiSummaryWithLinks text={lagebildParagraph} />
-                  </div>
-                ) : (
-                  <p className="mt-4 text-base leading-relaxed text-white/45 md:text-[17px]">
-                    Noch kein Analyse-Briefing. Nach der ersten Analyse
-                    erscheint hier die KI-Zusammenfassung Ihrer Funde.
-                  </p>
-                )}
-
-                <div className="mt-5 flex flex-wrap gap-4 border-t border-white/[0.08] pt-3 font-mono text-[9px] tracking-[.12em] text-white/35">
-                  <span>SIG / {signalCount}</span>
-                  <span>KANÄLE / {activeChannels}</span>
-                  <span>
-                    KERNEL /{" "}
-                    {briefingTone === "critical"
-                      ? "ALERT"
-                      : briefingTone === "watch"
-                        ? "WATCH"
-                        : "NOMINAL"}
-                  </span>
-                </div>
+              <div className="mt-5 flex flex-wrap gap-4 border-t border-white/[0.08] pt-3 font-mono text-[9px] tracking-[.12em] text-white/35">
+                <span>SIG / {signalCount}</span>
+                <span>KANÄLE / {activeChannels}</span>
+                <span>
+                  KERNEL /{" "}
+                  {briefingTone === "critical"
+                    ? "ALERT"
+                    : briefingTone === "watch"
+                      ? "WATCH"
+                      : "NOMINAL"}
+                </span>
               </div>
             </div>
           </div>
