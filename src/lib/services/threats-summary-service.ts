@@ -1,8 +1,6 @@
-import {
-  threatsInputFingerprint,
-  type PlatformThreat,
-} from "@/lib/dashboard/build-threats-from-reports";
+import type { PlatformThreat } from "@/lib/dashboard/build-threats-from-reports";
 import { loadUserThreatBundle } from "@/lib/dashboard/load-user-threats";
+import { threatsInputFingerprint } from "@/lib/dashboard/threats-fingerprint";
 import { summarizeThreatsWithGemini } from "@/lib/dashboard/threats-gemini";
 import {
   getThreatsSummaryForUser,

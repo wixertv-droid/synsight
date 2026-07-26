@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/types";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 import { isLiveSerpSource } from "@/lib/analysis/types";
@@ -212,13 +211,4 @@ export function buildThreatsFromReports(input: {
 
   threats.sort((a, b) => levelRank(a.level) - levelRank(b.level));
   return threats;
-}
-
-/** Stable fingerprint of the current threat set (for cache invalidation). */
-export function threatsInputFingerprint(threats: PlatformThreat[]): string {
-  const payload = threats
-    .map((t) => `${t.id}|${t.level}|${t.moduleKey}`)
-    .sort()
-    .join("\n");
-  return createHash("sha256").update(payload).digest("hex").slice(0, 64);
 }

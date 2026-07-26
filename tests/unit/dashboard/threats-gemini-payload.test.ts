@@ -4,7 +4,7 @@ import {
   type ThreatsGeminiPayload,
 } from "@/lib/dashboard/threats-gemini";
 import type { PlatformThreat } from "@/lib/dashboard/build-threats-from-reports";
-import { threatsInputFingerprint } from "@/lib/dashboard/build-threats-from-reports";
+import { threatsInputFingerprint } from "@/lib/dashboard/threats-fingerprint";
 
 const sample: PlatformThreat[] = [
   {
