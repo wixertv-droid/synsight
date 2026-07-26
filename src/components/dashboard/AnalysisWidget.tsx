@@ -6,10 +6,14 @@ import { useRouter } from "next/navigation";
 import type { AnalysisSource } from "@/types/platform";
 import StatusDot from "@/components/ui/StatusDot";
 import InfoTooltip from "@/components/ui/InfoTooltip";
+import RadarNetworkBackdrop from "@/components/dashboard/RadarNetworkBackdrop";
+import AiSummaryWithLinks from "@/components/analysis/intelligence/AiSummaryWithLinks";
 import { guidance } from "@/lib/content/guidance";
 
 const CX = 300;
-const CY = 168;
+const CY = 178;
+/** Vertical foreshortening for a 3D disc look. */
+const PERSPECTIVE_Y = 0.42;
 
 /** Concentric risk zones — worse results sit further out toward red. */
 const RISK_RINGS = [
@@ -107,7 +111,7 @@ function polar(angleDeg: number, radius: number): { x: number; y: number } {
   const rad = (angleDeg * Math.PI) / 180;
   return {
     x: CX + Math.cos(rad) * radius,
-    y: CY + Math.sin(rad) * radius,
+    y: CY + Math.sin(rad) * radius * PERSPECTIVE_Y,
   };
 }
 
@@ -119,11 +123,12 @@ function labelAnchor(
   y: number;
   anchor: "start" | "middle" | "end";
 } {
-  const pos = polar(angleDeg, radius + 22);
+  const pos = polar(angleDeg, radius + 28);
   let anchor: "start" | "middle" | "end" = "middle";
   if (angleDeg > -60 && angleDeg < 60) anchor = "start";
   else if (angleDeg > 120 || angleDeg < -120) anchor = "end";
-  return { ...pos, anchor };
+  // Lift labels slightly above the disc rim for readability
+  return { x: pos.x, y: pos.y - 6, anchor };
 }
 
 export default function AnalysisWidget({
@@ -132,6 +137,7 @@ export default function AnalysisWidget({
   activeModuleCount = 0,
   hasAnyReport = false,
   overallRiskScore = 0,
+  lagebildParagraph = "",
 }: {
   sources: AnalysisSource[];
   signalCount?: number;
@@ -139,6 +145,8 @@ export default function AnalysisWidget({
   hasAnyReport?: boolean;
   /** 0–100 aggregated risk (worse = higher). */
   overallRiskScore?: number;
+  /** First paragraph of Bedrohungen KI-Lagebild. */
+  lagebildParagraph?: string;
 }) {
   const router = useRouter();
   const [running, setRunning] = useState(true);
@@ -284,23 +292,39 @@ export default function AnalysisWidget({
       <div className="grid min-h-[405px] md:grid-cols-[1fr_220px]">
         <div className="relative overflow-hidden border-b border-white/[0.06] p-5 md:border-b-0 md:border-r md:p-6">
           <div
-            className="analysis-field absolute inset-0 opacity-40"
+            className="analysis-field absolute inset-0 opacity-25"
             aria-hidden="true"
-          >
-            <div
-              className={`analysis-scan-line absolute inset-x-0 h-20 ${running ? "block" : "hidden"}`}
-            />
-          </div>
+          />
+          <RadarNetworkBackdrop />
+          <div
+            className={`analysis-scan-line pointer-events-none absolute inset-x-0 z-[1] h-20 ${running ? "block" : "hidden"}`}
+            aria-hidden="true"
+          />
+          {/* Soft floor under the 3D disc */}
+          <div
+            className="pointer-events-none absolute bottom-[18%] left-1/2 z-[1] h-8 w-[72%] -translate-x-1/2 rounded-[100%] bg-cyber-cyan/[0.06] blur-xl"
+            aria-hidden="true"
+          />
           <svg
-            viewBox="-24 -16 648 368"
-            className="relative z-10 h-full min-h-[285px] w-full"
+            viewBox="-24 -8 648 360"
+            className="relative z-10 h-full min-h-[300px] w-full"
             aria-label="Risiko-Radar mit drei Zonen"
+            style={{
+              filter:
+                "drop-shadow(0 18px 28px rgba(0,0,0,0.45)) drop-shadow(0 2px 12px rgba(41,182,246,0.12))",
+            }}
           >
             <defs>
-              <radialGradient id="hub-glow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor={hubColor} stopOpacity="0.35" />
+              <radialGradient id="hub-glow" cx="50%" cy="42%" r="58%">
+                <stop offset="0%" stopColor={hubColor} stopOpacity="0.55" />
+                <stop offset="55%" stopColor={hubColor} stopOpacity="0.14" />
                 <stop offset="100%" stopColor={hubColor} stopOpacity="0" />
               </radialGradient>
+              <linearGradient id="disc-shade" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
+                <stop offset="45%" stopColor="rgba(255,255,255,0)" />
+                <stop offset="100%" stopColor="rgba(0,0,0,0.35)" />
+              </linearGradient>
               <filter
                 id="point-glow"
                 x="-80%"
@@ -314,43 +338,96 @@ export default function AnalysisWidget({
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
+              <filter
+                id="disc-shadow"
+                x="-20%"
+                y="-20%"
+                width="140%"
+                height="160%"
+              >
+                <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="b" />
+                <feOffset dy="14" result="o" />
+                <feComponentTransfer>
+                  <feFuncA type="linear" slope="0.35" />
+                </feComponentTransfer>
+                <feMerge>
+                  <feMergeNode />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
             </defs>
 
-            {/* Risk rings: green → yellow → red */}
-            <g>
+            {/* Ground contact shadow */}
+            <ellipse
+              cx={CX}
+              cy={CY + RISK_RINGS[2].r * PERSPECTIVE_Y + 18}
+              rx={RISK_RINGS[2].r * 0.92}
+              ry={14}
+              fill="rgba(0,0,0,0.45)"
+              opacity="0.55"
+            />
+
+            {/* Risk rings as foreshortened ellipses (3D disc) */}
+            <g filter="url(#disc-shadow)">
               {[...RISK_RINGS].reverse().map((ring) => (
-                <circle
-                  key={ring.id}
+                <g key={ring.id}>
+                  <ellipse
+                    cx={CX}
+                    cy={CY}
+                    rx={ring.r}
+                    ry={ring.r * PERSPECTIVE_Y}
+                    fill={ring.fill}
+                    stroke={ring.stroke}
+                    strokeWidth="1.6"
+                    strokeDasharray={ring.id === "watch" ? "4 6" : undefined}
+                  />
+                  {/* Rim highlight for depth */}
+                  <ellipse
+                    cx={CX}
+                    cy={CY - 1}
+                    rx={ring.r}
+                    ry={ring.r * PERSPECTIVE_Y}
+                    fill="none"
+                    stroke="rgba(255,255,255,0.12)"
+                    strokeWidth="0.7"
+                    strokeDasharray={`${Math.PI * ring.r * 0.35} ${Math.PI * ring.r}`}
+                    opacity="0.7"
+                  />
+                </g>
+              ))}
+              <ellipse
+                cx={CX}
+                cy={CY}
+                rx={RISK_RINGS[2].r}
+                ry={RISK_RINGS[2].r * PERSPECTIVE_Y}
+                fill="url(#disc-shade)"
+                opacity="0.55"
+                pointerEvents="none"
+              />
+              {correlationActive ? (
+                <ellipse
                   cx={CX}
                   cy={CY}
-                  r={ring.r}
-                  fill={ring.fill}
-                  stroke={ring.stroke}
-                  strokeWidth="1.4"
-                  strokeDasharray={ring.id === "watch" ? "4 6" : undefined}
-                />
-              ))}
-              {/* Soft rotating sweep */}
-              {correlationActive ? (
-                <path
-                  d={`M${CX} ${CY} L${CX} ${CY - RISK_RINGS[2].r}`}
-                  stroke="rgba(112,231,255,.18)"
-                  strokeWidth="18"
-                  strokeLinecap="round"
-                  opacity="0.55"
+                  rx={RISK_RINGS[2].r}
+                  ry={RISK_RINGS[2].r * PERSPECTIVE_Y}
+                  fill="none"
+                  stroke="rgba(112,231,255,.22)"
+                  strokeWidth="14"
+                  strokeDasharray="40 220"
+                  opacity="0.45"
                   transform={`rotate(${(tick * 0.8) % 360} ${CX} ${CY})`}
-                  style={{ filter: "blur(6px)" }}
+                  style={{ filter: "blur(5px)" }}
                 />
               ) : null}
             </g>
 
-            {/* Zone labels */}
+            {/* Zone labels along near rim */}
             <g fontFamily="monospace" fontSize="7" letterSpacing="1.4">
               {RISK_RINGS.map((ring) => (
                 <text
                   key={`zl-${ring.id}`}
-                  x={CX + 6}
-                  y={CY - ring.r + 11}
+                  x={CX + 8}
+                  y={CY - ring.r * PERSPECTIVE_Y + 10}
                   fill={ring.labelColor}
                 >
                   {ring.label}
@@ -473,19 +550,32 @@ export default function AnalysisWidget({
               })}
             </g>
 
-            {/* Hub */}
-            <circle cx={CX} cy={CY} r="38" fill="url(#hub-glow)" />
-            <circle
+            {/* Hub — stacked ellipses for a raised core */}
+            <ellipse
               cx={CX}
               cy={CY}
-              r="22"
-              fill={hubColor}
-              opacity={correlationActive ? 0.22 : 0.1}
+              rx="40"
+              ry={40 * PERSPECTIVE_Y}
+              fill="url(#hub-glow)"
             />
-            <circle cx={CX} cy={CY} r="6.5" fill={hubColor} />
+            <ellipse
+              cx={CX}
+              cy={CY - 2}
+              rx="22"
+              ry={22 * PERSPECTIVE_Y}
+              fill={hubColor}
+              opacity={correlationActive ? 0.28 : 0.12}
+            />
+            <ellipse
+              cx={CX}
+              cy={CY - 4}
+              rx="7"
+              ry={7 * PERSPECTIVE_Y + 2}
+              fill={hubColor}
+            />
             <text
               x={CX}
-              y={CY + 22}
+              y={CY + 18}
               textAnchor="middle"
               fill="rgba(255,255,255,.4)"
               fontFamily="monospace"
@@ -628,24 +718,50 @@ export default function AnalysisWidget({
         </div>
       </div>
       <div className="border-t border-white/[0.06] p-5 md:p-6">
-        <p className="mb-3 flex items-center gap-2 font-mono text-[8px] tracking-[.14em] text-cyber-cyan/45">
-          ANALYSE STARTEN
-          <InfoTooltip label="Analysecenter">
-            {guidance.dashboard.analysisCenter}
-          </InfoTooltip>
-        </p>
-        <Link
-          href="/dashboard/analysis"
-          className="inline-flex items-center gap-2 rounded-lg border border-cyber-blue/20 bg-cyber-blue/[0.06] px-4 py-2.5 text-xs text-cyber-cyan/80 transition hover:border-cyber-blue/35 hover:text-cyber-cyan"
-        >
-          Zum Analysecenter
-          {activeModuleCount > 0 ? (
-            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
-              {activeModuleCount} MODULE
-            </span>
-          ) : null}
-          <span aria-hidden="true">→</span>
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="flex items-center gap-2 font-mono text-[8px] tracking-[.14em] text-cyber-cyan/45">
+            ANALYSE STARTEN
+            <InfoTooltip label="Analysecenter">
+              {guidance.dashboard.analysisCenter}
+            </InfoTooltip>
+          </p>
+          <Link
+            href="/dashboard/analysis"
+            className="inline-flex items-center gap-2 rounded-lg border border-cyber-blue/20 bg-cyber-blue/[0.06] px-4 py-2.5 text-xs text-cyber-cyan/80 transition hover:border-cyber-blue/35 hover:text-cyber-cyan"
+          >
+            Zum Analysecenter
+            {activeModuleCount > 0 ? (
+              <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+                {activeModuleCount} MODULE
+              </span>
+            ) : null}
+            <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+
+        <div className="mt-5 min-h-[120px] rounded-xl border border-white/[0.07] bg-black/25 px-4 py-4 md:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-mono text-[8px] tracking-[.14em] text-amber-200/45">
+              1. LAGEBILD · BEDROHUNGEN &amp; SCHUTZMASSNAHMEN
+            </p>
+            <Link
+              href="/dashboard/threats"
+              className="font-mono text-[8px] tracking-[.12em] text-white/30 transition hover:text-cyber-cyan/70"
+            >
+              VOLLSTÄNDIG →
+            </Link>
+          </div>
+          {lagebildParagraph ? (
+            <div className="mt-3 line-clamp-6 [&_div]:text-[13px] [&_div]:leading-relaxed [&_div]:text-white/55">
+              <AiSummaryWithLinks text={lagebildParagraph} />
+            </div>
+          ) : (
+            <p className="mt-3 text-sm leading-relaxed text-white/35">
+              Noch kein Lagebild. Nach der ersten Analyse erscheint hier der
+              erste Absatz aus Bedrohungen &amp; Schutzmaßnahmen.
+            </p>
+          )}
+        </div>
       </div>
     </section>
   );

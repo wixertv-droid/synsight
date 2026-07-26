@@ -27,7 +27,9 @@ import {
   type DashboardModuleInput,
 } from "@/lib/dashboard/build-dashboard-overview";
 import { resolveActiveAnalyses } from "@/lib/dashboard/resolve-active-analyses";
+import { extractLagebildFirstParagraph } from "@/lib/dashboard/extract-lagebild-paragraph";
 import { getPublicPricingCatalog } from "@/lib/services/pricing-service";
+import { getThreatsSummaryView } from "@/lib/services/threats-summary-service";
 
 export const metadata: Metadata = {
   title: "Dashboard — SynSight Command Center",
@@ -103,6 +105,18 @@ export default async function DashboardPage() {
   }
 
   const overview = buildDashboardOverview({ modules });
+
+  let lagebildParagraph = "";
+  if (userId > 0) {
+    try {
+      const threatsView = await getThreatsSummaryView(userId);
+      lagebildParagraph = extractLagebildFirstParagraph(
+        threatsView.summary?.summaryText
+      );
+    } catch {
+      lagebildParagraph = "";
+    }
+  }
 
   const now = new Date();
   const formattedDate = new Intl.DateTimeFormat("de-DE", {
@@ -236,6 +250,7 @@ export default async function DashboardPage() {
               ? Math.max(0, Math.min(100, 100 - overview.security.score))
               : 0
           }
+          lagebildParagraph={lagebildParagraph}
         />
 
         <div className="space-y-6">
