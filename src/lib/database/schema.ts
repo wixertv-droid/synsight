@@ -1679,6 +1679,7 @@ export const synsightOrders = mysqlTable(
       .notNull()
       .default("vorbereitet"),
     note: text("note"),
+    staffMessage: varchar("staff_message", { length: 1000 }),
     creditsCharged: int("credits_charged", { unsigned: true }),
     requiresVollmacht: boolean("requires_vollmacht").notNull().default(false),
     vollmachtId: bigint("vollmacht_id", { mode: "number", unsigned: true }),
@@ -1746,7 +1747,12 @@ export const orderVollmachten = mysqlTable(
     orderId: bigint("order_id", { mode: "number", unsigned: true })
       .notNull()
       .references(() => synsightOrders.id, { onDelete: "cascade" }),
-    status: mysqlEnum("status", ["generated", "uploaded", "verified"])
+    status: mysqlEnum("status", [
+      "generated",
+      "uploaded",
+      "verified",
+      "rejected",
+    ])
       .notNull()
       .default("generated"),
     templateHtml: text("template_html").notNull(),
@@ -1754,6 +1760,8 @@ export const orderVollmachten = mysqlTable(
     signedPath: varchar("signed_path", { length: 500 }),
     signedMime: varchar("signed_mime", { length: 120 }),
     signedFileName: varchar("signed_file_name", { length: 255 }),
+    rejectReason: varchar("reject_reason", { length: 1000 }),
+    rejectedAt: timestamp("rejected_at", { mode: "string", fsp: 3 }),
     generatedAt: timestamp("generated_at", { mode: "string", fsp: 3 })
       .notNull()
       .default(sql`CURRENT_TIMESTAMP(3)`),

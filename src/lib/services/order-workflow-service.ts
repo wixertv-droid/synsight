@@ -37,7 +37,12 @@ export interface OrderReviewItem {
   capabilityReason: string;
   requiresVollmacht: boolean;
   vollmachtStatus:
-    "not_required" | "missing" | "generated" | "uploaded" | "verified";
+    | "not_required"
+    | "missing"
+    | "generated"
+    | "uploaded"
+    | "verified"
+    | "rejected";
   vollmachtId: number | null;
   pricingActive: boolean;
 }
@@ -60,14 +65,32 @@ export interface VollmachtRecord {
   id: number;
   userId: number;
   orderId: number;
-  status: "generated" | "uploaded" | "verified";
+  status: "generated" | "uploaded" | "verified" | "rejected";
   templateHtml: string;
   templatePath: string | null;
   signedPath: string | null;
   signedMime: string | null;
   signedFileName: string | null;
+  rejectReason: string | null;
+  rejectedAt: string | null;
   generatedAt: string;
   uploadedAt: string | null;
+}
+
+export interface DeskOrderDetail {
+  order: SynSightOrderRecord & {
+    userEmail?: string | null;
+    username?: string | null;
+    creditsCharged?: number | null;
+    submittedAt?: string | null;
+    requiresVollmacht?: boolean;
+    capabilityOk?: boolean | null;
+    capabilityReason?: string | null;
+    staffMessage?: string | null;
+  };
+  pricing: OrderPricingRecord | null;
+  vollmacht: VollmachtRecord | null;
+  summaryPoints: string[];
 }
 
 const memoryVollmachten = new Map<number, VollmachtRecord>();
@@ -151,6 +174,8 @@ async function getVollmachtForOrder(
       template_html AS templateHtml, template_path AS templatePath,
       signed_path AS signedPath, signed_mime AS signedMime,
       signed_file_name AS signedFileName,
+      reject_reason AS rejectReason,
+      rejected_at AS rejectedAt,
       generated_at AS generatedAt, uploaded_at AS uploadedAt
     FROM order_vollmachten
     WHERE order_id = ${orderId}
@@ -168,6 +193,8 @@ async function getVollmachtForOrder(
     signedPath: (row.signedPath as string | null) ?? null,
     signedMime: (row.signedMime as string | null) ?? null,
     signedFileName: (row.signedFileName as string | null) ?? null,
+    rejectReason: (row.rejectReason as string | null) ?? null,
+    rejectedAt: (row.rejectedAt as string | null) ?? null,
     generatedAt: String(row.generatedAt),
     uploadedAt: (row.uploadedAt as string | null) ?? null,
   };
@@ -313,7 +340,9 @@ export async function reviewOrders(input: {
   const vollmachtMissingCount = items.filter(
     (i) =>
       i.requiresVollmacht &&
-      (i.vollmachtStatus === "missing" || i.vollmachtStatus === "generated")
+      (i.vollmachtStatus === "missing" ||
+        i.vollmachtStatus === "generated" ||
+        i.vollmachtStatus === "rejected")
   ).length;
   const totalCredits = items
     .filter((i) => i.capable)
@@ -383,7 +412,7 @@ export async function generateVollmachtForOrder(input: {
   await ensureOrderWorkflowSchema();
   const orders = await listSynSightOrders(input.userId);
   const order = orders.find((row) => row.id === input.orderId);
-  if (!order || order.status !== "vorbereitet") {
+  if (!order) {
     throw new Error("ORDER_NOT_FOUND");
   }
 
@@ -418,16 +447,20 @@ export async function generateVollmachtForOrder(input: {
   const now = new Date().toISOString();
 
   if (!db) {
+    const keepUploaded =
+      existing?.status === "uploaded" || existing?.status === "verified";
     const record: VollmachtRecord = {
       id: existing?.id ?? memoryVollmachtSeq++,
       userId: input.userId,
       orderId: input.orderId,
-      status: existing?.status === "uploaded" ? "uploaded" : "generated",
+      status: keepUploaded ? existing!.status : "generated",
       templateHtml: html,
       templatePath: relativePath,
       signedPath: existing?.signedPath ?? null,
       signedMime: existing?.signedMime ?? null,
       signedFileName: existing?.signedFileName ?? null,
+      rejectReason: existing?.rejectReason ?? null,
+      rejectedAt: existing?.rejectedAt ?? null,
       generatedAt: now,
       uploadedAt: existing?.uploadedAt ?? null,
     };
@@ -524,6 +557,8 @@ export async function uploadSignedVollmacht(input: {
       signedPath: relativePath,
       signedMime: input.mimeType,
       signedFileName: input.fileName,
+      rejectReason: null,
+      rejectedAt: null,
       uploadedAt: now,
     };
     memoryVollmachten.set(updated.id, updated);
@@ -537,8 +572,15 @@ export async function uploadSignedVollmacht(input: {
       signed_path = ${relativePath},
       signed_mime = ${input.mimeType},
       signed_file_name = ${input.fileName},
+      reject_reason = NULL,
+      rejected_at = NULL,
       uploaded_at = CURRENT_TIMESTAMP(3)
     WHERE id = ${vollmacht.id} AND user_id = ${input.userId}
+  `);
+  await db.execute(sql`
+    UPDATE synsight_orders
+    SET staff_message = NULL
+    WHERE id = ${input.orderId} AND user_id = ${input.userId}
   `);
 
   const refreshed = await getVollmachtForOrder(input.orderId);
@@ -742,6 +784,7 @@ export async function updateDeskOrderStatus(input: {
     "offen" | "in_bearbeitung" | "erledigt" | "abgelehnt"
   >;
   note?: string | null;
+  staffMessage?: string | null;
 }): Promise<boolean> {
   await ensureOrderWorkflowSchema();
   const db = getDatabase();
@@ -750,10 +793,198 @@ export async function updateDeskOrderStatus(input: {
     UPDATE synsight_orders
     SET
       status = ${input.status},
-      note = COALESCE(${input.note ?? null}, note)
+      note = COALESCE(${input.note ?? null}, note),
+      staff_message = COALESCE(${input.staffMessage ?? null}, staff_message)
     WHERE id = ${input.orderId}
       AND status <> 'vorbereitet'
   `);
   const header = Array.isArray(result) ? result[0] : result;
   return Number((header as { affectedRows?: number })?.affectedRows ?? 0) > 0;
+}
+
+export async function getDeskOrderDetail(
+  orderId: number
+): Promise<DeskOrderDetail | null> {
+  await ensureOrderWorkflowSchema();
+  const db = getDatabase();
+  if (!db) return null;
+
+  const rows = await db.execute(sql`
+    SELECT
+      o.id,
+      o.user_id AS userId,
+      o.source_module AS sourceModule,
+      o.hit_fingerprint AS hitFingerprint,
+      o.hit_platform AS hitPlatform,
+      o.hit_url AS hitUrl,
+      o.title,
+      o.order_type AS orderType,
+      o.status,
+      o.note,
+      o.staff_message AS staffMessage,
+      o.credits_charged AS creditsCharged,
+      o.requires_vollmacht AS requiresVollmacht,
+      o.capability_ok AS capabilityOk,
+      o.capability_reason AS capabilityReason,
+      o.submitted_at AS submittedAt,
+      o.created_at AS createdAt,
+      o.updated_at AS updatedAt,
+      u.email AS userEmail,
+      u.username AS username
+    FROM synsight_orders o
+    LEFT JOIN users u ON u.id = o.user_id
+    WHERE o.id = ${orderId} AND o.status <> 'vorbereitet'
+    LIMIT 1
+  `);
+  const row = asRowArray<Record<string, unknown>>(rows)[0];
+  if (!row) return null;
+
+  const order = {
+    id: Number(row.id),
+    userId: Number(row.userId),
+    sourceModule: String(row.sourceModule),
+    hitFingerprint: String(row.hitFingerprint),
+    hitPlatform: String(row.hitPlatform),
+    hitUrl: (row.hitUrl as string | null) ?? null,
+    title: String(row.title),
+    orderType: String(row.orderType),
+    status: row.status as SynSightOrderStatus,
+    note: (row.note as string | null) ?? null,
+    staffMessage: (row.staffMessage as string | null) ?? null,
+    createdAt: String(row.createdAt),
+    updatedAt: String(row.updatedAt),
+    creditsCharged:
+      row.creditsCharged == null ? null : Number(row.creditsCharged),
+    submittedAt: (row.submittedAt as string | null) ?? null,
+    requiresVollmacht: Boolean(Number(row.requiresVollmacht ?? 0)),
+    capabilityOk:
+      row.capabilityOk == null ? null : Boolean(Number(row.capabilityOk)),
+    capabilityReason: (row.capabilityReason as string | null) ?? null,
+    userEmail: (row.userEmail as string | null) ?? null,
+    username: (row.username as string | null) ?? null,
+  };
+
+  const pricing = await getOrderPricingByType(order.orderType);
+  const vollmacht = await getVollmachtForOrder(orderId);
+  const requiresVollmacht =
+    order.requiresVollmacht || Boolean(pricing?.requiresVollmacht);
+
+  const summaryPoints: string[] = [
+    `Art: ${pricing?.label ?? orderTypeLabel(order.orderType)}`,
+    `Plattform: ${order.hitPlatform}`,
+    order.hitUrl
+      ? `Ziel-URL vorhanden`
+      : `Keine Ziel-URL — ggf. schwieriger umsetzbar`,
+    `Analyse-Modul: ${MODULE_LABELS[order.sourceModule] ?? order.sourceModule}`,
+    order.creditsCharged != null
+      ? `Berechnet: ${order.creditsCharged} SynCredits`
+      : `Preis: ${pricing?.credits ?? "—"} SynCredits`,
+    requiresVollmacht
+      ? `Vollmacht: erforderlich (${vollmacht?.status ?? "fehlt"})`
+      : `Vollmacht: nicht erforderlich`,
+    order.capabilityReason
+      ? `Machbarkeit: ${order.capabilityReason}`
+      : `Machbarkeit: noch nicht bewertet`,
+  ];
+
+  return {
+    order: { ...order, requiresVollmacht },
+    pricing,
+    vollmacht,
+    summaryPoints,
+  };
+}
+
+export async function rejectOrderVollmacht(input: {
+  orderId: number;
+  reason: string;
+}): Promise<boolean> {
+  await ensureOrderWorkflowSchema();
+  const reason = input.reason.trim();
+  if (reason.length < 5) throw new Error("REJECT_REASON_SHORT");
+
+  const vollmacht = await getVollmachtForOrder(input.orderId);
+  if (!vollmacht) throw new Error("VOLLMACHT_NOT_FOUND");
+
+  const message = `Deine Vollmacht zu Auftrag #${input.orderId} ist nicht korrekt: ${reason}. Bitte lade eine korrigierte, unterschriebene Vollmacht erneut hoch.`;
+
+  const db = getDatabase();
+  if (!db) {
+    memoryVollmachten.set(vollmacht.id, {
+      ...vollmacht,
+      status: "rejected",
+      rejectReason: reason,
+      rejectedAt: new Date().toISOString(),
+    });
+    return true;
+  }
+
+  await db.execute(sql`
+    UPDATE order_vollmachten
+    SET
+      status = 'rejected',
+      reject_reason = ${reason},
+      rejected_at = CURRENT_TIMESTAMP(3)
+    WHERE id = ${vollmacht.id}
+  `);
+  await db.execute(sql`
+    UPDATE synsight_orders
+    SET staff_message = ${message}
+    WHERE id = ${input.orderId}
+  `);
+  return true;
+}
+
+export async function verifyOrderVollmacht(orderId: number): Promise<boolean> {
+  await ensureOrderWorkflowSchema();
+  const vollmacht = await getVollmachtForOrder(orderId);
+  if (!vollmacht || !vollmacht.signedPath)
+    throw new Error("VOLLMACHT_NOT_FOUND");
+
+  const db = getDatabase();
+  if (!db) {
+    memoryVollmachten.set(vollmacht.id, {
+      ...vollmacht,
+      status: "verified",
+      rejectReason: null,
+      rejectedAt: null,
+    });
+    return true;
+  }
+
+  await db.execute(sql`
+    UPDATE order_vollmachten
+    SET
+      status = 'verified',
+      reject_reason = NULL,
+      rejected_at = NULL
+    WHERE id = ${vollmacht.id}
+  `);
+  await db.execute(sql`
+    UPDATE synsight_orders
+    SET staff_message = NULL
+    WHERE id = ${orderId}
+  `);
+  return true;
+}
+
+export async function readSignedVollmachtFile(orderId: number): Promise<{
+  bytes: Buffer;
+  mimeType: string;
+  fileName: string;
+} | null> {
+  const vollmacht = await getVollmachtForOrder(orderId);
+  if (!vollmacht?.signedPath) return null;
+  try {
+    const bytes = await readFile(
+      path.join(privateRoot(), "documents", vollmacht.signedPath)
+    );
+    return {
+      bytes,
+      mimeType: vollmacht.signedMime ?? "application/octet-stream",
+      fileName: vollmacht.signedFileName ?? `vollmacht-${orderId}`,
+    };
+  } catch {
+    return null;
+  }
 }

@@ -6,20 +6,13 @@ import type { SynSightOrderStatus } from "@/lib/analysis/username/types";
 interface OrderReviewItem {
   orderId: number;
   title: string;
-  sourceModule: string;
   sourceModuleLabel: string;
-  hitPlatform: string;
-  hitUrl: string | null;
-  orderType: string;
   orderTypeLabel: string;
   credits: number;
   capable: boolean;
   capabilityReason: string;
   requiresVollmacht: boolean;
-  vollmachtStatus:
-    "not_required" | "missing" | "generated" | "uploaded" | "verified";
-  vollmachtId: number | null;
-  pricingActive: boolean;
+  vollmachtStatus: string;
 }
 
 interface OrderReviewResult {
@@ -27,8 +20,6 @@ interface OrderReviewResult {
   summary: {
     selectedCount: number;
     capableCount: number;
-    incapableCount: number;
-    vollmachtRequiredCount: number;
     vollmachtMissingCount: number;
     totalCredits: number;
     canSubmit: boolean;
@@ -44,6 +35,7 @@ interface OrderRow {
   title: string;
   orderType: string;
   status: SynSightOrderStatus;
+  staffMessage?: string | null;
   createdAt: string;
 }
 
@@ -70,19 +62,21 @@ const ORDER_TYPE_LABEL: Record<string, string> = {
   privacy_request: "Privacy-Request",
 };
 
-type Step = "select" | "review" | "vollmacht" | "submit";
-
 export default function OrdersClient() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [step, setStep] = useState<Step>("select");
   const [review, setReview] = useState<OrderReviewResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploadBusyId, setUploadBusyId] = useState<number | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    type: "ok" | "error";
+    text: string;
+  } | null>(null);
+
+  function showToast(type: "ok" | "error", text: string) {
+    setToast({ type, text });
+  }
 
   async function loadOrders() {
     setLoading(true);
@@ -128,20 +122,7 @@ export default function OrdersClient() {
     });
   }
 
-  function toggleGroup(ids: number[], checked: boolean) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        if (checked) next.add(id);
-        else next.delete(id);
-      }
-      return next;
-    });
-  }
-
   async function deleteOrder(orderId: number) {
-    setDeletingId(orderId);
-    setError(null);
     try {
       const response = await fetch("/api/orders", {
         method: "DELETE",
@@ -150,7 +131,8 @@ export default function OrdersClient() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.success) {
-        setError(
+        showToast(
+          "error",
           body.error?.message ?? "Auftrag konnte nicht gelöscht werden."
         );
         return;
@@ -161,21 +143,18 @@ export default function OrdersClient() {
         next.delete(orderId);
         return next;
       });
+      showToast("ok", "Auftrag entfernt.");
     } catch {
-      setError("Verbindung fehlgeschlagen.");
-    } finally {
-      setDeletingId(null);
+      showToast("error", "Verbindung fehlgeschlagen.");
     }
   }
 
   async function runReview() {
     if (selected.size === 0) {
-      setError("Bitte mindestens einen Auftrag auswählen.");
+      showToast("error", "Bitte mindestens einen Auftrag auswählen.");
       return;
     }
     setBusy(true);
-    setError(null);
-    setSuccessMessage(null);
     try {
       const response = await fetch("/api/orders/review", {
         method: "POST",
@@ -184,19 +163,13 @@ export default function OrdersClient() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.success) {
-        setError(body.error?.message ?? "Prüfung fehlgeschlagen.");
+        showToast("error", body.error?.message ?? "Prüfung fehlgeschlagen.");
         return;
       }
       setReview(body.data as OrderReviewResult);
-      const needsVollmacht = (body.data as OrderReviewResult).items.some(
-        (item) =>
-          item.requiresVollmacht &&
-          (item.vollmachtStatus === "missing" ||
-            item.vollmachtStatus === "generated")
-      );
-      setStep(needsVollmacht ? "vollmacht" : "review");
+      showToast("ok", "Prüfung abgeschlossen — siehe Zusammenfassung.");
     } catch {
-      setError("Verbindung fehlgeschlagen.");
+      showToast("error", "Verbindung fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -204,7 +177,6 @@ export default function OrdersClient() {
 
   async function generateVollmacht(orderId: number) {
     setBusy(true);
-    setError(null);
     try {
       const response = await fetch("/api/orders/vollmacht", {
         method: "POST",
@@ -213,15 +185,20 @@ export default function OrdersClient() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.success) {
-        setError(
+        showToast(
+          "error",
           body.error?.message ?? "Vollmacht konnte nicht erzeugt werden."
         );
         return;
       }
       window.open(`/api/orders/vollmacht?orderId=${orderId}`, "_blank");
-      await runReview();
+      showToast(
+        "ok",
+        "Vollmacht-Vorlage erstellt. Bitte unterschreiben und hochladen."
+      );
+      if (review) await runReview();
     } catch {
-      setError("Verbindung fehlgeschlagen.");
+      showToast("error", "Verbindung fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -229,7 +206,6 @@ export default function OrdersClient() {
 
   async function uploadVollmacht(orderId: number, file: File) {
     setUploadBusyId(orderId);
-    setError(null);
     try {
       const form = new FormData();
       form.set("orderId", String(orderId));
@@ -240,12 +216,18 @@ export default function OrdersClient() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.success) {
-        setError(body.error?.message ?? "Upload fehlgeschlagen.");
+        showToast(
+          "error",
+          body.error?.message ??
+            "Falsches Format. Erlaubt: PDF, JPG, PNG oder WEBP (max. 12 MB)."
+        );
         return;
       }
-      await runReview();
+      showToast("ok", "Unterschriebene Vollmacht hochgeladen.");
+      if (review) await runReview();
+      await loadOrders();
     } catch {
-      setError("Upload fehlgeschlagen.");
+      showToast("error", "Upload fehlgeschlagen.");
     } finally {
       setUploadBusyId(null);
     }
@@ -253,14 +235,14 @@ export default function OrdersClient() {
 
   async function submitSelected() {
     if (!review?.summary.canSubmit) {
-      setError(
+      showToast(
+        "error",
         review?.summary.blockers[0] ??
           "Aufträge können noch nicht abgeschickt werden."
       );
       return;
     }
     setBusy(true);
-    setError(null);
     try {
       const response = await fetch("/api/orders/submit", {
         method: "POST",
@@ -271,18 +253,18 @@ export default function OrdersClient() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.success) {
-        setError(body.error?.message ?? "Absenden fehlgeschlagen.");
+        showToast("error", body.error?.message ?? "Absenden fehlgeschlagen.");
         return;
       }
-      setSuccessMessage(
-        `${body.data.submitted.length} Auftrag/Aufträge abgeschickt (−${body.data.totalCredits} SynCredits).`
+      showToast(
+        "ok",
+        `Auftrag erfolgreich übermittelt (−${body.data.totalCredits} SynCredits).`
       );
       setSelected(new Set());
       setReview(null);
-      setStep("select");
       await loadOrders();
     } catch {
-      setError("Verbindung fehlgeschlagen.");
+      showToast("error", "Verbindung fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -292,7 +274,7 @@ export default function OrdersClient() {
     review?.items.filter((item) => item.requiresVollmacht) ?? [];
 
   return (
-    <main className="mx-auto flex max-h-[calc(100vh-6.5rem)] max-w-5xl flex-col overflow-hidden">
+    <main className="mx-auto flex max-h-[calc(100vh-6.5rem)] max-w-4xl flex-col overflow-hidden">
       <header className="mb-6 shrink-0">
         <p className="font-mono text-[8px] tracking-[.16em] text-cyber-cyan/50">
           DASHBOARD / AUFTRÄGE
@@ -300,50 +282,13 @@ export default function OrdersClient() {
         <h1 className="mt-2 text-2xl font-medium tracking-[-.02em] text-white/90">
           Meine Aufträge
         </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-white/45">
-          Hier siehst du die Übersicht aller Aufträge, die an SynSight zur
-          Löschung oder Datenänderung übergeben werden sollen. Wähle die
-          gewünschten Positionen aus — SynSight prüft anschließend, ob die
-          Maßnahme möglich ist, ob eine Vollmacht nötig ist, und zeigt dir eine
-          Zusammenfassung inkl. SynCredits-Preis, bevor du den Auftrag
-          abschickst.
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/45">
+          Übersicht der Aufträge an SynSight für Löschung oder Datenänderung.
+          Auswählen → prüfen lassen → ggf. Vollmacht hochladen → abschicken.
         </p>
       </header>
 
-      <div className="synsight-orders-scroll min-h-0 flex-1 space-y-8 overflow-y-auto pr-2">
-        {error ? (
-          <p className="rounded-lg border border-rose-400/25 bg-rose-400/[0.06] px-3 py-2 text-sm text-rose-100/80">
-            {error}
-          </p>
-        ) : null}
-        {successMessage ? (
-          <p className="rounded-lg border border-emerald-300/25 bg-emerald-300/[0.06] px-3 py-2 text-sm text-emerald-100/85">
-            {successMessage}
-          </p>
-        ) : null}
-
-        <ol className="flex flex-wrap gap-2 font-mono text-[9px] tracking-[.12em] text-white/35">
-          {(
-            [
-              ["select", "1 · Auswählen"],
-              ["review", "2 · Prüfung"],
-              ["vollmacht", "3 · Vollmacht"],
-              ["submit", "4 · Abschicken"],
-            ] as const
-          ).map(([key, label]) => (
-            <li
-              key={key}
-              className={`rounded border px-2.5 py-1 ${
-                step === key
-                  ? "border-cyber-cyan/40 bg-cyber-cyan/[0.08] text-cyber-cyan"
-                  : "border-white/10"
-              }`}
-            >
-              {label}
-            </li>
-          ))}
-        </ol>
-
+      <div className="synsight-orders-scroll min-h-0 flex-1 space-y-8 overflow-y-auto pr-2 pb-4">
         {loading ? (
           <p className="text-sm text-white/35">Aufträge werden geladen…</p>
         ) : (
@@ -351,200 +296,176 @@ export default function OrdersClient() {
             <section>
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-medium text-white/85">
-                    Vorbereitete Aufträge
+                  <h2 className="text-base font-medium text-white/88">
+                    1. Vorbereitete Aufträge
                   </h2>
-                  <p className="mt-1 text-xs text-white/35">
-                    Nach Analyseart gruppiert — mit Kästchen auswählen.
+                  <p className="mt-1 text-xs text-white/38">
+                    Nach Analyseart sortiert. Häkchen setzen und prüfen.
                   </p>
                 </div>
                 <button
                   type="button"
                   disabled={busy || selected.size === 0}
                   onClick={() => void runReview()}
-                  className="rounded-lg border border-cyber-cyan/35 bg-cyber-cyan/[0.1] px-4 py-2 font-mono text-[10px] tracking-[.14em] text-cyber-cyan transition hover:border-cyber-cyan/55 disabled:opacity-40"
+                  className="rounded-lg border border-cyber-cyan/35 bg-cyber-cyan/[0.1] px-4 py-2 text-xs font-medium tracking-wide text-cyber-cyan disabled:opacity-40"
                 >
-                  {busy ? "PRÜFE …" : "AUSGEWÄHLTE PRÜFEN"}
+                  {busy ? "Prüfe …" : `Ausgewählte prüfen (${selected.size})`}
                 </button>
               </div>
 
               {draftOrders.length === 0 ? (
-                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-5 py-8 text-sm text-white/40">
-                  Noch keine vorbereiteten Aufträge. In einer Analyse auf einer
-                  Trefferkarte „SynSight soll das übernehmen“ wählen.
+                <div className="rounded-xl border border-dashed border-white/10 px-5 py-8 text-sm text-white/40">
+                  Noch nichts vorbereitet. In einer Analyse „SynSight soll das
+                  übernehmen“ wählen.
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {grouped.map(([module, moduleOrders]) => {
-                    const ids = moduleOrders.map((o) => o.id);
-                    const allSelected = ids.every((id) => selected.has(id));
-                    return (
-                      <div key={module}>
-                        <div className="mb-3 flex items-center gap-3">
-                          <label className="flex items-center gap-2 font-mono text-[9px] tracking-[.14em] text-white/40">
-                            <input
-                              type="checkbox"
-                              checked={allSelected}
-                              onChange={(e) =>
-                                toggleGroup(ids, e.target.checked)
-                              }
-                              className="h-3.5 w-3.5 accent-cyan-400"
-                            />
-                            {(MODULE_LABEL[module] ?? module).toUpperCase()}
-                            <span className="text-white/25">
-                              ({moduleOrders.length})
-                            </span>
-                          </label>
-                        </div>
-                        <ul className="space-y-2">
-                          {moduleOrders.map((order) => (
-                            <li
-                              key={order.id}
-                              className={`rounded-xl border px-4 py-3 transition ${
-                                selected.has(order.id)
-                                  ? "border-cyber-cyan/35 bg-cyber-cyan/[0.05]"
-                                  : "border-white/[0.08] bg-black/25"
-                              }`}
-                            >
-                              <div className="flex flex-wrap items-start gap-3">
-                                <input
-                                  type="checkbox"
-                                  checked={selected.has(order.id)}
-                                  onChange={() => toggle(order.id)}
-                                  className="mt-1 h-4 w-4 accent-cyan-400"
-                                  aria-label={`Auftrag ${order.id} auswählen`}
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-mono text-[8px] tracking-[.12em] text-white/30">
-                                    {(
-                                      ORDER_TYPE_LABEL[order.orderType] ??
-                                      order.orderType
-                                    ).toUpperCase()}
-                                  </p>
-                                  <h3 className="mt-1 text-sm font-medium text-white/85">
-                                    {order.title}
-                                  </h3>
-                                  <p className="mt-1 text-xs text-white/40">
-                                    {order.hitPlatform}
-                                  </p>
-                                  {order.hitUrl ? (
-                                    <a
-                                      href={order.hitUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="mt-2 inline-flex font-mono text-[11px] text-cyber-cyan/70 underline-offset-2 hover:underline"
-                                    >
-                                      Ziel-URL öffnen
-                                    </a>
-                                  ) : null}
-                                </div>
-                                <button
-                                  type="button"
-                                  aria-label="Auftrag entfernen"
-                                  disabled={deletingId === order.id}
-                                  onClick={() => void deleteOrder(order.id)}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 text-white/45 transition hover:border-rose-300/40 hover:text-rose-100 disabled:opacity-40"
-                                >
-                                  ×
-                                </button>
+                <div className="space-y-5">
+                  {grouped.map(([module, moduleOrders]) => (
+                    <div key={module}>
+                      <p className="mb-2 text-xs font-medium uppercase tracking-[.08em] text-white/35">
+                        {MODULE_LABEL[module] ?? module}
+                      </p>
+                      <ul className="space-y-2">
+                        {moduleOrders.map((order) => (
+                          <li
+                            key={order.id}
+                            className={`rounded-xl border px-4 py-3 ${
+                              selected.has(order.id)
+                                ? "border-cyber-cyan/35 bg-cyber-cyan/[0.05]"
+                                : "border-white/[0.08] bg-black/20"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={selected.has(order.id)}
+                                onChange={() => toggle(order.id)}
+                                className="mt-1 h-4 w-4 accent-cyan-400"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs text-white/35">
+                                  {ORDER_TYPE_LABEL[order.orderType] ??
+                                    order.orderType}
+                                </p>
+                                <p className="mt-0.5 text-sm text-white/85">
+                                  {order.title}
+                                </p>
+                                <p className="mt-1 text-xs text-white/40">
+                                  {order.hitPlatform}
+                                </p>
                               </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })}
+                              <button
+                                type="button"
+                                onClick={() => void deleteOrder(order.id)}
+                                className="text-white/35 hover:text-rose-200"
+                                aria-label="Entfernen"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
                 </div>
               )}
             </section>
 
             {review ? (
-              <section className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-                <h2 className="text-sm font-medium text-white/85">
-                  Prüfung & Zusammenfassung
+              <section className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+                <h2 className="text-base font-medium text-white/88">
+                  2. Prüfung & Kosten
                 </h2>
-                <p className="mt-1 text-xs text-white/35">
-                  SynSight-Machbarkeit, Vollmacht und SynCredits-Kosten.
+                <p className="mt-1 text-xs text-white/38">
+                  Machbarkeit, Vollmacht und Preis in SynCredits.
                 </p>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <SummaryStat
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <MiniStat
                     label="Ausgewählt"
-                    value={String(review.summary.selectedCount)}
+                    value={review.summary.selectedCount}
                   />
-                  <SummaryStat
+                  <MiniStat
                     label="Machbar"
-                    value={String(review.summary.capableCount)}
+                    value={review.summary.capableCount}
                   />
-                  <SummaryStat
+                  <MiniStat
                     label="Vollmacht fehlt"
-                    value={String(review.summary.vollmachtMissingCount)}
+                    value={review.summary.vollmachtMissingCount}
                   />
-                  <SummaryStat
-                    label="SynCredits"
-                    value={String(review.summary.totalCredits)}
+                  <MiniStat
+                    label="Kosten (SynCredits)"
+                    value={review.summary.totalCredits}
                   />
                 </div>
 
-                {review.summary.blockers.length > 0 ? (
-                  <ul className="mt-4 space-y-1 text-xs text-amber-100/70">
-                    {review.summary.blockers.map((blocker) => (
-                      <li key={blocker}>• {blocker}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-4 text-xs text-emerald-100/70">
-                    Alle Prüfungen bestanden — Auftrag kann abgeschickt werden.
-                  </p>
-                )}
-
-                <ul className="mt-5 space-y-2">
+                <ul className="mt-4 space-y-2">
                   {review.items.map((item) => (
-                    <ReviewItemRow key={item.orderId} item={item} />
+                    <li
+                      key={item.orderId}
+                      className="rounded-lg border border-white/[0.07] bg-black/20 px-3 py-2.5 text-sm"
+                    >
+                      <div className="flex justify-between gap-2">
+                        <span className="text-white/80">{item.title}</span>
+                        <span
+                          className={
+                            item.capable
+                              ? "text-emerald-200/80"
+                              : "text-rose-200/80"
+                          }
+                        >
+                          {item.capable ? "Machbar" : "Nicht möglich"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-white/40">
+                        {item.orderTypeLabel} · {item.credits} SynCredits ·{" "}
+                        {item.capabilityReason}
+                      </p>
+                    </li>
                   ))}
                 </ul>
 
                 {vollmachtItems.length > 0 ? (
-                  <div className="mt-6 border-t border-white/[0.06] pt-5">
+                  <div className="mt-5 border-t border-white/[0.06] pt-4">
                     <h3 className="text-sm font-medium text-white/80">
-                      Vollmachten
+                      3. Vollmacht
                     </h3>
-                    <p className="mt-1 text-xs text-white/35">
-                      Vorlage erzeugen, ausdrucken/unterschreiben und
-                      unterschrieben hochladen (PDF oder Bild).
+                    <p className="mt-1 text-xs text-white/38">
+                      Vorlage erzeugen → unterschreiben → als PDF/Bild
+                      hochladen.
                     </p>
-                    <ul className="mt-4 space-y-3">
+                    <ul className="mt-3 space-y-2">
                       {vollmachtItems.map((item) => (
                         <li
-                          key={`vm-${item.orderId}`}
-                          className="rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3"
+                          key={item.orderId}
+                          className="rounded-lg border border-white/[0.07] bg-black/20 px-3 py-3"
                         >
                           <p className="text-sm text-white/80">
                             #{item.orderId} · {item.title}
                           </p>
-                          <p className="mt-1 font-mono text-[9px] text-white/35">
-                            Status: {item.vollmachtStatus.toUpperCase()}
+                          <p className="mt-1 text-xs text-white/40">
+                            Status: {item.vollmachtStatus}
                           </p>
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <div className="mt-2 flex flex-wrap gap-2">
                             <button
                               type="button"
                               disabled={busy}
                               onClick={() =>
                                 void generateVollmacht(item.orderId)
                               }
-                              className="rounded-lg border border-amber-300/30 bg-amber-300/[0.08] px-3 py-1.5 font-mono text-[9px] tracking-[.12em] text-amber-100/85"
+                              className="rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs text-amber-100/85"
                             >
-                              VORLAGE ERZEUGEN
+                              Vorlage erzeugen
                             </button>
-                            <label className="cursor-pointer rounded-lg border border-white/15 px-3 py-1.5 font-mono text-[9px] tracking-[.12em] text-white/55 hover:text-white/80">
+                            <label className="cursor-pointer rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/60">
                               {uploadBusyId === item.orderId
-                                ? "LADE HOCH …"
-                                : "UNTERSCHRIEBEN HOCHLADEN"}
+                                ? "Lade hoch …"
+                                : "Unterschrieben hochladen"}
                               <input
                                 type="file"
                                 accept="application/pdf,image/jpeg,image/png,image/webp"
                                 className="hidden"
-                                disabled={uploadBusyId === item.orderId}
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file)
@@ -560,38 +481,32 @@ export default function OrdersClient() {
                   </div>
                 ) : null}
 
-                <div className="mt-6 flex flex-wrap gap-3">
+                <div className="mt-5 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setStep("select");
-                      setReview(null);
-                    }}
-                    className="rounded-lg border border-white/15 px-4 py-2 font-mono text-[10px] tracking-[.12em] text-white/50"
+                    onClick={() => setReview(null)}
+                    className="rounded-lg border border-white/15 px-4 py-2 text-xs text-white/50"
                   >
-                    ZURÜCK
+                    Zurück
                   </button>
                   <button
                     type="button"
                     disabled={busy || !review.summary.canSubmit}
-                    onClick={() => {
-                      setStep("submit");
-                      void submitSelected();
-                    }}
-                    className="rounded-lg border border-emerald-300/35 bg-emerald-300/[0.1] px-4 py-2 font-mono text-[10px] tracking-[.14em] text-emerald-100 disabled:opacity-40"
+                    onClick={() => void submitSelected()}
+                    className="rounded-lg border border-emerald-300/35 bg-emerald-300/[0.1] px-4 py-2 text-xs text-emerald-100 disabled:opacity-40"
                   >
-                    {busy ? "SENDE …" : "AUFTRAG ABSCHICKEN"}
+                    {busy ? "Sende …" : "Auftrag abschicken"}
                   </button>
                 </div>
               </section>
             ) : null}
 
             <section>
-              <h2 className="text-sm font-medium text-white/85">
-                Eingereichte / laufende Aufträge
+              <h2 className="text-base font-medium text-white/88">
+                Eingereichte Aufträge
               </h2>
-              <p className="mt-1 text-xs text-white/35">
-                Nach dem Absenden erscheinen Aufträge im Operations-Dashboard.
+              <p className="mt-1 text-xs text-white/38">
+                Status und Hinweise von SynSight (z. B. Vollmacht-Reklamation).
               </p>
               {submittedOrders.length === 0 ? (
                 <p className="mt-4 text-sm text-white/30">
@@ -604,22 +519,39 @@ export default function OrdersClient() {
                       key={order.id}
                       className="rounded-xl border border-white/[0.07] bg-black/20 px-4 py-3"
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p className="font-mono text-[8px] text-white/30">
-                            {(
-                              MODULE_LABEL[order.sourceModule ?? ""] ??
-                              "Analyse"
-                            ).toUpperCase()}
-                          </p>
-                          <p className="mt-1 text-sm text-white/80">
-                            {order.title}
+                          <p className="text-sm text-white/85">{order.title}</p>
+                          <p className="mt-1 text-xs text-white/40">
+                            {ORDER_TYPE_LABEL[order.orderType] ??
+                              order.orderType}{" "}
+                            · {order.hitPlatform}
                           </p>
                         </div>
-                        <span className="rounded-md border border-emerald-300/25 bg-emerald-300/[0.06] px-2.5 py-1 font-mono text-[9px] text-emerald-100/80">
+                        <span className="rounded border border-white/15 px-2 py-1 text-[11px] text-white/60">
                           {STATUS_LABEL[order.status]}
                         </span>
                       </div>
+                      {order.staffMessage ? (
+                        <div className="mt-3 rounded-lg border border-amber-300/25 bg-amber-300/[0.06] px-3 py-2 text-sm text-amber-50/85">
+                          <p>{order.staffMessage}</p>
+                          <label className="mt-2 inline-flex cursor-pointer rounded border border-amber-200/30 px-2.5 py-1 text-xs text-amber-100/90">
+                            {uploadBusyId === order.id
+                              ? "Lade hoch …"
+                              : "Korrigierte Vollmacht hochladen"}
+                            <input
+                              type="file"
+                              accept="application/pdf,image/jpeg,image/png,image/webp"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) void uploadVollmacht(order.id, file);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        </div>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -628,42 +560,34 @@ export default function OrdersClient() {
           </>
         )}
       </div>
+
+      {toast ? (
+        <div
+          className={`mt-3 shrink-0 rounded-lg border px-3 py-2.5 text-sm ${
+            toast.type === "ok"
+              ? "border-emerald-300/30 bg-emerald-300/[0.08] text-emerald-100/90"
+              : "border-rose-400/30 bg-rose-400/[0.08] text-rose-100/90"
+          }`}
+        >
+          {toast.text}
+          <button
+            type="button"
+            className="ml-3 text-xs underline opacity-80"
+            onClick={() => setToast(null)}
+          >
+            schließen
+          </button>
+        </div>
+      ) : null}
     </main>
   );
 }
 
-function SummaryStat({ label, value }: { label: string; value: string }) {
+function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-white/[0.07] bg-black/25 px-3 py-3">
-      <p className="font-mono text-[8px] tracking-[.12em] text-white/30">
-        {label.toUpperCase()}
-      </p>
-      <p className="mt-1 text-lg text-white/85">{value}</p>
+    <div className="rounded-lg border border-white/[0.07] bg-black/25 px-3 py-2.5">
+      <p className="text-[10px] text-white/35">{label}</p>
+      <p className="mt-0.5 text-lg text-white/85">{value}</p>
     </div>
-  );
-}
-
-function ReviewItemRow({ item }: { item: OrderReviewItem }) {
-  return (
-    <li className="rounded-lg border border-white/[0.07] bg-black/20 px-3 py-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-sm text-white/80">{item.title}</p>
-          <p className="mt-1 font-mono text-[9px] text-white/35">
-            {item.sourceModuleLabel} · {item.orderTypeLabel} · {item.credits} SC
-          </p>
-          <p className="mt-1 text-xs text-white/40">{item.capabilityReason}</p>
-        </div>
-        <span
-          className={`rounded border px-2 py-1 font-mono text-[9px] ${
-            item.capable
-              ? "border-emerald-300/30 text-emerald-100/80"
-              : "border-rose-300/30 text-rose-100/80"
-          }`}
-        >
-          {item.capable ? "MACHBAR" : "NICHT MÖGLICH"}
-        </span>
-      </div>
-    </li>
   );
 }

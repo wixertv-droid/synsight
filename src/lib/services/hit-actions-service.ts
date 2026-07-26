@@ -42,6 +42,7 @@ export interface SynSightOrderRecord {
   orderType: string;
   status: SynSightOrderStatus;
   note: string | null;
+  staffMessage?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -309,6 +310,7 @@ export async function listSynSightOrders(
       order_type AS orderType,
       status,
       note,
+      staff_message AS staffMessage,
       created_at AS createdAt,
       updated_at AS updatedAt
     FROM synsight_orders
@@ -320,6 +322,7 @@ export async function listSynSightOrders(
     ...row,
     id: Number(row.id),
     userId: Number(row.userId),
+    staffMessage: row.staffMessage ?? null,
   }));
 }
 

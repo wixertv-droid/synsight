@@ -45,12 +45,14 @@ async function runEnsure(): Promise<boolean> {
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
       user_id BIGINT UNSIGNED NOT NULL,
       order_id BIGINT UNSIGNED NOT NULL,
-      status ENUM('generated','uploaded','verified') NOT NULL DEFAULT 'generated',
+      status ENUM('generated','uploaded','verified','rejected') NOT NULL DEFAULT 'generated',
       template_html MEDIUMTEXT NOT NULL,
       template_path VARCHAR(500) NULL,
       signed_path VARCHAR(500) NULL,
       signed_mime VARCHAR(120) NULL,
       signed_file_name VARCHAR(255) NULL,
+      reject_reason VARCHAR(1000) NULL,
+      rejected_at TIMESTAMP(3) NULL,
       generated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
       uploaded_at TIMESTAMP(3) NULL,
       created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -63,7 +65,8 @@ async function runEnsure(): Promise<boolean> {
   `);
 
   const alterColumns = [
-    "ADD COLUMN credits_charged INT UNSIGNED NULL AFTER note",
+    "ADD COLUMN staff_message VARCHAR(1000) NULL AFTER note",
+    "ADD COLUMN credits_charged INT UNSIGNED NULL AFTER staff_message",
     "ADD COLUMN requires_vollmacht TINYINT(1) NOT NULL DEFAULT 0 AFTER credits_charged",
     "ADD COLUMN vollmacht_id BIGINT UNSIGNED NULL AFTER requires_vollmacht",
     "ADD COLUMN capability_ok TINYINT(1) NULL AFTER vollmacht_id",
@@ -74,6 +77,27 @@ async function runEnsure(): Promise<boolean> {
   for (const clause of alterColumns) {
     try {
       await db.execute(sql.raw(`ALTER TABLE synsight_orders ${clause}`));
+    } catch {
+      /* exists */
+    }
+  }
+
+  try {
+    await db.execute(
+      sql.raw(`
+      ALTER TABLE order_vollmachten
+      MODIFY COLUMN status ENUM('generated','uploaded','verified','rejected') NOT NULL DEFAULT 'generated'
+    `)
+    );
+  } catch {
+    /* ignore */
+  }
+  for (const clause of [
+    "ADD COLUMN reject_reason VARCHAR(1000) NULL AFTER signed_file_name",
+    "ADD COLUMN rejected_at TIMESTAMP(3) NULL AFTER reject_reason",
+  ]) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE order_vollmachten ${clause}`));
     } catch {
       /* exists */
     }
