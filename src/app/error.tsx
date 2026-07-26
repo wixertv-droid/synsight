@@ -4,6 +4,19 @@ import { useEffect } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 
+const CHUNK_RELOAD_KEY = "synsight_chunk_reload";
+
+function isChunkLoadError(error: Error): boolean {
+  const name = error.name || "";
+  const message = error.message || "";
+  return (
+    name === "ChunkLoadError" ||
+    /Loading chunk [\w-]+ failed/i.test(message) ||
+    /Failed to fetch dynamically imported module/i.test(message) ||
+    /Importing a module script failed/i.test(message)
+  );
+}
+
 export default function GlobalError({
   error,
   reset,
@@ -13,6 +26,20 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error("SynSight application error:", error);
+
+    // After deploy, old HTML can request deleted JS chunks. One hard reload
+    // usually picks up the new build; avoid reload loops.
+    if (typeof window === "undefined" || !isChunkLoadError(error)) return;
+    try {
+      if (sessionStorage.getItem(CHUNK_RELOAD_KEY) === "1") {
+        sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+        return;
+      }
+      sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
+      window.location.reload();
+    } catch {
+      /* ignore storage failures */
+    }
   }, [error]);
 
   return (
@@ -32,7 +59,19 @@ export default function GlobalError({
           </p>
         )}
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button onClick={reset}>Erneut versuchen</Button>
+          <Button
+            onClick={() => {
+              try {
+                sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+              } catch {
+                /* ignore */
+              }
+              reset();
+              window.location.reload();
+            }}
+          >
+            Erneut versuchen
+          </Button>
           <Link
             href="/"
             className="inline-flex items-center justify-center rounded-lg border border-white/10 px-6 py-3 text-sm text-white/60 transition-colors hover:text-white"
