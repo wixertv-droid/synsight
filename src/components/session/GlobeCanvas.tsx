@@ -15,14 +15,13 @@ interface GlobeCanvasProps {
   className?: string;
 }
 
-interface Vec2 {
+interface Vec3 {
   x: number;
   y: number;
+  z: number;
 }
 
 interface NetNode {
-  mapX: number;
-  mapY: number;
   lon: number;
   lat: number;
 }
@@ -38,14 +37,17 @@ interface Packet {
   speed: number;
 }
 
-const LINK_MAX_PX = 48;
-const NODE_COUNT = 72;
-const PACKET_COUNT = 28;
-const HOTSPOT_COUNT = 7;
+/** Brand colors — match CyberGlobe / BrandLogo */
+const NEON_CYAN = "#70e7ff";
+
+const LINK_MAX_PX = 56;
+const NODE_COUNT = 96;
+const PACKET_COUNT = 36;
+const HOTSPOT_COUNT = 8;
 
 function mapToLonLat(mapX: number, mapY: number): { lon: number; lat: number } {
   const lon = (mapX / GLOBE_MAP_WIDTH) * Math.PI * 2 - Math.PI;
-  const lat = (0.5 - mapY / GLOBE_MAP_HEIGHT) * Math.PI;
+  const lat = (0.5 - mapY / GLOBE_MAP_HEIGHT) * Math.PI * 0.92;
   return { lon, lat };
 }
 
@@ -56,7 +58,7 @@ function project(
   cx: number,
   cy: number,
   radius: number
-): { x: number; y: number; z: number; visible: boolean } {
+): Vec3 & { visible: boolean } {
   const x3 = Math.cos(lat) * Math.cos(lon + rot);
   const y3 = Math.sin(lat);
   const z3 = Math.cos(lat) * Math.sin(lon + rot);
@@ -64,7 +66,7 @@ function project(
     x: cx + x3 * radius,
     y: cy - y3 * radius,
     z: z3,
-    visible: z3 > -0.05,
+    visible: z3 > -0.02,
   };
 }
 
@@ -82,28 +84,74 @@ function pickLandNodes(map: string[]): NetNode[] {
   for (let i = 0; i < land.length && nodes.length < NODE_COUNT; i += step) {
     const cell = land[i];
     const { lon, lat } = mapToLonLat(cell.x + 0.5, cell.y + 0.5);
-    nodes.push({ mapX: cell.x, mapY: cell.y, lon, lat });
+    nodes.push({ lon, lat });
   }
   return nodes;
 }
 
-function buildEdges(projected: Array<Vec2 | null>): Edge[] {
+function buildEdges(
+  projected: Array<(Vec3 & { visible: boolean }) | null>
+): Edge[] {
   const edges: Edge[] = [];
   for (let i = 0; i < projected.length; i++) {
     const a = projected[i];
-    if (!a) continue;
-    for (let j = i + 1; j < projected.length; j++) {
+    if (!a || !a.visible || a.z < 0.15) continue;
+    let links = 0;
+    for (let j = i + 1; j < projected.length && links < 4; j++) {
       const b = projected[j];
-      if (!b) continue;
-      const dx = a.x - b.x;
-      const dy = a.y - b.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist > 0 && dist < LINK_MAX_PX) {
+      if (!b || !b.visible || b.z < 0.15) continue;
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      if (dist > 8 && dist < LINK_MAX_PX) {
         edges.push({ a: i, b: j });
+        links += 1;
       }
     }
   }
   return edges;
+}
+
+/** Quadratic screen-space arc between two projected points (CyberGlobe-like). */
+function strokeArc(
+  ctx: CanvasRenderingContext2D,
+  a: Vec3,
+  b: Vec3,
+  cx: number,
+  cy: number,
+  lift: number
+) {
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const dx = mx - cx;
+  const dy = my - cy;
+  const len = Math.hypot(dx, dy) || 1;
+  const ctrlX = mx + (dx / len) * lift;
+  const ctrlY = my + (dy / len) * lift;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.quadraticCurveTo(ctrlX, ctrlY, b.x, b.y);
+  ctx.stroke();
+}
+
+function pointOnArc(
+  a: Vec3,
+  b: Vec3,
+  cx: number,
+  cy: number,
+  lift: number,
+  t: number
+): { x: number; y: number } {
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const dx = mx - cx;
+  const dy = my - cy;
+  const len = Math.hypot(dx, dy) || 1;
+  const ctrlX = mx + (dx / len) * lift;
+  const ctrlY = my + (dy / len) * lift;
+  const u = 1 - t;
+  return {
+    x: u * u * a.x + 2 * u * t * ctrlX + t * t * b.x,
+    y: u * u * a.y + 2 * u * t * ctrlY + t * t * b.y,
+  };
 }
 
 export default function GlobeCanvas({
@@ -130,7 +178,7 @@ export default function GlobeCanvas({
     const nodes = pickLandNodes(map);
     const packets: Packet[] = [];
     let edges: Edge[] = [];
-    let rot = 0.35;
+    let rot = 0.55;
     let raf = 0;
     let last = performance.now();
 
@@ -158,96 +206,169 @@ export default function GlobeCanvas({
         packets.push({
           edge: Math.floor(Math.random() * edges.length),
           t: Math.random(),
-          speed: 0.18 + Math.random() * 0.35,
+          speed: 0.22 + Math.random() * 0.4,
         });
+      }
+    }
+
+    function drawGraticule(
+      cx: number,
+      cy: number,
+      radius: number,
+      rotation: number
+    ) {
+      ctx.lineWidth = 0.6;
+      ctx.strokeStyle = "rgba(41, 182, 246, 0.16)";
+
+      // Parallels
+      for (let i = -2; i <= 2; i++) {
+        const lat = (i / 3) * (Math.PI / 2) * 0.85;
+        ctx.beginPath();
+        let started = false;
+        for (let s = 0; s <= 64; s++) {
+          const lon = (s / 64) * Math.PI * 2 - Math.PI;
+          const p = project(lon, lat, rotation, cx, cy, radius);
+          if (!p.visible) {
+            started = false;
+            continue;
+          }
+          if (!started) {
+            ctx.moveTo(p.x, p.y);
+            started = true;
+          } else {
+            ctx.lineTo(p.x, p.y);
+          }
+        }
+        ctx.stroke();
+      }
+
+      // Meridians
+      for (let i = 0; i < 12; i++) {
+        const lon = (i / 12) * Math.PI * 2 - Math.PI;
+        ctx.beginPath();
+        let started = false;
+        for (let s = 0; s <= 48; s++) {
+          const lat = (0.5 - s / 48) * Math.PI;
+          const p = project(lon, lat, rotation, cx, cy, radius);
+          if (!p.visible) {
+            started = false;
+            continue;
+          }
+          if (!started) {
+            ctx.moveTo(p.x, p.y);
+            started = true;
+          } else {
+            ctx.lineTo(p.x, p.y);
+          }
+        }
+        ctx.stroke();
       }
     }
 
     function frame(now: number) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      rot += dt * 0.12;
+      rot += dt * 0.11;
 
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       const cx = w * 0.5;
-      const cy = h * 0.52;
-      const radius = Math.min(w, h) * 0.34;
+      const cy = h * 0.5;
+      const radius = Math.min(w, h) * 0.36;
 
       ctx.clearRect(0, 0, w, h);
 
-      // Atmosphere glow
-      const glow = ctx.createRadialGradient(
+      // Soft outer atmosphere (CyberGlobe atmosphereColor #29b6f6)
+      const atmos = ctx.createRadialGradient(
         cx,
         cy,
-        radius * 0.2,
+        radius * 0.78,
         cx,
         cy,
-        radius * 1.35
+        radius * 1.42
       );
-      glow.addColorStop(0, "rgba(29, 210, 255, 0.08)");
-      glow.addColorStop(0.55, "rgba(14, 23, 38, 0.15)");
-      glow.addColorStop(1, "rgba(7, 12, 20, 0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, w, h);
+      atmos.addColorStop(0, "rgba(41, 182, 246, 0.22)");
+      atmos.addColorStop(0.45, "rgba(41, 182, 246, 0.08)");
+      atmos.addColorStop(1, "rgba(3, 5, 10, 0)");
+      ctx.fillStyle = atmos;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius * 1.42, 0, Math.PI * 2);
+      ctx.fill();
 
-      // Globe disc
+      // Globe body
+      const body = ctx.createRadialGradient(
+        cx - radius * 0.25,
+        cy - radius * 0.3,
+        radius * 0.1,
+        cx,
+        cy,
+        radius
+      );
+      body.addColorStop(0, "rgba(18, 36, 58, 0.95)");
+      body.addColorStop(0.7, "rgba(8, 14, 26, 0.98)");
+      body.addColorStop(1, "rgba(4, 8, 16, 1)");
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(8, 16, 28, 0.92)";
+      ctx.fillStyle = body;
       ctx.fill();
-      ctx.strokeStyle = "rgba(29, 210, 255, 0.28)";
-      ctx.lineWidth = 1.2;
+
+      // Rim
+      ctx.strokeStyle = "rgba(112, 231, 255, 0.35)";
+      ctx.lineWidth = 1.4;
       ctx.stroke();
 
-      // Land points (ASCII projection)
-      ctx.fillStyle = "rgba(148, 178, 210, 0.55)";
+      drawGraticule(cx, cy, radius, rot);
+
+      // Hex-dot landmasses (like three-globe hexPolygonUseDots)
       for (let y = 0; y < GLOBE_MAP_HEIGHT; y++) {
         for (let x = 0; x < GLOBE_MAP_WIDTH; x++) {
           if (!isLandCell(map, x, y)) continue;
+          // Dot density similar to hex margin
+          if ((x + y) % 2 !== 0) continue;
           const { lon, lat } = mapToLonLat(x + 0.5, y + 0.5);
           const p = project(lon, lat, rot, cx, cy, radius);
-          if (!p.visible || p.z < 0.05) continue;
-          const alpha = 0.25 + p.z * 0.55;
+          if (!p.visible || p.z < 0.08) continue;
+          const alpha = 0.35 + p.z * 0.55;
           ctx.globalAlpha = alpha;
-          ctx.fillRect(p.x - 0.7, p.y - 0.7, 1.5, 1.5);
+          ctx.fillStyle = "rgba(92, 220, 252, 0.92)";
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 1.15 + p.z * 0.6, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
       ctx.globalAlpha = 1;
 
-      // Project network nodes
-      const projected: Array<Vec2 | null> = nodes.map((node) => {
+      const projected = nodes.map((node) => {
         const p = project(node.lon, node.lat, rot, cx, cy, radius);
-        if (!p.visible || p.z < 0.12) return null;
-        return { x: p.x, y: p.y };
+        return p.visible ? p : null;
       });
 
       edges = buildEdges(projected);
       ensurePackets();
 
-      // Atmosphere net
-      ctx.lineWidth = 0.7;
+      // Atmosphere network arcs
+      ctx.lineWidth = 0.85;
       for (const edge of edges) {
         const a = projected[edge.a];
         const b = projected[edge.b];
         if (!a || !b) continue;
-        ctx.strokeStyle = "rgba(29, 210, 255, 0.18)";
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
+        const lift = 10 + Math.hypot(a.x - b.x, a.y - b.y) * 0.22;
+        ctx.strokeStyle = "rgba(41, 182, 246, 0.22)";
+        strokeArc(ctx, a, b, cx, cy, lift);
       }
 
       // Nodes
       for (const p of projected) {
-        if (!p) continue;
-        ctx.fillStyle = "rgba(29, 210, 255, 0.55)";
+        if (!p || p.z < 0.12) continue;
+        ctx.fillStyle = NEON_CYAN;
+        ctx.globalAlpha = 0.35 + p.z * 0.5;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 1.4, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.globalAlpha = 1;
 
-      // Data packets
+      // Dashed data packets along arcs
       for (const packet of packets) {
         if (edges.length === 0) break;
         packet.edge %= edges.length;
@@ -255,42 +376,70 @@ export default function GlobeCanvas({
         if (packet.t > 1) {
           packet.t = 0;
           packet.edge = Math.floor(Math.random() * edges.length);
-          packet.speed = 0.18 + Math.random() * 0.35;
+          packet.speed = 0.22 + Math.random() * 0.4;
         }
         const edge = edges[packet.edge];
         if (!edge) continue;
         const a = projected[edge.a];
         const b = projected[edge.b];
         if (!a || !b) continue;
-        const x = a.x + (b.x - a.x) * packet.t;
-        const y = a.y + (b.y - a.y) * packet.t;
-        const pulse = ctx.createRadialGradient(x, y, 0, x, y, 4.5);
-        pulse.addColorStop(0, "rgba(0, 255, 136, 0.95)");
-        pulse.addColorStop(0.4, "rgba(29, 210, 255, 0.7)");
-        pulse.addColorStop(1, "rgba(29, 210, 255, 0)");
-        ctx.fillStyle = pulse;
+        const lift = 10 + Math.hypot(a.x - b.x, a.y - b.y) * 0.22;
+        const pos = pointOnArc(a, b, cx, cy, lift, packet.t);
+
+        // Trail
+        for (let s = 0; s < 5; s++) {
+          const tt = Math.max(0, packet.t - s * 0.035);
+          const trail = pointOnArc(a, b, cx, cy, lift, tt);
+          ctx.fillStyle = `rgba(112, 231, 255, ${0.45 - s * 0.08})`;
+          ctx.beginPath();
+          ctx.arc(trail.x, trail.y, 2.2 - s * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        const glow = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 6);
+        glow.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+        glow.addColorStop(0.35, "rgba(112, 231, 255, 0.85)");
+        glow.addColorStop(1, "rgba(41, 182, 246, 0)");
+        ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Hotspots after panel 3 secured
+      // Hotspot rings (like three-globe rings)
       if (hotspotsRef.current) {
-        const pulse = 0.55 + Math.sin(now / 280) * 0.35;
+        const pulse = (now / 1700) % 1;
         for (const idx of hotspotIdx) {
           const p = projected[idx];
-          if (!p) continue;
-          ctx.strokeStyle = `rgba(255, 42, 85, ${0.35 + pulse * 0.45})`;
-          ctx.lineWidth = 1.2;
+          if (!p || p.z < 0.2) continue;
+          const r = 4 + pulse * 14;
+          ctx.strokeStyle = `rgba(255, 138, 92, ${1 - pulse})`;
+          ctx.lineWidth = 1.4;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 6 + pulse * 4, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
           ctx.stroke();
-          ctx.fillStyle = `rgba(255, 42, 85, ${0.55 + pulse * 0.35})`;
+          ctx.fillStyle = "rgba(112, 231, 255, 0.85)";
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, 2.4, 0, Math.PI * 2);
           ctx.fill();
         }
       }
+
+      // Inner specular highlight
+      const shine = ctx.createRadialGradient(
+        cx - radius * 0.35,
+        cy - radius * 0.4,
+        0,
+        cx - radius * 0.35,
+        cy - radius * 0.4,
+        radius * 0.55
+      );
+      shine.addColorStop(0, "rgba(112, 231, 255, 0.08)");
+      shine.addColorStop(1, "rgba(112, 231, 255, 0)");
+      ctx.fillStyle = shine;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
 
       raf = requestAnimationFrame(frame);
     }

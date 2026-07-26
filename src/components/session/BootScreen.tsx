@@ -281,7 +281,7 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
             <span className={styles.logoSyn}>{synText}</span>
             <span className={styles.logoSight}>{sightText}</span>
           </div>
-          <p className={styles.logoSub}>Secure Identity Command Boot</p>
+          <p className={styles.logoSub}>Identity Intelligence</p>
         </div>
 
         <div className={styles.panels}>

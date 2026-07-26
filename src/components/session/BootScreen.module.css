@@ -19,7 +19,7 @@
 .globeLayer {
   position: absolute;
   inset: 0;
-  opacity: 0.92;
+  opacity: 1;
 }
 
 .vignette {
@@ -71,32 +71,33 @@
   text-align: center;
 }
 
+/* Match BrandLogo / Navbar: sans + tracking + cyber-blue SIGHT */
 .logo {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: clamp(2.4rem, 6vw, 4.2rem);
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  line-height: 1;
-  text-indent: 0.28em;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: clamp(1.35rem, 3.6vw, 2.15rem);
+  font-weight: 600;
+  letter-spacing: 0.23em;
+  line-height: 1.1;
+  text-indent: 0.23em;
 }
 
 .logoSyn {
-  color: #e2e8f0;
-  text-shadow: 0 0 18px rgba(226, 232, 240, 0.18);
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: none;
 }
 
 .logoSight {
-  color: #1dd2ff;
-  text-shadow: 0 0 22px rgba(29, 210, 255, 0.45);
+  color: #29b6f6;
+  text-shadow: 0 0 18px rgba(41, 182, 246, 0.35);
 }
 
 .logoSub {
-  margin-top: 0.85rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.62rem;
-  letter-spacing: 0.34em;
+  margin-top: 0.7rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.4375rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.38);
+  color: rgba(255, 255, 255, 0.25);
 }
 
 .panels {
