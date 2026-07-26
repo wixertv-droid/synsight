@@ -106,6 +106,11 @@ export interface PromotionsRepository {
     creditTransactionId: number | null;
     promoCodeUsed?: string | null;
   }): Promise<PromotionRewardRecord>;
+  deleteReward?(rewardId: number): Promise<void>;
+  attachRewardTransaction?(
+    rewardId: number,
+    creditTransactionId: number
+  ): Promise<void>;
   createLog(input: {
     promotionId: number;
     userId: number;
@@ -329,6 +334,16 @@ export function createInMemoryPromotionsRepository(): PromotionsRepository {
       ).length;
     },
     async createReward(input) {
+      const exists = rewardsStore().some(
+        (entry) =>
+          entry.promotionId === input.promotionId &&
+          entry.userId === input.userId
+      );
+      if (exists) {
+        const error = new Error("ER_DUP_ENTRY");
+        (error as Error & { code?: string }).code = "ER_DUP_ENTRY";
+        throw error;
+      }
       const record: PromotionRewardRecord = {
         id: nextRewardId(),
         promotionId: input.promotionId,
@@ -341,6 +356,15 @@ export function createInMemoryPromotionsRepository(): PromotionsRepository {
       };
       rewardsStore().push(record);
       return record;
+    },
+    async deleteReward(rewardId) {
+      const store = rewardsStore();
+      const index = store.findIndex((entry) => entry.id === rewardId);
+      if (index >= 0) store.splice(index, 1);
+    },
+    async attachRewardTransaction(rewardId, creditTransactionId) {
+      const reward = rewardsStore().find((entry) => entry.id === rewardId);
+      if (reward) reward.creditTransactionId = creditTransactionId;
     },
     async createLog(input) {
       const record: PromotionLogRecord = {

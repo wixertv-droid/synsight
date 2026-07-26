@@ -1,4 +1,8 @@
-import { formatEuroFromCents, totalCredits } from "@/lib/credits/pricing";
+import {
+  formatEuroFromCents,
+  isReplacedAnalysisKey,
+  totalCredits,
+} from "@/lib/credits/pricing";
 import { getCreditsRepository, getPricingRepository } from "@/lib/repositories";
 import { ensureDigitalLeakCatalog } from "@/lib/credits/ensure-digital-leak-catalog";
 
@@ -174,89 +178,59 @@ export async function consumeCredits(
   requestId?: string
 ) {
   await ensureDigitalLeakCatalog(false);
+  if (isReplacedAnalysisKey(analysisKey)) {
+    return { status: "unknown_analysis" as const };
+  }
   const price = await getPricingRepository().findAnalysisByKey(analysisKey);
   if (!price || !price.isActive) {
     return { status: "unknown_analysis" as const };
   }
 
   const repo = getCreditsRepository();
-  await repo.ensureAccount(userId);
+  const result = await repo.consumeAnalysisCreditsAtomic({
+    userId,
+    analysisKey: price.analysisKey,
+    credits: price.credits,
+    label: price.label,
+    requestId: requestId?.trim() || null,
+  });
 
-  // Idempotent retry: same requestId → return prior success without re-debit
-  if (requestId) {
-    const prior = await repo.findUsageByRequestId(userId, requestId);
-    if (prior && prior.status === "completed") {
-      const account = await repo.ensureAccount(userId);
-      return {
-        status: "completed" as const,
-        analysisKey: price.analysisKey,
-        label: price.label,
-        creditsCharged: prior.creditsCharged,
-        balance: account.balance,
-        transactionId: prior.transactionId ?? 0,
-        usageLogId: prior.id,
-        alreadyConsumed: true as const,
-      };
-    }
-  }
-
-  try {
-    const result = await repo.applyCreditChange({
-      userId,
-      type: "consume",
-      amount: -price.credits,
-      description: `${price.label} (${price.credits} SynCredits)`,
-      analysisKey: price.analysisKey,
-      metadataJson: { requestId: requestId ?? null },
-      transactionSource: "analysis",
-    });
-    const usage = await repo.createUsageLog({
-      userId,
-      analysisKey: price.analysisKey,
-      creditsCharged: price.credits,
-      status: "completed",
-      transactionId: result.transaction.id,
-      requestId: requestId ?? null,
-    });
-
+  if (result.status === "insufficient") {
     return {
-      status: "completed" as const,
+      status: "insufficient" as const,
+      required: price.credits,
+      balance: result.balance,
       analysisKey: price.analysisKey,
       label: price.label,
-      creditsCharged: price.credits,
-      balance: result.account.balance,
-      transactionId: result.transaction.id,
-      usageLogId: usage.id,
-      alreadyConsumed: false as const,
     };
-  } catch (error) {
-    if (error instanceof Error && error.message === "INSUFFICIENT_CREDITS") {
-      const account = await repo.ensureAccount(userId);
-      return {
-        status: "insufficient" as const,
-        required: price.credits,
-        balance: account.balance,
-        analysisKey: price.analysisKey,
-        label: price.label,
-      };
-    }
-    // Unique race: another request finished first
-    if (requestId) {
-      const raced = await repo.findUsageByRequestId(userId, requestId);
-      if (raced && raced.status === "completed") {
-        const account = await repo.ensureAccount(userId);
-        return {
-          status: "completed" as const,
-          analysisKey: price.analysisKey,
-          label: price.label,
-          creditsCharged: raced.creditsCharged,
-          balance: account.balance,
-          transactionId: raced.transactionId ?? 0,
-          usageLogId: raced.id,
-          alreadyConsumed: true as const,
-        };
-      }
-    }
-    throw error;
   }
+
+  return {
+    status: "completed" as const,
+    analysisKey: price.analysisKey,
+    label: price.label,
+    creditsCharged: result.creditsCharged,
+    balance: result.balance,
+    transactionId: result.transactionId,
+    usageLogId: result.usageLogId,
+    alreadyConsumed: result.alreadyConsumed,
+  };
+}
+
+/** Refund SynCredits for a failed/aborted analysis (idempotent by requestId). */
+export async function refundAnalysisCredits(
+  userId: number,
+  requestId: string,
+  reason = "analysis_failed"
+) {
+  const trimmed = requestId.trim();
+  if (!trimmed) {
+    return { status: "not_found" as const };
+  }
+  const repo = getCreditsRepository();
+  return repo.refundAnalysisCreditsAtomic({
+    userId,
+    requestId: trimmed,
+    reason,
+  });
 }

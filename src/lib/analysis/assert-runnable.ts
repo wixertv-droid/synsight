@@ -154,24 +154,27 @@ export async function assertAnalysisRunnable(
         403
       );
     }
-    if (existing.status !== "completed") {
+    if (existing.status === "completed") {
+      const account = await creditsRepo.ensureAccount(input.userId);
+      return {
+        analysisKey,
+        label: price.label,
+        creditsCharged: existing.creditsCharged,
+        balance: account.balance,
+        transactionId: existing.transactionId,
+        usageLogId: existing.id,
+        alreadyConsumed: true,
+        apiConfigured,
+      };
+    }
+    // Refunded usage: allow a fresh atomic re-consume below.
+    if (existing.status !== "refunded") {
       throw new AnalysisGateError(
         "INSUFFICIENT_CREDITS",
         "SynCredits-Abbuchung war nicht erfolgreich.",
         402
       );
     }
-    const account = await creditsRepo.ensureAccount(input.userId);
-    return {
-      analysisKey,
-      label: price.label,
-      creditsCharged: existing.creditsCharged,
-      balance: account.balance,
-      transactionId: existing.transactionId,
-      usageLogId: existing.id,
-      alreadyConsumed: true,
-      apiConfigured,
-    };
   }
 
   if (input.consume === false) {

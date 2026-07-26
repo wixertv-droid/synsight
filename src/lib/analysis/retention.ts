@@ -95,17 +95,16 @@ export function isReportExpired(input: {
       return expires.getTime() <= now.getTime();
     }
   }
-  if (
-    typeof input.retentionDays === "number" &&
-    input.retentionDays > 0 &&
-    input.generatedAt
-  ) {
-    const expiresAt = computeExpiresAt(
-      input.generatedAt,
-      input.retentionDays as ReportRetentionDays
-    );
-    if (expiresAt) {
-      return new Date(expiresAt).getTime() <= now.getTime();
+  if (typeof input.retentionDays === "number" && input.generatedAt) {
+    if (input.retentionDays < 0) return true;
+    if (input.retentionDays > 0) {
+      const expiresAt = computeExpiresAt(
+        input.generatedAt,
+        input.retentionDays as ReportRetentionDays
+      );
+      if (expiresAt) {
+        return new Date(expiresAt).getTime() <= now.getTime();
+      }
     }
   }
   return false;
@@ -116,4 +115,67 @@ export function retentionLabel(days: ReportRetentionDays): string {
     REPORT_RETENTION_PRESETS.find((preset) => preset.days === days)?.label ??
     `${days} Tage`
   );
+}
+
+/**
+ * Digital Leak retention options (RC-3 M-02).
+ * -1 = delete immediately (expires at generation)
+ * 0 = keep until manual deletion
+ * positive = days until expiry
+ */
+export const DIGITAL_LEAK_RETENTION_PRESETS = [
+  {
+    days: -1,
+    label: "Sofort löschen",
+    description: "Nach der Auswertung entfernen",
+  },
+  { days: 30, label: "30 Tage", description: "Ein Monat" },
+  { days: 90, label: "90 Tage", description: "Ein Quartal (Standard)" },
+  { days: 180, label: "180 Tage", description: "Ein halbes Jahr" },
+  { days: 365, label: "1 Jahr", description: "Zwölf Monate" },
+  {
+    days: 0,
+    label: "Manuell behalten",
+    description: "Bis zur manuellen Löschung oder nächsten Analyse",
+  },
+] as const;
+
+export type DigitalLeakRetentionDays =
+  (typeof DIGITAL_LEAK_RETENTION_PRESETS)[number]["days"];
+
+export const DEFAULT_DIGITAL_LEAK_RETENTION_DAYS: DigitalLeakRetentionDays = 90;
+
+export function isValidDigitalLeakRetentionDays(
+  value: unknown
+): value is DigitalLeakRetentionDays {
+  return (
+    typeof value === "number" &&
+    DIGITAL_LEAK_RETENTION_PRESETS.some((preset) => preset.days === value)
+  );
+}
+
+export function parseDigitalLeakRetentionDays(
+  value: unknown,
+  fallback: DigitalLeakRetentionDays = DEFAULT_DIGITAL_LEAK_RETENTION_DAYS
+): DigitalLeakRetentionDays {
+  const numeric =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : NaN;
+  return isValidDigitalLeakRetentionDays(numeric) ? numeric : fallback;
+}
+
+/** Expiry for Digital Leak: -1 → immediate, 0 → never, >0 → after N days. */
+export function computeDigitalLeakExpiresAt(
+  generatedAtIso: string,
+  retentionDays: DigitalLeakRetentionDays
+): string | null {
+  if (retentionDays === 0) return null;
+  const generated = new Date(generatedAtIso);
+  if (Number.isNaN(generated.getTime())) return null;
+  if (retentionDays < 0) return generated.toISOString();
+  const expires = new Date(generated.getTime() + retentionDays * 86_400_000);
+  return expires.toISOString();
 }

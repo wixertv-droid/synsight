@@ -896,6 +896,10 @@ export const promotionRewards = mysqlTable(
       table.userId,
       table.notificationShownAt
     ),
+    uniqueIndex("promotion_rewards_promo_user_uq").on(
+      table.promotionId,
+      table.userId
+    ),
   ]
 );
 
@@ -1377,6 +1381,8 @@ export const digitalExposureScans = mysqlTable(
     emailCount: int("email_count", { unsigned: true }).notNull().default(0),
     phoneCount: int("phone_count", { unsigned: true }).notNull().default(0),
     findingCount: int("finding_count", { unsigned: true }).notNull().default(0),
+    retentionDays: int("retention_days").notNull().default(90),
+    expiresAt: timestamp("expires_at", { mode: "string", fsp: 3 }),
     createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
       .notNull()
       .default(sql`CURRENT_TIMESTAMP(3)`),
@@ -1384,6 +1390,7 @@ export const digitalExposureScans = mysqlTable(
   (table) => [
     index("digital_exposure_scans_user_id_idx").on(table.userId),
     index("digital_exposure_scans_created_at_idx").on(table.createdAt),
+    index("digital_exposure_scans_expires_at_idx").on(table.expiresAt),
   ]
 );
 
@@ -1600,6 +1607,89 @@ export const usernameCostLogs = mysqlTable(
     index("username_cost_logs_analysis_id_idx").on(table.analysisId),
     index("username_cost_logs_user_id_idx").on(table.userId),
     index("username_cost_logs_created_at_idx").on(table.createdAt),
+  ]
+);
+
+export const usernameHitActions = mysqlTable(
+  "username_hit_actions",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    analysisId: bigint("analysis_id", { mode: "number", unsigned: true }),
+    sourceModule: varchar("source_module", { length: 64 })
+      .notNull()
+      .default("username_intelligence"),
+    hitFingerprint: varchar("hit_fingerprint", { length: 64 }).notNull(),
+    hitPlatform: varchar("hit_platform", { length: 120 }).notNull(),
+    hitUrl: varchar("hit_url", { length: 1000 }),
+    action: mysqlEnum("action", [
+      "ignored",
+      "self",
+      "ordered",
+      "resolved",
+    ]).notNull(),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("username_hit_actions_user_mod_fp").on(
+      table.userId,
+      table.sourceModule,
+      table.hitFingerprint
+    ),
+    index("username_hit_actions_user_idx").on(table.userId),
+    index("username_hit_actions_action_idx").on(table.action),
+  ]
+);
+
+export const synsightOrders = mysqlTable(
+  "synsight_orders",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceModule: varchar("source_module", { length: 64 })
+      .notNull()
+      .default("username_intelligence"),
+    hitFingerprint: varchar("hit_fingerprint", { length: 64 }).notNull(),
+    hitPlatform: varchar("hit_platform", { length: 120 }).notNull(),
+    hitUrl: varchar("hit_url", { length: 1000 }),
+    title: varchar("title", { length: 255 }).notNull(),
+    orderType: varchar("order_type", { length: 64 }).notNull(),
+    status: mysqlEnum("status", [
+      "offen",
+      "in_bearbeitung",
+      "erledigt",
+      "abgelehnt",
+      "vorbereitet",
+    ])
+      .notNull()
+      .default("vorbereitet"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("synsight_orders_user_idx").on(table.userId),
+    index("synsight_orders_status_idx").on(table.status),
+    index("synsight_orders_module_idx").on(table.sourceModule),
   ]
 );
 

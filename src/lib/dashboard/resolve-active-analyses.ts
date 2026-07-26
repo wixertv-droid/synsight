@@ -1,10 +1,16 @@
 import type { AnalysisKey } from "@/lib/credits/pricing";
 import { isReplacedAnalysisKey } from "@/lib/credits/pricing";
 import {
+  extractActiveAnalysisKeys,
+  isAnalysisKeyActive,
+} from "@/lib/credits/resolve-active-analyses";
+import {
   analysisModules,
   type AnalysisModule,
   type AnalysisTier,
 } from "@/lib/dashboard/analysis-center-data";
+
+export { extractActiveAnalysisKeys, isAnalysisKeyActive };
 
 export interface CatalogAnalysisEntry {
   key: string;

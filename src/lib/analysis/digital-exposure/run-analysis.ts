@@ -28,6 +28,11 @@ import {
   type DigitalExposureRiskLevel,
 } from "@/lib/analysis/digital-exposure/types";
 import { recordApiUsageEvent } from "@/lib/services/finance-service";
+import {
+  computeDigitalLeakExpiresAt,
+  parseDigitalLeakRetentionDays,
+  type DigitalLeakRetentionDays,
+} from "@/lib/analysis/retention";
 
 const DEHASHED_URL = "https://dehashed.com/";
 
@@ -244,7 +249,7 @@ export class DigitalExposureUnavailableError extends Error {
 
 export async function runDigitalLeakExposureScan(
   identity: IdentityView | null,
-  options: { userId: number }
+  options: { userId: number; retentionDays?: DigitalLeakRetentionDays }
 ): Promise<DigitalExposureReport> {
   const configured = await isDehashedConfiguredAndActive();
   if (!configured) {
@@ -280,11 +285,17 @@ export async function runDigitalLeakExposureScan(
     );
   }
 
+  const generatedAt = new Date().toISOString();
+  const retentionDays = parseDigitalLeakRetentionDays(options.retentionDays);
+  const expiresAt = computeDigitalLeakExpiresAt(generatedAt, retentionDays);
+
   const scanId = await createDigitalExposureScan({
     userId: options.userId,
     subjectName,
     emailCount: emails.length,
     phoneCount: phones.length,
+    retentionDays,
+    expiresAt: expiresAt ? expiresAt.slice(0, 23).replace("T", " ") : null,
   });
 
   const findings: DigitalExposureFinding[] = [];
@@ -516,6 +527,8 @@ export async function runDigitalLeakExposureScan(
       riskScore,
       summary,
       findings,
+      retentionDays,
+      expiresAt,
     });
 
     return {
@@ -530,8 +543,10 @@ export async function runDigitalLeakExposureScan(
       findingCount: findings.filter(
         (f) => f.type !== "SOURCE" && f.title !== AI_SUMMARY_FINDING_TITLE
       ).length,
-      startedAt: new Date().toISOString(),
+      startedAt: generatedAt,
       completedAt: new Date().toISOString(),
+      retentionDays,
+      expiresAt,
       findings,
       geminiPrep,
       aiSummary,

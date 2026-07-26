@@ -198,6 +198,17 @@ export function createMysqlPromotionsRepository(
         grantedAt: row.grantedAt,
       };
     },
+    async deleteReward(rewardId) {
+      await db
+        .delete(promotionRewards)
+        .where(eq(promotionRewards.id, rewardId));
+    },
+    async attachRewardTransaction(rewardId, creditTransactionId) {
+      await db
+        .update(promotionRewards)
+        .set({ creditTransactionId })
+        .where(eq(promotionRewards.id, rewardId));
+    },
     async createLog(input) {
       const result = await db.insert(promotionLogs).values({
         promotionId: input.promotionId,

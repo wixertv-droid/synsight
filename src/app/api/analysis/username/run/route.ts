@@ -1,9 +1,7 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
-import {
-  AnalysisGateError,
-  assertAnalysisRunnable,
-} from "@/lib/analysis/assert-runnable";
+import { AnalysisGateError } from "@/lib/analysis/assert-runnable";
+import { runWithAnalysisCredits } from "@/lib/analysis/run-with-credits";
 import {
   UsernameIntelligenceUnavailableError,
   runUsernameIntelligenceScan,
@@ -44,17 +42,20 @@ export async function POST(request: Request) {
     typeof body.requestId === "string" ? body.requestId.trim() : "";
 
   try {
-    await assertAnalysisRunnable({
-      userId,
-      analysisKey: "username_intelligence",
-      requestId,
-    });
-
-    const identity = await getIdentityForUser(userId);
-    const report = await runUsernameIntelligenceScan(identity, {
-      userId,
-      retentionDays,
-    });
+    const report = await runWithAnalysisCredits(
+      {
+        userId,
+        analysisKey: "username_intelligence",
+        requestId,
+      },
+      async () => {
+        const identity = await getIdentityForUser(userId);
+        return runUsernameIntelligenceScan(identity, {
+          userId,
+          retentionDays,
+        });
+      }
+    );
     return NextResponse.json(apiSuccess({ report }));
   } catch (error) {
     if (error instanceof AnalysisGateError) {

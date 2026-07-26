@@ -5,6 +5,8 @@ import type {
   UsernameFinanceSnapshot,
   UsernameModuleSettings,
 } from "@/lib/analysis/username/types";
+import { DIGITAL_LEAK_RETENTION_PRESETS } from "@/lib/analysis/retention";
+import type { PlatformSettings } from "@/lib/services/admin-platform-service";
 
 interface AnalysisRow {
   id: number;
@@ -40,6 +42,10 @@ export default function AdminAnalysisModulesView() {
     useState<UsernameFinanceSnapshot | null>(null);
   const [usernameBusy, setUsernameBusy] = useState(false);
   const [usernameMsg, setUsernameMsg] = useState<string | null>(null);
+  const [platformSettings, setPlatformSettings] =
+    useState<PlatformSettings | null>(null);
+  const [retentionBusy, setRetentionBusy] = useState(false);
+  const [retentionMsg, setRetentionMsg] = useState<string | null>(null);
 
   const loadUsername = useCallback(async () => {
     const response = await fetch("/api/admin/username-module");
@@ -47,6 +53,14 @@ export default function AdminAnalysisModulesView() {
     if (response.ok && body?.success) {
       setUsernameSettings(body.data.settings);
       setUsernameFinance(body.data.finance);
+    }
+  }, []);
+
+  const loadPlatform = useCallback(async () => {
+    const response = await fetch("/api/admin/platform-settings");
+    const body = await response.json().catch(() => null);
+    if (response.ok && body?.success) {
+      setPlatformSettings(body.data.settings);
     }
   }, []);
 
@@ -58,7 +72,39 @@ export default function AdminAnalysisModulesView() {
       })
       .catch(() => undefined);
     void loadUsername();
-  }, [loadUsername]);
+    void loadPlatform();
+  }, [loadUsername, loadPlatform]);
+
+  async function saveDigitalLeakRetention(days: number) {
+    if (!platformSettings) return;
+    setRetentionBusy(true);
+    setRetentionMsg(null);
+    try {
+      const response = await fetch("/api/admin/platform-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageMaxUploadMb: platformSettings.imageMaxUploadMb,
+          imageCompressionQuality: platformSettings.imageCompressionQuality,
+          imageWebpQuality: platformSettings.imageWebpQuality,
+          imageThumbnailQuality: platformSettings.imageThumbnailQuality,
+          imageMaxResolution: platformSettings.imageMaxResolution,
+          encryptOriginals: platformSettings.encryptOriginals,
+          generateAnalysisImages: platformSettings.generateAnalysisImages,
+          digitalLeakDefaultRetentionDays: days,
+        }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body?.success) {
+        setRetentionMsg(body?.error?.message ?? "Speichern fehlgeschlagen.");
+        return;
+      }
+      setPlatformSettings(body.data.settings);
+      setRetentionMsg("Digital-Leak-Aufbewahrung gespeichert.");
+    } finally {
+      setRetentionBusy(false);
+    }
+  }
 
   async function toggle(row: AnalysisRow) {
     setBusy(row.id);
@@ -156,6 +202,39 @@ export default function AdminAnalysisModulesView() {
           </li>
         ))}
       </ul>
+
+      <section className="rounded-2xl border border-white/[0.08] bg-[#060d16]/90 p-5 md:p-6">
+        <p className="font-mono text-[9px] tracking-[.16em] text-white/45">
+          DIGITAL LEAK & EXPOSURE · AUFBEWAHRUNG
+        </p>
+        <p className="mt-2 text-sm text-white/45">
+          Standard-Aufbewahrung neuer Scan-Ergebnisse (Admin-Vorgabe).
+        </p>
+        <label className="mt-4 block max-w-md rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+          <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+            RETENTION
+          </span>
+          <select
+            disabled={!platformSettings || retentionBusy}
+            value={String(
+              platformSettings?.digitalLeakDefaultRetentionDays ?? 90
+            )}
+            onChange={(event) =>
+              void saveDigitalLeakRetention(Number(event.target.value))
+            }
+            className="mt-2 w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+          >
+            {DIGITAL_LEAK_RETENTION_PRESETS.map((preset) => (
+              <option key={preset.days} value={preset.days}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {retentionMsg ? (
+          <p className="mt-3 text-xs text-white/45">{retentionMsg}</p>
+        ) : null}
+      </section>
 
       <section className="rounded-2xl border border-cyber-cyan/20 bg-[#060d16]/90 p-5 md:p-6">
         <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">

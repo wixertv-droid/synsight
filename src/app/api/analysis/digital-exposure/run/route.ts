@@ -1,13 +1,13 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
-import {
-  AnalysisGateError,
-  assertAnalysisRunnable,
-} from "@/lib/analysis/assert-runnable";
+import { AnalysisGateError } from "@/lib/analysis/assert-runnable";
+import { runWithAnalysisCredits } from "@/lib/analysis/run-with-credits";
 import {
   DigitalExposureUnavailableError,
   runDigitalLeakExposureScan,
 } from "@/lib/analysis/digital-exposure/run-analysis";
+import { parseDigitalLeakRetentionDays } from "@/lib/analysis/retention";
+import { getPublicPlatformSettings } from "@/lib/services/admin-platform-service";
 import { getIdentityForUser } from "@/lib/services/identity-service";
 import { NextResponse } from "next/server";
 import { validateMutationOrigin } from "@/lib/security/request";
@@ -36,19 +36,31 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as {
     requestId?: unknown;
+    retentionDays?: unknown;
   };
   const requestId =
     typeof body.requestId === "string" ? body.requestId.trim() : "";
+  const platform = await getPublicPlatformSettings();
+  const retentionDays = parseDigitalLeakRetentionDays(
+    body.retentionDays,
+    platform.digitalLeakDefaultRetentionDays
+  );
 
   try {
-    await assertAnalysisRunnable({
-      userId,
-      analysisKey: "digital_leak_exposure",
-      requestId,
-    });
-
-    const identity = await getIdentityForUser(userId);
-    const report = await runDigitalLeakExposureScan(identity, { userId });
+    const report = await runWithAnalysisCredits(
+      {
+        userId,
+        analysisKey: "digital_leak_exposure",
+        requestId,
+      },
+      async () => {
+        const identity = await getIdentityForUser(userId);
+        return runDigitalLeakExposureScan(identity, {
+          userId,
+          retentionDays,
+        });
+      }
+    );
     return NextResponse.json(apiSuccess({ report }));
   } catch (error) {
     if (error instanceof AnalysisGateError) {

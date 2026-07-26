@@ -136,6 +136,34 @@ export interface CreditsRepository {
     userId: number,
     requestId: string
   ): Promise<UsageLogRecord | null>;
+  /**
+   * Atomic debit + usage_log insert (or idempotent return / re-charge after refund).
+   * Must never leave a debit without a matching usage row.
+   */
+  consumeAnalysisCreditsAtomic(input: {
+    userId: number;
+    analysisKey: string;
+    credits: number;
+    label: string;
+    requestId: string | null;
+  }): Promise<{
+    status: "completed" | "insufficient";
+    alreadyConsumed: boolean;
+    creditsCharged: number;
+    balance: number;
+    transactionId: number;
+    usageLogId: number;
+  }>;
+  /** Refund a completed analysis usage by requestId (idempotent). */
+  refundAnalysisCreditsAtomic(input: {
+    userId: number;
+    requestId: string;
+    reason: string;
+  }): Promise<{
+    status: "refunded" | "not_found" | "already_refunded" | "not_completed";
+    balance?: number;
+    creditsRefunded?: number;
+  }>;
   createInvoice(input: {
     userId: number;
     paymentId: number;
@@ -359,6 +387,167 @@ export function createInMemoryCreditsRepository(): CreditsRepository {
           (row) => row.userId === userId && row.requestId === requestId
         ) ?? null
       );
+    },
+
+    async consumeAnalysisCreditsAtomic(input) {
+      await this.ensureAccount(input.userId);
+      if (input.requestId) {
+        const prior = await this.findUsageByRequestId(
+          input.userId,
+          input.requestId
+        );
+        if (prior?.status === "completed") {
+          const account = await this.ensureAccount(input.userId);
+          return {
+            status: "completed" as const,
+            alreadyConsumed: true,
+            creditsCharged: prior.creditsCharged,
+            balance: account.balance,
+            transactionId: prior.transactionId ?? 0,
+            usageLogId: prior.id,
+          };
+        }
+        if (prior?.status === "refunded") {
+          try {
+            const result = await this.applyCreditChange({
+              userId: input.userId,
+              type: "consume",
+              amount: -input.credits,
+              description: `${input.label} (${input.credits} SynCredits)`,
+              analysisKey: input.analysisKey,
+              metadataJson: { requestId: input.requestId },
+              transactionSource: "analysis",
+            });
+            prior.status = "completed";
+            prior.creditsCharged = input.credits;
+            prior.transactionId = result.transaction.id;
+            return {
+              status: "completed" as const,
+              alreadyConsumed: false,
+              creditsCharged: input.credits,
+              balance: result.account.balance,
+              transactionId: result.transaction.id,
+              usageLogId: prior.id,
+            };
+          } catch (error) {
+            if (
+              error instanceof Error &&
+              error.message === "INSUFFICIENT_CREDITS"
+            ) {
+              return {
+                status: "insufficient" as const,
+                alreadyConsumed: false,
+                creditsCharged: 0,
+                balance: (await this.ensureAccount(input.userId)).balance,
+                transactionId: 0,
+                usageLogId: prior.id,
+              };
+            }
+            throw error;
+          }
+        }
+      }
+
+      try {
+        const result = await this.applyCreditChange({
+          userId: input.userId,
+          type: "consume",
+          amount: -input.credits,
+          description: `${input.label} (${input.credits} SynCredits)`,
+          analysisKey: input.analysisKey,
+          metadataJson: { requestId: input.requestId },
+          transactionSource: "analysis",
+        });
+        const usage = await this.createUsageLog({
+          userId: input.userId,
+          analysisKey: input.analysisKey,
+          creditsCharged: input.credits,
+          status: "completed",
+          transactionId: result.transaction.id,
+          requestId: input.requestId,
+        });
+        return {
+          status: "completed" as const,
+          alreadyConsumed: false,
+          creditsCharged: input.credits,
+          balance: result.account.balance,
+          transactionId: result.transaction.id,
+          usageLogId: usage.id,
+        };
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "INSUFFICIENT_CREDITS"
+        ) {
+          return {
+            status: "insufficient" as const,
+            alreadyConsumed: false,
+            creditsCharged: 0,
+            balance: (await this.ensureAccount(input.userId)).balance,
+            transactionId: 0,
+            usageLogId: 0,
+          };
+        }
+        if (input.requestId) {
+          const raced = await this.findUsageByRequestId(
+            input.userId,
+            input.requestId
+          );
+          if (raced?.status === "completed") {
+            const account = await this.ensureAccount(input.userId);
+            return {
+              status: "completed" as const,
+              alreadyConsumed: true,
+              creditsCharged: raced.creditsCharged,
+              balance: account.balance,
+              transactionId: raced.transactionId ?? 0,
+              usageLogId: raced.id,
+            };
+          }
+        }
+        throw error;
+      }
+    },
+
+    async refundAnalysisCreditsAtomic(input) {
+      const usage = await this.findUsageByRequestId(
+        input.userId,
+        input.requestId
+      );
+      if (!usage) return { status: "not_found" as const };
+      if (usage.status === "refunded") {
+        const account = await this.ensureAccount(input.userId);
+        return {
+          status: "already_refunded" as const,
+          balance: account.balance,
+          creditsRefunded: 0,
+        };
+      }
+      if (usage.status !== "completed") {
+        return { status: "not_completed" as const };
+      }
+      const result = await this.applyCreditChange({
+        userId: input.userId,
+        type: "refund",
+        amount: usage.creditsCharged,
+        description: `Erstattung Analyse (${input.reason})`,
+        analysisKey: usage.analysisKey,
+        usageLogId: usage.id,
+        metadataJson: { requestId: input.requestId, reason: input.reason },
+        transactionSource: "refund",
+      });
+      // Reverse lifetime spent for the original consume
+      const account = await this.ensureAccount(input.userId);
+      account.lifetimeSpent = Math.max(
+        0,
+        account.lifetimeSpent - usage.creditsCharged
+      );
+      usage.status = "refunded";
+      return {
+        status: "refunded" as const,
+        balance: result.account.balance,
+        creditsRefunded: usage.creditsCharged,
+      };
     },
 
     async createInvoice(input) {

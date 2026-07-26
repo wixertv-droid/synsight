@@ -106,6 +106,32 @@ async function runEnsure(): Promise<boolean> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // Retention columns (RC-3 M-02 / migration 029)
+    try {
+      await db.execute(sql`
+        ALTER TABLE digital_exposure_scans
+        ADD COLUMN retention_days INT NOT NULL DEFAULT 90 AFTER finding_count
+      `);
+    } catch {
+      /* column may already exist */
+    }
+    try {
+      await db.execute(sql`
+        ALTER TABLE digital_exposure_scans
+        ADD COLUMN expires_at TIMESTAMP(3) NULL AFTER retention_days
+      `);
+    } catch {
+      /* column may already exist */
+    }
+    try {
+      await db.execute(sql`
+        CREATE INDEX digital_exposure_scans_expires_at_idx
+        ON digital_exposure_scans (expires_at)
+      `);
+    } catch {
+      /* index may already exist */
+    }
+
     // Optional FK / column upgrades — ignore if already present or unsupported
     try {
       await db.execute(sql`

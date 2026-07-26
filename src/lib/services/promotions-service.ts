@@ -16,6 +16,27 @@ export class AdminForbiddenError extends Error {
   }
 }
 
+export class PromotionAlreadyRedeemedError extends Error {
+  constructor() {
+    super("ALREADY_REDEEMED");
+  }
+}
+
+function isMysqlDuplicateKeyError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as {
+    code?: string;
+    errno?: number;
+    cause?: { code?: string; errno?: number };
+  };
+  if (candidate.code === "ER_DUP_ENTRY" || candidate.errno === 1062) {
+    return true;
+  }
+  return (
+    candidate.cause?.code === "ER_DUP_ENTRY" || candidate.cause?.errno === 1062
+  );
+}
+
 function assertAdmin(actor: AuthenticatedUser): void {
   if (actor.role !== "admin") throw new AdminForbiddenError();
 }
@@ -146,6 +167,48 @@ export async function grantPromotionCredits(input: {
   const promotionsRepository = getPromotionsRepository();
 
   await creditsRepository.ensureAccount(input.userId);
+
+  // Re-check budget immediately before grant (reduces TOCTOU window).
+  if (input.promotion.budgetCredits !== null) {
+    const granted = await promotionsRepository.sumCreditsGrantedForPromotion(
+      input.promotion.id
+    );
+    if (
+      granted + input.promotion.bonusCredits >
+      input.promotion.budgetCredits
+    ) {
+      throw new Error("BUDGET_EXCEEDED");
+    }
+  }
+
+  // Insert reward first (unique promo+user) so retries never double-credit.
+  let reward;
+  try {
+    reward = await promotionsRepository.createReward({
+      promotionId: input.promotion.id,
+      userId: input.userId,
+      credits: input.promotion.bonusCredits,
+      creditTransactionId: null,
+      promoCodeUsed: input.promoCodeUsed ?? null,
+    });
+  } catch (error) {
+    if (isMysqlDuplicateKeyError(error)) {
+      throw new PromotionAlreadyRedeemedError();
+    }
+    throw error;
+  }
+
+  // Post-insert budget guard for concurrent grants from different users.
+  if (input.promotion.budgetCredits !== null) {
+    const granted = await promotionsRepository.sumCreditsGrantedForPromotion(
+      input.promotion.id
+    );
+    if (granted > input.promotion.budgetCredits) {
+      await promotionsRepository.deleteReward?.(reward.id);
+      throw new Error("BUDGET_EXCEEDED");
+    }
+  }
+
   const result = await creditsRepository.applyCreditChange({
     userId: input.userId,
     type: "bonus",
@@ -161,13 +224,12 @@ export async function grantPromotionCredits(input: {
     },
   });
 
-  const reward = await promotionsRepository.createReward({
-    promotionId: input.promotion.id,
-    userId: input.userId,
-    credits: input.promotion.bonusCredits,
-    creditTransactionId: result.transaction.id,
-    promoCodeUsed: input.promoCodeUsed ?? null,
-  });
+  if (promotionsRepository.attachRewardTransaction) {
+    await promotionsRepository.attachRewardTransaction(
+      reward.id,
+      result.transaction.id
+    );
+  }
 
   await promotionsRepository.createLog({
     promotionId: input.promotion.id,
@@ -229,15 +291,20 @@ export async function processAutomaticNewUserPromotions(input: {
     });
     if (!eligibility.eligible) continue;
 
-    const result = await grantPromotionCredits({
-      promotion,
-      userId: input.userId,
-      reason: "Automatische Willkommensaktion nach E-Mail-Verifizierung",
-      ipAddress: input.ipAddress,
-      metadataJson: { trigger: "email_verification" },
-    });
-    granted.push(result);
-    account.balance = result.balance;
+    try {
+      const result = await grantPromotionCredits({
+        promotion,
+        userId: input.userId,
+        reason: "Automatische Willkommensaktion nach E-Mail-Verifizierung",
+        ipAddress: input.ipAddress,
+        metadataJson: { trigger: "email_verification" },
+      });
+      granted.push(result);
+      account.balance = result.balance;
+    } catch (error) {
+      if (error instanceof PromotionAlreadyRedeemedError) continue;
+      throw error;
+    }
   }
 
   return granted;
@@ -282,22 +349,29 @@ export async function redeemPromotionByCode(input: {
     return { status: "not_eligible", reason: eligibility.reason };
   }
 
-  const granted = await grantPromotionCredits({
-    promotion,
-    userId: input.userId,
-    reason: `Promotioncode ${code}`,
-    promoCodeUsed: code,
-    ipAddress: input.ipAddress,
-    metadataJson: { trigger: "promo_code_redeem" },
-  });
+  try {
+    const granted = await grantPromotionCredits({
+      promotion,
+      userId: input.userId,
+      reason: `Promotioncode ${code}`,
+      promoCodeUsed: code,
+      ipAddress: input.ipAddress,
+      metadataJson: { trigger: "promo_code_redeem" },
+    });
 
-  return {
-    status: "completed",
-    promotionId: granted.promotionId,
-    promotionName: granted.promotionName,
-    credits: granted.credits,
-    balance: granted.balance,
-  };
+    return {
+      status: "completed",
+      promotionId: granted.promotionId,
+      promotionName: granted.promotionName,
+      credits: granted.credits,
+      balance: granted.balance,
+    };
+  } catch (error) {
+    if (error instanceof PromotionAlreadyRedeemedError) {
+      return { status: "not_eligible", reason: "ALREADY_REDEEMED" };
+    }
+    throw error;
+  }
 }
 
 export async function getPendingPromotionNotifications(userId: number) {

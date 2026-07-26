@@ -99,6 +99,9 @@ export interface DigitalExposureReport {
   findingCount: number;
   startedAt: string | null;
   completedAt: string | null;
+  /** Days to keep; -1 immediate, 0 keep until manual delete. */
+  retentionDays?: number;
+  expiresAt?: string | null;
   findings: DigitalExposureFinding[];
   /** Facts-only payload for Gemini cybersecurity summary */
   geminiPrep: DigitalExposureGeminiPayload;

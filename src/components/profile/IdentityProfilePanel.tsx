@@ -28,6 +28,7 @@ import {
   joinFirstNames,
   splitFirstNames,
 } from "@/lib/profile/module-readiness";
+import { isAnalysisKeyActive } from "@/lib/credits/resolve-active-analyses";
 
 const PLATFORMS = socialPlatformSchema.options;
 
@@ -212,10 +213,7 @@ export default function IdentityProfilePanel({
     [readiness]
   );
   const isActive = useCallback(
-    (key: string) => {
-      if (!activeKeys) return true;
-      return activeKeys.includes(key);
-    },
+    (key: string) => isAnalysisKeyActive(activeKeys, key),
     [activeKeys]
   );
   const showAliasCard =

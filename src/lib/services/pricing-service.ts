@@ -5,9 +5,7 @@ import {
 } from "@/lib/credits/ensure-digital-leak-catalog";
 import { ensureUsernameCatalog } from "@/lib/credits/ensure-username-catalog";
 import {
-  DEFAULT_ANALYSIS_PRICES,
   formatEuroFromCents,
-  isAnalysisActiveByDefault,
   isReplacedAnalysisKey,
 } from "@/lib/credits/pricing";
 import {
@@ -99,20 +97,12 @@ export async function getPublicPricingCatalog() {
       packages: packages.map(presentPackage),
     };
   } catch (error) {
-    console.error("[getPublicPricingCatalog] failed — using defaults", error);
+    console.error(
+      "[getPublicPricingCatalog] failed — returning empty catalog",
+      error
+    );
     return {
-      analyses: normalizePublicAnalyses(
-        DEFAULT_ANALYSIS_PRICES.filter((row) =>
-          isAnalysisActiveByDefault(row.key)
-        ).map((row, index) => ({
-          key: row.key,
-          label: row.label,
-          description: row.description,
-          credits: row.credits,
-          sortOrder:
-            row.key === "digital_leak_exposure" ? 25 : (index + 1) * 10,
-        }))
-      ),
+      analyses: [],
       packages: [],
     };
   }

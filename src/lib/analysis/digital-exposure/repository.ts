@@ -20,6 +20,7 @@ import {
   extractAiSummary,
 } from "@/lib/analysis/digital-exposure/report-metrics";
 import { ensureDigitalExposureSchema } from "@/lib/analysis/digital-exposure/ensure-schema";
+import { isReportExpired, toMysqlTimestamp } from "@/lib/analysis/retention";
 
 function mysqlNow(): string {
   return new Date().toISOString().slice(0, 23).replace("T", " ");
@@ -153,6 +154,8 @@ function assembleReport(
     ).length,
     startedAt: scan.startedAt,
     completedAt: scan.completedAt,
+    retentionDays: scan.retentionDays,
+    expiresAt: scan.expiresAt,
     findings,
     geminiPrep: buildGeminiPrepPayload({
       subjectName,
@@ -175,6 +178,8 @@ export async function createDigitalExposureScan(input: {
   subjectName: string;
   emailCount: number;
   phoneCount: number;
+  retentionDays?: number;
+  expiresAt?: string | null;
 }): Promise<number> {
   const db = getDatabase();
   if (!db) throw new Error("database not configured");
@@ -194,6 +199,8 @@ export async function createDigitalExposureScan(input: {
     phoneCount: input.phoneCount,
     riskScore: 0,
     findingCount: 0,
+    retentionDays: input.retentionDays ?? 90,
+    expiresAt: input.expiresAt ?? null,
   });
 
   let insertId = readMysqlInsertId(result);
@@ -245,6 +252,8 @@ export async function completeDigitalExposureScan(input: {
   riskScore: number;
   summary: string;
   findings: DigitalExposureFinding[];
+  retentionDays?: number;
+  expiresAt?: string | null;
 }): Promise<void> {
   const db = getDatabase();
   if (!db) throw new Error("database not configured");
@@ -260,6 +269,16 @@ export async function completeDigitalExposureScan(input: {
       findingCount: input.findings.filter(
         (f) => f.type !== "SOURCE" && f.title !== AI_SUMMARY_FINDING_TITLE
       ).length,
+      ...(typeof input.retentionDays === "number"
+        ? { retentionDays: input.retentionDays }
+        : {}),
+      ...(input.expiresAt !== undefined
+        ? {
+            expiresAt: input.expiresAt
+              ? toMysqlTimestamp(input.expiresAt)
+              : null,
+          }
+        : {}),
     })
     .where(eq(digitalExposureScans.id, input.scanId));
 
@@ -303,6 +322,17 @@ export async function getLatestDigitalExposureReport(
 
     const scan = scans[0];
     if (!scan) return null;
+
+    if (
+      isReportExpired({
+        expiresAt: scan.expiresAt,
+        retentionDays: scan.retentionDays,
+        generatedAt: scan.completedAt ?? scan.startedAt ?? scan.createdAt,
+      })
+    ) {
+      // Soft-hide expired scans; cascade cleanup can run later via retention job.
+      return null;
+    }
 
     const rows = await db
       .select()

@@ -47,7 +47,9 @@ describe("module-readiness", () => {
   });
 
   it("marks google analysis incomplete without core signals", () => {
-    const readiness = buildProfileModuleReadiness(emptyIdentity());
+    const readiness = buildProfileModuleReadiness(emptyIdentity(), {
+      activeKeys: ["google_search"],
+    });
     const google = readiness.find((r) => r.key === "google_search");
     expect(google?.ready).toBe(false);
     expect(google?.missing.length).toBeGreaterThan(0);
@@ -56,10 +58,14 @@ describe("module-readiness", () => {
   it("marks phone analysis ready when stammdaten phone exists", () => {
     const view = emptyIdentity();
     view.personal.phone = "+49 170 111";
-    const phone = buildProfileModuleReadiness(view).find(
-      (r) => r.key === "phone_analysis"
-    );
+    const phone = buildProfileModuleReadiness(view, {
+      activeKeys: ["phone_analysis"],
+    }).find((r) => r.key === "phone_analysis");
     expect(phone?.ready).toBe(true);
+  });
+
+  it("returns no modules when activeKeys is missing (fail-closed)", () => {
+    expect(buildProfileModuleReadiness(emptyIdentity())).toEqual([]);
   });
 
   it("filters readiness to active catalog modules only", () => {

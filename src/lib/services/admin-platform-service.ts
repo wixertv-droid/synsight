@@ -28,6 +28,8 @@ export const DEFAULT_PLATFORM_SETTINGS = {
   supportHoursEnd: "18:00",
   supportTimezone: "Europe/Berlin",
   supportResponseText: "In der Regel innerhalb von 1–2 Werktagen",
+  /** Default Digital Leak result retention (-1 immediate, 0 keep, else days). */
+  digitalLeakDefaultRetentionDays: 90,
 } as const;
 
 export type PlatformSettings = {
@@ -42,6 +44,7 @@ export type PlatformSettings = {
   supportHoursEnd: string;
   supportTimezone: string;
   supportResponseText: string;
+  digitalLeakDefaultRetentionDays: number;
 };
 
 export interface ApiCredentialSummary {

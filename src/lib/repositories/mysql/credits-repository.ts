@@ -353,6 +353,265 @@ export function createMysqlCreditsRepository(
       };
     },
 
+    async consumeAnalysisCreditsAtomic(input) {
+      try {
+        return await db.transaction(async (tx) => {
+          await tx
+            .insert(creditAccounts)
+            .values({ userId: input.userId, balance: 0 })
+            .onDuplicateKeyUpdate({ set: { userId: input.userId } });
+
+          if (input.requestId) {
+            const existingRows = await tx
+              .select()
+              .from(usageLogs)
+              .where(
+                and(
+                  eq(usageLogs.userId, input.userId),
+                  eq(usageLogs.requestId, input.requestId)
+                )
+              )
+              .limit(1);
+            const existing = existingRows[0];
+            if (existing?.status === "completed") {
+              const accounts = await tx
+                .select()
+                .from(creditAccounts)
+                .where(eq(creditAccounts.userId, input.userId))
+                .limit(1);
+              return {
+                status: "completed" as const,
+                alreadyConsumed: true,
+                creditsCharged: existing.creditsCharged,
+                balance: accounts[0]?.balance ?? 0,
+                transactionId: existing.transactionId ?? 0,
+                usageLogId: existing.id,
+              };
+            }
+
+            if (existing?.status === "refunded") {
+              const updated = await tx
+                .update(creditAccounts)
+                .set({
+                  balance: sql`${creditAccounts.balance} - ${input.credits}`,
+                  lifetimeSpent: sql`${creditAccounts.lifetimeSpent} + ${input.credits}`,
+                })
+                .where(
+                  and(
+                    eq(creditAccounts.userId, input.userId),
+                    sql`${creditAccounts.balance} >= ${input.credits}`
+                  )
+                );
+              if (Number(updated[0].affectedRows) !== 1) {
+                const accounts = await tx
+                  .select()
+                  .from(creditAccounts)
+                  .where(eq(creditAccounts.userId, input.userId))
+                  .limit(1);
+                return {
+                  status: "insufficient" as const,
+                  alreadyConsumed: false,
+                  creditsCharged: 0,
+                  balance: accounts[0]?.balance ?? 0,
+                  transactionId: 0,
+                  usageLogId: existing.id,
+                };
+              }
+              const accounts = await tx
+                .select()
+                .from(creditAccounts)
+                .where(eq(creditAccounts.userId, input.userId))
+                .limit(1);
+              const balance = accounts[0]?.balance ?? 0;
+              const inserted = await tx.insert(creditTransactions).values({
+                userId: input.userId,
+                type: "consume",
+                amount: -input.credits,
+                balanceAfter: balance,
+                analysisKey: input.analysisKey,
+                description: `${input.label} (${input.credits} SynCredits)`,
+                metadataJson: { requestId: input.requestId },
+                transactionSource: "analysis",
+              });
+              const transactionId = Number(inserted[0].insertId);
+              await tx
+                .update(usageLogs)
+                .set({
+                  status: "completed",
+                  creditsCharged: input.credits,
+                  transactionId,
+                  analysisKey: input.analysisKey,
+                })
+                .where(eq(usageLogs.id, existing.id));
+              return {
+                status: "completed" as const,
+                alreadyConsumed: false,
+                creditsCharged: input.credits,
+                balance,
+                transactionId,
+                usageLogId: existing.id,
+              };
+            }
+          }
+
+          const updated = await tx
+            .update(creditAccounts)
+            .set({
+              balance: sql`${creditAccounts.balance} - ${input.credits}`,
+              lifetimeSpent: sql`${creditAccounts.lifetimeSpent} + ${input.credits}`,
+            })
+            .where(
+              and(
+                eq(creditAccounts.userId, input.userId),
+                sql`${creditAccounts.balance} >= ${input.credits}`
+              )
+            );
+          if (Number(updated[0].affectedRows) !== 1) {
+            const accounts = await tx
+              .select()
+              .from(creditAccounts)
+              .where(eq(creditAccounts.userId, input.userId))
+              .limit(1);
+            return {
+              status: "insufficient" as const,
+              alreadyConsumed: false,
+              creditsCharged: 0,
+              balance: accounts[0]?.balance ?? 0,
+              transactionId: 0,
+              usageLogId: 0,
+            };
+          }
+
+          const accounts = await tx
+            .select()
+            .from(creditAccounts)
+            .where(eq(creditAccounts.userId, input.userId))
+            .limit(1);
+          const balance = accounts[0]?.balance ?? 0;
+          const insertedTx = await tx.insert(creditTransactions).values({
+            userId: input.userId,
+            type: "consume",
+            amount: -input.credits,
+            balanceAfter: balance,
+            analysisKey: input.analysisKey,
+            description: `${input.label} (${input.credits} SynCredits)`,
+            metadataJson: { requestId: input.requestId },
+            transactionSource: "analysis",
+          });
+          const transactionId = Number(insertedTx[0].insertId);
+          const insertedUsage = await tx.insert(usageLogs).values({
+            userId: input.userId,
+            analysisKey: input.analysisKey,
+            creditsCharged: input.credits,
+            status: "completed",
+            transactionId,
+            requestId: input.requestId,
+          });
+          return {
+            status: "completed" as const,
+            alreadyConsumed: false,
+            creditsCharged: input.credits,
+            balance,
+            transactionId,
+            usageLogId: Number(insertedUsage[0].insertId),
+          };
+        });
+      } catch (error) {
+        if (input.requestId) {
+          const raced = await this.findUsageByRequestId(
+            input.userId,
+            input.requestId
+          );
+          if (raced?.status === "completed") {
+            const account = await this.ensureAccount(input.userId);
+            return {
+              status: "completed" as const,
+              alreadyConsumed: true,
+              creditsCharged: raced.creditsCharged,
+              balance: account.balance,
+              transactionId: raced.transactionId ?? 0,
+              usageLogId: raced.id,
+            };
+          }
+        }
+        throw error;
+      }
+    },
+
+    async refundAnalysisCreditsAtomic(input) {
+      return db.transaction(async (tx) => {
+        const rows = await tx
+          .select()
+          .from(usageLogs)
+          .where(
+            and(
+              eq(usageLogs.userId, input.userId),
+              eq(usageLogs.requestId, input.requestId)
+            )
+          )
+          .limit(1);
+        const usage = rows[0];
+        if (!usage) return { status: "not_found" as const };
+        if (usage.status === "refunded") {
+          const accounts = await tx
+            .select()
+            .from(creditAccounts)
+            .where(eq(creditAccounts.userId, input.userId))
+            .limit(1);
+          return {
+            status: "already_refunded" as const,
+            balance: accounts[0]?.balance ?? 0,
+            creditsRefunded: 0,
+          };
+        }
+        if (usage.status !== "completed") {
+          return { status: "not_completed" as const };
+        }
+
+        const credits = usage.creditsCharged;
+        await tx
+          .update(creditAccounts)
+          .set({
+            balance: sql`${creditAccounts.balance} + ${credits}`,
+            lifetimeSpent: sql`GREATEST(0, ${creditAccounts.lifetimeSpent} - ${credits})`,
+          })
+          .where(eq(creditAccounts.userId, input.userId));
+
+        const accounts = await tx
+          .select()
+          .from(creditAccounts)
+          .where(eq(creditAccounts.userId, input.userId))
+          .limit(1);
+        const balance = accounts[0]?.balance ?? 0;
+
+        await tx.insert(creditTransactions).values({
+          userId: input.userId,
+          type: "refund",
+          amount: credits,
+          balanceAfter: balance,
+          analysisKey: usage.analysisKey,
+          usageLogId: usage.id,
+          description: `Erstattung Analyse (${input.reason})`,
+          metadataJson: {
+            requestId: input.requestId,
+            reason: input.reason,
+          },
+          transactionSource: "refund",
+        });
+
+        await tx
+          .update(usageLogs)
+          .set({ status: "refunded" })
+          .where(eq(usageLogs.id, usage.id));
+
+        return {
+          status: "refunded" as const,
+          balance,
+          creditsRefunded: credits,
+        };
+      });
+    },
+
     async createInvoice(input) {
       const year = new Date().getFullYear();
       const invoiceNumber = `SYN-${year}-${String(Date.now()).slice(-8)}`;

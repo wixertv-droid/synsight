@@ -16,7 +16,11 @@ import { getProfileRepository } from "@/lib/repositories";
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
 import { getLatestDigitalExposureReport } from "@/lib/analysis/digital-exposure/repository";
 import { getLatestUsernameReport } from "@/lib/analysis/username/repository";
-import { filterIgnoredFromUsernameReport } from "@/lib/services/username-actions-service";
+import {
+  filterIgnoredFromDigitalExposureReport,
+  filterIgnoredFromGoogleReport,
+  filterIgnoredFromUsernameReport,
+} from "@/lib/services/report-stats-filter";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import {
   buildDashboardOverview,
@@ -42,10 +46,12 @@ async function loadModuleReport(
 ): Promise<unknown | null> {
   if (key === "google_search") {
     const raw = await getIntelligenceReport(userId, "google_search");
-    return raw ? normalizeIntelligenceReport(raw) : null;
+    const report = raw ? normalizeIntelligenceReport(raw) : null;
+    return filterIgnoredFromGoogleReport(userId, report);
   }
   if (key === "digital_leak_exposure") {
-    return getLatestDigitalExposureReport(userId);
+    const report = await getLatestDigitalExposureReport(userId);
+    return filterIgnoredFromDigitalExposureReport(userId, report);
   }
   if (key === "username_intelligence") {
     const report = await getLatestUsernameReport(userId);
@@ -75,50 +81,6 @@ export default async function DashboardPage() {
     activeModules = resolveActiveAnalyses(catalog.analyses ?? []);
   } catch (error) {
     console.error("[Dashboard] pricing catalog failed", error);
-  }
-
-  if (activeModules.length === 0) {
-    activeModules = [
-      {
-        id: "google_search",
-        title: "Google Analyse",
-        tagline: "",
-        description: "",
-        whatYouGet: [],
-        duration: "",
-        tier: "quick",
-        help: "",
-        icon: "",
-        accent: "",
-        credits: 0,
-      },
-      {
-        id: "digital_leak_exposure",
-        title: "Digital Leak & Exposure",
-        tagline: "",
-        description: "",
-        whatYouGet: [],
-        duration: "",
-        tier: "quick",
-        help: "",
-        icon: "",
-        accent: "",
-        credits: 0,
-      },
-      {
-        id: "username_intelligence",
-        title: "Username Intelligence",
-        tagline: "",
-        description: "",
-        whatYouGet: [],
-        duration: "",
-        tier: "quick",
-        help: "",
-        icon: "",
-        accent: "",
-        credits: 0,
-      },
-    ];
   }
 
   const modules: DashboardModuleInput[] = [];

@@ -23,13 +23,11 @@ export default async function ProfilePage() {
   const identity = await getIdentityForUser(userId);
   if (!identity) return null;
 
-  let activeKeys: string[] | undefined;
+  let activeKeys: string[] = [];
   try {
     const catalog = await getPublicPricingCatalog();
     const resolved = resolveActiveAnalyses(catalog.analyses ?? []);
-    if (resolved.length > 0) {
-      activeKeys = resolved.map((m) => String(m.id));
-    }
+    activeKeys = resolved.map((m) => String(m.id));
   } catch (error) {
     console.error("[Profile] pricing catalog failed", error);
   }

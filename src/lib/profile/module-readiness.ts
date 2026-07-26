@@ -177,7 +177,7 @@ export function buildProfileModuleReadiness(
     },
   ];
 
-  if (!options?.activeKeys) return all;
+  if (!options?.activeKeys?.length) return [];
   const active = new Set(options.activeKeys);
   return all.filter((entry) => active.has(entry.key));
 }

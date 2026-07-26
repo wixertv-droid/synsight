@@ -1,9 +1,7 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
-import {
-  AnalysisGateError,
-  assertAnalysisRunnable,
-} from "@/lib/analysis/assert-runnable";
+import { AnalysisGateError } from "@/lib/analysis/assert-runnable";
+import { runWithAnalysisCredits } from "@/lib/analysis/run-with-credits";
 import { runGoogleIntelligenceAnalysis } from "@/lib/analysis/google/run-analysis";
 import { saveIntelligenceReport } from "@/lib/analysis/session-store";
 import { parseRetentionDays } from "@/lib/analysis/retention";
@@ -42,18 +40,22 @@ export async function POST(request: Request) {
     typeof body.requestId === "string" ? body.requestId.trim() : "";
 
   try {
-    await assertAnalysisRunnable({
-      userId,
-      analysisKey: "google_search",
-      requestId,
-    });
-
-    const identity = await getIdentityForUser(userId);
-    const report = await runGoogleIntelligenceAnalysis(identity, {
-      retentionDays,
-      userId,
-    });
-    await saveIntelligenceReport(userId, report);
+    const report = await runWithAnalysisCredits(
+      {
+        userId,
+        analysisKey: "google_search",
+        requestId,
+      },
+      async () => {
+        const identity = await getIdentityForUser(userId);
+        const next = await runGoogleIntelligenceAnalysis(identity, {
+          retentionDays,
+          userId,
+        });
+        await saveIntelligenceReport(userId, next);
+        return next;
+      }
+    );
     return NextResponse.json(apiSuccess({ report }));
   } catch (error) {
     if (error instanceof AnalysisGateError) {

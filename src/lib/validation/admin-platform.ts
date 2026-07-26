@@ -9,6 +9,13 @@ export const adminPlatformSettingsSchema = z.object({
   imageMaxResolution: z.number().int().min(256).max(8192),
   encryptOriginals: z.boolean(),
   generateAnalysisImages: z.boolean(),
+  digitalLeakDefaultRetentionDays: z
+    .number()
+    .int()
+    .refine((value) => [-1, 0, 30, 90, 180, 365].includes(value), {
+      message: "Ungültige Digital-Leak-Aufbewahrung.",
+    })
+    .optional(),
 });
 
 export const adminApiCredentialSchema = z.discriminatedUnion("action", [

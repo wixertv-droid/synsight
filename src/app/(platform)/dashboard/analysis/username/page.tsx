@@ -5,6 +5,11 @@ import { resolveSubjectName } from "@/lib/analysis/google/queries";
 import { getUsernameModuleSettings } from "@/lib/analysis/username/settings";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getIdentityForUser } from "@/lib/services/identity-service";
+import { getPublicPricingCatalog } from "@/lib/services/pricing-service";
+import {
+  extractActiveAnalysisKeys,
+  isAnalysisKeyActive,
+} from "@/lib/credits/resolve-active-analyses";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -19,6 +24,18 @@ export const metadata: Metadata = {
 export default async function UsernameAnalysisPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  let moduleActive = false;
+  try {
+    const catalog = await getPublicPricingCatalog();
+    moduleActive = isAnalysisKeyActive(
+      extractActiveAnalysisKeys(catalog.analyses),
+      "username_intelligence"
+    );
+  } catch (error) {
+    console.error("[UsernamePage] catalog check failed", error);
+  }
+  if (!moduleActive) redirect("/dashboard/analysis");
 
   const userId = Number.parseInt(user.id, 10);
   let subjectName = "Unbekannt";
