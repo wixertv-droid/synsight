@@ -19,7 +19,7 @@ const PERSPECTIVE_Y = 0.42;
 const RISK_RINGS = [
   {
     id: "safe",
-    r: 70,
+    r: 82,
     stroke: "rgba(52, 211, 153, 0.55)",
     fill: "rgba(52, 211, 153, 0.07)",
     label: "SICHER",
@@ -27,7 +27,7 @@ const RISK_RINGS = [
   },
   {
     id: "watch",
-    r: 128,
+    r: 148,
     stroke: "rgba(251, 191, 36, 0.5)",
     fill: "rgba(251, 191, 36, 0.055)",
     label: "AUFFÄLLIG",
@@ -35,7 +35,7 @@ const RISK_RINGS = [
   },
   {
     id: "critical",
-    r: 186,
+    r: 214,
     stroke: "rgba(244, 63, 94, 0.5)",
     fill: "rgba(244, 63, 94, 0.055)",
     label: "KRITISCH",
@@ -100,8 +100,8 @@ function riskToRadius(risk: number): number {
   const greenEnd = RISK_RINGS[0].r;
   const yellowEnd = RISK_RINGS[1].r;
   const redEnd = RISK_RINGS[2].r;
-  const overflow = 248;
-  if (risk < 34) return 28 + (risk / 34) * (greenEnd - 32);
+  const overflow = 278;
+  if (risk < 34) return 32 + (risk / 34) * (greenEnd - 36);
   if (risk < 67) return greenEnd + ((risk - 34) / 33) * (yellowEnd - greenEnd);
   if (risk < 85) return yellowEnd + ((risk - 67) / 18) * (redEnd - yellowEnd);
   return redEnd + ((risk - 85) / 15) * (overflow - redEnd);
@@ -271,9 +271,9 @@ export default function AnalysisWidget({
     const maxPointR = Math.max(
       RISK_RINGS[2].r,
       ...channels.map((ch) => (ch.active ? ch.targetR : 0)),
-      186
+      214
     );
-    const labelPad = 36;
+    const labelPad = 28;
     const halfW = maxPointR + labelPad;
     const halfH = maxPointR * PERSPECTIVE_Y + labelPad + 10;
     return {
@@ -294,20 +294,20 @@ export default function AnalysisWidget({
   const hatchColors =
     briefingTone === "critical"
       ? {
-          a: "rgba(244,63,94,0.95)",
-          b: "rgba(80,10,24,0.92)",
-          glow: "rgba(244,63,94,0.35)",
+          a: "rgba(244,63,94,0.62)",
+          b: "rgba(28,12,18,0.94)",
+          glow: "rgba(244,63,94,0.14)",
         }
       : briefingTone === "watch"
         ? {
-            a: "rgba(251,191,36,0.95)",
-            b: "rgba(70,45,8,0.92)",
-            glow: "rgba(251,191,36,0.3)",
+            a: "rgba(251,191,36,0.55)",
+            b: "rgba(28,20,8,0.94)",
+            glow: "rgba(251,191,36,0.12)",
           }
         : {
-            a: "rgba(52,211,153,0.9)",
-            b: "rgba(8,45,32,0.92)",
-            glow: "rgba(52,211,153,0.25)",
+            a: "rgba(52,211,153,0.48)",
+            b: "rgba(10,22,20,0.94)",
+            glow: "rgba(52,211,153,0.1)",
           };
 
   const sidebarSources = useMemo(() => {
@@ -380,7 +380,7 @@ export default function AnalysisWidget({
           />
           <svg
             viewBox={`${scopeViewBox.x} ${scopeViewBox.y} ${scopeViewBox.w} ${scopeViewBox.h}`}
-            className="relative z-10 h-full min-h-[360px] w-full md:min-h-[400px]"
+            className="relative z-10 h-full min-h-[400px] w-full md:min-h-[460px]"
             aria-label="Threat Scope Risikoanzeige"
             preserveAspectRatio="xMidYMid meet"
             style={{
@@ -714,99 +714,84 @@ export default function AnalysisWidget({
           </Link>
         </div>
 
-        {/* CIA-style hazard frame — hatched tape marches along perimeter */}
+        {/* Security frame — muted hazard tape marches counter-clockwise */}
         <div
-          className="relative overflow-hidden rounded-lg p-[8px]"
+          className="relative overflow-hidden rounded-xl p-[5px]"
           style={{
-            boxShadow: `0 0 0 1px ${hatchColors.a}, 0 0 28px ${hatchColors.glow}, 0 12px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)`,
+            boxShadow: `0 0 0 1px ${hatchColors.a}, 0 0 18px ${hatchColors.glow}, 0 10px 22px rgba(0,0,0,0.35)`,
           }}
         >
           <div
-            className="pointer-events-none absolute inset-0 rounded-lg"
-            style={{ background: hatchColors.b }}
+            className="pointer-events-none absolute inset-0 rounded-xl bg-[#0a1018]"
             aria-hidden="true"
           />
-          {/* Four edge rails: stripes convey clockwise around the frame */}
           <div
             className="pointer-events-none absolute inset-0"
             aria-hidden="true"
           >
-            <div className="absolute inset-x-0 top-0 h-[8px] overflow-hidden">
-              <div
-                className="briefing-hatch-march-x absolute inset-y-0 left-0 h-full"
-                style={{
-                  width: "calc(100% + 32px)",
-                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 8px, ${hatchColors.b} 8px 16px)`,
-                }}
-              />
-            </div>
-            <div className="absolute inset-y-0 right-0 w-[8px] overflow-hidden">
-              <div
-                className="briefing-hatch-march-y absolute inset-x-0 top-0 w-full"
-                style={{
-                  height: "calc(100% + 32px)",
-                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 8px, ${hatchColors.b} 8px 16px)`,
-                }}
-              />
-            </div>
-            <div className="absolute inset-x-0 bottom-0 h-[8px] overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-[5px] overflow-hidden opacity-80">
               <div
                 className="briefing-hatch-march-x-rev absolute inset-y-0 left-0 h-full"
                 style={{
-                  width: "calc(100% + 32px)",
-                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 8px, ${hatchColors.b} 8px 16px)`,
+                  width: "calc(100% + 28px)",
+                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 7px, ${hatchColors.b} 7px 14px)`,
                 }}
               />
             </div>
-            <div className="absolute inset-y-0 left-0 w-[8px] overflow-hidden">
+            <div className="absolute inset-y-0 right-0 w-[5px] overflow-hidden opacity-80">
               <div
                 className="briefing-hatch-march-y-rev absolute inset-x-0 top-0 w-full"
                 style={{
-                  height: "calc(100% + 32px)",
-                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 8px, ${hatchColors.b} 8px 16px)`,
+                  height: "calc(100% + 28px)",
+                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 7px, ${hatchColors.b} 7px 14px)`,
+                }}
+              />
+            </div>
+            <div className="absolute inset-x-0 bottom-0 h-[5px] overflow-hidden opacity-80">
+              <div
+                className="briefing-hatch-march-x absolute inset-y-0 left-0 h-full"
+                style={{
+                  width: "calc(100% + 28px)",
+                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 7px, ${hatchColors.b} 7px 14px)`,
+                }}
+              />
+            </div>
+            <div className="absolute inset-y-0 left-0 w-[5px] overflow-hidden opacity-80">
+              <div
+                className="briefing-hatch-march-y absolute inset-x-0 top-0 w-full"
+                style={{
+                  height: "calc(100% + 28px)",
+                  backgroundImage: `repeating-linear-gradient(-45deg, ${hatchColors.a} 0 7px, ${hatchColors.b} 7px 14px)`,
                 }}
               />
             </div>
           </div>
-          {/* Corner brackets + hairline — classified warning chrome */}
           <svg
-            className="briefing-hatch-pulse pointer-events-none absolute inset-0 z-[1] h-full w-full"
+            className="pointer-events-none absolute inset-0 z-[1] h-full w-full opacity-55"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
             aria-hidden="true"
           >
-            <rect
-              x="1.2"
-              y="1.2"
-              width="97.6"
-              height="97.6"
-              rx="1.4"
-              fill="none"
-              stroke={hatchColors.a}
-              strokeWidth="0.35"
-              opacity="0.85"
-              vectorEffect="non-scaling-stroke"
-            />
             <path
-              d="M 4 12 L 4 4 L 12 4 M 88 4 L 96 4 L 96 12 M 96 88 L 96 96 L 88 96 M 12 96 L 4 96 L 4 88"
+              d="M 3.5 10 L 3.5 3.5 L 10 3.5 M 90 3.5 L 96.5 3.5 L 96.5 10 M 96.5 90 L 96.5 96.5 L 90 96.5 M 10 96.5 L 3.5 96.5 L 3.5 90"
               fill="none"
               stroke={hatchColors.a}
-              strokeWidth="1.1"
+              strokeWidth="0.7"
               strokeLinecap="square"
             />
           </svg>
-          <div className="relative z-10 overflow-hidden rounded-md border border-white/10 bg-[#0d141e]">
+          <div className="relative z-10 overflow-hidden rounded-[0.65rem] border border-white/[0.07] bg-[#0d141e]">
             {/* Grid: transparent left → ~80% visible right */}
             <div
               className="pointer-events-none absolute inset-0"
               style={{
                 backgroundImage:
-                  "linear-gradient(rgba(112,231,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(112,231,255,0.07) 1px, transparent 1px)",
+                  "linear-gradient(rgba(112,231,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(112,231,255,0.05) 1px, transparent 1px)",
                 backgroundSize: "22px 22px",
                 WebkitMaskImage:
-                  "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%)",
+                  "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.28) 45%, rgba(0,0,0,0.7) 100%)",
                 maskImage:
-                  "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%)",
+                  "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.28) 45%, rgba(0,0,0,0.7) 100%)",
               }}
               aria-hidden="true"
             />
@@ -814,10 +799,10 @@ export default function AnalysisWidget({
             <div
               className={`relative z-10 flex items-center justify-between gap-3 border-b px-4 py-2 font-mono text-[9px] tracking-[.18em] ${
                 briefingTone === "critical"
-                  ? "border-rose-400/20 bg-gradient-to-r from-rose-950/90 via-rose-700/75 to-rose-900/55 text-rose-50"
+                  ? "border-rose-400/15 bg-gradient-to-r from-rose-950/70 via-rose-800/45 to-transparent text-rose-100/90"
                   : briefingTone === "watch"
-                    ? "border-amber-300/25 bg-gradient-to-r from-amber-950/85 via-amber-600/70 to-amber-800/50 text-amber-50"
-                    : "border-emerald-300/25 bg-gradient-to-r from-emerald-950/85 via-emerald-700/70 to-emerald-900/50 text-emerald-50"
+                    ? "border-amber-300/15 bg-gradient-to-r from-amber-950/65 via-amber-800/40 to-transparent text-amber-100/90"
+                    : "border-emerald-300/15 bg-gradient-to-r from-emerald-950/65 via-emerald-800/40 to-transparent text-emerald-100/90"
               }`}
             >
               <span>
