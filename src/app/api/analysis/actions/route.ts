@@ -4,15 +4,22 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
 import { validateMutationOrigin } from "@/lib/security/request";
 import {
+  clearHitAction,
   createSynSightOrder,
-  listIgnoredFingerprints,
+  listHitActions,
   upsertHitAction,
+  type AnalysisSourceModule,
 } from "@/lib/services/hit-actions-service";
 
-/** Legacy username-only endpoint — forwards to shared hit-actions system. */
+const moduleSchema = z.enum([
+  "google_search",
+  "username_intelligence",
+  "digital_leak_exposure",
+]);
 
 const actionSchema = z.object({
-  kind: z.enum(["ignored", "self", "ordered"]),
+  kind: z.enum(["ignored", "self", "ordered", "resolved", "clear"]),
+  sourceModule: moduleSchema,
   platform: z.string().trim().min(1).max(120),
   profileUrl: z.string().trim().url().nullable().optional(),
   title: z.string().trim().max(255).optional(),
@@ -30,18 +37,28 @@ const actionSchema = z.object({
     .nullable(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json(apiError("UNAUTHORIZED", "Nicht angemeldet."), {
       status: 401,
     });
   }
-  const ignored = await listIgnoredFingerprints(
-    Number(user.id),
-    "username_intelligence"
+  const url = new URL(request.url);
+  const moduleParam = url.searchParams.get("module");
+  const parsedModule = moduleSchema.safeParse(moduleParam);
+  const sourceModule = parsedModule.success
+    ? (parsedModule.data as AnalysisSourceModule)
+    : undefined;
+  const actions = await listHitActions(Number(user.id), sourceModule);
+  return NextResponse.json(
+    apiSuccess({
+      actions,
+      ignoredFingerprints: actions
+        .filter((row) => row.action === "ignored")
+        .map((row) => row.hitFingerprint),
+    })
   );
-  return NextResponse.json(apiSuccess({ ignoredFingerprints: [...ignored] }));
 }
 
 export async function POST(request: Request) {
@@ -69,6 +86,17 @@ export async function POST(request: Request) {
   const userId = Number(user.id);
   const data = parsed.data;
 
+  if (data.kind === "clear") {
+    await clearHitAction({
+      userId,
+      sourceModule: data.sourceModule,
+      platform: data.platform,
+      profileUrl: data.profileUrl ?? null,
+      title: data.title,
+    });
+    return NextResponse.json(apiSuccess({ cleared: true }));
+  }
+
   if (data.kind === "ordered") {
     if (!data.orderType) {
       return NextResponse.json(
@@ -78,7 +106,7 @@ export async function POST(request: Request) {
     }
     const order = await createSynSightOrder({
       userId,
-      sourceModule: "username_intelligence",
+      sourceModule: data.sourceModule,
       platform: data.platform,
       profileUrl: data.profileUrl ?? null,
       title: data.title ?? `Auftrag · ${data.platform}`,
@@ -89,7 +117,7 @@ export async function POST(request: Request) {
 
   const action = await upsertHitAction({
     userId,
-    sourceModule: "username_intelligence",
+    sourceModule: data.sourceModule,
     analysisId: data.analysisId ?? null,
     platform: data.platform,
     profileUrl: data.profileUrl ?? null,

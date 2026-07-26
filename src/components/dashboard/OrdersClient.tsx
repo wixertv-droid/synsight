@@ -5,6 +5,7 @@ import type { SynSightOrderStatus } from "@/lib/analysis/username/types";
 
 interface OrderRow {
   id: number;
+  sourceModule?: string;
   hitPlatform: string;
   hitUrl: string | null;
   title: string;
@@ -12,6 +13,12 @@ interface OrderRow {
   status: SynSightOrderStatus;
   createdAt: string;
 }
+
+const MODULE_LABEL: Record<string, string> = {
+  google_search: "Google Analysis",
+  username_intelligence: "Username Intelligence",
+  digital_leak_exposure: "Digital Exposure",
+};
 
 const STATUS_LABEL: Record<SynSightOrderStatus, string> = {
   offen: "Offen",
@@ -44,8 +51,8 @@ export default function OrdersClient() {
           Meine Aufträge
         </h1>
         <p className="mt-2 text-sm text-white/40">
-          SynSight-Übernahmen aus Username Intelligence — derzeit kostenlos und
-          ohne Zahlungsfunktion. Status: vorbereitet bis erledigt.
+          SynSight-Übernahmen aus allen Analysen (Google, Username, …) — derzeit
+          kostenlos und ohne Zahlungsfunktion. Status: vorbereitet bis erledigt.
         </p>
       </header>
 
@@ -53,8 +60,8 @@ export default function OrdersClient() {
         <p className="text-sm text-white/35">Aufträge werden geladen…</p>
       ) : orders.length === 0 ? (
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-5 py-8 text-sm text-white/40">
-          Noch keine Aufträge. Im Username Intelligence Report bei einer
-          Maßnahme „SynSight soll das übernehmen“ wählen.
+          Noch keine Aufträge. In einer Analyse auf einer Trefferkarte „SynSight
+          soll das übernehmen“ wählen.
         </div>
       ) : (
         <ul className="space-y-3">
@@ -66,6 +73,11 @@ export default function OrdersClient() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-mono text-[8px] tracking-[.12em] text-white/30">
+                    {(order.sourceModule
+                      ? (MODULE_LABEL[order.sourceModule] ?? order.sourceModule)
+                      : "Analyse"
+                    ).toUpperCase()}
+                    {" · "}
                     {order.orderType.replace(/_/g, " ").toUpperCase()}
                   </p>
                   <h2 className="mt-1 text-sm font-medium text-white/85">

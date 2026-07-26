@@ -165,7 +165,7 @@ export interface UsernameActionItem {
   why: string;
   riskReduced: string;
   how: string;
-  /** Step-by-step for "Ich kümmere mich selbst" */
+  /** Step-by-step for "Erledige ich selbst" */
   selfGuide: string[];
   effort: string;
   effortMinutes: number;

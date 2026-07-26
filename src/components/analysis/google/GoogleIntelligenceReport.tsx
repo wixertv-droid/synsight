@@ -474,7 +474,10 @@ export default function GoogleIntelligenceReport({
                       <ul className="space-y-3">
                         {section.hits.map((hit) => (
                           <li key={hit.id}>
-                            <IntelligenceHitCard hit={hit} />
+                            <IntelligenceHitCard
+                              hit={hit}
+                              sourceModule="google_search"
+                            />
                           </li>
                         ))}
                       </ul>
@@ -503,7 +506,10 @@ export default function GoogleIntelligenceReport({
                       <ul className="space-y-3 px-4 pb-4">
                         {possibleLive.map((hit) => (
                           <li key={hit.id}>
-                            <IntelligenceHitCard hit={hit} />
+                            <IntelligenceHitCard
+                              hit={hit}
+                              sourceModule="google_search"
+                            />
                           </li>
                         ))}
                       </ul>
@@ -521,7 +527,10 @@ export default function GoogleIntelligenceReport({
                     <ul className="space-y-3">
                       {profileHits.map((hit) => (
                         <li key={hit.id}>
-                          <IntelligenceHitCard hit={hit} />
+                          <IntelligenceHitCard
+                            hit={hit}
+                            sourceModule="google_search"
+                          />
                         </li>
                       ))}
                     </ul>

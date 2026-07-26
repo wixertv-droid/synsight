@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getCategoryMeta,
   riskToSeverity,
@@ -8,38 +8,14 @@ import {
   severityPercent,
   type HitSeverity,
 } from "@/lib/analysis/hit-intel";
+import { analysisHitFingerprint } from "@/lib/analysis/hit-fingerprint";
 import type { IntelligenceHit } from "@/lib/analysis/types";
+import type { SynSightOrderType } from "@/lib/analysis/username/types";
+import type { AnalysisSourceModule } from "@/lib/services/hit-actions-service";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import { osintGuidance } from "@/lib/content/guidance";
 
-type HitActionState = "none" | "ignored" | "watching" | "resolved";
-
-const ACTION_STORAGE_PREFIX = "synsight.hitAction.";
-
-function readAction(hitId: string): HitActionState {
-  if (typeof window === "undefined") return "none";
-  try {
-    const value = window.localStorage.getItem(ACTION_STORAGE_PREFIX + hitId);
-    if (value === "ignored" || value === "watching" || value === "resolved") {
-      return value;
-    }
-  } catch {
-    /* ignore */
-  }
-  return "none";
-}
-
-function writeAction(hitId: string, state: HitActionState) {
-  try {
-    if (state === "none") {
-      window.localStorage.removeItem(ACTION_STORAGE_PREFIX + hitId);
-    } else {
-      window.localStorage.setItem(ACTION_STORAGE_PREFIX + hitId, state);
-    }
-  } catch {
-    /* ignore */
-  }
-}
+type HitActionState = "none" | "ignored" | "self" | "resolved" | "ordered";
 
 function stars(count: number): string {
   return (
@@ -102,12 +78,96 @@ function ConfidenceBar({ percent, label }: { percent: number; label: string }) {
   );
 }
 
-export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
+const DEFAULT_SELF_GUIDE = [
+  "Auf das Profil einloggen bzw. die Seite öffnen.",
+  "Persönliche Angaben entfernen oder Profil privat / löschen.",
+  "Sichtbarkeit und öffentliche Beiträge prüfen.",
+  "Analyse erneut starten, um den Fortschritt zu prüfen.",
+];
+
+function orderTypeForGoogle(hit: IntelligenceHit): SynSightOrderType {
+  if (hit.isProblematic || hit.severity === "critical") return "gdpr";
+  if (/forum|community/i.test(hit.category + hit.source))
+    return "forum_contact";
+  return "google_removal";
+}
+
+export default function IntelligenceHitCard({
+  hit,
+  sourceModule = "google_search",
+  orderType,
+  selfGuide,
+  analysisId,
+  onIgnoredChange,
+}: {
+  hit: IntelligenceHit;
+  sourceModule?: AnalysisSourceModule;
+  orderType?: SynSightOrderType | null;
+  selfGuide?: string[];
+  analysisId?: number | null;
+  onIgnoredChange?: (fingerprint: string, ignored: boolean) => void;
+}) {
+  const fingerprint = useMemo(
+    () =>
+      analysisHitFingerprint({
+        module: sourceModule,
+        url: hit.url,
+        platform: hit.source || hit.displayCategory || hit.category,
+        title: hit.title,
+      }),
+    [
+      sourceModule,
+      hit.url,
+      hit.source,
+      hit.displayCategory,
+      hit.category,
+      hit.title,
+    ]
+  );
+
   const [open, setOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [action, setAction] = useState<HitActionState>(() =>
-    readAction(hit.id)
-  );
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [action, setAction] = useState<HitActionState>("none");
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const resolvedOrderType =
+    orderType === null
+      ? null
+      : (orderType ??
+        (sourceModule === "google_search"
+          ? orderTypeForGoogle(hit)
+          : "profile_delete"));
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/analysis/actions?module=${encodeURIComponent(sourceModule)}`)
+      .then((r) => r.json())
+      .then((body) => {
+        if (cancelled || !body.success) return;
+        const match = (
+          body.data.actions as Array<{
+            hitFingerprint: string;
+            action: string;
+          }>
+        ).find((row) => row.hitFingerprint === fingerprint);
+        if (!match) return;
+        if (
+          match.action === "ignored" ||
+          match.action === "self" ||
+          match.action === "resolved" ||
+          match.action === "ordered"
+        ) {
+          setAction(match.action);
+          if (match.action === "self") setGuideOpen(true);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [fingerprint, sourceModule]);
 
   const meta = useMemo(
     () => getCategoryMeta(hit.category, hit.url, hit.title),
@@ -136,10 +196,58 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
     recommendation: hit.recommendation,
   };
   const hasUrl = Boolean(hit.url?.startsWith("http"));
+  const platformLabel = hit.source || hit.displayCategory || meta.label;
 
-  function setHitAction(next: HitActionState) {
+  async function persist(
+    kind: "ignored" | "self" | "ordered" | "resolved" | "clear"
+  ): Promise<boolean> {
+    setBusy(true);
+    setToast(null);
+    try {
+      const response = await fetch("/api/analysis/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind,
+          sourceModule,
+          platform: platformLabel,
+          profileUrl: hasUrl ? hit.url : null,
+          title: hit.title,
+          analysisId: analysisId ?? null,
+          orderType: kind === "ordered" ? resolvedOrderType : null,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setToast(body.error?.message ?? "Aktion fehlgeschlagen.");
+        return false;
+      }
+      return true;
+    } catch {
+      setToast("Verbindung fehlgeschlagen.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setHitAction(next: HitActionState) {
+    if (next === "none") {
+      const ok = await persist("clear");
+      if (!ok) return;
+      setAction("none");
+      setGuideOpen(false);
+      onIgnoredChange?.(fingerprint, false);
+      return;
+    }
+    const ok = await persist(next);
+    if (!ok) return;
     setAction(next);
-    writeAction(hit.id, next);
+    if (next === "ignored") onIgnoredChange?.(fingerprint, true);
+    if (next === "self") setGuideOpen(true);
+    if (next === "ordered") {
+      setToast("Auftrag angelegt — siehe Meine Aufträge.");
+    }
   }
 
   if (action === "ignored") {
@@ -149,8 +257,9 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
           <p className="truncate text-sm text-white/35">{hit.title}</p>
           <button
             type="button"
-            onClick={() => setHitAction("none")}
-            className="font-mono text-[9px] text-white/40 hover:text-white/70"
+            disabled={busy}
+            onClick={() => void setHitAction("none")}
+            className="font-mono text-[9px] text-white/40 hover:text-white/70 disabled:opacity-50"
           >
             Wieder anzeigen
           </button>
@@ -164,9 +273,11 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
       className={`overflow-hidden rounded-xl border bg-[#070d16]/95 ${
         action === "resolved"
           ? "border-emerald-300/25 opacity-80"
-          : action === "watching"
+          : action === "self"
             ? "border-amber-300/25"
-            : "border-white/[0.08]"
+            : action === "ordered"
+              ? "border-cyber-cyan/30"
+              : "border-white/[0.08]"
       }`}
     >
       <div className="space-y-3 px-4 py-4">
@@ -177,14 +288,19 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
             >
               {hit.displayCategory ?? meta.label}
             </span>
-            {action === "watching" ? (
+            {action === "self" ? (
               <span className="rounded-full border border-amber-300/30 px-2 py-0.5 font-mono text-[8px] text-amber-100/80">
-                BEOBACHTUNG
+                SELBST ERLEDIGEN
               </span>
             ) : null}
             {action === "resolved" ? (
               <span className="rounded-full border border-emerald-300/30 px-2 py-0.5 font-mono text-[8px] text-emerald-100/80">
                 GELÖST
+              </span>
+            ) : null}
+            {action === "ordered" ? (
+              <span className="rounded-full border border-cyber-cyan/30 px-2 py-0.5 font-mono text-[8px] text-cyber-cyan/80">
+                AUFTRAG
               </span>
             ) : null}
           </div>
@@ -300,12 +416,6 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
               timeZone: "Europe/Berlin",
             }).format(new Date(hit.firstSeenAt ?? hit.fetchedAt))}
           </span>
-          {hit.pageCount && hit.pageCount > 1 ? (
-            <>
-              <span className="text-white/15">·</span>
-              <span>{hit.pageCount} Seiten aggregiert</span>
-            </>
-          ) : null}
         </div>
 
         {hit.confidenceChecks && hit.confidenceChecks.length > 0 ? (
@@ -348,39 +458,50 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
           ) : null}
           <button
             type="button"
-            onClick={() => setHitAction("ignored")}
-            className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] text-white/45 hover:text-white/70"
+            disabled={busy}
+            onClick={() => void setHitAction("ignored")}
+            className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] text-white/45 hover:text-white/70 disabled:opacity-50"
           >
             Ignorieren
           </button>
           <button
             type="button"
-            onClick={() =>
-              setHitAction(action === "watching" ? "none" : "watching")
-            }
-            className="rounded-lg border border-amber-300/25 px-3 py-1.5 text-[11px] text-amber-100/70"
+            disabled={busy}
+            onClick={() => {
+              if (action === "self") {
+                setGuideOpen((value) => !value);
+                return;
+              }
+              void setHitAction("self");
+            }}
+            className="rounded-lg border border-amber-300/25 px-3 py-1.5 text-[11px] text-amber-100/70 disabled:opacity-50"
           >
-            {action === "watching"
-              ? "Beobachtung entfernen"
-              : "Zur Beobachtung"}
+            {action === "self" && guideOpen
+              ? "Anleitung schließen"
+              : "Erledige ich selbst"}
           </button>
           <button
             type="button"
+            disabled={busy}
             onClick={() =>
-              setHitAction(action === "resolved" ? "none" : "resolved")
+              void setHitAction(action === "resolved" ? "none" : "resolved")
             }
-            className="rounded-lg border border-emerald-300/25 px-3 py-1.5 text-[11px] text-emerald-100/70"
+            className="rounded-lg border border-emerald-300/25 px-3 py-1.5 text-[11px] text-emerald-100/70 disabled:opacity-50"
           >
             {action === "resolved" ? "Gelöst aufheben" : "Als gelöst markieren"}
           </button>
-          <button
-            type="button"
-            disabled
-            title="Folgt in einem späteren Sprint"
-            className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] text-white/25"
-          >
-            Entfernung beantragen
-          </button>
+          {resolvedOrderType ? (
+            <button
+              type="button"
+              disabled={busy || action === "ordered"}
+              onClick={() => void setHitAction("ordered")}
+              className="rounded-lg border border-emerald-300/30 bg-emerald-300/[0.08] px-3 py-1.5 text-[11px] text-emerald-100/85 disabled:opacity-50"
+            >
+              {action === "ordered"
+                ? "Auftrag angelegt"
+                : "SynSight soll das übernehmen"}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setAiOpen((value) => !value)}
@@ -396,6 +517,23 @@ export default function IntelligenceHitCard({ hit }: { hit: IntelligenceHit }) {
             {open ? "Weniger" : "Details"}
           </button>
         </div>
+
+        {guideOpen || action === "self" ? (
+          <div className="rounded-lg border border-amber-300/20 bg-amber-300/[0.04] px-3 py-3">
+            <p className="font-mono text-[8px] tracking-[.12em] text-amber-100/60">
+              SO GEHST DU VOR
+            </p>
+            <ol className="mt-2 list-decimal space-y-1 pl-4 text-[12px] text-white/60">
+              {(selfGuide?.length ? selfGuide : DEFAULT_SELF_GUIDE).map(
+                (step) => (
+                  <li key={step}>{step}</li>
+                )
+              )}
+            </ol>
+          </div>
+        ) : null}
+
+        {toast ? <p className="text-xs text-emerald-100/70">{toast}</p> : null}
       </div>
 
       {aiOpen ? (
