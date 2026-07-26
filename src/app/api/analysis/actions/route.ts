@@ -57,6 +57,9 @@ export async function GET(request: Request) {
       ignoredFingerprints: actions
         .filter((row) => row.action === "ignored")
         .map((row) => row.hitFingerprint),
+      excludedFingerprints: actions
+        .filter((row) => row.action === "ignored" || row.action === "resolved")
+        .map((row) => row.hitFingerprint),
     })
   );
 }

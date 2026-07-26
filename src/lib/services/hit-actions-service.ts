@@ -121,6 +121,19 @@ export async function listIgnoredFingerprints(
   );
 }
 
+/** Ignored + resolved — excluded from KPIs / risk statistics. */
+export async function listExcludedFromStatsFingerprints(
+  userId: number,
+  sourceModule?: AnalysisSourceModule
+): Promise<Set<string>> {
+  const actions = await listHitActions(userId, sourceModule);
+  return new Set(
+    actions
+      .filter((row) => row.action === "ignored" || row.action === "resolved")
+      .map((row) => row.hitFingerprint)
+  );
+}
+
 export async function upsertHitAction(input: {
   userId: number;
   sourceModule: AnalysisSourceModule;
@@ -316,11 +329,11 @@ export async function filterIgnoredFromUsernameReport(
   report: UsernameReport | null
 ): Promise<UsernameReport | null> {
   if (!report) return null;
-  const ignored = await listIgnoredFingerprints(
+  const excluded = await listExcludedFromStatsFingerprints(
     userId,
     "username_intelligence"
   );
-  if (ignored.size === 0) return report;
+  if (excluded.size === 0) return report;
 
   const hits = report.hits.filter((hit) => {
     const fp = analysisHitFingerprint({
@@ -329,7 +342,7 @@ export async function filterIgnoredFromUsernameReport(
       platform: hit.platform,
       title: hit.title,
     });
-    return !ignored.has(fp);
+    return !excluded.has(fp);
   });
 
   const identityScore = computeIdentityScore(hits);

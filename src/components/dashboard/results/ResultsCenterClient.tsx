@@ -548,6 +548,79 @@ export default function ResultsCenterClient({
     );
   }
 
+  const readyReport =
+    !scanning &&
+    ((activeModule.id === "google_search" && report) ||
+      (activeModule.id === "username_intelligence" && usernameReport) ||
+      (activeModule.id === "digital_leak_exposure" && exposureReport));
+
+  const showRetention =
+    activeModule.id === "google_search" ||
+    activeModule.id === "username_intelligence";
+
+  const tabsNav = (
+    <nav
+      id="results-tabs"
+      aria-label="Analyse-Reiter"
+      className="mt-6 flex gap-1 overflow-x-auto rounded-[1.2rem] border border-white/[0.07] bg-white/[0.015] p-1.5"
+    >
+      {tabs.map((tab) => {
+        const active = tab.id === activeTab;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => selectTab(tab.id)}
+            className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-[12px] transition ${
+              active
+                ? "bg-cyber-cyan/[0.12] text-cyber-cyan"
+                : "text-white/40 hover:bg-white/[0.03] hover:text-white/70"
+            }`}
+          >
+            {tab.title}
+          </button>
+        );
+      })}
+    </nav>
+  );
+
+  const retentionSection = showRetention ? (
+    <section
+      id="results-retention"
+      className="mt-4 scroll-mt-24 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4"
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
+            REPORT SPEICHERN
+          </p>
+          <p className="mt-1 text-sm text-white/55">
+            Wie lange soll das Suchergebnis gespeichert bleiben?
+          </p>
+        </div>
+        <label className="block min-w-[200px]">
+          <span className="sr-only">Speicherdauer</span>
+          <select
+            value={retentionDays}
+            disabled={scanning}
+            onChange={(event) =>
+              updateRetention(parseRetentionDays(Number(event.target.value)))
+            }
+            className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
+          >
+            {REPORT_RETENTION_PRESETS.map((preset) => (
+              <option key={preset.days} value={preset.days}>
+                {preset.label} — {preset.description}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </section>
+  ) : (
+    <div id="results-retention" className="sr-only" />
+  );
+
   return (
     <main id="results-center-page" className="mx-auto max-w-[1500px]">
       <DashboardSectionHeader
@@ -558,142 +631,37 @@ export default function ResultsCenterClient({
         helpText="SynCredits werden im Analyse Center vor dem Start abgebucht. Der Bericht wird gespeichert — die Speicherdauer können Sie unten wählen."
       />
 
-      {!scanning && report && activeModule.id === "google_search" ? (
+      {readyReport ? (
         <>
-          <nav
-            id="results-tabs"
-            aria-label="Analyse-Reiter"
-            className="mt-6 flex gap-1 overflow-x-auto rounded-[1.2rem] border border-white/[0.07] bg-white/[0.015] p-1.5"
-          >
-            {tabs.map((tab) => {
-              const active = tab.id === activeTab;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => selectTab(tab.id)}
-                  className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-[12px] transition ${
-                    active
-                      ? "bg-cyber-cyan/[0.12] text-cyber-cyan"
-                      : "text-white/40 hover:bg-white/[0.03] hover:text-white/70"
-                  }`}
-                >
-                  {tab.title}
-                </button>
-              );
-            })}
-          </nav>
-
-          <section
-            id="results-retention"
-            className="mt-4 scroll-mt-24 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4"
-          >
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
-                  REPORT SPEICHERN
-                </p>
-                <p className="mt-1 text-sm text-white/55">
-                  Wie lange soll das Suchergebnis gespeichert bleiben?
-                </p>
-              </div>
-              <label className="block min-w-[200px]">
-                <span className="sr-only">Speicherdauer</span>
-                <select
-                  value={retentionDays}
-                  disabled={scanning}
-                  onChange={(event) =>
-                    updateRetention(
-                      parseRetentionDays(Number(event.target.value))
-                    )
-                  }
-                  className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
-                >
-                  {REPORT_RETENTION_PRESETS.map((preset) => (
-                    <option key={preset.days} value={preset.days}>
-                      {preset.label} — {preset.description}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </section>
-
+          {tabsNav}
+          {retentionSection}
           <div id="results-body" className="mt-6 scroll-mt-24">
             {error ? (
               <p className="mb-4 rounded-lg border border-rose-400/20 bg-rose-400/[0.05] px-4 py-3 text-sm text-rose-100/70">
                 {error}
               </p>
             ) : null}
-            <GoogleIntelligenceReport report={report} revealSections />
+            {activeModule.id === "google_search" && report ? (
+              <GoogleIntelligenceReport report={report} revealSections />
+            ) : null}
+            {activeModule.id === "username_intelligence" && usernameReport ? (
+              <UsernameIntelligenceReportView
+                report={usernameReport}
+                revealSections
+              />
+            ) : null}
+            {activeModule.id === "digital_leak_exposure" && exposureReport ? (
+              <DigitalExposureReportView
+                report={exposureReport}
+                revealSections
+              />
+            ) : null}
           </div>
         </>
       ) : (
         <DashboardPageRail sections={RESULTS_CENTER_RAIL}>
-          <nav
-            id="results-tabs"
-            aria-label="Analyse-Reiter"
-            className="mt-6 flex gap-1 overflow-x-auto rounded-[1.2rem] border border-white/[0.07] bg-white/[0.015] p-1.5"
-          >
-            {tabs.map((tab) => {
-              const active = tab.id === activeTab;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => selectTab(tab.id)}
-                  className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-[12px] transition ${
-                    active
-                      ? "bg-cyber-cyan/[0.12] text-cyber-cyan"
-                      : "text-white/40 hover:bg-white/[0.03] hover:text-white/70"
-                  }`}
-                >
-                  {tab.title}
-                </button>
-              );
-            })}
-          </nav>
-
-          {(activeModule.id === "google_search" ||
-            activeModule.id === "username_intelligence") &&
-          !scanning ? (
-            <section
-              id="results-retention"
-              className="mt-4 scroll-mt-24 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4"
-            >
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
-                    REPORT SPEICHERN
-                  </p>
-                  <p className="mt-1 text-sm text-white/55">
-                    Wie lange soll das Suchergebnis gespeichert bleiben?
-                  </p>
-                </div>
-                <label className="block min-w-[200px]">
-                  <span className="sr-only">Speicherdauer</span>
-                  <select
-                    value={retentionDays}
-                    disabled={scanning}
-                    onChange={(event) =>
-                      updateRetention(
-                        parseRetentionDays(Number(event.target.value))
-                      )
-                    }
-                    className="w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
-                  >
-                    {REPORT_RETENTION_PRESETS.map((preset) => (
-                      <option key={preset.days} value={preset.days}>
-                        {preset.label} — {preset.description}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </section>
-          ) : (
-            <div id="results-retention" className="sr-only" />
-          )}
+          {tabsNav}
+          {retentionSection}
 
           <div id="results-body" className="mt-6 scroll-mt-24">
             {activeModule.id === "google_search" ? (
@@ -713,10 +681,6 @@ export default function ResultsCenterClient({
                   <p className="mt-4 rounded-lg border border-rose-400/20 bg-rose-400/[0.05] px-4 py-3 text-sm text-rose-100/70">
                     {error}
                   </p>
-                ) : null}
-
-                {!scanning && report ? (
-                  <GoogleIntelligenceReport report={report} />
                 ) : null}
 
                 {!scanning && !report && !error ? (
@@ -756,10 +720,6 @@ export default function ResultsCenterClient({
                   </p>
                 ) : null}
 
-                {!scanning && exposureReport ? (
-                  <DigitalExposureReportView report={exposureReport} />
-                ) : null}
-
                 {!scanning && !exposureReport && !error ? (
                   <section className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] p-6 md:p-8">
                     <p className="font-mono text-[9px] tracking-[.16em] text-white/35">
@@ -795,10 +755,6 @@ export default function ResultsCenterClient({
                   <p className="mt-4 rounded-lg border border-rose-400/20 bg-rose-400/[0.05] px-4 py-3 text-sm text-rose-100/70">
                     {error}
                   </p>
-                ) : null}
-
-                {!scanning && usernameReport ? (
-                  <UsernameIntelligenceReportView report={usernameReport} />
                 ) : null}
 
                 {!scanning && !usernameReport && !error ? (

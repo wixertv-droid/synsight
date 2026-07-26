@@ -19,6 +19,9 @@ import {
   selfGuideForUsernameHit,
   usernameHitToIntelligenceHit,
 } from "@/lib/analysis/username/to-intelligence-hit";
+import { fingerprintForIntelligenceHit } from "@/lib/analysis/hit-action-state";
+import { useAnalysisHitActions } from "@/hooks/use-analysis-hit-actions";
+import type { HitActionState } from "@/lib/analysis/hit-action-state";
 import IntelligenceHitCard from "@/components/analysis/intelligence/IntelligenceHitCard";
 import SectionReveal from "@/components/analysis/intelligence/SectionReveal";
 import SystemRail, {
@@ -93,14 +96,22 @@ function FindingChip({
 function UsernameHitList({
   hits,
   analysisId,
+  actionFor,
+  onActionChange,
 }: {
   hits: UsernameHit[];
   analysisId: number;
+  actionFor: (fingerprint: string) => HitActionState;
+  onActionChange: (fingerprint: string, action: HitActionState) => void;
 }) {
   return (
     <ul className="space-y-3">
       {hits.map((hit) => {
         const intel = usernameHitToIntelligenceHit(hit);
+        const fingerprint = fingerprintForIntelligenceHit(
+          "username_intelligence",
+          intel
+        );
         return (
           <li key={hit.id}>
             <IntelligenceHitCard
@@ -109,6 +120,8 @@ function UsernameHitList({
               sourceModule="username_intelligence"
               orderType={orderTypeForUsernameHit(hit)}
               selfGuide={selfGuideForUsernameHit(hit)}
+              knownAction={actionFor(fingerprint)}
+              onActionChange={onActionChange}
             />
           </li>
         );
@@ -125,26 +138,31 @@ export default function UsernameIntelligenceReportView({
   revealSections?: boolean;
 }) {
   const [possibleOpen, setPossibleOpen] = useState(false);
+  const { actionFor, onActionChange, isExcluded } = useAnalysisHitActions(
+    "username_intelligence"
+  );
 
   const derived = useMemo(() => {
-    const overview =
-      report.managementOverview ??
-      buildManagementOverview({
-        username: report.subjectUsername,
-        hits: report.hits,
-        identityScore: report.identityScore,
-        riskScore: report.riskScore,
-        confidence: report.confidence,
-      });
-    const security: UsernameSecurityOverview =
-      report.securityOverview ??
-      buildSecurityOverview({
-        hits: report.hits,
-        actions: report.actions ?? [],
-        overallRisk: overview.overallRisk,
-      });
+    const activeHits = report.hits.filter((hit) => {
+      const intel = usernameHitToIntelligenceHit(hit);
+      const fp = fingerprintForIntelligenceHit("username_intelligence", intel);
+      return !isExcluded(fp);
+    });
+    const overview = buildManagementOverview({
+      username: report.subjectUsername,
+      hits: activeHits,
+      identityScore: report.identityScore,
+      riskScore: report.riskScore,
+      confidence: report.confidence,
+    });
+    const security: UsernameSecurityOverview = buildSecurityOverview({
+      hits: activeHits,
+      actions: report.actions ?? [],
+      overallRisk: overview.overallRisk,
+    });
     const findings: UsernameIdentityFindings =
-      report.identityFindings ?? buildIdentityFindings(report.hits);
+      buildIdentityFindings(activeHits);
+    // Show all hits in lists (ignored/resolved stay visible with badges)
     const { primary, weak } = splitPrimaryAndWeakHits(report.hits);
     return {
       overview,
@@ -152,12 +170,13 @@ export default function UsernameIntelligenceReportView({
       findings,
       primary,
       weak,
+      excludedCount: report.hits.length - activeHits.length,
       ai: report.aiSummary,
       scanned: report.scannedUsernames?.length
         ? report.scannedUsernames
         : [report.subjectUsername],
     };
-  }, [report]);
+  }, [report, isExcluded]);
 
   const visual = ampelVisual(derived.security.ampel);
 
@@ -240,6 +259,13 @@ export default function UsernameIntelligenceReportView({
                 Score {derived.overview.identityScore}/100
                 <span className="text-white/15">·</span>
                 {derived.primary.length} belastbare Treffer
+                {derived.excludedCount > 0 ? (
+                  <>
+                    <span className="text-white/15">·</span>
+                    {derived.excludedCount} ignoriert/gelöst (nicht in
+                    Statistik)
+                  </>
+                ) : null}
               </p>
             </header>
           </SectionReveal>
@@ -366,6 +392,8 @@ export default function UsernameIntelligenceReportView({
                 <UsernameHitList
                   hits={derived.primary}
                   analysisId={report.analysisId}
+                  actionFor={actionFor}
+                  onActionChange={onActionChange}
                 />
               )}
 
@@ -389,6 +417,8 @@ export default function UsernameIntelligenceReportView({
                       <UsernameHitList
                         hits={derived.weak}
                         analysisId={report.analysisId}
+                        actionFor={actionFor}
+                        onActionChange={onActionChange}
                       />
                     </div>
                   ) : null}
@@ -408,7 +438,8 @@ export default function UsernameIntelligenceReportView({
               <p className="mt-2 text-sm text-white/50">
                 „SynSight soll das übernehmen“ auf einer Trefferkarte legt einen
                 Auftrag an. Selbsthilfe-Schritte erscheinen unter „Erledige ich
-                selbst“.
+                selbst“. Ignorierte und gelöste Treffer zählen nicht in die
+                Statistik.
               </p>
               <a
                 href="/dashboard/orders"
@@ -420,9 +451,14 @@ export default function UsernameIntelligenceReportView({
           </SectionReveal>
         </div>
 
-        <aside className="sticky top-24 hidden w-[72px] shrink-0 xl:block">
-          <SystemRail sections={RAIL} />
-        </aside>
+        <SystemRail
+          sectionsReady
+          sections={RAIL}
+          alwaysShowLabels
+          placement="sticky"
+          activeOffsetPx={128}
+          className="pt-1"
+        />
       </div>
     </div>
   );

@@ -31,6 +31,8 @@ import {
   type ReportRetentionDays,
 } from "@/lib/analysis/retention";
 import type { IntelligenceHit, IntelligenceReport } from "@/lib/analysis/types";
+import { fingerprintForIntelligenceHit } from "@/lib/analysis/hit-action-state";
+import { useAnalysisHitActions } from "@/hooks/use-analysis-hit-actions";
 
 const REPORT_RAIL_SECTIONS: SystemRailSection[] = [
   { id: "report-overview", label: "ÜBERBLICK" },
@@ -91,21 +93,30 @@ export default function GoogleIntelligenceReport({
     "all"
   );
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const { actionFor, onActionChange, isExcluded } =
+    useAnalysisHitActions("google_search");
 
   const derived = useMemo(() => {
     if (!report) return null;
     const enriched = ensureEnriched(report.hits, report.subjectName);
-    const liveHits = enriched.filter(
+    const isActive = (hit: IntelligenceHit) =>
+      !isExcluded(fingerprintForIntelligenceHit("google_search", hit));
+
+    const liveHitsAll = enriched.filter(
       (hit) => hit.sourceType !== "identity_profile"
     );
-    const profileHits = enriched.filter(
-      (hit) => hit.sourceType === "identity_profile"
-    );
-    const scorecard = report.scorecard ?? buildReportScorecard(enriched);
+    const liveHits = liveHitsAll.filter(isActive);
+    const profileHits = enriched
+      .filter((hit) => hit.sourceType === "identity_profile")
+      .filter(isActive);
+    const activeEnriched = enriched.filter(isActive);
+    const excludedCount = enriched.length - activeEnriched.length;
+
+    const scorecard = buildReportScorecard(activeEnriched);
     // Always rebuild for current wording (stored text may be outdated).
     const analysisSummary = buildStructuredAnalysisSummary(
       report.subjectName,
-      enriched,
+      activeEnriched,
       scorecard
     );
 
@@ -137,10 +148,11 @@ export default function GoogleIntelligenceReport({
       {} as Record<string, number>
     );
 
-    const verifiedLive = liveHits.filter(
+    // Lists still show ignored/resolved cards; stats use liveHits only.
+    const verifiedLive = liveHitsAll.filter(
       (hit) => (hit.identityConfidence ?? 0) >= VERIFIED_CONFIDENCE_MIN
     );
-    const possibleLive = liveHits.filter((hit) => {
+    const possibleLive = liveHitsAll.filter((hit) => {
       const score = hit.identityConfidence ?? 0;
       return (
         score >= POSSIBLE_CONFIDENCE_MIN && score < VERIFIED_CONFIDENCE_MIN
@@ -192,19 +204,23 @@ export default function GoogleIntelligenceReport({
     return {
       enriched,
       liveHits,
+      liveHitsAll,
       verifiedLive,
       possibleLive,
-      profileHits,
+      profileHits: enriched.filter(
+        (hit) => hit.sourceType === "identity_profile"
+      ),
       scorecard,
       analysisSummary,
       severityCounts,
       categoryCounts,
       filtered,
       channelSections,
+      excludedCount,
       queries: report.queries,
       recommendations: report.recommendations,
     };
-  }, [report, severityFilter, categoryFilter]);
+  }, [report, severityFilter, categoryFilter, isExcluded]);
 
   if (!report || !derived) {
     return (
@@ -224,6 +240,7 @@ export default function GoogleIntelligenceReport({
     categoryCounts,
     filtered,
     channelSections,
+    excludedCount,
     queries,
     recommendations,
   } = derived;
@@ -310,6 +327,12 @@ export default function GoogleIntelligenceReport({
                 <span className="text-white/15">·</span>
                 Live-Treffer {liveHits.length} · Profil-Links{" "}
                 {profileHits.length}
+                {excludedCount > 0 ? (
+                  <>
+                    <span className="text-white/15">·</span>
+                    {excludedCount} ignoriert/gelöst (nicht in Statistik)
+                  </>
+                ) : null}
               </p>
             </header>
           </SectionReveal>
@@ -477,6 +500,13 @@ export default function GoogleIntelligenceReport({
                             <IntelligenceHitCard
                               hit={hit}
                               sourceModule="google_search"
+                              knownAction={actionFor(
+                                fingerprintForIntelligenceHit(
+                                  "google_search",
+                                  hit
+                                )
+                              )}
+                              onActionChange={onActionChange}
                             />
                           </li>
                         ))}
@@ -509,6 +539,13 @@ export default function GoogleIntelligenceReport({
                             <IntelligenceHitCard
                               hit={hit}
                               sourceModule="google_search"
+                              knownAction={actionFor(
+                                fingerprintForIntelligenceHit(
+                                  "google_search",
+                                  hit
+                                )
+                              )}
+                              onActionChange={onActionChange}
                             />
                           </li>
                         ))}
@@ -530,6 +567,13 @@ export default function GoogleIntelligenceReport({
                           <IntelligenceHitCard
                             hit={hit}
                             sourceModule="google_search"
+                            knownAction={actionFor(
+                              fingerprintForIntelligenceHit(
+                                "google_search",
+                                hit
+                              )
+                            )}
+                            onActionChange={onActionChange}
                           />
                         </li>
                       ))}

@@ -7,6 +7,7 @@ export {
   filterIgnoredFromUsernameReport,
   listHitActions,
   listIgnoredFingerprints,
+  listExcludedFromStatsFingerprints,
   listSynSightOrders,
   upsertHitAction,
   type AnalysisSourceModule,
