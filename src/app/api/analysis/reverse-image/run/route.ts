@@ -53,6 +53,26 @@ export async function POST(request: Request) {
 
   try {
     if (rescanOnly && Number.isFinite(rescanScanId) && rescanScanId > 0) {
+      const identity = await getIdentityForUser(userId);
+
+      // Client-Resume während comparing: keine Credits, keine Treffer löschen.
+      if (body.compareOnly === true && !selectedImageUrls?.length) {
+        const started = await startReverseImageCompare(identity, {
+          userId,
+          scanId: rescanScanId,
+          resume: true,
+        });
+        return NextResponse.json(
+          apiSuccess({
+            status: started.status,
+            scanId: started.scanId,
+            report: null,
+            rescan: true,
+            resumed: true,
+          })
+        );
+      }
+
       const units = Math.min(Math.max(selectedImageUrls?.length ?? 1, 1), 200);
       const started = await runWithAnalysisCredits(
         {
@@ -62,7 +82,6 @@ export async function POST(request: Request) {
           units,
         },
         async () => {
-          const identity = await getIdentityForUser(userId);
           return startReverseImageCompare(identity, {
             userId,
             scanId: rescanScanId,

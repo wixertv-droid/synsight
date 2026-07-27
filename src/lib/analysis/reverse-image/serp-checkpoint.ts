@@ -372,8 +372,10 @@ export function appendLiveScanResult(
   return {
     ...checkpoint,
     live: {
-      currentImageUrl: null,
-      currentTitle: null,
+      // Aktuelles Bild behalten — sonst flackert „Warte auf Kandidaten“.
+      currentImageUrl:
+        entry.imageUrl || checkpoint.live?.currentImageUrl || null,
+      currentTitle: entry.title || checkpoint.live?.currentTitle || null,
       recent,
     },
   };

@@ -636,7 +636,12 @@ export default function ResultsCenterClient({
               recent: live.recent ?? [],
             });
           }
-          if (liveHits?.length) setReverseImageLiveHits(liveHits);
+          // Treffer nicht verwerfen, wenn Poll zwischendurch leer kommt (Wipe/Race).
+          if (liveHits && liveHits.length > 0) {
+            setReverseImageLiveHits(liveHits);
+          } else if (status === "completed") {
+            setReverseImageLiveHits(liveHits ?? []);
+          }
           if (
             engineProgress &&
             typeof engineProgress.candidatesTotal === "number" &&

@@ -276,6 +276,8 @@ export async function startReverseImageCompare(
     userId: number;
     scanId: number;
     selectedImageUrls?: string[];
+    /** Fortsetzen ohne Treffer/Checkpoint zu löschen (Client-Resume). */
+    resume?: boolean;
   }
 ): Promise<ReverseImageStartResult> {
   if (!(await isInsightFaceConfiguredAsync())) {
@@ -286,6 +288,14 @@ export async function startReverseImageCompare(
 
   const userId = options.userId;
   const scanId = options.scanId;
+  const resume = options.resume === true;
+  const jobs = getReverseImageJobs();
+
+  // Laufender Compare: nie Treffer löschen — Resume nur bestätigen.
+  if (jobs.has(scanId)) {
+    return { scanId, status: "comparing", resumed: true };
+  }
+
   const scan = await getReverseImageScanMeta(userId, scanId);
   if (!scan) throw new ReverseImageUnavailableError("Scan nicht gefunden.");
   if (isReportExpired({ expiresAt: scan.expires_at })) {
@@ -315,6 +325,27 @@ export async function startReverseImageCompare(
     );
   }
 
+  if (resume) {
+    // Kein Clear: gespeicherte Treffer und processedImageUrls bleiben.
+    checkpoint = {
+      ...setSelectedImageUrls(checkpoint, selected),
+      phase: "comparing",
+    };
+    await persistCheckpoint(userId, scanId, checkpoint);
+    await markReverseImageScanComparing(scanId, references.length);
+
+    kickOffComparePipeline({
+      userId,
+      scanId,
+      subjectName: scan.subject_name ?? resolveSubjectName(identity),
+      references,
+      retentionDays: scan.retention_days as ReportRetentionDays,
+      expiresAt: scan.expires_at,
+    });
+    return { scanId, status: "comparing", resumed: true };
+  }
+
+  // Frischer Vergleich (Nutzer hat Auswahl bestätigt): Treffer zurücksetzen.
   await clearReverseImageHitsForScan(scanId);
   await resetReverseImageScanForRescan(scanId);
   checkpoint = resetCheckpointForCompare(
@@ -323,7 +354,7 @@ export async function startReverseImageCompare(
   );
   checkpoint = { ...checkpoint, phase: "comparing" };
   await persistCheckpoint(userId, scanId, checkpoint);
-  await markReverseImageScanComparing(scanId);
+  await markReverseImageScanComparing(scanId, references.length);
 
   kickOffComparePipeline({
     userId,
@@ -616,6 +647,8 @@ async function processCandidate(input: {
   /** Immer gesetzt wenn InsightFace lief — auch unter der Schwelle */
   similarity: number | null;
   thresholdUsed: number;
+  /** false = unvollständig (Budget) → nicht als processed markieren */
+  completed: boolean;
 }> {
   let compareCalls = 0;
   if (Date.now() - input.startedAt > input.budgetMs) {
@@ -625,6 +658,7 @@ async function processCandidate(input: {
       budgetExceeded: true,
       similarity: null,
       thresholdUsed: input.threshold,
+      completed: false,
     };
   }
 
@@ -639,6 +673,7 @@ async function processCandidate(input: {
       budgetExceeded: false,
       similarity: null,
       thresholdUsed: input.threshold,
+      completed: true,
     };
   }
 
@@ -652,16 +687,13 @@ async function processCandidate(input: {
     );
     let bestSimilarity = 0;
     let bestReference: ReferenceImage | null = null;
+    let budgetHit = false;
 
-    for (const reference of input.references) {
+    for (let i = 0; i < input.references.length; i += 1) {
+      const reference = input.references[i];
       if (Date.now() - input.startedAt > input.budgetMs) {
-        return {
-          hit: null,
-          compareCalls,
-          budgetExceeded: true,
-          similarity: bestSimilarity > 0 ? bestSimilarity : null,
-          thresholdUsed: input.threshold,
-        };
+        budgetHit = true;
+        break;
       }
       compareCalls += 1;
       try {
@@ -683,49 +715,29 @@ async function processCandidate(input: {
           error
         );
       }
+      // Kurze Pause zwischen KI-Calls — Overload / Timeouts vermeiden.
+      if (i < input.references.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 120));
+      }
     }
 
     const isMatch =
       bestReference != null && bestSimilarity + 1e-9 >= input.threshold;
 
-    if (!isMatch || !bestReference) {
+    // Budget mit bereits erkanntem Treffer: trotzdem speichern.
+    if (isMatch && bestReference) {
+      const matchedReference = bestReference;
+      const hitId = `ri-${input.scanId}-${input.existingMatchCount + 1}`;
+      const stored = await persistMatchImage({
+        userId: input.userId,
+        scanId: input.scanId,
+        hitId,
+        bytes,
+      });
       if (tempPath) await deleteTempRelativePath(tempPath);
-      return {
-        hit: null,
-        compareCalls,
-        budgetExceeded: false,
-        similarity: bestSimilarity > 0 ? bestSimilarity : null,
-        thresholdUsed: input.threshold,
-      };
-    }
 
-    const matchedReference = bestReference;
-
-    const hitId = `ri-${input.scanId}-${input.existingMatchCount + 1}`;
-    const stored = await persistMatchImage({
-      userId: input.userId,
-      scanId: input.scanId,
-      hitId,
-      bytes,
-    });
-    if (tempPath) await deleteTempRelativePath(tempPath);
-
-    const dbHitId = await insertReverseImageHit({
-      scanId: input.scanId,
-      query: candidateLabel(input.candidate),
-      title: input.candidate.title,
-      sourceUrl: input.candidate.sourceUrl,
-      imageUrl: input.candidate.imageUrl,
-      similarity: bestSimilarity,
-      referenceImageType: matchedReference.type,
-      riskLevel: riskLevelFromSimilarity(bestSimilarity),
-      storedPath: stored.storedPath,
-      thumbnailPath: stored.thumbnailPath,
-    });
-
-    return {
-      hit: {
-        id: String(dbHitId),
+      const dbHitId = await insertReverseImageHit({
+        scanId: input.scanId,
         query: candidateLabel(input.candidate),
         title: input.candidate.title,
         sourceUrl: input.candidate.sourceUrl,
@@ -735,13 +747,52 @@ async function processCandidate(input: {
         riskLevel: riskLevelFromSimilarity(bestSimilarity),
         storedPath: stored.storedPath,
         thumbnailPath: stored.thumbnailPath,
-        sourceHost: input.candidate.sourceHost,
-        fetchedAt: new Date().toISOString(),
-      },
+      });
+
+      return {
+        hit: {
+          id: String(dbHitId),
+          query: candidateLabel(input.candidate),
+          title: input.candidate.title,
+          sourceUrl: input.candidate.sourceUrl,
+          imageUrl: input.candidate.imageUrl,
+          similarity: bestSimilarity,
+          referenceImageType: matchedReference.type,
+          riskLevel: riskLevelFromSimilarity(bestSimilarity),
+          storedPath: stored.storedPath,
+          thumbnailPath: stored.thumbnailPath,
+          sourceHost: input.candidate.sourceHost,
+          fetchedAt: new Date().toISOString(),
+        },
+        compareCalls,
+        budgetExceeded: budgetHit,
+        similarity: bestSimilarity,
+        thresholdUsed: input.threshold,
+        completed: true,
+      };
+    }
+
+    if (tempPath) await deleteTempRelativePath(tempPath);
+
+    // Budget ohne Treffer: nicht als completed — später erneut versuchen.
+    if (budgetHit) {
+      return {
+        hit: null,
+        compareCalls,
+        budgetExceeded: true,
+        similarity: bestSimilarity > 0 ? bestSimilarity : null,
+        thresholdUsed: input.threshold,
+        completed: false,
+      };
+    }
+
+    return {
+      hit: null,
       compareCalls,
       budgetExceeded: false,
-      similarity: bestSimilarity,
+      similarity: bestSimilarity > 0 ? bestSimilarity : null,
       thresholdUsed: input.threshold,
+      completed: true,
     };
   } catch (error) {
     if (tempPath) await deleteTempRelativePath(tempPath).catch(() => undefined);
@@ -752,6 +803,8 @@ async function processCandidate(input: {
       budgetExceeded: false,
       similarity: null,
       thresholdUsed: input.threshold,
+      // Dauerhafter Fehler → überspringen, sonst Endlosschleife.
+      completed: true,
     };
   }
 }
@@ -777,6 +830,57 @@ async function executeComparePipeline(input: {
   let checkpoint = await loadCheckpointForScan(userId, scanId);
   if (!checkpoint) throw new Error("Checkpoint fehlt.");
 
+  const finalizeCompare = async (hits: ReverseImageHit[]) => {
+    await cleanupTempDir(userId, scanId).catch(() => undefined);
+    checkpoint = { ...checkpoint!, phase: "completed" };
+    await persistCheckpoint(userId, scanId, checkpoint);
+
+    const report = assembleReverseImageReport({
+      scanId,
+      status: "completed",
+      subjectName,
+      startedAt: new Date(pipelineStartedAt).toISOString(),
+      completedAt: new Date().toISOString(),
+      hits,
+      queryCount: checkpoint.queries.length,
+      // Discovery-Pool behalten — nicht nur die Auswahl für den Vergleich.
+      candidateCount: allCandidates(checkpoint).length,
+      referenceImageCount: references.length,
+      retentionDays,
+      expiresAt,
+    });
+
+    await completeReverseImageScan({
+      scanId,
+      queryCount: checkpoint.queries.length,
+      candidateCount: allCandidates(checkpoint).length,
+      matchCount: hits.length,
+      riskScore: report.riskScore,
+      summary: report.summary ?? report.managementOverview.headline,
+    });
+
+    if (totalCompareCalls > 0) {
+      void recordApiUsageEvent({
+        providerCode: "insightface",
+        eventType: "reverse_image_compare",
+        userId,
+        analysisId: scanId,
+        requestCount: Math.max(1, totalCompareCalls),
+        detail: `Reverse Image · ${totalCompareCalls} Vergleiche · ${hits.length} Treffer`,
+        success: true,
+      }).catch(() => undefined);
+    }
+
+    queueThreatsSummaryRegeneration(userId);
+  };
+
+  // Resume nach Absturz: Arbeit schon fertig → Report abschließen.
+  if (!compareWorkRemaining(checkpoint)) {
+    const hits = await getReverseImageHitsForScan(scanId);
+    await finalizeCompare(hits);
+    return;
+  }
+
   while (compareWorkRemaining(checkpoint)) {
     const chunkStartedAt = Date.now();
     let compareCalls = 0;
@@ -787,6 +891,13 @@ async function executeComparePipeline(input: {
     let existingHits = await getReverseImageHitsForScan(scanId);
 
     for (const candidate of remainingCompareCandidates(checkpoint)) {
+      // Bereits gespeicherter Treffer (Resume nach Wipe-Bug): nicht doppelt.
+      if (existingHits.some((h) => h.imageUrl === candidate.imageUrl)) {
+        checkpoint = markCandidateProcessed(checkpoint, candidate.imageUrl);
+        await persistCheckpoint(userId, scanId, checkpoint);
+        continue;
+      }
+
       checkpoint = setLiveScanCurrent(checkpoint, candidate);
       await persistCheckpoint(userId, scanId, checkpoint);
 
@@ -811,10 +922,16 @@ async function executeComparePipeline(input: {
         similarity: result.similarity ?? undefined,
         at: new Date().toISOString(),
       };
-      checkpoint = appendLiveScanResult(
-        markCandidateProcessed(checkpoint, candidate.imageUrl),
-        liveEntry
-      );
+
+      // Unvollständig (Budget/Fehler): nicht als processed — Resume wiederholt.
+      if (result.completed) {
+        checkpoint = appendLiveScanResult(
+          markCandidateProcessed(checkpoint, candidate.imageUrl),
+          liveEntry
+        );
+      } else {
+        checkpoint = appendLiveScanResult(checkpoint, liveEntry);
+      }
       await persistCheckpoint(userId, scanId, checkpoint);
 
       if (result.hit) existingHits = [...existingHits, result.hit];
@@ -827,50 +944,14 @@ async function executeComparePipeline(input: {
 
       // Chunk-Budget: Pause und neuer Durchlauf — Scan bricht nicht ab.
       if (result.budgetExceeded) break;
+
+      // Entlastung InsightFace zwischen Kandidaten.
+      await new Promise((resolve) => setTimeout(resolve, 80));
     }
 
     if (!compareWorkRemaining(checkpoint)) {
-      await cleanupTempDir(userId, scanId).catch(() => undefined);
-      checkpoint = { ...checkpoint, phase: "completed" };
-      await persistCheckpoint(userId, scanId, checkpoint);
-
-      const report = assembleReverseImageReport({
-        scanId,
-        status: "completed",
-        subjectName,
-        startedAt: new Date(pipelineStartedAt).toISOString(),
-        completedAt: new Date().toISOString(),
-        hits: existingHits,
-        queryCount: checkpoint.queries.length,
-        // Discovery-Pool behalten — nicht nur die Auswahl für den Vergleich.
-        candidateCount: allCandidates(checkpoint).length,
-        referenceImageCount: references.length,
-        retentionDays,
-        expiresAt,
-      });
-
-      await completeReverseImageScan({
-        scanId,
-        queryCount: checkpoint.queries.length,
-        candidateCount: allCandidates(checkpoint).length,
-        matchCount: existingHits.length,
-        riskScore: report.riskScore,
-        summary: report.summary ?? report.managementOverview.headline,
-      });
-
-      if (totalCompareCalls > 0) {
-        void recordApiUsageEvent({
-          providerCode: "insightface",
-          eventType: "reverse_image_compare",
-          userId,
-          analysisId: scanId,
-          requestCount: Math.max(1, totalCompareCalls),
-          detail: `Reverse Image · ${totalCompareCalls} Vergleiche · ${existingHits.length} Treffer`,
-          success: true,
-        }).catch(() => undefined);
-      }
-
-      queueThreatsSummaryRegeneration(userId);
+      const hits = await getReverseImageHitsForScan(scanId);
+      await finalizeCompare(hits);
       return;
     }
 

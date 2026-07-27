@@ -182,10 +182,24 @@ export async function completeReverseImageDiscovery(input: {
 }
 
 export async function markReverseImageScanComparing(
-  scanId: number
+  scanId: number,
+  referenceImageCount?: number
 ): Promise<void> {
   const db = getDatabase();
   if (!db) return;
+  if (
+    typeof referenceImageCount === "number" &&
+    Number.isFinite(referenceImageCount) &&
+    referenceImageCount >= 0
+  ) {
+    await db.execute(sql`
+      UPDATE reverse_image_scans SET
+        status = 'comparing',
+        reference_image_count = ${referenceImageCount}
+      WHERE id = ${scanId}
+    `);
+    return;
+  }
   await db.execute(sql`
     UPDATE reverse_image_scans SET status = 'comparing' WHERE id = ${scanId}
   `);
