@@ -5,7 +5,7 @@ import type { Chart, ChartConfiguration } from "chart.js";
 import type { KiServerStatusPayload } from "@/lib/admin/ki-server-status";
 
 const MAX_POINTS = 20;
-const POLL_MS = 2_000;
+const POLL_MS = 1_000;
 const NEON = "#00ffcc";
 
 function formatUptime(seconds: number): string {
@@ -141,7 +141,9 @@ export default function AdminKiServerMonitorView() {
           if (cancelled) return;
           setStatus(payload);
           setLastError(payload.error);
-          pushPoint(payload.online ? payload.activeTasks : 0);
+          pushPoint(
+            payload.online || payload.activeTasks > 0 ? payload.activeTasks : 0
+          );
         } catch (error) {
           if (cancelled) return;
           setStatus({
@@ -184,7 +186,9 @@ export default function AdminKiServerMonitorView() {
           KI-SERVER · LIVE MONITOR
         </p>
         <p className="mt-2 max-w-2xl text-sm text-white/50">
-          Status und Last der InsightFace-/KI-Engine — Abfrage alle 2 Sekunden.
+          Status und Last der InsightFace-/KI-Engine — Abfrage jede Sekunde.
+          Active Tasks zählen laufende Gesichtsvergleiche (auch wenn
+          Remote-/status keine Last meldet).
         </p>
       </div>
 

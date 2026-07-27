@@ -2,6 +2,56 @@ import { getReverseImageModuleSettings } from "@/lib/analysis/reverse-image/sett
 
 const DEFAULT_COMPARE_URL = "http://161.97.85.22:8000/compare";
 
+/** Process-local KI-Last — Remote-/status liefert oft dauerhaft active_tasks=0. */
+interface InsightFaceLoadState {
+  inFlight: number;
+  /** Peak für kurze Spikes, damit 1–2s Poll sie noch sieht */
+  recentPeak: number;
+  recentPeakAt: number;
+}
+
+function getLoadState(): InsightFaceLoadState {
+  return ((
+    globalThis as unknown as {
+      __synsightInsightFaceLoad?: InsightFaceLoadState;
+    }
+  ).__synsightInsightFaceLoad ??= {
+    inFlight: 0,
+    recentPeak: 0,
+    recentPeakAt: 0,
+  });
+}
+
+function beginInsightFaceTask(): void {
+  const state = getLoadState();
+  state.inFlight += 1;
+  state.recentPeak = Math.max(state.recentPeak, state.inFlight);
+  state.recentPeakAt = Date.now();
+}
+
+function endInsightFaceTask(): void {
+  const state = getLoadState();
+  state.inFlight = Math.max(0, state.inFlight - 1);
+  if (state.inFlight > 0) {
+    state.recentPeak = Math.max(state.recentPeak, state.inFlight);
+    state.recentPeakAt = Date.now();
+  }
+}
+
+/**
+ * Aktive / gerade abgeschlossene InsightFace-Tasks für den KI-Monitor-EKG.
+ * Peak bleibt kurz sichtbar, damit Poll-Intervalle Spikes nicht verpassen.
+ */
+export function getInsightFaceActiveTasks(holdMs = 2_500): number {
+  const state = getLoadState();
+  const age = Date.now() - state.recentPeakAt;
+  if (age >= holdMs) {
+    state.recentPeak = state.inFlight;
+    return state.inFlight;
+  }
+  return Math.max(state.inFlight, state.recentPeak);
+}
+
 export function resolveInsightFaceCompareUrl(): string {
   return (
     process.env.INSIGHTFACE_COMPARE_URL?.trim() ||
@@ -73,31 +123,36 @@ export async function compareImagesWithInsightFace(input: {
   form.append("file1", refBlob, input.referenceName ?? "reference.jpg");
   form.append("file2", candBlob, input.candidateName ?? "candidate.jpg");
 
+  beginInsightFaceTask();
   const started = Date.now();
-  const response = await fetch(url, {
-    method: "POST",
-    body: form,
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  const latencyMs = Date.now() - started;
-  const body = (await response.json().catch(() => ({}))) as {
-    similarity?: number;
-    detail?: string;
-    error?: string;
-  };
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const latencyMs = Date.now() - started;
+    const body = (await response.json().catch(() => ({}))) as {
+      similarity?: number;
+      detail?: string;
+      error?: string;
+    };
 
-  if (!response.ok) {
-    throw new Error(
-      body.detail || body.error || `InsightFace HTTP ${response.status}`
-    );
+    if (!response.ok) {
+      throw new Error(
+        body.detail || body.error || `InsightFace HTTP ${response.status}`
+      );
+    }
+
+    const similarity = Number(body.similarity);
+    if (!Number.isFinite(similarity)) {
+      throw new Error("InsightFace lieferte keinen gültigen similarity-Wert.");
+    }
+
+    return { similarity, latencyMs };
+  } finally {
+    endInsightFaceTask();
   }
-
-  const similarity = Number(body.similarity);
-  if (!Number.isFinite(similarity)) {
-    throw new Error("InsightFace lieferte keinen gültigen similarity-Wert.");
-  }
-
-  return { similarity, latencyMs };
 }
 
 export async function pingInsightFace(): Promise<boolean> {

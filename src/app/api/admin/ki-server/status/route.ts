@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { getAdminAccess } from "@/lib/admin/access";
 import type { KiServerStatusPayload } from "@/lib/admin/ki-server-status";
 import { getReverseImageModuleSettings } from "@/lib/analysis/reverse-image/settings";
+import { getInsightFaceActiveTasks } from "@/lib/analysis/reverse-image/insightface-client";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,26 @@ function resolveStatusUrl(compareUrl: string): string {
 function asFiniteNumber(value: unknown, fallback = 0): number {
   const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) ? n : fallback;
+}
+
+/** Remote-/status-Felder — Server-Implementierungen variieren. */
+function readRemoteActiveTasks(body: Record<string, unknown>): number {
+  const candidates = [
+    body.active_tasks,
+    body.activeTasks,
+    body.tasks,
+    body.in_flight,
+    body.inflight,
+    body.busy,
+    body.queue_size,
+    body.queue,
+    body.load,
+  ];
+  let best = 0;
+  for (const value of candidates) {
+    best = Math.max(best, Math.max(0, asFiniteNumber(value, 0)));
+  }
+  return best;
 }
 
 export async function GET() {
@@ -49,6 +70,7 @@ export async function GET() {
   }
 
   const checkedAt = new Date().toISOString();
+  const localTasks = getInsightFaceActiveTasks();
 
   try {
     const response = await fetch(sourceUrl, {
@@ -60,10 +82,10 @@ export async function GET() {
 
     if (!response.ok) {
       const payload: KiServerStatusPayload = {
-        online: false,
-        status: "offline",
+        online: localTasks > 0,
+        status: localTasks > 0 ? "online" : "offline",
         aiEngine: "unreachable",
-        activeTasks: 0,
+        activeTasks: localTasks,
         uptimeSeconds: 0,
         checkedAt,
         sourceUrl,
@@ -74,18 +96,14 @@ export async function GET() {
       });
     }
 
-    const body = (await response.json()) as {
-      status?: unknown;
-      ai_engine?: unknown;
-      active_tasks?: unknown;
-      uptime_seconds?: unknown;
-    };
+    const body = (await response.json()) as Record<string, unknown>;
 
     const status =
       typeof body.status === "string" && body.status.trim()
         ? body.status.trim().toLowerCase()
         : "unknown";
-    const online = status === "online";
+    const online = status === "online" || localTasks > 0;
+    const remoteTasks = readRemoteActiveTasks(body);
 
     const payload: KiServerStatusPayload = {
       online,
@@ -93,9 +111,15 @@ export async function GET() {
       aiEngine:
         typeof body.ai_engine === "string" && body.ai_engine.trim()
           ? body.ai_engine.trim()
-          : "unknown",
-      activeTasks: Math.max(0, asFiniteNumber(body.active_tasks, 0)),
-      uptimeSeconds: Math.max(0, asFiniteNumber(body.uptime_seconds, 0)),
+          : typeof body.aiEngine === "string" && body.aiEngine.trim()
+            ? body.aiEngine.trim()
+            : "unknown",
+      // Remote liefert oft dauerhaft 0 — lokale In-Flight-Vergleiche mitzählen
+      activeTasks: Math.max(remoteTasks, localTasks),
+      uptimeSeconds: Math.max(
+        0,
+        asFiniteNumber(body.uptime_seconds ?? body.uptimeSeconds, 0)
+      ),
       checkedAt,
       sourceUrl,
       error: null,
@@ -108,10 +132,10 @@ export async function GET() {
     const message =
       error instanceof Error ? error.message : "KI-Server nicht erreichbar";
     const payload: KiServerStatusPayload = {
-      online: false,
-      status: "offline",
+      online: localTasks > 0,
+      status: localTasks > 0 ? "online" : "offline",
       aiEngine: "unreachable",
-      activeTasks: 0,
+      activeTasks: localTasks,
       uptimeSeconds: 0,
       checkedAt,
       sourceUrl,
