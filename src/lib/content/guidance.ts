@@ -202,6 +202,18 @@ export const analysisGuidance: Record<
     why: "Fotos können ohne Ihr Wissen auf anderen Seiten oder Profilen erscheinen.",
     result: "Bildtreffer und Handlungsempfehlungen.",
   },
+  reverse_image_discovery: {
+    what: "Durchsucht Google Images nach Ihrem Namen, Alias und allen Benutzernamen.",
+    why: "Öffentliche Bildlinks müssen zuerst gefunden und gespeichert werden, bevor ein Gesichtsvergleich möglich ist.",
+    result:
+      "Eine gefilterte Liste gespeicherter Bildlinks im Reverse-Image-Ergebnis.",
+  },
+  reverse_image_compare: {
+    what: "Vergleicht ausgewählte Bildlinks per InsightFace mit Ihren Referenzfotos.",
+    why: "Nur ausgewählte Treffer werden geprüft — 1 SynCredit pro Bild.",
+    result:
+      "Gesichtsübereinstimmungen mit Ähnlichkeit und gespeicherten Trefferbildern.",
+  },
   ai_summary: {
     what: "Fasst Analyseergebnisse in verständlicher Sprache zusammen.",
     why: "Sie müssen keine Rohdaten lesen — die KI priorisiert das Wichtige.",
