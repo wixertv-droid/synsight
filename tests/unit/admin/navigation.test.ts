@@ -52,4 +52,13 @@ describe("admin navigation", () => {
       getAdminSection("website")?.items.some((i) => i.slug === "api")
     ).toBe(true);
   });
+
+  it("exposes KI-Server monitor under website", () => {
+    expect(getAdminNavItem("website", "ki-server")?.view).toBe(
+      "website-ki-server"
+    );
+    expect(adminPageHref("website", "ki-server")).toBe(
+      "/admin/website/ki-server"
+    );
+  });
 });

@@ -5,6 +5,7 @@ import AdminPromotionsControl from "@/components/admin/AdminPromotionsControl";
 import AdminUserControl from "@/components/admin/AdminUserControl";
 import AdminAuditView from "@/components/admin/views/AdminAuditView";
 import AdminSystemStatusView from "@/components/admin/views/AdminSystemStatusView";
+import AdminKiServerMonitorView from "@/components/admin/views/AdminKiServerMonitorView";
 import AdminAnalysisModulesView from "@/components/admin/views/AdminAnalysisModulesView";
 import AdminApiCredentialsView from "@/components/admin/views/AdminApiCredentialsView";
 import AdminImageSettingsView from "@/components/admin/views/AdminImageSettingsView";
@@ -51,6 +52,8 @@ export default function AdminViewHost({
       return <AdminPromotionsControl />;
     case "website-system":
       return <AdminSystemStatusView />;
+    case "website-ki-server":
+      return <AdminKiServerMonitorView />;
     case "website-api":
       return <AdminApiCredentialsView />;
     case "website-modules":

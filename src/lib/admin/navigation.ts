@@ -114,6 +114,13 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
         view: "website-system",
       },
       {
+        slug: "ki-server",
+        label: "KI-Server Monitor",
+        description: "Live-Status und Last der Face-/KI-Engine.",
+        help: "Pollt /status des InsightFace-Servers — EKG für active_tasks.",
+        view: "website-ki-server",
+      },
+      {
         slug: "analysemodule",
         label: "Analysemodule",
         description: "Analysen ein- oder ausschalten.",
