@@ -95,7 +95,9 @@ function migrateCheckpoint(raw: unknown): ReverseImageSerpCheckpoint | null {
     version?: number;
   };
 
-  if (parsed.version === 2 && Array.isArray(parsed.queries)) {
+  const version = parsed.version as number | undefined;
+
+  if (version === 2 && Array.isArray(parsed.queries)) {
     return {
       version: SERP_CHECKPOINT_VERSION,
       phase: parsed.phase ?? "discovering",

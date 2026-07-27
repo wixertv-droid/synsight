@@ -163,12 +163,14 @@ export class SerpApiProvider implements SearchProvider {
     options?: SearchProviderSearchOptions
   ): Promise<NormalizedSearchHit[]> {
     if (!query.trim()) return [];
+    // SafeSearch bewusst AUS — OSINT muss auch nicht jugendfreie Bildtreffer erfassen.
     const { body } = await this.request({
       engine: "google_images",
       q: query.trim(),
       num: String(Math.min(Math.max(options?.num ?? 10, 1), 20)),
       hl: options?.language || "de",
       gl: options?.country || "de",
+      safe: "off",
     });
     const images = Array.isArray(body.images_results)
       ? body.images_results

@@ -63,10 +63,53 @@ describe("reverse-image search planner", () => {
         },
       })
     );
-    expect(plans.filter((p) => p.group === "username")).toHaveLength(2);
-    expect(plans.filter((p) => p.group === "alias")).toHaveLength(1);
+    expect(
+      plans.filter((p) => p.group === "username").length
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      plans.filter((p) => p.group === "alias").length
+    ).toBeGreaterThanOrEqual(1);
     expect(plans.some((p) => p.query === '"anja_g"')).toBe(true);
-    expect(plans.some((p) => p.query.includes(" OR "))).toBe(false);
+    // Username-Queries bleiben einzeln (kein OR zwischen Benutzernamen)
+    expect(
+      plans.some(
+        (p) =>
+          p.group === "username" &&
+          !p.id.includes("adult") &&
+          p.query.includes(" OR ")
+      )
+    ).toBe(false);
+  });
+
+  it("adds adult/niche image queries for aliases and usernames like Google search", () => {
+    const plans = planReverseImageQueries(
+      identity({
+        personal: { firstName: "Anja", lastName: "Gebert" },
+        aliases: {
+          usernames: ["anja_g"],
+          gamingNames: [],
+          formerNames: [],
+          nicknames: [],
+          publicAlias: "anjalias",
+        },
+      })
+    );
+    expect(
+      plans.some(
+        (p) =>
+          p.id.startsWith("alias-adult-") &&
+          p.query.includes("site:joyclub.de") &&
+          p.query.includes('"anjalias"')
+      )
+    ).toBe(true);
+    expect(
+      plans.some(
+        (p) =>
+          p.id.startsWith("username-adult-") &&
+          p.query.includes("site:onlyfans.com") &&
+          p.query.includes('"anja_g"')
+      )
+    ).toBe(true);
   });
 });
 

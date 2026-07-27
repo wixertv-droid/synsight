@@ -9,6 +9,10 @@ export interface ReverseImageQueryPlan {
   group: ReverseImageQueryGroup;
 }
 
+/** Adult-/Nischen-Sites — analog zur Google-Textsuche (safeSearch=Off). */
+const ADULT_IMAGE_DORK =
+  '(site:joyclub.de OR site:einfachgeiler.com OR site:amarotic.com OR site:onlyfans.com OR "amateur" OR "escort")';
+
 function quote(value: string): string {
   const safe = value.replace(/"/g, "").trim();
   return `"${safe}"`;
@@ -96,6 +100,12 @@ export function planReverseImageQueries(
   for (const [index, alias] of collectAliases(identity).entries()) {
     if (fullName && normalizeKey(alias) === normalizeKey(fullName)) continue;
     addPlan(`alias-${index}`, `Alias · ${alias}`, quote(alias), "alias");
+    addPlan(
+      `alias-adult-${index}`,
+      `Alias Adult · ${alias}`,
+      `${quote(alias)} ${ADULT_IMAGE_DORK}`,
+      "alias"
+    );
   }
 
   for (const [index, username] of collectUsernames(identity).entries()) {
@@ -104,6 +114,12 @@ export function planReverseImageQueries(
       `username-${index}`,
       `Benutzername · ${username}`,
       quote(username),
+      "username"
+    );
+    addPlan(
+      `username-adult-${index}`,
+      `Benutzername Adult · ${username}`,
+      `${quote(username)} ${ADULT_IMAGE_DORK}`,
       "username"
     );
   }
