@@ -75,7 +75,7 @@ export class ReverseImageUnavailableError extends Error {
 
 /** Keep scans short enough for typical nginx proxy timeouts. */
 const MAX_CANDIDATES = Number.parseInt(
-  process.env.REVERSE_IMAGE_MAX_CANDIDATES ?? "12",
+  process.env.REVERSE_IMAGE_MAX_CANDIDATES ?? "30",
   10
 );
 const WALL_CLOCK_BUDGET_MS = Number.parseInt(
@@ -104,7 +104,7 @@ function getReverseImageJobs(): ReverseImageJobsMap {
 }
 
 function resolveMaxCandidates(): number {
-  return Number.isFinite(MAX_CANDIDATES) ? MAX_CANDIDATES : 12;
+  return Number.isFinite(MAX_CANDIDATES) ? MAX_CANDIDATES : 30;
 }
 
 function resolveBudgetMs(): number {
@@ -408,7 +408,7 @@ async function fetchRemainingSerpCandidates(input: {
     try {
       const batch = await fetchGoogleImageCandidates({
         query: plan.query,
-        num: 8,
+        num: 10,
         userId: input.userId,
       });
       serpCalls += 1;
