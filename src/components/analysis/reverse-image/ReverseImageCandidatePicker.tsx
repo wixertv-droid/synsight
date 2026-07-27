@@ -68,6 +68,11 @@ export default function ReverseImageCandidatePicker({
     return resultsByQuery[activeGroupId] ?? [];
   }, [activeGroupId, resultsByQuery]);
 
+  const totalCount = useMemo(
+    () => Object.values(resultsByQuery).flat().length,
+    [resultsByQuery]
+  );
+
   const toggle = (url: string) => {
     const key = url.toLowerCase();
     setSelected((current) => {
@@ -87,6 +92,8 @@ export default function ReverseImageCandidatePicker({
       return next;
     });
   };
+
+  const clearSelection = () => setSelected(new Set());
 
   const saveSelection = async (
     urls: string[],
@@ -173,168 +180,225 @@ export default function ReverseImageCandidatePicker({
   }
 
   return (
-    <section className="space-y-5 rounded-[1.2rem] border border-cyber-cyan/20 bg-[#060d16]/90 p-5 md:p-6">
-      <div>
-        <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
-          PHASE 1 ABGESCHLOSSEN · BILDER AUSWÄHLEN
-        </p>
-        <p className="mt-2 text-sm text-white/55">
-          Wählen Sie die Bildlinks für den InsightFace-Vergleich. Die Bildsuche
-          ist bereits bezahlt — der Gesichtsvergleich wird separat berechnet.
-        </p>
-      </div>
+    <div className="space-y-6">
+      {/* Google-ähnliche Trefferliste */}
+      <section className="glass-strong hardware-panel space-y-4 rounded-[1.4rem] border border-white/[0.08] p-5 md:p-6">
+        <div>
+          <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/55">
+            BILDSUCHE · SERPAPI ERGEBNISSE
+          </p>
+          <h2 className="mt-2 text-xl font-medium tracking-[-.02em] text-white/90">
+            Gefundene Bildlinks
+          </h2>
+          <p className="mt-2 text-sm text-white/50">
+            {totalCount} öffentliche Treffer aus Google Images — gefiltert nach
+            Name, Alias und Benutzernamen. Gespeichert gemäß Ihrer
+            Aufbewahrungseinstellung.
+          </p>
+        </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveGroupId("all")}
-          className={`rounded-lg border px-3 py-1.5 text-xs ${
-            activeGroupId === "all"
-              ? "border-cyber-cyan/40 bg-cyber-cyan/[0.1] text-cyber-cyan"
-              : "border-white/10 text-white/50"
-          }`}
-        >
-          Alle
-        </button>
-        {groups.map((group) => (
+        <div className="flex flex-wrap gap-2">
           <button
-            key={group.id}
             type="button"
-            onClick={() => setActiveGroupId(group.id)}
+            onClick={() => setActiveGroupId("all")}
             className={`rounded-lg border px-3 py-1.5 text-xs ${
-              activeGroupId === group.id
+              activeGroupId === "all"
                 ? "border-cyber-cyan/40 bg-cyber-cyan/[0.1] text-cyber-cyan"
                 : "border-white/10 text-white/50"
             }`}
           >
-            {group.label} ({group.count})
+            Alle ({totalCount})
           </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={selectAllVisible}
-          className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/60"
-        >
-          Alle in Filter auswählen
-        </button>
-        <span className="self-center font-mono text-[10px] text-white/35">
-          {selected.size} ausgewählt
-        </span>
-      </div>
-
-      <ul className="max-h-[420px] space-y-2 overflow-y-auto">
-        {visibleCandidates.length === 0 ? (
-          <li className="text-sm text-white/40">
-            Keine Bilder in diesem Filter.
-          </li>
-        ) : (
-          visibleCandidates.map((candidate) => {
-            const checked = selected.has(candidate.imageUrl.toLowerCase());
-            return (
-              <li
-                key={candidate.imageUrl}
-                className={`flex gap-3 rounded-lg border p-2 ${
-                  checked
-                    ? "border-emerald-400/30 bg-emerald-400/[0.05]"
-                    : "border-white/[0.07] bg-white/[0.02]"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggle(candidate.imageUrl)}
-                  className="mt-2"
-                />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={proxy(candidate.imageUrl)}
-                  alt={candidate.title}
-                  className="h-16 w-16 shrink-0 rounded object-cover"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-white/80">
-                    {candidate.title}
-                  </p>
-                  <p className="font-mono text-[9px] text-white/35">
-                    {candidate.queryLabel ?? candidate.query} ·{" "}
-                    {candidate.sourceHost}
-                  </p>
-                  <a
-                    href={candidate.imageUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-[9px] text-cyber-cyan/70 hover:underline"
-                  >
-                    Bildlink öffnen
-                  </a>
-                </div>
-              </li>
-            );
-          })
-        )}
-      </ul>
-
-      <div className="rounded-lg border border-white/[0.08] bg-black/20 p-3">
-        <p className="font-mono text-[8px] tracking-[.12em] text-white/30">
-          MANUELLEN BILDLINK HINZUFÜGEN
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <input
-            value={manualUrl}
-            onChange={(e) => setManualUrl(e.target.value)}
-            placeholder="https://…/bild.jpg"
-            className="min-w-[220px] flex-1 rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80"
-          />
-          <input
-            value={manualTitle}
-            onChange={(e) => setManualTitle(e.target.value)}
-            placeholder="Bezeichnung (optional)"
-            className="min-w-[160px] rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80"
-          />
-          <button
-            type="button"
-            onClick={() => void addManual()}
-            className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white/65"
-          >
-            Hinzufügen
-          </button>
+          {groups.map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              onClick={() => setActiveGroupId(group.id)}
+              className={`rounded-lg border px-3 py-1.5 text-xs ${
+                activeGroupId === group.id
+                  ? "border-cyber-cyan/40 bg-cyber-cyan/[0.1] text-cyber-cyan"
+                  : "border-white/10 text-white/50"
+              }`}
+            >
+              {group.label} ({group.count})
+            </button>
+          ))}
         </div>
-      </div>
 
-      {error ? (
-        <p className="text-sm text-rose-200/80" role="alert">
-          {error}
-        </p>
-      ) : null}
+        <ul className="space-y-3">
+          {visibleCandidates.length === 0 ? (
+            <li className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-8 text-center text-sm text-white/40">
+              Keine Bildlinks in diesem Filter.
+            </li>
+          ) : (
+            visibleCandidates.map((candidate) => {
+              const checked = selected.has(candidate.imageUrl.toLowerCase());
+              const pageUrl = candidate.sourceUrl || candidate.imageUrl;
+              return (
+                <li
+                  key={candidate.imageUrl}
+                  className={`overflow-hidden rounded-[1.1rem] border transition ${
+                    checked
+                      ? "border-emerald-400/30 bg-emerald-400/[0.04]"
+                      : "border-white/[0.08] bg-[#0a1018]/80"
+                  }`}
+                >
+                  <div className="grid gap-0 md:grid-cols-[96px_1fr_auto]">
+                    <div className="border-b border-white/[0.06] bg-black/30 md:border-b-0 md:border-r">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={proxy(candidate.imageUrl)}
+                        alt={candidate.title}
+                        className="h-24 w-full object-cover object-top md:h-full md:min-h-[96px]"
+                      />
+                    </div>
+                    <div className="min-w-0 p-4">
+                      <p className="font-mono text-[9px] tracking-[.12em] text-emerald-300/60">
+                        {(candidate.sourceHost || "web").toUpperCase()}
+                      </p>
+                      <a
+                        href={pageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 block truncate text-base font-medium text-sky-300/90 hover:underline"
+                      >
+                        {candidate.title || "Bildtreffer"}
+                      </a>
+                      <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-white/55">
+                        Treffer zu „{candidate.queryLabel ?? candidate.query}“ —
+                        öffentlicher Bildindex über SerpAPI Google Images.
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-3 font-mono text-[9px]">
+                        <a
+                          href={candidate.imageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cyber-cyan/75 hover:underline"
+                        >
+                          Bild-URL
+                        </a>
+                        {candidate.sourceUrl ? (
+                          <a
+                            href={candidate.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-white/40 hover:underline"
+                          >
+                            Quellseite
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-3 border-t border-white/[0.06] px-4 py-3 md:border-t-0 md:border-l md:px-5">
+                      <label className="flex cursor-pointer items-center gap-2 text-xs text-white/60">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggle(candidate.imageUrl)}
+                        />
+                        Auswählen
+                      </label>
+                    </div>
+                  </div>
+                </li>
+              );
+            })
+          )}
+        </ul>
+      </section>
 
-      {!confirmCompare ? (
-        <button
-          type="button"
-          disabled={selected.size === 0}
-          onClick={() => setConfirmCompare(true)}
-          className="rounded-xl border border-cyber-cyan/35 bg-cyber-cyan/[0.08] px-5 py-3 text-sm text-cyber-cyan disabled:opacity-40"
-        >
-          Gesichtsvergleich starten ({selected.size} Bilder)
-        </button>
-      ) : (
+      {/* Auswahl / Compare darunter */}
+      <section className="space-y-5 rounded-[1.2rem] border border-cyber-cyan/20 bg-[#060d16]/90 p-5 md:p-6">
         <div>
-          <ConsumeConfirm
-            analysisKey="reverse_image_compare"
-            confirmLabel="Vergleich bestätigen"
-            onCompleted={(payload) => void handleCompareConfirmed(payload)}
-          />
+          <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
+            PHASE 2 · GESICHTSVERGLEICH (OPTIONAL)
+          </p>
+          <p className="mt-2 text-sm text-white/55">
+            Markieren Sie oben die Bildlinks für den InsightFace-Vergleich. Die
+            Bildsuche ist bereits bezahlt — der Vergleich wird separat
+            berechnet.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setConfirmCompare(false)}
-            className="mt-2 text-sm text-white/40"
+            onClick={selectAllVisible}
+            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/60"
           >
-            Abbrechen
+            Alle in Filter auswählen
           </button>
+          <button
+            type="button"
+            onClick={clearSelection}
+            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/40"
+          >
+            Auswahl leeren
+          </button>
+          <span className="font-mono text-[10px] text-white/35">
+            {selected.size} ausgewählt
+          </span>
         </div>
-      )}
-    </section>
+
+        <div className="rounded-lg border border-white/[0.08] bg-black/20 p-3">
+          <p className="font-mono text-[8px] tracking-[.12em] text-white/30">
+            MANUELLEN BILDLINK HINZUFÜGEN
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <input
+              value={manualUrl}
+              onChange={(e) => setManualUrl(e.target.value)}
+              placeholder="https://…/bild.jpg"
+              className="min-w-[220px] flex-1 rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80"
+            />
+            <input
+              value={manualTitle}
+              onChange={(e) => setManualTitle(e.target.value)}
+              placeholder="Bezeichnung (optional)"
+              className="min-w-[160px] rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80"
+            />
+            <button
+              type="button"
+              onClick={() => void addManual()}
+              className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white/65"
+            >
+              Hinzufügen
+            </button>
+          </div>
+        </div>
+
+        {error ? (
+          <p className="text-sm text-rose-200/80" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        {!confirmCompare ? (
+          <button
+            type="button"
+            disabled={selected.size === 0}
+            onClick={() => setConfirmCompare(true)}
+            className="rounded-xl border border-cyber-cyan/35 bg-cyber-cyan/[0.08] px-5 py-3 text-sm text-cyber-cyan disabled:opacity-40"
+          >
+            Gesichtsvergleich starten ({selected.size} Bilder)
+          </button>
+        ) : (
+          <div>
+            <ConsumeConfirm
+              analysisKey="reverse_image_compare"
+              confirmLabel="Vergleich bestätigen"
+              onCompleted={(payload) => void handleCompareConfirmed(payload)}
+            />
+            <button
+              type="button"
+              onClick={() => setConfirmCompare(false)}
+              className="mt-2 text-sm text-white/40"
+            >
+              Abbrechen
+            </button>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

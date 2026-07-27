@@ -43,6 +43,7 @@ const IMPLEMENTED_REPORT_KEYS = new Set([
   "digital_leak_exposure",
   "username_intelligence",
   "reverse_image_search",
+  "reverse_image_discovery",
 ]);
 
 async function loadModuleReport(
@@ -62,7 +63,7 @@ async function loadModuleReport(
     const report = await getLatestUsernameReport(userId);
     return filterIgnoredFromUsernameReport(userId, report);
   }
-  if (key === "reverse_image_search") {
+  if (key === "reverse_image_search" || key === "reverse_image_discovery") {
     const report = await getLatestReverseImageReport(userId);
     return filterIgnoredFromReverseImageReport(userId, report);
   }

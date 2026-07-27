@@ -19,12 +19,13 @@ import { getIdentityForUser } from "@/lib/services/identity-service";
 import { getPublicPricingCatalog } from "@/lib/services/pricing-service";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 
-/** Keep live modules left-to-right: Google → Leak → Username, then others. */
+/** Keep live modules left-to-right: Google → Leak → Username → Reverse Image. */
 function tabSortRank(id: string): number {
   if (id === "google_search") return 10;
   if (id === "digital_leak_exposure") return 20;
   if (id === "username_intelligence") return 30;
-  if (id === "reverse_image_search") return 40;
+  if (id === "reverse_image_search" || id === "reverse_image_discovery")
+    return 40;
   return 100;
 }
 
@@ -53,10 +54,21 @@ function tabTitle(id: string, fallback: string): string {
     case "social_media":
       return "Social Analyse";
     case "reverse_image_search":
+    case "reverse_image_discovery":
       return "Reverse Image Search";
     default:
       return fallback;
   }
+}
+
+/**
+ * Results-tab id for reverse image stays `reverse_image_search` so scan URLs
+ * (`?tab=reverse_image_search&scan=1`) never fall back to Google.
+ * Billing key `reverse_image_discovery` is only used in Analyse Center / credits.
+ */
+function normalizeResultsTabId(id: string): string {
+  if (id === "reverse_image_discovery") return "reverse_image_search";
+  return id;
 }
 
 function isAvailableModule(id: string): boolean {
@@ -64,7 +76,8 @@ function isAvailableModule(id: string): boolean {
     id === "google_search" ||
     id === "digital_leak_exposure" ||
     id === "username_intelligence" ||
-    id === "reverse_image_search"
+    id === "reverse_image_search" ||
+    id === "reverse_image_discovery"
   );
 }
 
@@ -94,13 +107,22 @@ async function loadResultsData(): Promise<{
       const catalog = await getPublicPricingCatalog();
       const modules = resolveActiveAnalyses(catalog.analyses ?? []);
       tabs = modules
-        .map((module) => ({
-          id: module.id,
-          title: tabTitle(module.id, module.title),
-          help: module.help,
-          tagline: module.tagline,
-          available: isAvailableModule(module.id),
-        }))
+        .filter((module) => module.id !== "reverse_image_compare")
+        .map((module) => {
+          const id = normalizeResultsTabId(module.id);
+          return {
+            id,
+            title: tabTitle(id, module.title),
+            help: module.help,
+            tagline: module.tagline,
+            available: isAvailableModule(id),
+          };
+        })
+        // Deduplicate if both legacy + discovery somehow appear
+        .filter(
+          (tab, index, all) =>
+            all.findIndex((item) => item.id === tab.id) === index
+        )
         .sort(
           (a, b) =>
             tabSortRank(a.id) - tabSortRank(b.id) ||
