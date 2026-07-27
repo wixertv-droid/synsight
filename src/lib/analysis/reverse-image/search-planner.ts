@@ -74,8 +74,8 @@ function collectUsernames(identity: IdentityView | null): string[] {
 }
 
 /**
- * Phase 1 queries — getrennt nach Name, Alias, Benutzername (je eigener Filter-Tab).
- * Usernames: offene Suche wie manuelles Google Images (ohne Anführungszeichen) + Adult/Sites.
+ * Phase 1 queries — Name, Alias und Benutzername jeweils breit (offen + exakt + Adult).
+ * SafeSearch bleibt in SerpAPI `safe=off`.
  */
 export function planReverseImageQueries(
   identity: IdentityView | null
@@ -97,29 +97,37 @@ export function planReverseImageQueries(
 
   const fullName = buildFullName(identity);
   if (fullName) {
-    addPlan("name-full", `Name · ${fullName}`, quote(fullName), "name");
+    // Offen wie manuelle Google-Bildsuche + exakt + Adult/Nische.
+    addPlan("name-open", `Name · ${fullName}`, fullName, "name");
+    addPlan("name-full", `Name exakt · ${fullName}`, quote(fullName), "name");
     addPlan(
       "name-full-photo",
       `Name + Foto · ${fullName}`,
-      `${quote(fullName)} photo`,
+      `${fullName} (photo OR foto OR bild)`,
+      "name"
+    );
+    addPlan(
+      "name-adult",
+      `Name Adult · ${fullName}`,
+      `${fullName} ${ADULT_IMAGE_DORK}`,
       "name"
     );
   }
 
   for (const [index, alias] of collectAliases(identity).entries()) {
     if (fullName && normalizeKey(alias) === normalizeKey(fullName)) continue;
-    addPlan(`alias-${index}`, `Alias · ${alias}`, quote(alias), "alias");
+    addPlan(`alias-open-${index}`, `Alias · ${alias}`, alias, "alias");
+    addPlan(`alias-${index}`, `Alias exakt · ${alias}`, quote(alias), "alias");
     addPlan(
       `alias-adult-${index}`,
       `Alias Adult · ${alias}`,
-      `${quote(alias)} ${ADULT_IMAGE_DORK}`,
+      `${alias} ${ADULT_IMAGE_DORK}`,
       "alias"
     );
   }
 
   for (const [index, username] of collectUsernames(identity).entries()) {
     if (fullName && normalizeKey(username) === normalizeKey(fullName)) continue;
-    // Primär: offene Suche wie manuelles Google Images (hundreds of hits).
     addPlan(
       `username-open-${index}`,
       `Benutzername · ${username}`,

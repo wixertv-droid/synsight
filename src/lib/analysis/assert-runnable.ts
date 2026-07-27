@@ -42,6 +42,11 @@ export interface AssertAnalysisRunnableInput {
   requestId: string;
   /** When false, only validate (no consume). Default true. */
   consume?: boolean;
+  /**
+   * Multiplier for unit-priced analyses (reverse_image_compare = 1 × Bild).
+   * Default 1.
+   */
+  units?: number;
 }
 
 export interface AssertAnalysisRunnableResult {
@@ -188,12 +193,18 @@ export async function assertAnalysisRunnable(
     }
   }
 
+  const safeUnits = Math.min(
+    Math.max(Math.floor(input.units ?? 1) || 1, 1),
+    200
+  );
+  const requiredCredits = price.credits * safeUnits;
+
   if (input.consume === false) {
     const account = await creditsRepo.ensureAccount(input.userId);
-    if (account.balance < price.credits) {
+    if (account.balance < requiredCredits) {
       throw new AnalysisGateError(
         "INSUFFICIENT_CREDITS",
-        `Nicht genügend SynCredits. Benötigt: ${price.credits}.`,
+        `Nicht genügend SynCredits. Benötigt: ${requiredCredits}.`,
         402
       );
     }
@@ -209,7 +220,12 @@ export async function assertAnalysisRunnable(
     };
   }
 
-  const consumed = await consumeCredits(input.userId, analysisKey, requestId);
+  const consumed = await consumeCredits(
+    input.userId,
+    analysisKey,
+    requestId,
+    safeUnits
+  );
   if (consumed.status === "unknown_analysis") {
     throw new AnalysisGateError(
       "UNKNOWN_ANALYSIS",

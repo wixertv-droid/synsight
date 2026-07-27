@@ -113,8 +113,8 @@ export const DEFAULT_ANALYSIS_PRICES: readonly AnalysisPrice[] = [
   {
     key: "reverse_image_compare",
     label: "Reverse Image · Gesichtsvergleich",
-    credits: 13,
-    description: "InsightFace-Abgleich ausgewählter Bildlinks.",
+    credits: 1,
+    description: "InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.",
   },
   {
     key: "ai_summary",

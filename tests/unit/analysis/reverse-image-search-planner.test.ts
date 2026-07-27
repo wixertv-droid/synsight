@@ -69,9 +69,10 @@ describe("reverse-image search planner", () => {
     expect(
       plans.filter((p) => p.group === "alias").length
     ).toBeGreaterThanOrEqual(1);
-    // Offene Suche wie manuelles Google Images (ohne Quotes)
     expect(plans.some((p) => p.query === "anja_g")).toBe(true);
     expect(plans.some((p) => p.query === '"anja_g"')).toBe(true);
+    expect(plans.some((p) => p.query === "Anja Gebert")).toBe(true);
+    expect(plans.some((p) => p.query === '"Anja Gebert"')).toBe(true);
     // Username-Queries bleiben einzeln (kein OR zwischen Benutzernamen)
     expect(
       plans.some(
@@ -102,7 +103,7 @@ describe("reverse-image search planner", () => {
         (p) =>
           p.id.startsWith("alias-adult-") &&
           p.query.includes("site:joyclub.de") &&
-          p.query.includes('"anjalias"')
+          p.query.includes("anjalias")
       )
     ).toBe(true);
     expect(

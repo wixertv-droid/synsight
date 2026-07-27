@@ -386,7 +386,8 @@ export default function ReverseImageCandidatePicker({
           <div>
             <ConsumeConfirm
               analysisKey="reverse_image_compare"
-              confirmLabel="Vergleich bestätigen"
+              units={selected.size}
+              confirmLabel={`Vergleich bestätigen (${selected.size} SynCredits)`}
               onCompleted={(payload) => void handleCompareConfirmed(payload)}
             />
             <button

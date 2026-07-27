@@ -33,7 +33,8 @@ export async function POST(request: Request) {
   const result = await consumeCredits(
     Number(user.id),
     parsed.data.analysisKey,
-    parsed.data.requestId
+    parsed.data.requestId,
+    parsed.data.units ?? 1
   );
 
   if (result.status === "unknown_analysis") {

@@ -50,10 +50,47 @@ export async function POST(request: Request) {
     });
   }
 
+  if (!selectedImageUrls?.length) {
+    return NextResponse.json(
+      apiError("NO_SELECTION", "Bitte mindestens ein Bild auswählen."),
+      { status: 400 }
+    );
+  }
+
+  const units = Math.min(Math.max(selectedImageUrls.length, 1), 200);
+
   try {
     const started = await runWithAnalysisCredits(
-      { userId, analysisKey: "reverse_image_compare", requestId },
-      async () => {
+      {
+        userId,
+        analysisKey: "reverse_image_compare",
+        requestId,
+        units,
+      },
+      async (gate) => {
+        // Abrechnung muss zur Bildanzahl passen (1 SynCredit × Bild).
+        if (
+          !gate.alreadyConsumed &&
+          gate.creditsCharged > 0 &&
+          gate.creditsCharged !== units
+        ) {
+          throw new AnalysisGateError(
+            "INSUFFICIENT_CREDITS",
+            `SynCredits stimmen nicht mit der Bildauswahl überein (${gate.creditsCharged} ≠ ${units}).`,
+            402
+          );
+        }
+        if (
+          gate.alreadyConsumed &&
+          gate.creditsCharged > 0 &&
+          gate.creditsCharged < units
+        ) {
+          throw new AnalysisGateError(
+            "INSUFFICIENT_CREDITS",
+            `Für ${units} Bilder wurden nur ${gate.creditsCharged} SynCredits abgebucht. Bitte Auswahl anpassen oder erneut bestätigen.`,
+            402
+          );
+        }
         const identity = await getIdentityForUser(userId);
         return startReverseImageCompare(identity, {
           userId,

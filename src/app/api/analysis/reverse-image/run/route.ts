@@ -53,8 +53,14 @@ export async function POST(request: Request) {
 
   try {
     if (rescanOnly && Number.isFinite(rescanScanId) && rescanScanId > 0) {
+      const units = Math.min(Math.max(selectedImageUrls?.length ?? 1, 1), 200);
       const started = await runWithAnalysisCredits(
-        { userId, analysisKey: "reverse_image_compare", requestId },
+        {
+          userId,
+          analysisKey: "reverse_image_compare",
+          requestId,
+          units,
+        },
         async () => {
           const identity = await getIdentityForUser(userId);
           return startReverseImageCompare(identity, {

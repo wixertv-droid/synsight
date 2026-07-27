@@ -13,6 +13,8 @@ export interface ConsumeCompletedPayload {
 interface ConsumeConfirmProps {
   analysisKey: string;
   confirmLabel?: string;
+  /** Unit multiplier (e.g. selected images for reverse_image_compare). */
+  units?: number;
   onCompleted?: (payload: ConsumeCompletedPayload) => void;
 }
 
@@ -30,6 +32,7 @@ function createRequestId(): string {
 export default function ConsumeConfirm({
   analysisKey,
   confirmLabel = "Analyse bestätigen",
+  units = 1,
   onCompleted,
 }: ConsumeConfirmProps) {
   const [submitting, setSubmitting] = useState(false);
@@ -38,16 +41,23 @@ export default function ConsumeConfirm({
   const [quote, setQuote] = useState<{
     label: string;
     credits: number;
+    unitCredits?: number;
+    units?: number;
     currentBalance: number;
     remainingBalance: number;
     sufficient: boolean;
   } | null>(null);
 
   const analysisHelp = getAnalysisGuidance(analysisKey);
+  const safeUnits = Math.min(Math.max(Math.floor(units) || 1, 1), 200);
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/credits/quote?analysisKey=${encodeURIComponent(analysisKey)}`)
+    const params = new URLSearchParams({
+      analysisKey,
+      units: String(safeUnits),
+    });
+    fetch(`/api/credits/quote?${params.toString()}`)
       .then((response) => response.json())
       .then((body) => {
         if (active && body.success) setQuote(body.data);
@@ -59,7 +69,7 @@ export default function ConsumeConfirm({
     return () => {
       active = false;
     };
-  }, [analysisKey]);
+  }, [analysisKey, safeUnits]);
 
   const confirm = async () => {
     setSubmitting(true);
@@ -73,6 +83,7 @@ export default function ConsumeConfirm({
           analysisKey,
           confirm: true,
           requestId,
+          units: safeUnits,
         }),
       });
       const result = await response.json();
@@ -126,6 +137,11 @@ export default function ConsumeConfirm({
             </InfoTooltip>
           </p>
           <p className="mt-1 text-xs text-white/35">{quote.label}</p>
+          {safeUnits > 1 ? (
+            <p className="mt-1 font-mono text-[10px] text-cyber-cyan/55">
+              {safeUnits} Einheiten × {quote.unitCredits ?? 1} SynCredit
+            </p>
+          ) : null}
           <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
             <div>
               <dt className="text-white/25">Aktuelles Guthaben</dt>

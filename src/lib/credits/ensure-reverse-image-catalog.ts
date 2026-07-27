@@ -73,14 +73,14 @@ async function runEnsure(): Promise<boolean> {
         (
           'reverse_image_compare',
           'Reverse Image · Gesichtsvergleich',
-          'InsightFace-Abgleich ausgewählter Bildlinks gegen Referenzfotos.',
-          13,
+          'InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.',
+          1,
           119,
           1,
           1,
           'Reverse Image · Gesichtsvergleich',
-          'InsightFace-Abgleich ausgewählter Bildlinks gegen Referenzfotos.',
-          13
+          'InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.',
+          1
         )
       ON DUPLICATE KEY UPDATE
         label = VALUES(label),
@@ -91,6 +91,17 @@ async function runEnsure(): Promise<boolean> {
         default_description = VALUES(default_description),
         default_credits = VALUES(default_credits),
         is_active = IF(is_active IS NULL, 1, is_active)
+    `);
+
+    // Unit price: 1 SynCredit per selected image for Gesichtsvergleich.
+    await db.execute(sql`
+      UPDATE analysis_pricing
+      SET
+        credits = 1,
+        default_credits = 1,
+        description = 'InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.',
+        default_description = 'InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.'
+      WHERE analysis_key = 'reverse_image_compare'
     `);
 
     await db.execute(sql`

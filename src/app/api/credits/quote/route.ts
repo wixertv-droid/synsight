@@ -13,7 +13,13 @@ export async function GET(request: Request) {
   }
   const analysisKey =
     new URL(request.url).searchParams.get("analysisKey") ?? "";
-  const quote = await getAnalysisQuote(Number(user.id), analysisKey);
+  const unitsRaw = new URL(request.url).searchParams.get("units");
+  const units = unitsRaw ? Number.parseInt(unitsRaw, 10) : 1;
+  const quote = await getAnalysisQuote(
+    Number(user.id),
+    analysisKey,
+    Number.isFinite(units) ? units : 1
+  );
   if (!quote) {
     return NextResponse.json(
       apiError("UNKNOWN_ANALYSIS", "Analyse ist nicht verfügbar."),

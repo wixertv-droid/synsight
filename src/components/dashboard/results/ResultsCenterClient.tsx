@@ -15,7 +15,11 @@ import { digitalLeakExposureModule } from "@/lib/analysis/digital-exposure/modul
 import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/types";
 import { usernameIntelligenceModule } from "@/lib/analysis/username/module";
 import type { UsernameReport } from "@/lib/analysis/username/types";
-import { reverseImageSearchModule } from "@/lib/analysis/reverse-image/module";
+import {
+  reverseImageCompareModule,
+  reverseImageDiscoveryModule,
+  reverseImageSearchModule,
+} from "@/lib/analysis/reverse-image/module";
 import type {
   ReverseImageReport,
   ReverseImageHit,
@@ -694,9 +698,9 @@ export default function ResultsCenterClient({
     setReverseImageComparePhase(false);
     const scanStart = Date.now();
     const minScanMs = Math.max(
-      reverseImageSearchModule.minScanMs,
-      reverseImageSearchModule.scanSteps.at(-1)?.atMs ??
-        reverseImageSearchModule.minScanMs
+      reverseImageDiscoveryModule.minScanMs,
+      reverseImageDiscoveryModule.scanSteps.at(-1)?.atMs ??
+        reverseImageDiscoveryModule.minScanMs
     );
 
     const pollUntilDone = pollReverseImageScan;
@@ -1272,8 +1276,8 @@ export default function ResultsCenterClient({
               <>
                 {scanning && reverseImageComparePhase ? (
                   <IntelligenceScanSequence
-                    steps={reverseImageSearchModule.scanSteps}
-                    minDurationMs={reverseImageSearchModule.minScanMs}
+                    steps={reverseImageCompareModule.scanSteps}
+                    minDurationMs={reverseImageCompareModule.minScanMs}
                     running={scanning}
                     subjectName={subjectName}
                     apiReady={scanApiReady}
@@ -1294,14 +1298,14 @@ export default function ResultsCenterClient({
                 ) : null}
 
                 {scanning && !reverseImageComparePhase ? (
-                  <section className="rounded-[1.2rem] border border-cyber-cyan/20 bg-[#060d16]/90 p-6">
-                    <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
-                      PHASE 1 · SERPAPI BILDSUCHE
-                    </p>
-                    <p className="mt-2 text-sm text-white/55">
-                      Durchsuche Namen, Alias und Benutzernamen — bitte warten…
-                    </p>
-                  </section>
+                  <IntelligenceScanSequence
+                    steps={reverseImageDiscoveryModule.scanSteps}
+                    minDurationMs={reverseImageDiscoveryModule.minScanMs}
+                    running={scanning}
+                    subjectName={subjectName}
+                    apiReady={scanApiReady}
+                    onComplete={() => undefined}
+                  />
                 ) : null}
 
                 {!scanning &&
@@ -1365,7 +1369,10 @@ export default function ResultsCenterClient({
                   </p>
                 ) : null}
 
-                {!scanning && !reverseImageReport && !error ? (
+                {!scanning &&
+                !showReverseDiscoveryPicker &&
+                !reverseImageReport &&
+                !error ? (
                   <section className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] p-6 md:p-8">
                     <p className="font-mono text-[9px] tracking-[.16em] text-white/35">
                       REVERSE IMAGE SEARCH

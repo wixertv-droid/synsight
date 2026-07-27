@@ -175,7 +175,8 @@ export async function purchaseCreditPackage(
 export async function consumeCredits(
   userId: number,
   analysisKey: string,
-  requestId?: string
+  requestId?: string,
+  units = 1
 ) {
   await ensureDigitalLeakCatalog(false);
   if (isReplacedAnalysisKey(analysisKey)) {
@@ -186,19 +187,26 @@ export async function consumeCredits(
     return { status: "unknown_analysis" as const };
   }
 
+  const safeUnits = Math.min(Math.max(Math.floor(units) || 1, 1), 200);
+  const creditsToCharge = price.credits * safeUnits;
+  const label =
+    safeUnits > 1
+      ? `${price.label} · ${safeUnits}×${price.credits}`
+      : price.label;
+
   const repo = getCreditsRepository();
   const result = await repo.consumeAnalysisCreditsAtomic({
     userId,
     analysisKey: price.analysisKey,
-    credits: price.credits,
-    label: price.label,
+    credits: creditsToCharge,
+    label,
     requestId: requestId?.trim() || null,
   });
 
   if (result.status === "insufficient") {
     return {
       status: "insufficient" as const,
-      required: price.credits,
+      required: creditsToCharge,
       balance: result.balance,
       analysisKey: price.analysisKey,
       label: price.label,
@@ -214,6 +222,7 @@ export async function consumeCredits(
     transactionId: result.transactionId,
     usageLogId: result.usageLogId,
     alreadyConsumed: result.alreadyConsumed,
+    units: safeUnits,
   };
 }
 

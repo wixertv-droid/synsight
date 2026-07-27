@@ -112,20 +112,32 @@ export async function getPublicPricingCatalog() {
   }
 }
 
-export async function getAnalysisQuote(userId: number, analysisKey: string) {
+export async function getAnalysisQuote(
+  userId: number,
+  analysisKey: string,
+  units = 1
+) {
   await ensureDigitalLeakCatalog(false);
   await ensureUsernameCatalog(false);
   await ensureReverseImageCatalog(false);
   const pricing = await getPricingRepository().findAnalysisByKey(analysisKey);
   if (!pricing || !pricing.isActive) return null;
   const account = await getCreditsRepository().ensureAccount(userId);
+  const safeUnits = Math.min(Math.max(Math.floor(units) || 1, 1), 200);
+  const credits = pricing.credits * safeUnits;
+  const label =
+    safeUnits > 1 && analysisKey === "reverse_image_compare"
+      ? `${pricing.label} · ${safeUnits} Bilder × ${pricing.credits} SynCredit`
+      : pricing.label;
   return {
     analysisKey: pricing.analysisKey,
-    label: pricing.label,
-    credits: pricing.credits,
+    label,
+    credits,
+    unitCredits: pricing.credits,
+    units: safeUnits,
     currentBalance: account.balance,
-    remainingBalance: Math.max(0, account.balance - pricing.credits),
-    sufficient: account.balance >= pricing.credits,
+    remainingBalance: Math.max(0, account.balance - credits),
+    sufficient: account.balance >= credits,
   };
 }
 
