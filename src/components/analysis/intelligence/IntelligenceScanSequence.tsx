@@ -35,6 +35,8 @@ export default function IntelligenceScanSequence({
   subjectName,
   apiReady = false,
   rightPanel,
+  engineProgress = null,
+  engineProgressDetail = null,
 }: {
   steps: IntelligenceScanStep[];
   minDurationMs: number;
@@ -45,6 +47,13 @@ export default function IntelligenceScanSequence({
   apiReady?: boolean;
   /** Optional panel on the right (e.g. live reverse-image scan) */
   rightPanel?: ReactNode;
+  /**
+   * Realer Fortschritt 0–100 (z. B. verglichene Bilder / Auswahl).
+   * Wenn gesetzt, ersetzt die Zeit-Theater-Kurve (kein 94 %-Warten).
+   */
+  engineProgress?: number | null;
+  /** Zusatztext rechts, z. B. „12/28 BILDER“ */
+  engineProgressDetail?: string | null;
 }) {
   const safeSteps = useMemo(() => (Array.isArray(steps) ? steps : []), [steps]);
   const [elapsed, setElapsed] = useState(0);
@@ -230,13 +239,27 @@ export default function IntelligenceScanSequence({
     minDurationMs,
     safeSteps.at(-1)?.atMs ?? minDurationMs
   );
-  // Bis API fertig: max. 94 % — 100 % erst wenn Analyse wirklich durch ist
   const timeProgress = Math.min(100, Math.round((elapsed / targetMs) * 100));
-  const progress = !apiReady
-    ? Math.min(94, timeProgress)
-    : timeProgress >= 94 || elapsed >= targetMs
-      ? 100
-      : timeProgress;
+  // Realer Engine-Fortschritt (z. B. Bildvergleich) — sonst Theater bis 94 %
+  const progress =
+    engineProgress != null
+      ? apiReady
+        ? 100
+        : Math.max(0, Math.min(100, Math.round(engineProgress)))
+      : !apiReady
+        ? Math.min(94, timeProgress)
+        : timeProgress >= 94 || elapsed >= targetMs
+          ? 100
+          : timeProgress;
+
+  const progressRightLabel =
+    engineProgress != null
+      ? `${String(progress).padStart(3, "0")}%${
+          engineProgressDetail ? ` · ${engineProgressDetail}` : ""
+        }`
+      : `${String(progress).padStart(3, "0")}%${
+          !apiReady && progress >= 94 ? " · WARTE AUF ENGINE" : ""
+        }`;
 
   if (!running) return null;
 
@@ -278,7 +301,7 @@ export default function IntelligenceScanSequence({
         <MissionProgressBar
           progress={progress}
           leftLabel="PIPELINE"
-          rightLabel={`${String(progress).padStart(3, "0")}%${!apiReady && progress >= 94 ? " · WARTE AUF ENGINE" : ""}`}
+          rightLabel={progressRightLabel}
         />
       </div>
 

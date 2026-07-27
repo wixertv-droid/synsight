@@ -205,6 +205,10 @@ export default function ResultsCenterClient({
     useState(false);
   const [reverseImageComparePhase, setReverseImageComparePhase] =
     useState(false);
+  const [reverseImageEngineProgress, setReverseImageEngineProgress] = useState<{
+    percent: number;
+    detail: string;
+  } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanApiReady, setScanApiReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -618,6 +622,13 @@ export default function ResultsCenterClient({
             | undefined;
           const liveHits = statusBody?.data?.liveHits as
             ReverseImageHit[] | undefined;
+          const engineProgress = statusBody?.data?.progress as
+            | {
+                candidatesTotal?: number;
+                candidatesProcessed?: number;
+              }
+            | null
+            | undefined;
           if (live) {
             setReverseImageLive({
               currentImageUrl: live.currentImageUrl,
@@ -626,12 +637,31 @@ export default function ResultsCenterClient({
             });
           }
           if (liveHits?.length) setReverseImageLiveHits(liveHits);
+          if (
+            engineProgress &&
+            typeof engineProgress.candidatesTotal === "number" &&
+            engineProgress.candidatesTotal > 0
+          ) {
+            const processed = Math.max(
+              0,
+              engineProgress.candidatesProcessed ?? 0
+            );
+            const total = engineProgress.candidatesTotal;
+            setReverseImageEngineProgress({
+              percent: Math.min(100, Math.round((processed / total) * 100)),
+              detail: `${processed}/${total} BILDER`,
+            });
+          }
 
           if (status === "completed" && report) {
             setReverseImageReport(report);
             setError(null);
             setReverseImageDiscoveryDone(true);
             setReverseImageComparePhase(false);
+            setReverseImageEngineProgress({
+              percent: 100,
+              detail: "FERTIG",
+            });
             return true;
           }
           if (status === "discovery_complete" && !compareOnly) {
@@ -939,6 +969,7 @@ export default function ResultsCenterClient({
         recent: [],
       });
       setReverseImageLiveHits([]);
+      setReverseImageEngineProgress({ percent: 0, detail: "0/? BILDER" });
       setScanning(true);
       setScanApiReady(false);
       void pollReverseImageScan(scanId, requestId, retentionDays, true).then(
@@ -1346,6 +1377,10 @@ export default function ResultsCenterClient({
                     running={scanning}
                     subjectName={subjectName}
                     apiReady={scanApiReady}
+                    engineProgress={reverseImageEngineProgress?.percent ?? 0}
+                    engineProgressDetail={
+                      reverseImageEngineProgress?.detail ?? null
+                    }
                     onComplete={() => undefined}
                     rightPanel={
                       reverseImageScanId ? (
