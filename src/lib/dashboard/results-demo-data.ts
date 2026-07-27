@@ -690,7 +690,7 @@ export const demoAnalysisResults: DemoAnalysisResult[] = [
         id: "ri-disc-name",
         label: "Name · Trefferliste",
         detail: "6 Bildlinks zum vollständigen Namen.",
-        severity: "info",
+        severity: "low",
         whyItMatters: "Grundlage für die manuelle Auswahl vor InsightFace.",
         evidence: ["Query: Vollständiger Name", "Quelle: Google Images"],
         sourceHint: "SerpAPI",
