@@ -7,6 +7,7 @@ import DigitalExposureReportView from "@/components/analysis/digital-exposure/Di
 import UsernameIntelligenceReportView from "@/components/analysis/username/UsernameIntelligenceReportView";
 import ReverseImageReportView from "@/components/analysis/reverse-image/ReverseImageReportView";
 import ReverseImageLiveScanPanel from "@/components/analysis/reverse-image/ReverseImageLiveScanPanel";
+import ReverseImageCandidatePicker from "@/components/analysis/reverse-image/ReverseImageCandidatePicker";
 import IntelligenceScanSequence from "@/components/analysis/intelligence/IntelligenceScanSequence";
 import DashboardPageRail from "@/components/dashboard/DashboardPageRail";
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
@@ -78,13 +79,25 @@ async function loadLatestUsernameReport(): Promise<UsernameReport | null> {
   return (body.data?.report as UsernameReport | null) ?? null;
 }
 
-async function loadLatestReverseImageReport(): Promise<ReverseImageReport | null> {
+async function loadLatestReverseImageReport(): Promise<{
+  report: ReverseImageReport | null;
+  pending: {
+    scanId: number;
+    status: string;
+    candidateCount: number;
+  } | null;
+}> {
   const response = await fetch("/api/analysis/reverse-image/latest", {
     cache: "no-store",
   });
   const body = await response.json().catch(() => null);
-  if (!response.ok || !body?.success) return null;
-  return (body.data?.report as ReverseImageReport | null) ?? null;
+  if (!response.ok || !body?.success) {
+    return { report: null, pending: null };
+  }
+  return {
+    report: (body.data?.report as ReverseImageReport | null) ?? null,
+    pending: body.data?.pending ?? null,
+  };
 }
 
 export default function ResultsCenterClient({
@@ -143,6 +156,10 @@ export default function ResultsCenterClient({
   const [reverseImageLiveHits, setReverseImageLiveHits] = useState<
     ReverseImageHit[]
   >([]);
+  const [reverseImageDiscoveryDone, setReverseImageDiscoveryDone] =
+    useState(false);
+  const [reverseImageComparePhase, setReverseImageComparePhase] =
+    useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanApiReady, setScanApiReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -509,27 +526,12 @@ export default function ResultsCenterClient({
     }
   }, [finishScanAttempt, requestIdFromUrl, retentionDays, searchParams]);
 
-  const runReverseImageScan = useCallback(async () => {
-    setError(null);
-    setScanning(true);
-    setScanApiReady(false);
-    setReverseImageLive({
-      currentImageUrl: null,
-      currentTitle: null,
-      recent: [],
-    });
-    setReverseImageLiveHits([]);
-    const scanStart = Date.now();
-    const minScanMs = Math.max(
-      reverseImageSearchModule.minScanMs,
-      reverseImageSearchModule.scanSteps.at(-1)?.atMs ??
-        reverseImageSearchModule.minScanMs
-    );
-
-    const pollUntilDone = async (
+  const pollReverseImageScan = useCallback(
+    async (
       scanId: number,
       requestId: string,
-      retention: number
+      retention: number,
+      compareOnly = false
     ): Promise<boolean> => {
       const deadline = Date.now() + 180_000;
       let lastResumeAt = Date.now();
@@ -562,13 +564,25 @@ export default function ResultsCenterClient({
               recent: live.recent ?? [],
             });
           }
-          if (liveHits?.length) {
-            setReverseImageLiveHits(liveHits);
-          }
+          if (liveHits?.length) setReverseImageLiveHits(liveHits);
+
           if (status === "completed" && report) {
             setReverseImageReport(report);
             setError(null);
+            setReverseImageDiscoveryDone(true);
+            setReverseImageComparePhase(false);
             return true;
+          }
+          if (status === "discovery_complete" && !compareOnly) {
+            setReverseImageDiscoveryDone(true);
+            setReverseImageComparePhase(false);
+            setScanApiReady(true);
+            setScanning(false);
+            return true;
+          }
+          if (status === "comparing") {
+            setReverseImageComparePhase(true);
+            setReverseImageDiscoveryDone(true);
           }
           if (status === "failed") {
             setError(
@@ -577,7 +591,7 @@ export default function ResultsCenterClient({
             return false;
           }
           if (
-            status === "running" &&
+            (status === "discovering" || status === "comparing") &&
             resumeAttempts < 5 &&
             Date.now() - lastResumeAt > 85_000
           ) {
@@ -589,16 +603,21 @@ export default function ResultsCenterClient({
               body: JSON.stringify({
                 retentionDays: retention,
                 requestId,
+                compareOnly: status === "comparing",
+                scanId,
               }),
             }).catch(() => undefined);
           }
         } catch {
-          /* keep polling — background job may still finish */
+          /* keep polling */
         }
       }
-      const recovered = await loadLatestReverseImageReport().catch(() => null);
-      if (recovered) {
-        setReverseImageReport(recovered);
+      const recovered = await loadLatestReverseImageReport().catch(() => ({
+        report: null,
+        pending: null,
+      }));
+      if (recovered.report) {
+        setReverseImageReport(recovered.report);
         setError(null);
         return true;
       }
@@ -606,7 +625,30 @@ export default function ResultsCenterClient({
         "Die Bildanalyse läuft noch oder hat das Zeitlimit erreicht. Bitte Seite in einer Minute aktualisieren."
       );
       return false;
-    };
+    },
+    []
+  );
+
+  const runReverseImageScan = useCallback(async () => {
+    setError(null);
+    setScanning(true);
+    setScanApiReady(false);
+    setReverseImageLive({
+      currentImageUrl: null,
+      currentTitle: null,
+      recent: [],
+    });
+    setReverseImageLiveHits([]);
+    setReverseImageDiscoveryDone(false);
+    setReverseImageComparePhase(false);
+    const scanStart = Date.now();
+    const minScanMs = Math.max(
+      reverseImageSearchModule.minScanMs,
+      reverseImageSearchModule.scanSteps.at(-1)?.atMs ??
+        reverseImageSearchModule.minScanMs
+    );
+
+    const pollUntilDone = pollReverseImageScan;
 
     try {
       const effectiveRetention = parseRetentionDays(
@@ -677,8 +719,8 @@ export default function ResultsCenterClient({
             window.setTimeout(resolve, 2000 + attempt * 500)
           );
           const recovered = await loadLatestReverseImageReport();
-          if (recovered) {
-            setReverseImageReport(recovered);
+          if (recovered.report) {
+            setReverseImageReport(recovered.report);
             setScanApiReady(true);
             setError(null);
             finishScanAttempt({ tab: "reverse_image_search" });
@@ -704,8 +746,8 @@ export default function ResultsCenterClient({
           return;
         }
         const recovered = await loadLatestReverseImageReport();
-        if (recovered) {
-          setReverseImageReport(recovered);
+        if (recovered.report) {
+          setReverseImageReport(recovered.report);
           setError(null);
           finishScanAttempt({ tab: "reverse_image_search" });
           return;
@@ -737,20 +779,29 @@ export default function ResultsCenterClient({
 
       setScanApiReady(true);
       const recovered = await loadLatestReverseImageReport();
-      if (recovered) setReverseImageReport(recovered);
+      if (recovered.report) setReverseImageReport(recovered.report);
       finishScanAttempt({ tab: "reverse_image_search" });
     } catch {
       setScanApiReady(true);
-      const recovered = await loadLatestReverseImageReport().catch(() => null);
-      if (recovered) {
-        setReverseImageReport(recovered);
+      const recovered = await loadLatestReverseImageReport().catch(() => ({
+        report: null,
+        pending: null,
+      }));
+      if (recovered.report) {
+        setReverseImageReport(recovered.report);
         finishScanAttempt({ tab: "reverse_image_search" });
         return;
       }
       setError("Verbindung zum Server nicht möglich.");
       finishScanAttempt({ tab: "reverse_image_search" });
     }
-  }, [finishScanAttempt, requestIdFromUrl, retentionDays, searchParams]);
+  }, [
+    finishScanAttempt,
+    pollReverseImageScan,
+    requestIdFromUrl,
+    retentionDays,
+    searchParams,
+  ]);
 
   useEffect(() => {
     if (
@@ -799,10 +850,76 @@ export default function ResultsCenterClient({
       !scanDone &&
       !scanStartedRef.current
     ) {
+      const compareWatch = searchParams.get("compareWatch") === "1";
+      const watchScanId = Number.parseInt(searchParams.get("scanId") ?? "", 10);
+      if (compareWatch && Number.isFinite(watchScanId) && watchScanId > 0) {
+        scanStartedRef.current = true;
+        setReverseImageScanId(watchScanId);
+        setReverseImageComparePhase(true);
+        setReverseImageDiscoveryDone(true);
+        setScanning(true);
+        setScanApiReady(false);
+        void pollReverseImageScan(watchScanId, "", retentionDays, true).then(
+          () => {
+            setScanApiReady(true);
+            finishScanAttempt({ tab: "reverse_image_search" });
+          }
+        );
+        return;
+      }
       scanStartedRef.current = true;
       void runReverseImageScan();
     }
-  }, [shouldScan, activeTab, scanning, scanDone, runReverseImageScan]);
+  }, [
+    shouldScan,
+    activeTab,
+    scanning,
+    scanDone,
+    runReverseImageScan,
+    searchParams,
+    pollReverseImageScan,
+    retentionDays,
+    finishScanAttempt,
+  ]);
+
+  useEffect(() => {
+    if (
+      activeTab !== "reverse_image_search" ||
+      reverseImageReport ||
+      reverseImageDiscoveryDone ||
+      shouldScan
+    ) {
+      return;
+    }
+    void loadLatestReverseImageReport().then(({ report, pending }) => {
+      if (report) {
+        setReverseImageReport(report);
+        return;
+      }
+      if (pending?.status === "discovery_complete") {
+        setReverseImageScanId(pending.scanId);
+        setReverseImageDiscoveryDone(true);
+      } else if (pending?.status === "comparing") {
+        setReverseImageScanId(pending.scanId);
+        setReverseImageDiscoveryDone(true);
+        setReverseImageComparePhase(true);
+        setScanning(true);
+        void pollReverseImageScan(pending.scanId, "", retentionDays, true).then(
+          () => {
+            setScanApiReady(true);
+            setScanning(false);
+          }
+        );
+      }
+    });
+  }, [
+    activeTab,
+    reverseImageReport,
+    reverseImageDiscoveryDone,
+    shouldScan,
+    pollReverseImageScan,
+    retentionDays,
+  ]);
 
   function selectTab(id: string) {
     setActiveTab(id);
@@ -1071,7 +1188,7 @@ export default function ResultsCenterClient({
               </>
             ) : activeModule.id === "reverse_image_search" ? (
               <>
-                {scanning ? (
+                {scanning && reverseImageComparePhase ? (
                   <IntelligenceScanSequence
                     steps={reverseImageSearchModule.scanSteps}
                     minDurationMs={reverseImageSearchModule.minScanMs}
@@ -1091,6 +1208,42 @@ export default function ResultsCenterClient({
                         />
                       ) : null
                     }
+                  />
+                ) : null}
+
+                {scanning && !reverseImageComparePhase ? (
+                  <section className="rounded-[1.2rem] border border-cyber-cyan/20 bg-[#060d16]/90 p-6">
+                    <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
+                      PHASE 1 · SERPAPI BILDSUCHE
+                    </p>
+                    <p className="mt-2 text-sm text-white/55">
+                      Durchsuche Namen, Alias und Benutzernamen — bitte warten…
+                    </p>
+                  </section>
+                ) : null}
+
+                {!scanning &&
+                reverseImageDiscoveryDone &&
+                reverseImageScanId &&
+                !reverseImageReport ? (
+                  <ReverseImageCandidatePicker
+                    scanId={reverseImageScanId}
+                    onCompareStarted={() => {
+                      setReverseImageComparePhase(true);
+                      setScanning(true);
+                      setScanApiReady(false);
+                      void pollReverseImageScan(
+                        reverseImageScanId,
+                        (
+                          searchParams.get("requestId") ?? requestIdFromUrl
+                        ).trim(),
+                        retentionDays,
+                        true
+                      ).then(() => {
+                        setScanApiReady(true);
+                        finishScanAttempt({ tab: "reverse_image_search" });
+                      });
+                    }}
                   />
                 ) : null}
 

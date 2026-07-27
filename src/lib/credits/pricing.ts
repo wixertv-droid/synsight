@@ -20,6 +20,8 @@ export type AnalysisKey =
   | "social_media"
   | "person_search"
   | "reverse_image_search"
+  | "reverse_image_discovery"
+  | "reverse_image_compare"
   | "ai_summary"
   | "pdf_report"
   | "deep_intelligence"
@@ -98,9 +100,21 @@ export const DEFAULT_ANALYSIS_PRICES: readonly AnalysisPrice[] = [
   },
   {
     key: "reverse_image_search",
-    label: "Reverse Image Search",
+    label: "Reverse Image Search (Legacy)",
     credits: 25,
-    description: "Bildbasierte Wiedererkennung.",
+    description: "Veraltet — nutzen Sie Bildsuche + Gesichtsvergleich.",
+  },
+  {
+    key: "reverse_image_discovery",
+    label: "Reverse Image · Bildsuche",
+    credits: 12,
+    description: "SerpAPI Google Images — Namen, Alias und Benutzernamen.",
+  },
+  {
+    key: "reverse_image_compare",
+    label: "Reverse Image · Gesichtsvergleich",
+    credits: 13,
+    description: "InsightFace-Abgleich ausgewählter Bildlinks.",
   },
   {
     key: "ai_summary",
@@ -137,6 +151,8 @@ export const REPLACED_ANALYSIS_KEYS = [
   "email_analysis",
   /** Superseded by username_intelligence */
   "alias_analysis",
+  /** Superseded by reverse_image_discovery + reverse_image_compare */
+  "reverse_image_search",
 ] as const satisfies readonly AnalysisKey[];
 
 export function isReplacedAnalysisKey(key: string): boolean {

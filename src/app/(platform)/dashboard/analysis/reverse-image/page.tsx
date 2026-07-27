@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import ReverseImagePageClient from "@/components/analysis/reverse-image/ReverseImagePageClient";
-import { isReverseImageConfigured } from "@/lib/analysis/reverse-image/run-analysis";
+import { isReverseImageDiscoveryConfigured } from "@/lib/analysis/reverse-image/run-analysis";
 import { resolveSubjectName } from "@/lib/analysis/google/queries";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getIdentityForUser } from "@/lib/services/identity-service";
@@ -28,7 +28,7 @@ export default async function ReverseImageAnalysisPage() {
     const catalog = await getPublicPricingCatalog();
     moduleActive = isAnalysisKeyActive(
       extractActiveAnalysisKeys(catalog.analyses),
-      "reverse_image_search"
+      "reverse_image_discovery"
     );
   } catch (error) {
     console.error("[ReverseImagePage] catalog check failed", error);
@@ -51,7 +51,7 @@ export default async function ReverseImageAnalysisPage() {
   }
 
   try {
-    apiAvailable = await isReverseImageConfigured();
+    apiAvailable = await isReverseImageDiscoveryConfigured();
   } catch (error) {
     apiAvailable = false;
   }

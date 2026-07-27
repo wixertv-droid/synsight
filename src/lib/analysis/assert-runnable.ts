@@ -8,6 +8,7 @@ import { consumeCredits } from "@/lib/services/credits-service";
 import { isGoogleSearchConfigured } from "@/lib/analysis/google/custom-search";
 import { isDehashedConfiguredAndActive } from "@/lib/analysis/digital-exposure/dehashed-client";
 import { isReverseImageConfigured } from "@/lib/analysis/reverse-image/run-analysis";
+import { isInsightFaceConfiguredAsync } from "@/lib/analysis/reverse-image/insightface-client";
 import { getUsernameModuleSettings } from "@/lib/analysis/username/settings";
 import { isReplacedAnalysisKey } from "@/lib/credits/pricing";
 
@@ -68,6 +69,12 @@ async function assertProviderReady(analysisKey: string): Promise<boolean> {
   }
   if (analysisKey === "reverse_image_search") {
     return isReverseImageConfigured();
+  }
+  if (analysisKey === "reverse_image_discovery") {
+    return isGoogleSearchConfigured();
+  }
+  if (analysisKey === "reverse_image_compare") {
+    return isInsightFaceConfiguredAsync();
   }
   return false;
 }

@@ -1093,7 +1093,8 @@ export default function IdentityProfilePanel({
       ) : null}
 
       {/* 8. Reverse Image */}
-      {isActive("reverse_image_search") ? (
+      {isActive("reverse_image_search") ||
+      isActive("reverse_image_discovery") ? (
         <CollapsibleCard
           id="image"
           title="Reverse Image Search"

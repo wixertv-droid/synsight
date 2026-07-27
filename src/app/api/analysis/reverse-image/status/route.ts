@@ -40,6 +40,7 @@ export async function GET(request: Request) {
       progress: outcome.progress ?? null,
       live: outcome.live ?? null,
       liveHits: outcome.liveHits ?? [],
+      sources: outcome.sources ?? null,
     })
   );
 }

@@ -53,10 +53,9 @@ export default function ReverseImageLiveScanPanel({
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={currentImageUrl}
+              src={`/api/analysis/reverse-image/proxy-image?scanId=${scanId}&url=${encodeURIComponent(currentImageUrl)}`}
               alt={currentTitle ?? "Kandidat"}
               className="block h-[220px] w-full object-cover object-top"
-              referrerPolicy="no-referrer"
             />
             {scanning ? (
               <>

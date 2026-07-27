@@ -45,6 +45,7 @@ describe("database migrations workflow", () => {
       "033_order_desk_vollmacht_reject.sql",
       "034_reverse_image_search.sql",
       "035_reverse_image_module_settings.sql",
+      "036_reverse_image_two_phase.sql",
     ]);
   });
 

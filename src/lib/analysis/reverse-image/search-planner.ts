@@ -1,13 +1,13 @@
 import type { IdentityView } from "@/lib/services/identity-service";
 
+export type ReverseImageQueryGroup = "name" | "alias" | "username";
+
 export interface ReverseImageQueryPlan {
   id: string;
   label: string;
   query: string;
+  group: ReverseImageQueryGroup;
 }
-
-/** Handles pro SerpAPI-Call (OR-verknüpft) — spart Kosten bei vielen Aliasen. */
-export const REVERSE_IMAGE_HANDLES_PER_QUERY = 4;
 
 function quote(value: string): string {
   const safe = value.replace(/"/g, "").trim();
@@ -25,105 +25,86 @@ function buildFullName(identity: IdentityView | null): string | null {
   return first || last || null;
 }
 
-/**
- * Sammelt alle Alias-/Username-Varianten aus dem Profil (dedupliziert).
- */
-export function collectReverseImageHandles(
-  identity: IdentityView | null,
-  options?: { excludeFullName?: string | null }
-): string[] {
+function collectAliases(identity: IdentityView | null): string[] {
   if (!identity) return [];
-
-  const exclude = options?.excludeFullName
-    ? normalizeKey(options.excludeFullName)
-    : null;
   const seen = new Set<string>();
   const out: string[] = [];
-
   const push = (value: string | null | undefined) => {
     const trimmed = value?.trim();
     if (!trimmed || trimmed.length < 2 || trimmed.length > 64) return;
     const key = normalizeKey(trimmed);
-    if (exclude && key === exclude) return;
     if (seen.has(key)) return;
     seen.add(key);
     out.push(trimmed);
   };
-
   push(identity.aliases.publicAlias);
-  for (const name of identity.aliases.usernames) push(name);
   for (const name of identity.aliases.gamingNames) push(name);
-  for (const name of identity.aliases.nicknames ?? []) push(name);
   for (const name of identity.aliases.formerNames) push(name);
-  for (const account of identity.socialAccounts ?? []) push(account.username);
-
+  for (const name of identity.aliases.nicknames ?? []) push(name);
   return out;
 }
 
-function buildOrQuery(handles: string[]): string {
-  return handles.map((handle) => quote(handle)).join(" OR ");
+function collectUsernames(identity: IdentityView | null): string[] {
+  if (!identity) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const push = (value: string | null | undefined) => {
+    const trimmed = value?.trim();
+    if (!trimmed || trimmed.length < 2 || trimmed.length > 64) return;
+    const key = normalizeKey(trimmed);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(trimmed);
+  };
+  for (const name of identity.aliases.usernames) push(name);
+  for (const account of identity.socialAccounts ?? []) push(account.username);
+  return out;
 }
 
 /**
- * Plan SerpAPI Google-Images-Queries aus dem Identitätsprofil.
- *
- * Kosteneffizienz:
- * - Vollständiger Name (alle Vornamen + Nachname) als 1–2 Queries
- * - Frühere Namen einzeln (wenn abweichend)
- * - Alle Alias/Usernames in OR-Batches à 4 → weniger SerpAPI-Calls
+ * Phase 1 queries — getrennt nach Name, Alias, Benutzername (je eigener Filter-Tab).
  */
 export function planReverseImageQueries(
-  identity: IdentityView | null,
-  options?: {
-    handlesPerQuery?: number;
-  }
+  identity: IdentityView | null
 ): ReverseImageQueryPlan[] {
   const plans: ReverseImageQueryPlan[] = [];
   const seenQueries = new Set<string>();
-  const batchSize = Math.max(
-    1,
-    options?.handlesPerQuery ?? REVERSE_IMAGE_HANDLES_PER_QUERY
-  );
 
-  const addPlan = (id: string, label: string, query: string) => {
+  const addPlan = (
+    id: string,
+    label: string,
+    query: string,
+    group: ReverseImageQueryGroup
+  ) => {
     const normalized = query.trim().toLowerCase();
     if (!normalized || seenQueries.has(normalized)) return;
     seenQueries.add(normalized);
-    plans.push({ id, label, query: query.trim() });
+    plans.push({ id, label, query: query.trim(), group });
   };
 
   const fullName = buildFullName(identity);
   if (fullName) {
-    addPlan("name-full", `Name · ${fullName}`, quote(fullName));
+    addPlan("name-full", `Name · ${fullName}`, quote(fullName), "name");
     addPlan(
       "name-full-photo",
       `Name + Foto · ${fullName}`,
-      `${quote(fullName)} foto`
+      `${quote(fullName)} foto`,
+      "name"
     );
   }
 
-  const formerNames = identity?.aliases.formerNames ?? [];
-  for (const [index, former] of formerNames.entries()) {
-    const trimmed = former.trim();
-    if (trimmed.length < 2) continue;
-    if (fullName && normalizeKey(trimmed) === normalizeKey(fullName)) continue;
-    addPlan(`former-${index}`, `Früherer Name · ${trimmed}`, quote(trimmed));
+  for (const [index, alias] of collectAliases(identity).entries()) {
+    if (fullName && normalizeKey(alias) === normalizeKey(fullName)) continue;
+    addPlan(`alias-${index}`, `Alias · ${alias}`, quote(alias), "alias");
   }
 
-  const handles = collectReverseImageHandles(identity, {
-    excludeFullName: fullName,
-  });
-
-  for (let offset = 0; offset < handles.length; offset += batchSize) {
-    const batch = handles.slice(offset, offset + batchSize);
-    const batchIndex = Math.floor(offset / batchSize);
-    const query = batch.length === 1 ? quote(batch[0]) : buildOrQuery(batch);
+  for (const [index, username] of collectUsernames(identity).entries()) {
+    if (fullName && normalizeKey(username) === normalizeKey(fullName)) continue;
     addPlan(
-      `handles-${batchIndex}`,
-      batch.length === 1
-        ? `Alias · ${batch[0]}`
-        : `Alias · ${batch.join(" · ")}`,
-      query
+      `username-${index}`,
+      `Benutzername · ${username}`,
+      quote(username),
+      "username"
     );
   }
 
@@ -134,4 +115,11 @@ export function resolveReverseImageSubjectName(
   identity: IdentityView | null
 ): string {
   return buildFullName(identity) ?? "Unbekannt";
+}
+
+/** @deprecated use collectAliases / collectUsernames */
+export function collectReverseImageHandles(
+  identity: IdentityView | null
+): string[] {
+  return [...collectAliases(identity), ...collectUsernames(identity)];
 }

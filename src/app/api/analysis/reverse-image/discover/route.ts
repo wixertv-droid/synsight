@@ -4,7 +4,6 @@ import { AnalysisGateError } from "@/lib/analysis/assert-runnable";
 import { runWithAnalysisCredits } from "@/lib/analysis/run-with-credits";
 import {
   ReverseImageUnavailableError,
-  startReverseImageCompare,
   startReverseImageDiscovery,
 } from "@/lib/analysis/reverse-image/run-analysis";
 import { parseRetentionDays } from "@/lib/analysis/retention";
@@ -37,43 +36,12 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     requestId?: unknown;
     retentionDays?: unknown;
-    rescanOnly?: unknown;
-    scanId?: unknown;
-    compareOnly?: unknown;
-    selectedImageUrls?: unknown;
   };
   const requestId =
     typeof body.requestId === "string" ? body.requestId.trim() : "";
   const retentionDays = parseRetentionDays(body.retentionDays);
-  const rescanOnly = body.rescanOnly === true || body.compareOnly === true;
-  const rescanScanId = Number.parseInt(String(body.scanId ?? ""), 10);
-  const selectedImageUrls = Array.isArray(body.selectedImageUrls)
-    ? body.selectedImageUrls.filter((v): v is string => typeof v === "string")
-    : undefined;
 
   try {
-    if (rescanOnly && Number.isFinite(rescanScanId) && rescanScanId > 0) {
-      const started = await runWithAnalysisCredits(
-        { userId, analysisKey: "reverse_image_compare", requestId },
-        async () => {
-          const identity = await getIdentityForUser(userId);
-          return startReverseImageCompare(identity, {
-            userId,
-            scanId: rescanScanId,
-            selectedImageUrls,
-          });
-        }
-      );
-      return NextResponse.json(
-        apiSuccess({
-          status: started.status,
-          scanId: started.scanId,
-          report: null,
-          rescan: true,
-        })
-      );
-    }
-
     const started = await runWithAnalysisCredits(
       { userId, analysisKey: "reverse_image_discovery", requestId },
       async () => {
@@ -100,9 +68,9 @@ export async function POST(request: Request) {
         { status: 503 }
       );
     }
-    console.error("[analysis/reverse-image/run] failed", error);
+    console.error("[analysis/reverse-image/discover] failed", error);
     return NextResponse.json(
-      apiError("ANALYSIS_FAILED", "Analyse fehlgeschlagen."),
+      apiError("ANALYSIS_FAILED", "Bildsuche ist fehlgeschlagen."),
       { status: 500 }
     );
   }

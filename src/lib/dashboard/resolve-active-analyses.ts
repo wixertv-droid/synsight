@@ -28,6 +28,9 @@ function inferTier(credits: number): AnalysisTier {
   return "quick";
 }
 
+/** Keys that are billed in-flow (not standalone Analyse Center cards). */
+const IN_FLOW_ANALYSIS_KEYS = new Set<string>(["reverse_image_compare"]);
+
 /**
  * Build the user-facing analysis list from the **active** admin catalog.
  * Inactive / removed analyses never appear on dashboard or Analyse Center.
@@ -49,10 +52,15 @@ export function resolveActiveAnalyses(
 
   return catalog
     .filter((entry) => !(hasDigitalLeak && isReplacedAnalysisKey(entry.key)))
+    .filter((entry) => !IN_FLOW_ANALYSIS_KEYS.has(entry.key))
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label))
     .map((entry) => {
-      const known = enrichment.get(entry.key as AnalysisKey);
+      const lookupKey =
+        entry.key === "reverse_image_search"
+          ? "reverse_image_discovery"
+          : entry.key;
+      const known = enrichment.get(lookupKey as AnalysisKey);
       if (known) {
         return {
           ...known,

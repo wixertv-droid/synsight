@@ -11,6 +11,9 @@ export interface SerpImageCandidate {
   sourceHost: string;
   query: string;
   position: number;
+  queryId?: string;
+  queryGroup?: "name" | "alias" | "username";
+  queryLabel?: string;
 }
 
 function hostOf(url: string): string {

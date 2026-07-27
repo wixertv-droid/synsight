@@ -28,6 +28,7 @@ interface ScanRow {
   reference_image_count: number;
   retention_days: number;
   expires_at: string | null;
+  serp_cache_json: string | null;
 }
 
 interface HitRow {
@@ -120,7 +121,7 @@ export async function createReverseImageScan(input: {
       user_id, status, started_at, subject_name, reference_image_count,
       retention_days, expires_at
     ) VALUES (
-      ${input.userId}, 'running', ${mysqlNow()}, ${input.subjectName},
+      ${input.userId}, 'discovering', ${mysqlNow()}, ${input.subjectName},
       ${input.referenceImageCount}, ${input.retentionDays}, ${input.expiresAt}
     )
   `);
@@ -128,7 +129,7 @@ export async function createReverseImageScan(input: {
   const rows = asRows<{ id: number }>(
     await db.execute(sql`
       SELECT id FROM reverse_image_scans
-      WHERE user_id = ${input.userId} AND status = 'running'
+      WHERE user_id = ${input.userId} AND status IN ('discovering', 'running')
       ORDER BY id DESC LIMIT 1
     `)
   );
@@ -159,6 +160,61 @@ export async function completeReverseImageScan(input: {
       summary = ${input.summary}
     WHERE id = ${input.scanId}
   `);
+}
+
+export async function completeReverseImageDiscovery(input: {
+  scanId: number;
+  queryCount: number;
+  candidateCount: number;
+  summary: string;
+}): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+  await db.execute(sql`
+    UPDATE reverse_image_scans SET
+      status = 'discovery_complete',
+      query_count = ${input.queryCount},
+      candidate_count = ${input.candidateCount},
+      match_count = 0,
+      summary = ${input.summary}
+    WHERE id = ${input.scanId}
+  `);
+}
+
+export async function markReverseImageScanComparing(
+  scanId: number
+): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+  await db.execute(sql`
+    UPDATE reverse_image_scans SET status = 'comparing' WHERE id = ${scanId}
+  `);
+}
+
+export async function saveReverseImageSerpCache(
+  scanId: number,
+  cacheJson: string
+): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+  await db.execute(sql`
+    UPDATE reverse_image_scans SET serp_cache_json = ${cacheJson} WHERE id = ${scanId}
+  `);
+}
+
+export async function loadReverseImageSerpCache(
+  scanId: number
+): Promise<string | null> {
+  const db = getDatabase();
+  if (!db) return null;
+  const rows = asRows<{ serp_cache_json: string | null }>(
+    await db.execute(sql`
+      SELECT serp_cache_json FROM reverse_image_scans WHERE id = ${scanId} LIMIT 1
+    `)
+  );
+  const raw = rows[0]?.serp_cache_json;
+  if (!raw) return null;
+  return typeof raw === "string" ? raw : JSON.stringify(raw);
 }
 
 export async function failReverseImageScan(
@@ -245,9 +301,7 @@ export async function getLatestReverseImageReport(
 export async function getReverseImageScanStatus(
   userId: number,
   scanId: number
-): Promise<
-  "running" | "completed" | "failed" | "pending" | "unavailable" | null
-> {
+): Promise<ReverseImageScanStatus | null> {
   const db = getDatabase();
   if (!db) return null;
   const ok = await ensureReverseImageSchema();
@@ -263,13 +317,16 @@ export async function getReverseImageScanStatus(
   const status = scans[0]?.status;
   if (!status) return null;
   if (
+    status === "discovering" ||
+    status === "discovery_complete" ||
+    status === "comparing" ||
     status === "running" ||
     status === "completed" ||
     status === "failed" ||
     status === "pending" ||
     status === "unavailable"
   ) {
-    return status;
+    return status as ReverseImageScanStatus;
   }
   return null;
 }
@@ -315,13 +372,52 @@ export async function findRunningReverseImageScan(
   const scans = asRows<{ id: number; subject_name: string | null }>(
     await db.execute(sql`
       SELECT id, subject_name FROM reverse_image_scans
-      WHERE user_id = ${userId} AND status = 'running'
+      WHERE user_id = ${userId}
+        AND status IN ('discovering', 'discovery_complete', 'comparing', 'running')
       ORDER BY id DESC LIMIT 1
     `)
   );
   const scan = scans[0];
   if (!scan) return null;
   return { scanId: scan.id, subjectName: scan.subject_name };
+}
+
+/** Scan awaiting user selection or with in-progress compare (no completed report yet). */
+export async function getLatestReverseImageAwaitingAction(
+  userId: number
+): Promise<{
+  scanId: number;
+  status: string;
+  candidateCount: number;
+  subjectName: string | null;
+} | null> {
+  const db = getDatabase();
+  if (!db) return null;
+  const ok = await ensureReverseImageSchema();
+  if (!ok) return null;
+
+  const scans = asRows<
+    Pick<
+      ScanRow,
+      "id" | "status" | "candidate_count" | "subject_name" | "expires_at"
+    >
+  >(
+    await db.execute(sql`
+      SELECT id, status, candidate_count, subject_name, expires_at
+      FROM reverse_image_scans
+      WHERE user_id = ${userId}
+        AND status IN ('discovery_complete', 'comparing')
+      ORDER BY id DESC LIMIT 1
+    `)
+  );
+  const scan = scans[0];
+  if (!scan || isReportExpired({ expiresAt: scan.expires_at })) return null;
+  return {
+    scanId: scan.id,
+    status: scan.status,
+    candidateCount: scan.candidate_count,
+    subjectName: scan.subject_name,
+  };
 }
 
 export async function getReverseImageHitsForScan(

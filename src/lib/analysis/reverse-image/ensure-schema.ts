@@ -94,5 +94,14 @@ async function runEnsure(): Promise<boolean> {
     INSERT IGNORE INTO reverse_image_module_settings (id) VALUES (1)
   `);
 
+  try {
+    await db.execute(sql`
+      ALTER TABLE reverse_image_scans
+      ADD COLUMN serp_cache_json JSON NULL AFTER expires_at
+    `);
+  } catch {
+    /* column may already exist */
+  }
+
   return true;
 }

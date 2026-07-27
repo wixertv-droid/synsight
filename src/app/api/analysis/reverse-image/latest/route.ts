@@ -1,6 +1,9 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getLatestReverseImageReport } from "@/lib/analysis/reverse-image/repository";
+import {
+  getLatestReverseImageAwaitingAction,
+  getLatestReverseImageReport,
+} from "@/lib/analysis/reverse-image/repository";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -21,5 +24,8 @@ export async function GET() {
   }
 
   const report = await getLatestReverseImageReport(userId);
-  return NextResponse.json(apiSuccess({ report }));
+  const pending = report
+    ? null
+    : await getLatestReverseImageAwaitingAction(userId);
+  return NextResponse.json(apiSuccess({ report, pending }));
 }

@@ -672,6 +672,73 @@ export const demoAnalysisResults: DemoAnalysisResult[] = [
     ],
   },
   {
+    id: "reverse_image_discovery",
+    title: "Reverse Image · Bildsuche",
+    tier: "advanced",
+    status: "completed",
+    statusLabel: "Beispiel — Bildlinks gesammelt",
+    riskScore: 20,
+    riskLevel: "low",
+    tagline: "Öffentliche Bildlinks zu Name und Alias",
+    summary:
+      "SerpAPI hat 18 Bildlinks zu Name, Alias und Benutzernamen gefunden — zur Auswahl vor dem Gesichtsvergleich.",
+    help: "Phase 1 durchsucht Google Images nach allen Profilnamen und Alias. Sie wählen danach die Bilder für den Vergleich.",
+    whatThisMeans:
+      "Sie zahlen zuerst nur für die Link-Suche und entscheiden dann, welche Bilder verglichen werden.",
+    findings: [
+      {
+        id: "ri-disc-name",
+        label: "Name · Trefferliste",
+        detail: "6 Bildlinks zum vollständigen Namen.",
+        severity: "info",
+        whyItMatters: "Grundlage für die manuelle Auswahl vor InsightFace.",
+        evidence: ["Query: Vollständiger Name", "Quelle: Google Images"],
+        sourceHint: "SerpAPI",
+      },
+    ],
+    recommendations: [
+      {
+        title: "Relevante Bilder auswählen",
+        detail: "Nur passende Links in Phase 2 vergleichen lassen.",
+        priority: "Jetzt",
+      },
+    ],
+  },
+  {
+    id: "reverse_image_compare",
+    title: "Reverse Image · Gesichtsvergleich",
+    tier: "advanced",
+    status: "partial",
+    statusLabel: "Beispiel — 2 Übereinstimmungen",
+    riskScore: 47,
+    riskLevel: "medium",
+    tagline: "InsightFace-Abgleich der ausgewählten Links",
+    summary:
+      "Von 8 ausgewählten Bildlinks wurden 2 Übereinstimmungen über dem Schwellenwert gefunden.",
+    help: "Phase 2 vergleicht ausgewählte Bilder mit Ihren Referenzfotos per InsightFace.",
+    whatThisMeans:
+      "Nur die von Ihnen gewählten Bilder werden analysiert — kein erneuter SerpAPI-Aufruf.",
+    findings: [
+      {
+        id: "ri-cmp-match",
+        label: "Profilbild — hohe Übereinstimmung",
+        detail: "68 % Ähnlichkeit zum Referenzfoto (Demo).",
+        severity: "medium",
+        whyItMatters:
+          "Verdächtig oder legitim — Kontext auf der Quellseite prüfen.",
+        evidence: ["InsightFace cosine 0.68", "Referenz: front"],
+        sourceHint: "Gesichtsvergleich",
+      },
+    ],
+    recommendations: [
+      {
+        title: "Treffer im Ergebnis Center bearbeiten",
+        detail: "Ignorieren, selbst klären oder Entfernung beauftragen.",
+        priority: "Diese Woche",
+      },
+    ],
+  },
+  {
     id: "ai_summary",
     title: "KI-Zusammenfassung",
     tier: "advanced",

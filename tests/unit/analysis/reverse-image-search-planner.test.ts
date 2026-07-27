@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  collectReverseImageHandles,
-  planReverseImageQueries,
-} from "@/lib/analysis/reverse-image/search-planner";
+  createEmptySerpCheckpoint,
+  markQueryFetched,
+} from "@/lib/analysis/reverse-image/serp-checkpoint";
+import { planReverseImageQueries } from "@/lib/analysis/reverse-image/search-planner";
 import type { IdentityView } from "@/lib/services/identity-service";
 
 function identity(partial: Partial<IdentityView>): IdentityView {
@@ -47,90 +48,44 @@ describe("reverse-image search planner", () => {
       })
     );
     expect(plans.some((p) => p.query === '"Hans Klaus Müller"')).toBe(true);
-    expect(plans.some((p) => p.query === '"Hans Klaus Müller" foto')).toBe(
-      true
-    );
   });
 
-  it("includes all aliases and batches usernames with OR", () => {
+  it("creates separate username queries (no OR batching)", () => {
     const plans = planReverseImageQueries(
       identity({
-        personal: { firstName: "Max", lastName: "Mustermann" },
+        personal: { firstName: "Anja", lastName: "Gebert" },
         aliases: {
-          publicAlias: "maxi_public",
-          usernames: ["max99", "mustermann_m"],
-          gamingNames: ["xMaxPro"],
-          formerNames: ["Maxi Alt"],
-          nicknames: [],
-        },
-        socialAccounts: [
-          {
-            platform: "instagram",
-            username: "max.inst",
-            profileUrl: "",
-            accountStatus: "active",
-          },
-        ],
-      }),
-      { handlesPerQuery: 4 }
-    );
-
-    const handlePlan = plans.find((p) => p.id === "handles-0");
-    expect(handlePlan?.query).toContain('"maxi_public"');
-    expect(handlePlan?.query).toContain('"max99"');
-    expect(handlePlan?.query).toContain('"mustermann_m"');
-    expect(handlePlan?.query).toContain('"xMaxPro"');
-    expect(handlePlan?.query).toContain(" OR ");
-
-    expect(
-      collectReverseImageHandles(
-        identity({
-          personal: { firstName: "Max", lastName: "Mustermann" },
-          aliases: {
-            publicAlias: "maxi_public",
-            usernames: ["max99"],
-            gamingNames: ["xMaxPro"],
-            formerNames: ["Maxi Alt"],
-            nicknames: [],
-          },
-          socialAccounts: [
-            {
-              platform: "instagram",
-              username: "max.inst",
-              profileUrl: "",
-              accountStatus: "active",
-            },
-          ],
-        })
-      )
-    ).toHaveLength(5);
-  });
-
-  it("does not cap aliases at six entries", () => {
-    const handles = collectReverseImageHandles(
-      identity({
-        aliases: {
-          usernames: ["u1", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9"],
+          usernames: ["anja_g", "gebert_a"],
           gamingNames: [],
           formerNames: [],
           nicknames: [],
-          publicAlias: "",
+          publicAlias: "anjalias",
         },
       })
     );
-    expect(handles).toHaveLength(9);
-    const plans = planReverseImageQueries(
-      identity({
-        aliases: {
-          usernames: ["u1", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9"],
-          gamingNames: [],
-          formerNames: [],
-          nicknames: [],
-          publicAlias: "",
-        },
-      }),
-      { handlesPerQuery: 4 }
-    );
-    expect(plans.filter((p) => p.id.startsWith("handles-"))).toHaveLength(3);
+    expect(plans.filter((p) => p.group === "username")).toHaveLength(2);
+    expect(plans.filter((p) => p.group === "alias")).toHaveLength(1);
+    expect(plans.some((p) => p.query === '"anja_g"')).toBe(true);
+    expect(plans.some((p) => p.query.includes(" OR "))).toBe(false);
+  });
+});
+
+describe("reverse-image serp checkpoint v2", () => {
+  it("stores results per query id", () => {
+    let checkpoint = createEmptySerpCheckpoint([
+      { id: "name-full", label: "Name", query: '"Test"', group: "name" },
+    ]);
+    checkpoint = markQueryFetched(checkpoint, checkpoint.queries[0], [
+      {
+        title: "Bild",
+        imageUrl: "https://cdn.example/a.jpg",
+        sourceUrl: null,
+        sourceHost: "example.com",
+        query: '"Test"',
+        position: 1,
+      },
+    ]);
+    expect(checkpoint.resultsByQuery["name-full"]).toHaveLength(1);
+    expect(checkpoint.serpFetchComplete).toBe(true);
   });
 });

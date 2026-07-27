@@ -6,7 +6,14 @@
 export type ReverseImageRiskLevel = "low" | "medium" | "high";
 
 export type ReverseImageScanStatus =
-  "pending" | "running" | "completed" | "failed" | "unavailable";
+  | "pending"
+  | "discovering"
+  | "discovery_complete"
+  | "comparing"
+  | "running"
+  | "completed"
+  | "failed"
+  | "unavailable";
 
 export interface ReverseImageHit {
   id: string;

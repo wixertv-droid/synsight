@@ -22,29 +22,20 @@ export default function ReverseImagePageClient({
   const autoStart = searchParams.get("start") === "1";
 
   const [phase, setPhase] = useState<Phase>(
-    autoStart && apiAvailable && referenceImageCount > 0 ? "confirm" : "idle"
+    autoStart && apiAvailable ? "confirm" : "idle"
   );
   const [error, setError] = useState<string | null>(() => {
-    if (referenceImageCount <= 0) {
-      return "Bitte laden Sie mindestens ein Referenzbild im Identitätsprofil hoch.";
-    }
     if (autoStart && !apiAvailable) {
-      return "Reverse Image Search ist aktuell nicht verfügbar (SerpAPI + InsightFace).";
+      return "Reverse Image Bildsuche ist aktuell nicht verfügbar (SerpAPI erforderlich).";
     }
     return null;
   });
 
   const beginFlow = () => {
     setError(null);
-    if (referenceImageCount <= 0) {
-      setError(
-        "Bitte laden Sie mindestens ein Referenzbild im Identitätsprofil hoch."
-      );
-      return;
-    }
     if (!apiAvailable) {
       setError(
-        "Reverse Image Search ist aktuell nicht verfügbar (SerpAPI + InsightFace)."
+        "Reverse Image Bildsuche ist aktuell nicht verfügbar (SerpAPI erforderlich)."
       );
       return;
     }
@@ -64,19 +55,19 @@ export default function ReverseImagePageClient({
   );
 
   useEffect(() => {
-    if (autoStart && apiAvailable && referenceImageCount > 0) {
+    if (autoStart && apiAvailable) {
       setPhase("confirm");
     }
-  }, [autoStart, apiAvailable, referenceImageCount]);
+  }, [autoStart, apiAvailable]);
 
   return (
     <main id="reverse-image-page" className="mx-auto max-w-[1500px]">
       <DashboardSectionHeader
         eyebrow="Command Center / Reverse Image"
         title="Reverse Image Search"
-        description="Öffentliche Google-Bildindex-Suche mit InsightFace-Abgleich gegen Ihre Referenzfotos."
+        description="Zwei Phasen: Bildlinks finden (SerpAPI), dann optional Gesichtsvergleich (InsightFace)."
         helpLabel="Ablauf"
-        helpText="Nach der SynCredits-Bestätigung startet die visuelle Suche. Treffer erscheinen im Ergebnis Center."
+        helpText="Phase 1 durchsucht Name, Alias und Benutzernamen. Danach wählen Sie Bilder aus — der Vergleich wird separat berechnet."
       />
 
       {error ? (
@@ -91,23 +82,23 @@ export default function ReverseImagePageClient({
       {phase === "idle" ? (
         <section className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] p-6 md:p-8">
           <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/55">
-            ANALYSE BEREIT
+            PHASE 1 · BILDSUCHE
           </p>
           <h2 className="mt-3 text-xl font-medium text-white/88">
-            Reverse Image Search
+            Reverse Image · Bildsuche
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/55">
             SynSight sucht über SerpAPI in öffentlich indexierten Google-Bildern
-            nach Ihrem Namen und Ihren Benutzernamen, lädt Kandidaten temporär
-            herunter und vergleicht sie per InsightFace mit Ihren Referenzfotos
+            nach Ihrem Namen, Alias und allen Benutzernamen
             {subjectName ? (
               <>
                 {" "}
                 für <span className="text-white/85">{subjectName}</span>
               </>
             ) : null}
-            . Es werden nur Google-Vorschauen genutzt — kein direkter Zugriff
-            auf Social-Media-APIs.
+            . Die gefundenen Bildlinks werden gespeichert — der
+            InsightFace-Gesichtsvergleich starten Sie danach im Ergebnis Center
+            und wird separat berechnet.
           </p>
           <dl className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
@@ -115,12 +106,14 @@ export default function ReverseImagePageClient({
                 REFERENZBILDER
               </dt>
               <dd className="mt-1 text-sm text-white/70">
-                {referenceImageCount} hochgeladen
+                {referenceImageCount > 0
+                  ? `${referenceImageCount} für Phase 2`
+                  : "Optional — für Gesichtsvergleich"}
               </dd>
             </div>
             <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
               <dt className="font-mono text-[8px] tracking-[.12em] text-white/30">
-                DAUER
+                DAUER PHASE 1
               </dt>
               <dd className="mt-1 text-sm text-white/70">
                 {reverseImageSearchModule.estimatedDurationLabel}
@@ -128,9 +121,11 @@ export default function ReverseImagePageClient({
             </div>
             <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
               <dt className="font-mono text-[8px] tracking-[.12em] text-white/30">
-                SCHWELLE
+                PHASE 2
               </dt>
-              <dd className="mt-1 text-sm text-white/70">≥ 60 % Ähnlichkeit</dd>
+              <dd className="mt-1 text-sm text-white/70">
+                Auswahl + InsightFace ≥ 60 %
+              </dd>
             </div>
           </dl>
           <button
@@ -138,15 +133,15 @@ export default function ReverseImagePageClient({
             onClick={beginFlow}
             className="mt-6 rounded-xl border border-cyber-cyan/35 bg-cyber-cyan/[0.08] px-5 py-3 text-sm text-cyber-cyan transition hover:bg-cyber-cyan/[0.14]"
           >
-            Analyse starten
+            Bildsuche starten
           </button>
         </section>
       ) : null}
 
-      {phase === "confirm" && apiAvailable && referenceImageCount > 0 ? (
+      {phase === "confirm" && apiAvailable ? (
         <ConsumeConfirm
-          analysisKey="reverse_image_search"
-          confirmLabel="Analyse starten"
+          analysisKey="reverse_image_discovery"
+          confirmLabel="Bildsuche starten"
           onCompleted={onCreditsConfirmed}
         />
       ) : null}
