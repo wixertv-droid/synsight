@@ -47,15 +47,16 @@ describe("reverse-image search planner", () => {
         personal: { firstName: "Hans Klaus", lastName: "Müller" },
       })
     );
+    expect(plans.some((p) => p.query === "Hans Klaus Müller")).toBe(true);
     expect(plans.some((p) => p.query === '"Hans Klaus Müller"')).toBe(true);
   });
 
-  it("creates separate username queries (no OR batching)", () => {
+  it("searches each username individually first (no OR batching)", () => {
     const plans = planReverseImageQueries(
       identity({
         personal: { firstName: "Anja", lastName: "Gebert" },
         aliases: {
-          usernames: ["anja_g", "gebert_a"],
+          usernames: ["Anja1921", "Luder-Anja"],
           gamingNames: [],
           formerNames: [],
           nicknames: [],
@@ -63,29 +64,30 @@ describe("reverse-image search planner", () => {
         },
       })
     );
-    expect(
-      plans.filter((p) => p.group === "username").length
-    ).toBeGreaterThanOrEqual(2);
-    expect(
-      plans.filter((p) => p.group === "alias").length
-    ).toBeGreaterThanOrEqual(1);
-    expect(plans.some((p) => p.query === "anja_g")).toBe(true);
-    expect(plans.some((p) => p.query === '"anja_g"')).toBe(true);
-    expect(plans.some((p) => p.query === "Anja Gebert")).toBe(true);
-    expect(plans.some((p) => p.query === '"Anja Gebert"')).toBe(true);
-    // Username-Queries bleiben einzeln (kein OR zwischen Benutzernamen)
+
+    expect(plans[0]?.group).toBe("username");
+    expect(plans.some((p) => p.query === "Anja1921")).toBe(true);
+    expect(plans.some((p) => p.query === "Luder-Anja")).toBe(true);
+    expect(plans.some((p) => p.id.startsWith("username-open-"))).toBe(true);
+    expect(plans.some((p) => p.query.includes("site:amarotic.com"))).toBe(true);
+
+    // Niemals OR-Batch über mehrere Benutzernamen
     expect(
       plans.some(
         (p) =>
           p.group === "username" &&
           !p.id.includes("adult") &&
-          !p.id.includes("site") &&
-          p.query.includes(" OR ")
+          p.query.includes(" OR ") &&
+          p.query.includes("Anja1921") &&
+          p.query.includes("Luder-Anja")
       )
     ).toBe(false);
+
+    expect(plans.some((p) => p.label.includes("Alias · anjalias"))).toBe(true);
+    expect(plans.some((p) => p.query === "Anja Gebert")).toBe(true);
   });
 
-  it("adds adult/niche image queries for aliases and usernames like Google search", () => {
+  it("adds adult/niche image queries for aliases and usernames", () => {
     const plans = planReverseImageQueries(
       identity({
         personal: { firstName: "Anja", lastName: "Gebert" },
@@ -111,14 +113,6 @@ describe("reverse-image search planner", () => {
         (p) =>
           p.id.startsWith("username-adult-") &&
           p.query.includes("site:onlyfans.com") &&
-          p.query.includes("anja_g")
-      )
-    ).toBe(true);
-    expect(
-      plans.some(
-        (p) =>
-          p.id.startsWith("username-site-") &&
-          p.query.includes("site:amarotic.com") &&
           p.query.includes("anja_g")
       )
     ).toBe(true);

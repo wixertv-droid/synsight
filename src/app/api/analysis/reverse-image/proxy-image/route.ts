@@ -39,9 +39,11 @@ export async function GET(request: Request) {
   const checkpoint = await loadCheckpointForScan(userId, scanId);
   const candidateList =
     sources?.candidates ?? (checkpoint ? allCandidates(checkpoint) : []);
-  const allowed = new Set(candidateList.map((c) => normalizeUrl(c.imageUrl)));
+  const match = candidateList.find(
+    (c) => normalizeUrl(c.imageUrl) === normalizeUrl(imageUrl)
+  );
 
-  if (!allowed.has(normalizeUrl(imageUrl))) {
+  if (!match) {
     return NextResponse.json(
       apiError("FORBIDDEN", "Bild gehört nicht zu diesem Scan."),
       {
@@ -50,7 +52,12 @@ export async function GET(request: Request) {
     );
   }
 
-  const bytes = await downloadPublicImage(imageUrl);
+  const primary = await downloadPublicImage(imageUrl);
+  const fallbackThumb =
+    !primary && match.thumbnailUrl
+      ? await downloadPublicImage(match.thumbnailUrl)
+      : null;
+  const bytes = primary ?? fallbackThumb;
   if (!bytes) {
     return NextResponse.json(
       apiError("NOT_FOUND", "Bild konnte nicht geladen werden."),

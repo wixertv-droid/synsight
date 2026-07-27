@@ -7,6 +7,8 @@ import {
 export interface SerpImageCandidate {
   title: string;
   imageUrl: string;
+  /** SerpAPI thumbnail — Fallback wenn Original-CDN blockt. */
+  thumbnailUrl?: string | null;
   sourceUrl: string | null;
   sourceHost: string;
   query: string;
@@ -18,11 +20,11 @@ export interface SerpImageCandidate {
 
 /** Default depth for reverse-image discovery (SerpAPI google_images pages). */
 export const REVERSE_IMAGE_SERP_PAGES = Number.parseInt(
-  process.env.REVERSE_IMAGE_SERP_PAGES ?? "3",
+  process.env.REVERSE_IMAGE_SERP_PAGES ?? "5",
   10
 );
 export const REVERSE_IMAGE_SERP_NUM = Number.parseInt(
-  process.env.REVERSE_IMAGE_SERP_NUM ?? "250",
+  process.env.REVERSE_IMAGE_SERP_NUM ?? "400",
   10
 );
 
@@ -32,6 +34,35 @@ function hostOf(url: string): string {
   } catch {
     return "unknown";
   }
+}
+
+function looksLikeImageBytes(bytes: Buffer): boolean {
+  if (bytes.byteLength < 12) return false;
+  // JPEG
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
+  // PNG
+  if (
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  )
+    return true;
+  // GIF
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return true;
+  // WEBP (RIFF....WEBP)
+  if (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  )
+    return true;
+  return false;
 }
 
 export async function fetchGoogleImageCandidates(input: {
@@ -51,7 +82,7 @@ export async function fetchGoogleImageCandidates(input: {
       input.pages ??
         (Number.isFinite(REVERSE_IMAGE_SERP_PAGES)
           ? REVERSE_IMAGE_SERP_PAGES
-          : 3),
+          : 5),
       1
     ),
     5
@@ -61,7 +92,7 @@ export async function fetchGoogleImageCandidates(input: {
       input.num ??
         (Number.isFinite(REVERSE_IMAGE_SERP_NUM)
           ? REVERSE_IMAGE_SERP_NUM
-          : 250),
+          : 400),
       1
     ),
     500
@@ -89,12 +120,15 @@ export async function fetchGoogleImageCandidates(input: {
       const raw = (hit.raw ?? {}) as {
         link?: string;
         original?: string;
+        thumbnail?: string;
       };
       const imageUrl = (raw.original || hit.link || "").trim();
       const pageUrl = (raw.link || hit.link || "").trim() || null;
+      const thumbnailUrl = (raw.thumbnail || "").trim() || null;
       return {
         title: hit.title,
         imageUrl,
+        thumbnailUrl,
         sourceUrl: pageUrl,
         sourceHost: hostOf(pageUrl || imageUrl),
         query: input.query,
@@ -130,17 +164,32 @@ export async function downloadPublicImage(url: string): Promise<Buffer | null> {
       method: "GET",
       redirect: "follow",
       headers: {
-        Accept: "image/*,*/*;q=0.8",
+        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
         "User-Agent":
-          "SynSight-ReverseImage/1.0 (+https://synsight.de; security research)",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        Referer: "https://www.google.com/",
       },
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) return null;
-    const contentType = response.headers.get("content-type") ?? "";
-    if (contentType && !contentType.startsWith("image/")) return null;
+    const contentType = (response.headers.get("content-type") ?? "")
+      .split(";")[0]
+      .trim()
+      .toLowerCase();
     const bytes = Buffer.from(await response.arrayBuffer());
-    if (bytes.byteLength <= 512 || bytes.byteLength > 8 * 1024 * 1024) {
+    if (bytes.byteLength <= 256 || bytes.byteLength > 12 * 1024 * 1024) {
+      return null;
+    }
+    const declaredImage = contentType.startsWith("image/");
+    const opaqueBinary =
+      !contentType ||
+      contentType === "application/octet-stream" ||
+      contentType === "binary/octet-stream";
+    if (!declaredImage && !opaqueBinary && !looksLikeImageBytes(bytes)) {
+      return null;
+    }
+    if (!declaredImage && !looksLikeImageBytes(bytes)) {
       return null;
     }
     return bytes;

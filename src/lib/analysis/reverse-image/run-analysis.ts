@@ -85,7 +85,7 @@ export class ReverseImageUnavailableError extends Error {
 }
 
 const WALL_CLOCK_BUDGET_MS = Number.parseInt(
-  process.env.REVERSE_IMAGE_BUDGET_MS ?? "75000",
+  process.env.REVERSE_IMAGE_BUDGET_MS ?? "180000",
   10
 );
 const MAX_REFERENCES = Number.parseInt(
@@ -212,31 +212,41 @@ export async function startReverseImageDiscovery(
   const jobs = getReverseImageJobs();
 
   const running = await findRunningReverseImageScan(userId);
-  let scanId: number;
-  let resumed = false;
 
+  // Nur echte In-Flight Discovery fortsetzen — nie einen alten
+  // discovery_complete/OR-Batch-Scan wiederverwenden (sonst 0 Username-Treffer).
   if (running) {
     const checkpoint = await loadCheckpointForScan(userId, running.scanId);
-    if (checkpoint && discoveryWorkRemaining(checkpoint)) {
-      scanId = running.scanId;
-      resumed = true;
-      if (jobs.has(scanId))
-        return { scanId, status: "discovering", resumed: true };
-    } else if (jobs.has(running.scanId)) {
-      return { scanId: running.scanId, status: "discovering" };
-    } else {
-      scanId = running.scanId;
-      resumed = true;
+    const canResumeDiscovery =
+      checkpoint &&
+      discoveryWorkRemaining(checkpoint) &&
+      (jobs.has(running.scanId) ||
+        checkpoint.queries.some((q) => q.id.startsWith("username-open-")));
+    if (canResumeDiscovery) {
+      if (jobs.has(running.scanId)) {
+        return { scanId: running.scanId, status: "discovering", resumed: true };
+      }
+      await ensureReverseImageDirs(userId, running.scanId);
+      kickOffDiscoveryPipeline({
+        userId,
+        scanId: running.scanId,
+        identity,
+        subjectName,
+        queries,
+        retentionDays,
+        expiresAt,
+      });
+      return { scanId: running.scanId, status: "discovering", resumed: true };
     }
-  } else {
-    scanId = await createReverseImageScan({
-      userId,
-      subjectName,
-      referenceImageCount: 0,
-      retentionDays,
-      expiresAt,
-    });
   }
+
+  const scanId = await createReverseImageScan({
+    userId,
+    subjectName,
+    referenceImageCount: 0,
+    retentionDays,
+    expiresAt,
+  });
 
   await ensureReverseImageDirs(userId, scanId);
   kickOffDiscoveryPipeline({
@@ -248,7 +258,7 @@ export async function startReverseImageDiscovery(
     retentionDays,
     expiresAt,
   });
-  return { scanId, status: "discovering", resumed: resumed || undefined };
+  return { scanId, status: "discovering" };
 }
 
 /** Phase 2 — InsightFace nur auf ausgewählte Links. */
@@ -483,7 +493,11 @@ async function executeDiscoveryPipeline(input: {
   const budgetMs = resolveBudgetMs();
 
   let checkpoint = await loadCheckpointForScan(userId, scanId);
-  if (!checkpoint) {
+  // Frischer Scan oder veralteter OR-Batch-Plan → immer aktuellen Query-Plan nutzen.
+  const planIsCurrent = checkpoint?.queries.some((q) =>
+    q.id.startsWith("username-open-")
+  );
+  if (!checkpoint || checkpoint.serpFetchComplete || !planIsCurrent) {
     checkpoint = createEmptySerpCheckpoint(queries);
     await persistCheckpoint(userId, scanId, checkpoint);
   }
@@ -497,7 +511,7 @@ async function executeDiscoveryPipeline(input: {
       try {
         const batch = await fetchGoogleImageCandidates({
           query: plan.query,
-          // Tiefe wie manuelle Google-Bildsuche: mehrere Seiten (ijn), nicht nur ~12 Treffer.
+          pages: plan.pages,
           userId,
         });
         checkpoint = markQueryFetched(checkpoint, plan, batch);

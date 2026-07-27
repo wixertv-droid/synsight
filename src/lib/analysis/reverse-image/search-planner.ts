@@ -7,18 +7,21 @@ export interface ReverseImageQueryPlan {
   label: string;
   query: string;
   group: ReverseImageQueryGroup;
+  /** Extra SerpAPI pages for high-recall queries (usernames). */
+  pages?: number;
 }
 
-/** Adult-/Nischen-Sites — erweitert um Plattformen aus manuellen Google-Bildsuchen. */
+/** Adult-/Nischen-Sites — analog manueller Google-Bildsuche (SafeSearch aus). */
 const ADULT_IMAGE_DORK =
   '(site:joyclub.de OR site:einfachgeiler.com OR site:amarotic.com OR site:onlyfans.com OR site:frivol.com OR site:amateurseite.com OR site:ffgv.de OR "amateur" OR "escort")';
 
-/** Einzel-Sites mit hoher Trefferquote bei Usernames (SafeSearch aus). */
 const USERNAME_FOCUS_SITES = [
   "amarotic.com",
   "frivol.com",
   "amateurseite.com",
   "ffgv.de",
+  "einfachgeiler.com",
+  "joyclub.de",
 ] as const;
 
 function quote(value: string): string {
@@ -74,8 +77,9 @@ function collectUsernames(identity: IdentityView | null): string[] {
 }
 
 /**
- * Phase 1 queries — Name, Alias und Benutzername jeweils breit (offen + exakt + Adult).
- * SafeSearch bleibt in SerpAPI `safe=off`.
+ * Phase 1 queries.
+ * WICHTIG: Jeder Benutzername einzeln und ZUERST (kein OR-Batch — Google Images
+ * liefert bei `"a" OR "b"` oft 0 Treffer). SafeSearch bleibt off in SerpAPI.
  */
 export function planReverseImageQueries(
   identity: IdentityView | null
@@ -87,73 +91,107 @@ export function planReverseImageQueries(
     id: string,
     label: string,
     query: string,
-    group: ReverseImageQueryGroup
+    group: ReverseImageQueryGroup,
+    pages?: number
   ) => {
     const normalized = query.trim().toLowerCase();
     if (!normalized || seenQueries.has(normalized)) return;
     seenQueries.add(normalized);
-    plans.push({ id, label, query: query.trim(), group });
+    plans.push({
+      id,
+      label,
+      query: query.trim(),
+      group,
+      ...(pages ? { pages } : {}),
+    });
   };
 
   const fullName = buildFullName(identity);
-  if (fullName) {
-    // Offen wie manuelle Google-Bildsuche + exakt + Adult/Nische.
-    addPlan("name-open", `Name · ${fullName}`, fullName, "name");
-    addPlan("name-full", `Name exakt · ${fullName}`, quote(fullName), "name");
-    addPlan(
-      "name-full-photo",
-      `Name + Foto · ${fullName}`,
-      `${fullName} (photo OR foto OR bild)`,
-      "name"
-    );
-    addPlan(
-      "name-adult",
-      `Name Adult · ${fullName}`,
-      `${fullName} ${ADULT_IMAGE_DORK}`,
-      "name"
-    );
-  }
+  const usernames = collectUsernames(identity).filter(
+    (username) =>
+      !(fullName && normalizeKey(username) === normalizeKey(fullName))
+  );
+  const aliases = collectAliases(identity).filter(
+    (alias) => !(fullName && normalizeKey(alias) === normalizeKey(fullName))
+  );
 
-  for (const [index, alias] of collectAliases(identity).entries()) {
-    if (fullName && normalizeKey(alias) === normalizeKey(fullName)) continue;
-    addPlan(`alias-open-${index}`, `Alias · ${alias}`, alias, "alias");
-    addPlan(`alias-${index}`, `Alias exakt · ${alias}`, quote(alias), "alias");
-    addPlan(
-      `alias-adult-${index}`,
-      `Alias Adult · ${alias}`,
-      `${alias} ${ADULT_IMAGE_DORK}`,
-      "alias"
-    );
-  }
-
-  for (const [index, username] of collectUsernames(identity).entries()) {
-    if (fullName && normalizeKey(username) === normalizeKey(fullName)) continue;
+  // 1) Benutzernamen zuerst — höchste Trefferquote bei Adult/OSINT.
+  for (const [index, username] of usernames.entries()) {
     addPlan(
       `username-open-${index}`,
       `Benutzername · ${username}`,
       username,
-      "username"
+      "username",
+      5
     );
     addPlan(
-      `username-${index}`,
+      `username-exact-${index}`,
       `Benutzername exakt · ${username}`,
       quote(username),
-      "username"
+      "username",
+      3
     );
     addPlan(
       `username-adult-${index}`,
       `Benutzername Adult · ${username}`,
       `${username} ${ADULT_IMAGE_DORK}`,
-      "username"
+      "username",
+      4
     );
     for (const [siteIndex, site] of USERNAME_FOCUS_SITES.entries()) {
       addPlan(
         `username-site-${index}-${siteIndex}`,
         `Benutzername · ${site} · ${username}`,
         `site:${site} ${username}`,
-        "username"
+        "username",
+        2
       );
     }
+  }
+
+  // 2) Alias
+  for (const [index, alias] of aliases.entries()) {
+    addPlan(`alias-open-${index}`, `Alias · ${alias}`, alias, "alias", 4);
+    addPlan(
+      `alias-exact-${index}`,
+      `Alias exakt · ${alias}`,
+      quote(alias),
+      "alias",
+      2
+    );
+    addPlan(
+      `alias-adult-${index}`,
+      `Alias Adult · ${alias}`,
+      `${alias} ${ADULT_IMAGE_DORK}`,
+      "alias",
+      3
+    );
+  }
+
+  // 3) Vollständiger Name
+  if (fullName) {
+    addPlan("name-open", `Name · ${fullName}`, fullName, "name", 4);
+    addPlan(
+      "name-exact",
+      `Name exakt · ${fullName}`,
+      quote(fullName),
+      "name",
+      3
+    );
+    addPlan(
+      "name-photo",
+      `Name + Foto · ${fullName}`,
+      `${fullName} (photo OR foto OR bild OR gallery)`,
+      "name",
+      4
+    );
+    addPlan(
+      "name-adult",
+      `Name Adult · ${fullName}`,
+      `${fullName} ${ADULT_IMAGE_DORK}`,
+      "name",
+      3
+    );
   }
 
   return plans;

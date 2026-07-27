@@ -45,7 +45,7 @@ export interface ReverseImageSerpCheckpoint {
 
 /** Pro Query behalten — manuelle Google-Bildsuche liefert oft 100+ Treffer. */
 const MAX_RESULTS_PER_QUERY = Number.parseInt(
-  process.env.REVERSE_IMAGE_MAX_RESULTS_PER_QUERY ?? "120",
+  process.env.REVERSE_IMAGE_MAX_RESULTS_PER_QUERY ?? "250",
   10
 );
 
@@ -316,8 +316,8 @@ export function markQueryFetched(
   }));
 
   const perQueryCap = Number.isFinite(MAX_RESULTS_PER_QUERY)
-    ? Math.max(MAX_RESULTS_PER_QUERY, 20)
-    : 120;
+    ? Math.max(MAX_RESULTS_PER_QUERY, 50)
+    : 250;
   const mergedForQuery = dedupeCandidates([
     ...(checkpoint.resultsByQuery[plan.id] ?? []),
     ...tagged,

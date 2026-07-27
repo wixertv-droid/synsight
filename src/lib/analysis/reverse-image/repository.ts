@@ -389,11 +389,12 @@ export async function findRunningReverseImageScan(
   const ok = await ensureReverseImageSchema();
   if (!ok) return null;
 
+  // Nur laufende Pipelines — discovery_complete gehört zur Auswahl, nicht zum Resume.
   const scans = asRows<{ id: number; subject_name: string | null }>(
     await db.execute(sql`
       SELECT id, subject_name FROM reverse_image_scans
       WHERE user_id = ${userId}
-        AND status IN ('discovering', 'discovery_complete', 'comparing', 'running')
+        AND status IN ('discovering', 'comparing', 'running')
       ORDER BY id DESC LIMIT 1
     `)
   );
