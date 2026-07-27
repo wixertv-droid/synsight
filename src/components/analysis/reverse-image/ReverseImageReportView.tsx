@@ -85,7 +85,7 @@ export default function ReverseImageReportView({
 
   const onCompareStarted = useCallback(() => {
     router.push(
-      `/dashboard/results?tab=reverse_image_search&scan=1&compareWatch=1&scanId=${report.scanId}`
+      `/dashboard/results?tab=reverse_image_search&module=reverse_image&scan=1&compareWatch=1&scanId=${report.scanId}`
     );
   }, [report.scanId, router]);
 

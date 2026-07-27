@@ -124,6 +124,8 @@ export default function ResultsCenterClient({
     requestedTabRaw === "reverse_image_discovery"
       ? "reverse_image_search"
       : requestedTabRaw;
+  const requestedModule = searchParams.get("module") ?? "";
+  const forceReverseImage = requestedModule === "reverse_image";
   const shouldScan = searchParams.get("scan") === "1";
   const requestIdFromUrl = (searchParams.get("requestId") ?? "").trim();
   const retentionFromUrl = parseRetentionDays(
@@ -135,6 +137,15 @@ export default function ResultsCenterClient({
     if (tabs.some((tab) => tab.id === requestedTab)) return requestedTab;
     return tabs[0]?.id ?? "google_search";
   });
+
+  useEffect(() => {
+    if (
+      tabs.some((tab) => tab.id === requestedTab) &&
+      activeTab !== requestedTab
+    ) {
+      setActiveTab(requestedTab);
+    }
+  }, [tabs, requestedTab, activeTab]);
   const [report, setReport] = useState<IntelligenceReport | null>(() => {
     try {
       return normalizeIntelligenceReport(initialGoogleReport);
@@ -808,7 +819,8 @@ export default function ResultsCenterClient({
   ]);
 
   useEffect(() => {
-    // Never start Google when the URL asks for another module (e.g. reverse image).
+    // Hard-separate modules: reverse-image requests must never trigger Google.
+    if (forceReverseImage) return;
     if (
       shouldScan &&
       requestedTab === "google_search" &&
@@ -820,7 +832,15 @@ export default function ResultsCenterClient({
       scanStartedRef.current = true;
       void runGoogleScan();
     }
-  }, [shouldScan, requestedTab, activeTab, scanning, scanDone, runGoogleScan]);
+  }, [
+    shouldScan,
+    forceReverseImage,
+    requestedTab,
+    activeTab,
+    scanning,
+    scanDone,
+    runGoogleScan,
+  ]);
 
   useEffect(() => {
     if (
@@ -851,7 +871,8 @@ export default function ResultsCenterClient({
   useEffect(() => {
     if (
       shouldScan &&
-      (requestedTab === "reverse_image_search" ||
+      (forceReverseImage ||
+        requestedTab === "reverse_image_search" ||
         requestedTab === "reverse_image_discovery") &&
       activeTab === "reverse_image_search" &&
       !scanning &&
@@ -880,6 +901,7 @@ export default function ResultsCenterClient({
     }
   }, [
     shouldScan,
+    forceReverseImage,
     requestedTab,
     activeTab,
     scanning,

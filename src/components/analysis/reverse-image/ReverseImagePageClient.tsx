@@ -46,6 +46,7 @@ export default function ReverseImagePageClient({
     (payload: { requestId: string }) => {
       const params = new URLSearchParams({
         tab: "reverse_image_search",
+        module: "reverse_image",
         scan: "1",
         requestId: payload.requestId,
       });
