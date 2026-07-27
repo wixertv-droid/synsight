@@ -17,7 +17,7 @@ export const DEFAULT_REVERSE_IMAGE_MODULE_SETTINGS: ReverseImageModuleSettings =
       process.env.REVERSE_IMAGE_COMPARE_URL?.trim() ||
       "http://161.97.85.22:8000/compare",
     similarityThreshold: Number.parseFloat(
-      process.env.REVERSE_IMAGE_SIMILARITY_THRESHOLD ?? "0.6"
+      process.env.REVERSE_IMAGE_SIMILARITY_THRESHOLD ?? "0.35"
     ),
     compareTimeoutMs: 12_000,
   };

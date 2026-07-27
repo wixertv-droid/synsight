@@ -104,6 +104,7 @@ export default function ReverseImageLiveScanPanel({
                 {entry.similarity != null ? (
                   <span className="ml-auto shrink-0">
                     {Math.round(entry.similarity * 100)}%
+                    {!entry.match ? " · unter Schwelle" : ""}
                   </span>
                 ) : null}
               </div>

@@ -62,10 +62,12 @@ export function resolveInsightFaceCompareUrl(): string {
 
 export function resolveSimilarityThreshold(): number {
   const raw = Number.parseFloat(
-    process.env.REVERSE_IMAGE_SIMILARITY_THRESHOLD ?? "0.6"
+    process.env.REVERSE_IMAGE_SIMILARITY_THRESHOLD ?? "0.35"
   );
-  if (!Number.isFinite(raw)) return 0.6;
-  return Math.max(0.35, Math.min(0.95, raw));
+  if (!Number.isFinite(raw)) return 0.35;
+  let v = raw;
+  if (v > 1 && v <= 100) v = v / 100;
+  return Math.max(0.35, Math.min(0.95, v));
 }
 
 export async function resolveInsightFaceCompareUrlAsync(): Promise<string> {
@@ -76,7 +78,10 @@ export async function resolveInsightFaceCompareUrlAsync(): Promise<string> {
 
 export async function resolveSimilarityThresholdAsync(): Promise<number> {
   const settings = await getReverseImageModuleSettings();
-  return settings.similarityThreshold;
+  const threshold = settings.similarityThreshold;
+  // Defensiv: Prozentwerte und String-Decimals abfangen
+  if (threshold > 1 && threshold <= 100) return threshold / 100;
+  return Math.max(0.35, Math.min(0.95, threshold));
 }
 
 export async function resolveCompareTimeoutMsAsync(): Promise<number> {
@@ -97,6 +102,39 @@ export async function isInsightFaceConfiguredAsync(): Promise<boolean> {
 export interface InsightFaceCompareResult {
   similarity: number;
   latencyMs: number;
+}
+
+/** Normalisiert InsightFace-Antworten (0–1, ggf. Prozent oder distance). */
+export function normalizeInsightFaceSimilarity(
+  body: Record<string, unknown>
+): number {
+  const raw =
+    body.similarity ??
+    body.score ??
+    body.confidence ??
+    body.match_score ??
+    body.sim;
+  if (raw != null) {
+    let n =
+      typeof raw === "number" ? raw : Number(String(raw).replace(",", "."));
+    if (!Number.isFinite(n)) {
+      throw new Error("InsightFace lieferte keinen gültigen similarity-Wert.");
+    }
+    if (n > 1 && n <= 100) n = n / 100;
+    return Math.max(0, Math.min(1, n));
+  }
+  if (body.distance != null) {
+    let d =
+      typeof body.distance === "number"
+        ? body.distance
+        : Number(String(body.distance).replace(",", "."));
+    if (!Number.isFinite(d)) {
+      throw new Error("InsightFace lieferte keinen gültigen distance-Wert.");
+    }
+    if (d > 1 && d <= 100) d = d / 100;
+    return Math.max(0, Math.min(1, 1 - d));
+  }
+  throw new Error("InsightFace lieferte keinen similarity-/score-Wert.");
 }
 
 /**
@@ -132,23 +170,20 @@ export async function compareImagesWithInsightFace(input: {
       signal: AbortSignal.timeout(timeoutMs),
     });
     const latencyMs = Date.now() - started;
-    const body = (await response.json().catch(() => ({}))) as {
-      similarity?: number;
-      detail?: string;
-      error?: string;
-    };
+    const body = (await response.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
 
     if (!response.ok) {
-      throw new Error(
-        body.detail || body.error || `InsightFace HTTP ${response.status}`
-      );
+      const detail =
+        (typeof body.detail === "string" && body.detail) ||
+        (typeof body.error === "string" && body.error) ||
+        `InsightFace HTTP ${response.status}`;
+      throw new Error(detail);
     }
 
-    const similarity = Number(body.similarity);
-    if (!Number.isFinite(similarity)) {
-      throw new Error("InsightFace lieferte keinen gültigen similarity-Wert.");
-    }
-
+    const similarity = normalizeInsightFaceSimilarity(body);
     return { similarity, latencyMs };
   } finally {
     endInsightFaceTask();

@@ -38,7 +38,7 @@ const emptyReverseImageSettings: ReverseImageModuleSettings = {
   isActive: true,
   apiEnabled: true,
   compareUrl: "http://161.97.85.22:8000/compare",
-  similarityThreshold: 0.6,
+  similarityThreshold: 0.35,
   compareTimeoutMs: 12_000,
 };
 

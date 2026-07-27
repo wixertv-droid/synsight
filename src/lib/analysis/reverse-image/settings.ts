@@ -7,13 +7,22 @@ import {
   type ReverseImageModuleSettings,
 } from "@/lib/analysis/reverse-image/settings-types";
 
-function toNumber(value: unknown, fallback: number): number {
-  const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? n : fallback;
+function clampThreshold(value: number): number {
+  let v = value;
+  // Admin/UI manchmal in Prozent (35 statt 0.35)
+  if (v > 1 && v <= 100) v = v / 100;
+  return Math.max(0.35, Math.min(0.95, v));
 }
 
-function clampThreshold(value: number): number {
-  return Math.max(0.35, Math.min(0.95, value));
+function toNumber(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().replace(",", ".");
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : fallback;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 function mapRow(

@@ -36,7 +36,6 @@ import {
   type ReverseImageLiveScanEntry,
   type ReverseImageSerpCheckpoint,
 } from "@/lib/analysis/reverse-image/serp-checkpoint";
-import { enrichCandidateWithScore } from "@/lib/analysis/reverse-image/candidate-score";
 import {
   cleanupTempDir,
   deleteTempRelativePath,
@@ -614,24 +613,34 @@ async function processCandidate(input: {
   hit: ReverseImageHit | null;
   compareCalls: number;
   budgetExceeded: boolean;
+  /** Immer gesetzt wenn InsightFace lief — auch unter der Schwelle */
+  similarity: number | null;
+  thresholdUsed: number;
 }> {
   let compareCalls = 0;
   if (Date.now() - input.startedAt > input.budgetMs) {
-    return { hit: null, compareCalls, budgetExceeded: true };
+    return {
+      hit: null,
+      compareCalls,
+      budgetExceeded: true,
+      similarity: null,
+      thresholdUsed: input.threshold,
+    };
   }
 
-  // Vorfilter: Produkte/Logos/niedrige Scores nicht an InsightFace schicken
-  const scored =
-    input.candidate.candidateScore != null &&
-    input.candidate.allowFaceCompare != null
-      ? input.candidate
-      : enrichCandidateWithScore(input.candidate);
-  if (scored.allowFaceCompare === false) {
-    return { hit: null, compareCalls, budgetExceeded: false };
-  }
+  // Wichtig: Nutzer-Auswahl immer vergleichen.
+  // allowFaceCompare ist nur Vorfilter/Funnel — kein Skip für Compare-Phase.
 
   const bytes = await downloadPublicImage(input.candidate.imageUrl);
-  if (!bytes) return { hit: null, compareCalls, budgetExceeded: false };
+  if (!bytes) {
+    return {
+      hit: null,
+      compareCalls,
+      budgetExceeded: false,
+      similarity: null,
+      thresholdUsed: input.threshold,
+    };
+  }
 
   let tempPath: string | null = null;
   try {
@@ -646,7 +655,13 @@ async function processCandidate(input: {
 
     for (const reference of input.references) {
       if (Date.now() - input.startedAt > input.budgetMs) {
-        return { hit: null, compareCalls, budgetExceeded: true };
+        return {
+          hit: null,
+          compareCalls,
+          budgetExceeded: true,
+          similarity: bestSimilarity > 0 ? bestSimilarity : null,
+          thresholdUsed: input.threshold,
+        };
       }
       compareCalls += 1;
       try {
@@ -670,10 +685,21 @@ async function processCandidate(input: {
       }
     }
 
-    if (bestSimilarity < input.threshold || !bestReference) {
+    const isMatch =
+      bestReference != null && bestSimilarity + 1e-9 >= input.threshold;
+
+    if (!isMatch || !bestReference) {
       if (tempPath) await deleteTempRelativePath(tempPath);
-      return { hit: null, compareCalls, budgetExceeded: false };
+      return {
+        hit: null,
+        compareCalls,
+        budgetExceeded: false,
+        similarity: bestSimilarity > 0 ? bestSimilarity : null,
+        thresholdUsed: input.threshold,
+      };
     }
+
+    const matchedReference = bestReference;
 
     const hitId = `ri-${input.scanId}-${input.existingMatchCount + 1}`;
     const stored = await persistMatchImage({
@@ -691,7 +717,7 @@ async function processCandidate(input: {
       sourceUrl: input.candidate.sourceUrl,
       imageUrl: input.candidate.imageUrl,
       similarity: bestSimilarity,
-      referenceImageType: bestReference.type,
+      referenceImageType: matchedReference.type,
       riskLevel: riskLevelFromSimilarity(bestSimilarity),
       storedPath: stored.storedPath,
       thumbnailPath: stored.thumbnailPath,
@@ -705,7 +731,7 @@ async function processCandidate(input: {
         sourceUrl: input.candidate.sourceUrl,
         imageUrl: input.candidate.imageUrl,
         similarity: bestSimilarity,
-        referenceImageType: bestReference.type,
+        referenceImageType: matchedReference.type,
         riskLevel: riskLevelFromSimilarity(bestSimilarity),
         storedPath: stored.storedPath,
         thumbnailPath: stored.thumbnailPath,
@@ -714,11 +740,19 @@ async function processCandidate(input: {
       },
       compareCalls,
       budgetExceeded: false,
+      similarity: bestSimilarity,
+      thresholdUsed: input.threshold,
     };
   } catch (error) {
     if (tempPath) await deleteTempRelativePath(tempPath).catch(() => undefined);
     console.warn("[reverse-image] candidate pipeline failed", error);
-    return { hit: null, compareCalls, budgetExceeded: false };
+    return {
+      hit: null,
+      compareCalls,
+      budgetExceeded: false,
+      similarity: null,
+      thresholdUsed: input.threshold,
+    };
   }
 }
 
@@ -747,6 +781,9 @@ async function executeComparePipeline(input: {
     const chunkStartedAt = Date.now();
     let compareCalls = 0;
     const threshold = await resolveSimilarityThresholdAsync();
+    console.info(
+      `[reverse-image] compare threshold=${threshold.toFixed(3)} scan=${scanId}`
+    );
     let existingHits = await getReverseImageHitsForScan(scanId);
 
     for (const candidate of remainingCompareCandidates(checkpoint)) {
@@ -770,7 +807,8 @@ async function executeComparePipeline(input: {
         imageUrl: candidate.imageUrl,
         title: candidate.title,
         match: Boolean(result.hit),
-        similarity: result.hit?.similarity,
+        // Score immer anzeigen (auch unter der Schwelle)
+        similarity: result.similarity ?? undefined,
         at: new Date().toISOString(),
       };
       checkpoint = appendLiveScanResult(
