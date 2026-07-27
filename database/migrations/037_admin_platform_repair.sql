@@ -37,38 +37,62 @@ WHERE `id` = 1
   AND JSON_TYPE(`settings_json`) = 'STRING'
   AND JSON_VALID(JSON_UNQUOTE(`settings_json`));
 
+-- MariaDB: JSON_SET liefert NULL wenn ein Argument NULL ist → NOT NULL-Fehler.
+-- COALESCE um das Ergebnis: bei NULL Defaults schreiben, nie settings_json=NULL setzen.
 UPDATE `platform_settings`
-SET `settings_json` = JSON_SET(
-  COALESCE(`settings_json`, JSON_OBJECT()),
-  '$.imageMaxUploadMb',
-  COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.imageMaxUploadMb')) AS SIGNED), 12),
-  '$.imageCompressionQuality',
-  COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.imageCompressionQuality')) AS SIGNED), 82),
-  '$.imageWebpQuality',
-  COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.imageWebpQuality')) AS SIGNED), 80),
-  '$.imageThumbnailQuality',
-  COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.imageThumbnailQuality')) AS SIGNED), 72),
-  '$.imageMaxResolution',
-  COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.imageMaxResolution')) AS SIGNED), 2048),
-  '$.encryptOriginals',
-  COALESCE(JSON_EXTRACT(`settings_json`, '$.encryptOriginals'), true),
-  '$.generateAnalysisImages',
-  COALESCE(JSON_EXTRACT(`settings_json`, '$.generateAnalysisImages'), true),
-  '$.supportHoursStart',
-  COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.supportHoursStart')), '09:00'),
-  '$.supportHoursEnd',
-  COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.supportHoursEnd')), '18:00'),
-  '$.supportTimezone',
-  COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.supportTimezone')), 'Europe/Berlin'),
-  '$.supportResponseText',
-  COALESCE(
-    JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.supportResponseText')),
-    'In der Regel innerhalb von 1–2 Werktagen'
+SET `settings_json` = COALESCE(
+  JSON_SET(
+    IF(
+      `settings_json` IS NULL
+        OR JSON_TYPE(`settings_json`) IN ('NULL', 'STRING')
+        OR NOT JSON_VALID(`settings_json`),
+      JSON_OBJECT(),
+      `settings_json`
+    ),
+    '$.imageMaxUploadMb',
+    COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.imageMaxUploadMb')) AS SIGNED), 12),
+    '$.imageCompressionQuality',
+    COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.imageCompressionQuality')) AS SIGNED), 82),
+    '$.imageWebpQuality',
+    COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.imageWebpQuality')) AS SIGNED), 80),
+    '$.imageThumbnailQuality',
+    COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.imageThumbnailQuality')) AS SIGNED), 72),
+    '$.imageMaxResolution',
+    COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.imageMaxResolution')) AS SIGNED), 2048),
+    '$.encryptOriginals',
+    COALESCE(JSON_EXTRACT(`settings_json`, '$.encryptOriginals'), TRUE),
+    '$.generateAnalysisImages',
+    COALESCE(JSON_EXTRACT(`settings_json`, '$.generateAnalysisImages'), TRUE),
+    '$.supportHoursStart',
+    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.supportHoursStart')), '09:00'),
+    '$.supportHoursEnd',
+    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.supportHoursEnd')), '18:00'),
+    '$.supportTimezone',
+    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.supportTimezone')), 'Europe/Berlin'),
+    '$.supportResponseText',
+    COALESCE(
+      JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.supportResponseText')),
+      'In der Regel innerhalb von 1–2 Werktagen'
+    ),
+    '$.digitalLeakDefaultRetentionDays',
+    COALESCE(
+      CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.digitalLeakDefaultRetentionDays')) AS SIGNED),
+      90
+    )
   ),
-  '$.digitalLeakDefaultRetentionDays',
-  COALESCE(
-    CAST(JSON_UNQUOTE(JSON_EXTRACT(`settings_json`, '$.digitalLeakDefaultRetentionDays')) AS SIGNED),
-    90
+  JSON_OBJECT(
+    'imageMaxUploadMb', 12,
+    'imageCompressionQuality', 82,
+    'imageWebpQuality', 80,
+    'imageThumbnailQuality', 72,
+    'imageMaxResolution', 2048,
+    'encryptOriginals', TRUE,
+    'generateAnalysisImages', TRUE,
+    'supportHoursStart', '09:00',
+    'supportHoursEnd', '18:00',
+    'supportTimezone', 'Europe/Berlin',
+    'supportResponseText', 'In der Regel innerhalb von 1–2 Werktagen',
+    'digitalLeakDefaultRetentionDays', 90
   )
 )
 WHERE `id` = 1;

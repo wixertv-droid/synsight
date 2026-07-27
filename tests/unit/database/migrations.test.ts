@@ -390,6 +390,7 @@ describe("database migrations workflow", () => {
     expect(m036).toContain("reverse_image_compare");
     expect(m037).toContain("platform_settings");
     expect(m037).toContain("JSON_TYPE");
+    expect(m037).toContain("COALESCE(");
     expect(m037).toContain("reverse_image_module_settings");
   });
 });
