@@ -430,6 +430,7 @@ export async function getReverseImageSerpSources(
     selectedImageUrls: checkpoint.selectedImageUrls,
     retentionDays: scan.retention_days,
     expiresAt: scan.expires_at,
+    funnel: checkpoint.funnel ?? null,
   };
 }
 
