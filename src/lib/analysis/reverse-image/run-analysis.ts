@@ -531,6 +531,12 @@ async function executeDiscoveryPipeline(input: {
   checkpoint = { ...checkpoint, phase: "discovery_complete" };
   await persistCheckpoint(userId, scanId, checkpoint);
 
+  // Ohne DB-Cache keine persistente Quellenliste nach Refresh.
+  const cached = await loadReverseImageSerpCache(scanId);
+  if (!cached) {
+    await persistCheckpoint(userId, scanId, checkpoint);
+  }
+
   await completeReverseImageDiscovery({
     scanId,
     queryCount: checkpoint.queries.length,
@@ -797,14 +803,16 @@ export async function getReverseImageScanOutcome(
   sources?: Awaited<ReturnType<typeof getReverseImageSerpSources>>;
 }> {
   const report = await getReverseImageReportByScanId(userId, scanId);
-  if (report) return { status: "completed", report };
+  if (report?.status === "completed") {
+    return { status: "completed", report };
+  }
 
   const status = await getReverseImageScanStatus(userId, scanId);
   if (status === "failed") return { status: "failed", report: null };
   if (status === "completed") {
     return {
       status: "completed",
-      report: await getReverseImageReportByScanId(userId, scanId),
+      report: report ?? (await getReverseImageReportByScanId(userId, scanId)),
     };
   }
 
@@ -832,9 +840,14 @@ export async function getReverseImageScanOutcome(
         ? "discovering"
         : "discovering";
 
+  // discovery_complete / comparing: Report aus DB (Quellen bleiben über Refresh)
   return {
     status: mappedStatus,
-    report: null,
+    report:
+      report ??
+      (mappedStatus === "discovery_complete" || mappedStatus === "comparing"
+        ? await getReverseImageReportByScanId(userId, scanId)
+        : null),
     progress,
     live: checkpoint?.live,
     liveHits,

@@ -650,6 +650,7 @@ const MODULE_ADAPTERS: Record<string, ModuleAdapter> = {
   digital_leak_exposure: exposureAdapter,
   username_intelligence: usernameAdapter,
   reverse_image_search: reverseImageAdapter,
+  reverse_image_discovery: reverseImageAdapter,
 };
 
 function contributeModule(module: DashboardModuleInput): ModuleContribution {

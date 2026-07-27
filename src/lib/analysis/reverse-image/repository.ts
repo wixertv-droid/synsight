@@ -296,10 +296,13 @@ export async function getLatestReverseImageReport(
   const ok = await ensureReverseImageSchema();
   if (!ok) return null;
 
+  // Persistiert wie Google/Username: neuester Scan inkl. discovery_complete
+  // (Quellenliste), nicht nur fertige Gesichtsvergleiche.
   const scans = asRows<ScanRow>(
     await db.execute(sql`
       SELECT * FROM reverse_image_scans
-      WHERE user_id = ${userId} AND status = 'completed'
+      WHERE user_id = ${userId}
+        AND status IN ('discovery_complete', 'comparing', 'completed')
       ORDER BY id DESC LIMIT 1
     `)
   );
@@ -368,7 +371,15 @@ export async function getReverseImageReportByScanId(
     `)
   );
   const scan = scans[0];
-  if (!scan || scan.status !== "completed") return null;
+  if (!scan) return null;
+  if (
+    scan.status !== "completed" &&
+    scan.status !== "discovery_complete" &&
+    scan.status !== "comparing"
+  ) {
+    return null;
+  }
+  if (isReportExpired({ expiresAt: scan.expires_at })) return null;
 
   const hitRows = asRows<HitRow>(
     await db.execute(sql`

@@ -250,7 +250,11 @@ export default function ResultsCenterClient({
   );
 
   const finishScanAttempt = useCallback(
-    (options?: { clearScanParam?: boolean; tab?: string }) => {
+    (options?: {
+      clearScanParam?: boolean;
+      tab?: string;
+      scanId?: number | null;
+    }) => {
       setScanning(false);
       setScanApiReady(false);
       setScanDone(true);
@@ -259,6 +263,9 @@ export default function ResultsCenterClient({
         const params = new URLSearchParams({ tab });
         if (tab === "reverse_image_search") {
           params.set("module", "reverse_image");
+          if (options?.scanId && options.scanId > 0) {
+            params.set("scanId", String(options.scanId));
+          }
         }
         router.replace(`/dashboard/results?${params.toString()}`, {
           scroll: false,
@@ -626,7 +633,7 @@ export default function ResultsCenterClient({
             return true;
           }
           if (status === "discovery_complete" && !compareOnly) {
-            setReverseImageReport(null);
+            if (report) setReverseImageReport(report);
             setReverseImageDiscoveryDone(true);
             setReverseImageComparePhase(false);
             setScanApiReady(true);
@@ -827,7 +834,7 @@ export default function ResultsCenterClient({
         setReverseImageScanId(scanId);
         const ok = await pollUntilDone(scanId, requestId, effectiveRetention);
         setScanApiReady(true);
-        finishScanAttempt({ tab: "reverse_image_search" });
+        finishScanAttempt({ tab: "reverse_image_search", scanId });
         void ok;
         return;
       }
@@ -956,15 +963,24 @@ export default function ResultsCenterClient({
   useEffect(() => {
     if (
       activeTab !== "reverse_image_search" ||
+      shouldScan ||
       reverseImageReport ||
-      reverseImageDiscoveryDone ||
-      shouldScan
+      reverseImageDiscoveryDone
     ) {
       return;
     }
+
+    const urlScanId = Number.parseInt(searchParams.get("scanId") ?? "", 10);
     void loadLatestReverseImageReport().then(({ report, pending }) => {
       if (report) {
         setReverseImageReport(report);
+        setReverseImageScanId(report.scanId);
+        if (
+          report.status === "discovery_complete" ||
+          report.status === "comparing"
+        ) {
+          setReverseImageDiscoveryDone(true);
+        }
         return;
       }
       if (pending?.status === "discovery_complete") {
@@ -981,6 +997,9 @@ export default function ResultsCenterClient({
             setScanning(false);
           }
         );
+      } else if (Number.isFinite(urlScanId) && urlScanId > 0) {
+        setReverseImageScanId(urlScanId);
+        setReverseImageDiscoveryDone(true);
       }
     });
   }, [
@@ -990,6 +1009,7 @@ export default function ResultsCenterClient({
     shouldScan,
     pollReverseImageScan,
     retentionDays,
+    searchParams,
   ]);
 
   function selectTab(id: string) {

@@ -23,9 +23,10 @@ export async function GET() {
     );
   }
 
-  const report = await getLatestReverseImageReport(userId);
-  const pending = report
-    ? null
-    : await getLatestReverseImageAwaitingAction(userId);
+  const [report, pending] = await Promise.all([
+    getLatestReverseImageReport(userId),
+    getLatestReverseImageAwaitingAction(userId),
+  ]);
+
   return NextResponse.json(apiSuccess({ report, pending }));
 }

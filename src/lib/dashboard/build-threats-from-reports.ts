@@ -6,6 +6,12 @@ import {
 } from "@/lib/analysis/digital-exposure/to-intelligence-hit";
 import type { IntelligenceReport } from "@/lib/analysis/types";
 import { isLiveSerpSource } from "@/lib/analysis/types";
+import type { ReverseImageReport } from "@/lib/analysis/reverse-image/types";
+import {
+  orderTypeForReverseImageHit,
+  reverseImageHitToIntelligenceHit,
+  selfGuideForReverseImageHit,
+} from "@/lib/analysis/reverse-image/to-intelligence-hit";
 import type { UsernameReport } from "@/lib/analysis/username/types";
 import type { SynSightOrderType } from "@/lib/analysis/username/types";
 import {
@@ -15,7 +21,10 @@ import {
 import type { RiskLevel } from "@/types/platform";
 
 export type ThreatModuleKey =
-  "google_search" | "digital_leak_exposure" | "username_intelligence";
+  | "google_search"
+  | "digital_leak_exposure"
+  | "username_intelligence"
+  | "reverse_image_search";
 
 export interface PlatformThreat {
   id: string;
@@ -58,6 +67,10 @@ export const THREAT_MODULE_META: Record<
   username_intelligence: {
     label: "Username Intelligence",
     short: "USERNAME",
+  },
+  reverse_image_search: {
+    label: "Reverse Image Search",
+    short: "BILD",
   },
 };
 
@@ -125,6 +138,7 @@ export function buildThreatsFromReports(input: {
   google?: IntelligenceReport | null;
   exposure?: DigitalExposureReport | null;
   username?: UsernameReport | null;
+  reverseImage?: ReverseImageReport | null;
 }): PlatformThreat[] {
   const threats: PlatformThreat[] = [];
 
@@ -288,6 +302,52 @@ export function buildThreatsFromReports(input: {
             (hit.isProblematic
               ? "Problematischer öffentlicher Profiltreffer mit Identitätsbezug."
               : "Öffentlicher Username-Treffer kann Ihre digitale Auffindbarkeit erhöhen."),
+        },
+      });
+    }
+  }
+
+  const reverseImage = input.reverseImage ?? null;
+  if (reverseImage) {
+    const hotHits = (reverseImage.hits ?? [])
+      .filter((h) => h.similarity >= 0.7)
+      .slice(0, 4);
+    for (const hit of hotHits) {
+      const intel = reverseImageHitToIntelligenceHit(hit);
+      const pct = Math.round(hit.similarity * 100);
+      threats.push({
+        id: `threat-reverse-${hit.id}`,
+        level:
+          hit.riskLevel === "high"
+            ? "high"
+            : hit.riskLevel === "medium"
+              ? "medium"
+              : "low",
+        title: (hit.title || "Visueller Treffer").slice(0, 100),
+        found:
+          `${pct} % Übereinstimmung · ${hit.sourceHost || "Öffentliche Quelle"}`.slice(
+            0,
+            220
+          ),
+        whyItMatters:
+          "Öffentliche Bildtreffer mit Gesichtsübereinstimmung können Identitätszuordnung und Missbrauch erleichtern.",
+        userAction:
+          "Quelle prüfen, unerwünschte Veröffentlichung melden oder entfernen lassen.",
+        source: hit.sourceHost || "Reverse Image Search",
+        moduleKey: "reverse_image_search",
+        moduleLabel: THREAT_MODULE_META.reverse_image_search.label,
+        url: hit.sourceUrl?.startsWith("http")
+          ? hit.sourceUrl
+          : hit.imageUrl?.startsWith("http")
+            ? hit.imageUrl
+            : null,
+        actionPlatform: hit.sourceHost || "Reverse Image",
+        actionTitle: hit.title,
+        orderType: orderTypeForReverseImageHit(),
+        selfGuide: selfGuideForReverseImageHit(hit),
+        aiExplain: {
+          whyFound: intel.whyFoundPlain ?? intel.whyFound,
+          whyRelevant: intel.whyRelevantPlain ?? intel.whyRelevant,
         },
       });
     }

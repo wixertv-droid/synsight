@@ -22,7 +22,8 @@ export function buildManagementOverview(
   hits: ReverseImageHit[],
   candidateCount: number,
   queryCount: number,
-  referenceImageCount: number
+  referenceImageCount: number,
+  status?: ReverseImageReport["status"]
 ): ReverseImageManagementOverview {
   const matchCount = hits.length;
   const similarities = hits.map((h) => h.similarity);
@@ -42,14 +43,18 @@ export function buildManagementOverview(
       ? "Hohe visuelle Übereinstimmung"
       : overallRisk === "medium"
         ? "Auffällige Bildtreffer"
-        : "Keine kritischen Treffer";
+        : status === "discovery_complete" || status === "discovering"
+          ? "Bildsuche abgeschlossen — Auswahl ausstehend"
+          : "Keine kritischen Treffer";
 
   const headline =
     matchCount > 0
       ? `${matchCount} visuelle Treffer über öffentliche Google-Index-Vorschauen (max. ${Math.round(maxSimilarity * 100)} % Ähnlichkeit).`
-      : candidateCount > 0
-        ? `${candidateCount} Kandidaten geprüft — keine Übereinstimmung über dem Schwellenwert.`
-        : "Keine verwertbaren Bildkandidaten in der Index-Suche gefunden.";
+      : status === "discovery_complete" || status === "discovering"
+        ? `${candidateCount} Bildlinks gespeichert — bitte Quellen prüfen und Gesichtsvergleich starten.`
+        : candidateCount > 0
+          ? `${candidateCount} Kandidaten geprüft — keine Übereinstimmung über dem Schwellenwert.`
+          : "Keine verwertbaren Bildkandidaten in der Index-Suche gefunden.";
 
   return {
     headline,
@@ -101,7 +106,8 @@ export function assembleReverseImageReport(input: {
     input.hits,
     input.candidateCount,
     input.queryCount,
-    input.referenceImageCount
+    input.referenceImageCount,
+    input.status
   );
   const riskScore = computeReverseImageRiskScore(input.hits);
 

@@ -3,6 +3,7 @@
  */
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
 import { getLatestDigitalExposureReport } from "@/lib/analysis/digital-exposure/repository";
+import { getLatestReverseImageReport } from "@/lib/analysis/reverse-image/repository";
 import { getLatestUsernameReport } from "@/lib/analysis/username/repository";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import {
@@ -13,6 +14,7 @@ import { extractActiveAnalysisKeys } from "@/lib/credits/resolve-active-analyses
 import {
   filterIgnoredFromDigitalExposureReport,
   filterIgnoredFromGoogleReport,
+  filterIgnoredFromReverseImageReport,
   filterIgnoredFromUsernameReport,
 } from "@/lib/services/report-stats-filter";
 import { getPublicPricingCatalog } from "@/lib/services/pricing-service";
@@ -33,6 +35,7 @@ export async function loadUserThreatBundle(userId: number): Promise<{
   let google = null;
   let exposure = null;
   let username = null;
+  let reverseImage = null;
   let hasAnyReport = false;
 
   if (activeKeys.includes("google_search")) {
@@ -63,7 +66,24 @@ export async function loadUserThreatBundle(userId: number): Promise<{
       console.error("[threats] username load failed", error);
     }
   }
+  if (
+    activeKeys.includes("reverse_image_discovery") ||
+    activeKeys.includes("reverse_image_search")
+  ) {
+    try {
+      const raw = await getLatestReverseImageReport(userId);
+      reverseImage = await filterIgnoredFromReverseImageReport(userId, raw);
+      if (reverseImage) hasAnyReport = true;
+    } catch (error) {
+      console.error("[threats] reverse-image load failed", error);
+    }
+  }
 
-  const threats = buildThreatsFromReports({ google, exposure, username });
+  const threats = buildThreatsFromReports({
+    google,
+    exposure,
+    username,
+    reverseImage,
+  });
   return { threats, activeKeys, hasAnyReport };
 }
