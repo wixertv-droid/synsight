@@ -62,8 +62,11 @@ function riskTone(level: string): {
 
 export default function ReverseImageReportView({
   report,
+  onCompareStarted,
 }: {
   report: ReverseImageReport;
+  /** Prefer parent handler so Results Center can show the compare animation. */
+  onCompareStarted?: (payload: { requestId: string }) => void;
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<SeverityRiskFilterId>("all");
@@ -119,11 +122,25 @@ export default function ReverseImageReportView({
     void loadSources();
   }, [loadSources]);
 
-  const onCompareStarted = useCallback(() => {
-    router.push(
-      `/dashboard/results?tab=reverse_image_search&module=reverse_image&scan=1&compareWatch=1&scanId=${report.scanId}`
-    );
-  }, [report.scanId, router]);
+  const handleCompareStarted = useCallback(
+    (payload: { requestId: string }) => {
+      if (onCompareStarted) {
+        onCompareStarted(payload);
+        return;
+      }
+      // Fallback: deep-link into Results Center compare watch
+      const params = new URLSearchParams({
+        tab: "reverse_image_search",
+        module: "reverse_image",
+        scan: "1",
+        compareWatch: "1",
+        scanId: String(report.scanId),
+      });
+      if (payload.requestId) params.set("requestId", payload.requestId);
+      router.push(`/dashboard/results?${params.toString()}`);
+    },
+    [onCompareStarted, report.scanId, router]
+  );
 
   const visibleSources = useMemo(() => {
     if (activeSourceFilter === "all") return sources;
@@ -385,7 +402,7 @@ export default function ReverseImageReportView({
                 <div className="mt-5">
                   <ReverseImageCandidatePicker
                     scanId={report.scanId}
-                    onCompareStarted={onCompareStarted}
+                    onCompareStarted={handleCompareStarted}
                   />
                 </div>
               ) : null}

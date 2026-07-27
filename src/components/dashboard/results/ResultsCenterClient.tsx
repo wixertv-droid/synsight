@@ -223,6 +223,7 @@ export default function ResultsCenterClient({
     }
   );
   const scanStartedRef = useRef(false);
+  const compareWatchStartedRef = useRef(false);
 
   useEffect(() => {
     const fromUrl = searchParams.get("retention");
@@ -922,6 +923,65 @@ export default function ResultsCenterClient({
     }
   }, [shouldScan, activeTab, scanning, scanDone, runUsernameScan]);
 
+  const beginReverseImageCompareWatch = useCallback(
+    (scanId: number, requestId: string) => {
+      compareWatchStartedRef.current = true;
+      scanStartedRef.current = true;
+      setScanDone(false);
+      setError(null);
+      setReverseImageScanId(scanId);
+      setReverseImageComparePhase(true);
+      setReverseImageDiscoveryDone(true);
+      setReverseImageReport(null);
+      setReverseImageLive({
+        currentImageUrl: null,
+        currentTitle: null,
+        recent: [],
+      });
+      setReverseImageLiveHits([]);
+      setScanning(true);
+      setScanApiReady(false);
+      void pollReverseImageScan(scanId, requestId, retentionDays, true).then(
+        () => {
+          setScanApiReady(true);
+          finishScanAttempt({ tab: "reverse_image_search", scanId });
+          // Nächster Facescan in derselben Session erlauben
+          compareWatchStartedRef.current = false;
+        }
+      );
+    },
+    [pollReverseImageScan, retentionDays, finishScanAttempt]
+  );
+
+  // Facescan-Watch unabhängig von Discovery-scanDone/scanStartedRef —
+  // sonst öffnet die Compare-Animation nach Phase 1 nie wieder.
+  useEffect(() => {
+    const compareWatch = searchParams.get("compareWatch") === "1";
+    const watchScanId = Number.parseInt(searchParams.get("scanId") ?? "", 10);
+    if (
+      !compareWatch ||
+      !Number.isFinite(watchScanId) ||
+      watchScanId <= 0 ||
+      scanning ||
+      compareWatchStartedRef.current
+    ) {
+      return;
+    }
+    if (activeTab !== "reverse_image_search") {
+      setActiveTab("reverse_image_search");
+    }
+    const requestId = (
+      searchParams.get("requestId") ?? requestIdFromUrl
+    ).trim();
+    beginReverseImageCompareWatch(watchScanId, requestId);
+  }, [
+    searchParams,
+    scanning,
+    activeTab,
+    beginReverseImageCompareWatch,
+    requestIdFromUrl,
+  ]);
+
   useEffect(() => {
     if (
       shouldScan &&
@@ -930,26 +990,9 @@ export default function ResultsCenterClient({
       !scanDone &&
       !scanStartedRef.current
     ) {
+      if (searchParams.get("compareWatch") === "1") return;
       if (activeTab !== "reverse_image_search") {
         setActiveTab("reverse_image_search");
-      }
-      const compareWatch = searchParams.get("compareWatch") === "1";
-      const watchScanId = Number.parseInt(searchParams.get("scanId") ?? "", 10);
-      if (compareWatch && Number.isFinite(watchScanId) && watchScanId > 0) {
-        scanStartedRef.current = true;
-        setReverseImageScanId(watchScanId);
-        setReverseImageComparePhase(true);
-        setReverseImageDiscoveryDone(true);
-        setReverseImageReport(null);
-        setScanning(true);
-        setScanApiReady(false);
-        void pollReverseImageScan(watchScanId, "", retentionDays, true).then(
-          () => {
-            setScanApiReady(true);
-            finishScanAttempt({ tab: "reverse_image_search" });
-          }
-        );
-        return;
       }
       scanStartedRef.current = true;
       void runReverseImageScan();
@@ -962,9 +1005,6 @@ export default function ResultsCenterClient({
     scanDone,
     runReverseImageScan,
     searchParams,
-    pollReverseImageScan,
-    retentionDays,
-    finishScanAttempt,
   ]);
 
   useEffect(() => {
@@ -994,16 +1034,7 @@ export default function ResultsCenterClient({
         setReverseImageScanId(pending.scanId);
         setReverseImageDiscoveryDone(true);
       } else if (pending?.status === "comparing") {
-        setReverseImageScanId(pending.scanId);
-        setReverseImageDiscoveryDone(true);
-        setReverseImageComparePhase(true);
-        setScanning(true);
-        void pollReverseImageScan(pending.scanId, "", retentionDays, true).then(
-          () => {
-            setScanApiReady(true);
-            setScanning(false);
-          }
-        );
+        beginReverseImageCompareWatch(pending.scanId, "");
       } else if (Number.isFinite(urlScanId) && urlScanId > 0) {
         setReverseImageScanId(urlScanId);
         setReverseImageDiscoveryDone(true);
@@ -1014,8 +1045,7 @@ export default function ResultsCenterClient({
     reverseImageReport,
     reverseImageDiscoveryDone,
     shouldScan,
-    pollReverseImageScan,
-    retentionDays,
+    beginReverseImageCompareWatch,
     searchParams,
   ]);
 
@@ -1178,7 +1208,15 @@ export default function ResultsCenterClient({
             ) : null}
             {activeModule.id === "reverse_image_search" &&
             reverseImageReport ? (
-              <ReverseImageReportView report={reverseImageReport} />
+              <ReverseImageReportView
+                report={reverseImageReport}
+                onCompareStarted={({ requestId }) => {
+                  beginReverseImageCompareWatch(
+                    reverseImageReport.scanId,
+                    requestId
+                  );
+                }}
+              />
             ) : null}
           </div>
         </>
@@ -1342,21 +1380,14 @@ export default function ResultsCenterClient({
                   reverseImageReport.scanId !== reverseImageScanId) ? (
                   <ReverseImageCandidatePicker
                     scanId={reverseImageScanId}
-                    onCompareStarted={() => {
-                      setReverseImageComparePhase(true);
-                      setScanning(true);
-                      setScanApiReady(false);
-                      void pollReverseImageScan(
+                    onCompareStarted={({ requestId }) => {
+                      beginReverseImageCompareWatch(
                         reverseImageScanId,
-                        (
-                          searchParams.get("requestId") ?? requestIdFromUrl
-                        ).trim(),
-                        retentionDays,
-                        true
-                      ).then(() => {
-                        setScanApiReady(true);
-                        finishScanAttempt({ tab: "reverse_image_search" });
-                      });
+                        requestId ||
+                          (
+                            searchParams.get("requestId") ?? requestIdFromUrl
+                          ).trim()
+                      );
                     }}
                   />
                 ) : null}
