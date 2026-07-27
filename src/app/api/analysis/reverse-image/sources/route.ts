@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getReverseImageScanOutcome } from "@/lib/analysis/reverse-image/run-analysis";
+import { getReverseImageSerpSources } from "@/lib/analysis/reverse-image/run-analysis";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -31,15 +31,16 @@ export async function GET(request: Request) {
     );
   }
 
-  const outcome = await getReverseImageScanOutcome(userId, scanId);
-  return NextResponse.json(
-    apiSuccess({
-      status: outcome.status,
-      report: outcome.report,
-      scanId,
-      progress: outcome.progress ?? null,
-      live: outcome.live ?? null,
-      liveHits: outcome.liveHits ?? [],
-    })
-  );
+  const sources = await getReverseImageSerpSources(userId, scanId);
+  if (!sources) {
+    return NextResponse.json(
+      apiError(
+        "NOT_FOUND",
+        "Keine gespeicherten SerpAPI-Daten für diesen Scan."
+      ),
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json(apiSuccess(sources));
 }

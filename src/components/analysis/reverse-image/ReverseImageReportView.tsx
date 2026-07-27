@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ReverseImageReport } from "@/lib/analysis/reverse-image/types";
+import type { SerpImageCandidate } from "@/lib/analysis/reverse-image/serpapi-images";
 import {
   orderTypeForReverseImageHit,
   reverseImageHitToIntelligenceHit,
@@ -11,6 +13,7 @@ import { fingerprintForIntelligenceHit } from "@/lib/analysis/hit-action-state";
 import { useAnalysisHitActions } from "@/hooks/use-analysis-hit-actions";
 import IntelligenceHitCard from "@/components/analysis/intelligence/IntelligenceHitCard";
 import SectionReveal from "@/components/analysis/intelligence/SectionReveal";
+import ConsumeConfirm from "@/components/credits/ConsumeConfirm";
 import {
   countSeverities,
   matchesSeverityFilter,
@@ -23,6 +26,7 @@ import SystemRail, {
 
 const RAIL: SystemRailSection[] = [
   { id: "report-overview", label: "ÜBERBLICK" },
+  { id: "report-sources", label: "QUELLEN" },
   { id: "report-summary", label: "ZUSAMMENFASSUNG" },
   { id: "report-hits", label: "TREFFER" },
 ];
@@ -40,9 +44,50 @@ export default function ReverseImageReportView({
 }: {
   report: ReverseImageReport;
 }) {
+  const router = useRouter();
   const [filter, setFilter] = useState<SeverityRiskFilterId>("all");
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [sources, setSources] = useState<SerpImageCandidate[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(false);
+  const [rescanConfirm, setRescanConfirm] = useState(false);
   const { actionFor, onActionChange } = useAnalysisHitActions(
     "reverse_image_search"
+  );
+
+  const loadSources = useCallback(async () => {
+    setSourcesLoading(true);
+    try {
+      const response = await fetch(
+        `/api/analysis/reverse-image/sources?scanId=${report.scanId}`,
+        { cache: "no-store" }
+      );
+      const body = await response.json().catch(() => null);
+      if (response.ok && body?.success) {
+        setSources(body.data.candidates ?? []);
+      }
+    } finally {
+      setSourcesLoading(false);
+    }
+  }, [report.scanId]);
+
+  useEffect(() => {
+    if (sourcesOpen && sources.length === 0) {
+      void loadSources();
+    }
+  }, [sourcesOpen, sources.length, loadSources]);
+
+  const onRescanConfirmed = useCallback(
+    (payload: { requestId: string }) => {
+      const params = new URLSearchParams({
+        tab: "reverse_image_search",
+        scan: "1",
+        rescan: "1",
+        scanId: String(report.scanId),
+        requestId: payload.requestId,
+      });
+      router.push(`/dashboard/results?${params.toString()}`);
+    },
+    [report.scanId, router]
   );
 
   const intelligenceHits = useMemo(
@@ -109,6 +154,93 @@ export default function ReverseImageReportView({
                 </p>
               </div>
             </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => setRescanConfirm(true)}
+                className="rounded-lg border border-cyber-cyan/35 bg-cyber-cyan/[0.08] px-4 py-2 text-sm text-cyber-cyan transition hover:bg-cyber-cyan/[0.14]"
+              >
+                Bildscan erneut durchführen (ohne SerpAPI)
+              </button>
+            </div>
+          </section>
+        </SectionReveal>
+
+        <SectionReveal delayMs={60} enabled>
+          <section
+            id="report-sources"
+            className="glass hardware-panel rounded-[1.2rem] border border-white/[0.07]"
+          >
+            <button
+              type="button"
+              onClick={() => setSourcesOpen((open) => !open)}
+              className="flex w-full items-center justify-between px-5 py-4 text-left md:px-6"
+            >
+              <div>
+                <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/50">
+                  SERPAPI QUELLEN · GESPEICHERT
+                </p>
+                <p className="mt-1 text-sm text-white/60">
+                  {report.candidateCount} Bild-Links aus Google Images (
+                  Aufbewahrung:{" "}
+                  {report.retentionDays === 0
+                    ? "unbegrenzt"
+                    : `${report.retentionDays} Tage`}
+                  )
+                </p>
+              </div>
+              <span className="font-mono text-sm text-white/40">
+                {sourcesOpen ? "▲" : "▼"}
+              </span>
+            </button>
+            {sourcesOpen ? (
+              <div className="border-t border-white/[0.06] px-5 py-4 md:px-6">
+                {sourcesLoading ? (
+                  <p className="text-sm text-white/40">Lade Quellen…</p>
+                ) : sources.length === 0 ? (
+                  <p className="text-sm text-white/40">
+                    Keine gespeicherten Quellen verfügbar.
+                  </p>
+                ) : (
+                  <ul className="max-h-[320px] space-y-2 overflow-y-auto">
+                    {sources.map((candidate) => (
+                      <li
+                        key={candidate.imageUrl}
+                        className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                      >
+                        <p className="truncate text-sm text-white/75">
+                          {candidate.title}
+                        </p>
+                        <p className="font-mono text-[9px] text-white/35">
+                          {candidate.query} · {candidate.sourceHost}
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-3 font-mono text-[9px]">
+                          <a
+                            href={candidate.imageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-cyber-cyan/80 hover:underline"
+                          >
+                            Bild-URL
+                          </a>
+                          {candidate.sourceUrl ? (
+                            <a
+                              href={candidate.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sky-300/70 hover:underline"
+                            >
+                              Quellseite
+                            </a>
+                          ) : null}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
           </section>
         </SectionReveal>
 
@@ -198,6 +330,23 @@ export default function ReverseImageReportView({
           </section>
         </SectionReveal>
       </div>
+
+      {rescanConfirm ? (
+        <div className="mt-6">
+          <ConsumeConfirm
+            analysisKey="reverse_image_search"
+            confirmLabel="Bildscan erneut starten"
+            onCompleted={onRescanConfirmed}
+          />
+          <button
+            type="button"
+            onClick={() => setRescanConfirm(false)}
+            className="mt-3 text-sm text-white/40 hover:text-white/60"
+          >
+            Abbrechen
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

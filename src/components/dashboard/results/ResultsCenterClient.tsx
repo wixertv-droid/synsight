@@ -6,6 +6,7 @@ import GoogleIntelligenceReport from "@/components/analysis/google/GoogleIntelli
 import DigitalExposureReportView from "@/components/analysis/digital-exposure/DigitalExposureReportView";
 import UsernameIntelligenceReportView from "@/components/analysis/username/UsernameIntelligenceReportView";
 import ReverseImageReportView from "@/components/analysis/reverse-image/ReverseImageReportView";
+import ReverseImageLiveScanPanel from "@/components/analysis/reverse-image/ReverseImageLiveScanPanel";
 import IntelligenceScanSequence from "@/components/analysis/intelligence/IntelligenceScanSequence";
 import DashboardPageRail from "@/components/dashboard/DashboardPageRail";
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
@@ -14,7 +15,11 @@ import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/type
 import { usernameIntelligenceModule } from "@/lib/analysis/username/module";
 import type { UsernameReport } from "@/lib/analysis/username/types";
 import { reverseImageSearchModule } from "@/lib/analysis/reverse-image/module";
-import type { ReverseImageReport } from "@/lib/analysis/reverse-image/types";
+import type {
+  ReverseImageReport,
+  ReverseImageHit,
+} from "@/lib/analysis/reverse-image/types";
+import type { ReverseImageLiveScanEntry } from "@/lib/analysis/reverse-image/serp-checkpoint";
 import { googleIntelligenceModule } from "@/lib/analysis/google/module";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import {
@@ -127,6 +132,17 @@ export default function ResultsCenterClient({
   );
   const [reverseImageReport, setReverseImageReport] =
     useState<ReverseImageReport | null>(initialReverseImageReport);
+  const [reverseImageScanId, setReverseImageScanId] = useState<number | null>(
+    null
+  );
+  const [reverseImageLive, setReverseImageLive] = useState<{
+    currentImageUrl: string | null;
+    currentTitle: string | null;
+    recent: ReverseImageLiveScanEntry[];
+  }>({ currentImageUrl: null, currentTitle: null, recent: [] });
+  const [reverseImageLiveHits, setReverseImageLiveHits] = useState<
+    ReverseImageHit[]
+  >([]);
   const [scanning, setScanning] = useState(false);
   const [scanApiReady, setScanApiReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -497,6 +513,12 @@ export default function ResultsCenterClient({
     setError(null);
     setScanning(true);
     setScanApiReady(false);
+    setReverseImageLive({
+      currentImageUrl: null,
+      currentTitle: null,
+      recent: [],
+    });
+    setReverseImageLiveHits([]);
     const scanStart = Date.now();
     const minScanMs = Math.max(
       reverseImageSearchModule.minScanMs,
@@ -523,6 +545,26 @@ export default function ResultsCenterClient({
           const status = statusBody?.data?.status as string | undefined;
           const report = statusBody?.data?.report as
             ReverseImageReport | null | undefined;
+          const live = statusBody?.data?.live as
+            | {
+                currentImageUrl: string | null;
+                currentTitle: string | null;
+                recent: ReverseImageLiveScanEntry[];
+              }
+            | null
+            | undefined;
+          const liveHits = statusBody?.data?.liveHits as
+            ReverseImageHit[] | undefined;
+          if (live) {
+            setReverseImageLive({
+              currentImageUrl: live.currentImageUrl,
+              currentTitle: live.currentTitle,
+              recent: live.recent ?? [],
+            });
+          }
+          if (liveHits?.length) {
+            setReverseImageLiveHits(liveHits);
+          }
           if (status === "completed" && report) {
             setReverseImageReport(report);
             setError(null);
@@ -589,12 +631,21 @@ export default function ResultsCenterClient({
         return;
       }
 
+      const rescanOnly = searchParams.get("rescan") === "1";
+      const rescanScanId = Number.parseInt(
+        searchParams.get("scanId") ?? "",
+        10
+      );
+
       const response = await fetch("/api/analysis/reverse-image/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           retentionDays: effectiveRetention,
           requestId,
+          rescanOnly:
+            rescanOnly && Number.isFinite(rescanScanId) && rescanScanId > 0,
+          scanId: rescanOnly ? rescanScanId : undefined,
         }),
       });
 
@@ -676,6 +727,7 @@ export default function ResultsCenterClient({
 
       const scanId = Number(body.data?.scanId);
       if (Number.isFinite(scanId) && scanId > 0) {
+        setReverseImageScanId(scanId);
         const ok = await pollUntilDone(scanId, requestId, effectiveRetention);
         setScanApiReady(true);
         finishScanAttempt({ tab: "reverse_image_search" });
@@ -1027,7 +1079,48 @@ export default function ResultsCenterClient({
                     subjectName={subjectName}
                     apiReady={scanApiReady}
                     onComplete={() => undefined}
+                    rightPanel={
+                      reverseImageScanId ? (
+                        <ReverseImageLiveScanPanel
+                          scanId={reverseImageScanId}
+                          currentImageUrl={reverseImageLive.currentImageUrl}
+                          currentTitle={reverseImageLive.currentTitle}
+                          recent={reverseImageLive.recent}
+                          liveHits={reverseImageLiveHits}
+                          scanning={scanning && !scanApiReady}
+                        />
+                      ) : null
+                    }
                   />
+                ) : null}
+
+                {scanning && reverseImageLiveHits.length > 0 ? (
+                  <section className="mt-6 rounded-[1.1rem] border border-emerald-400/20 bg-emerald-400/[0.03] p-4">
+                    <p className="font-mono text-[9px] tracking-[.14em] text-emerald-300/70">
+                      LIVE-TREFFER · WERDEN GESPEICHERT
+                    </p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {reverseImageLiveHits.map((hit) => (
+                        <article
+                          key={hit.id}
+                          className="overflow-hidden rounded-lg border border-emerald-400/25 bg-black/30"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`/api/analysis/reverse-image/hits/${hit.id}/image?scanId=${reverseImageScanId ?? ""}&thumb=1`}
+                            alt={hit.title}
+                            className="h-32 w-full object-cover object-top"
+                          />
+                          <p className="truncate px-2 py-1.5 text-xs text-white/70">
+                            {hit.title}
+                          </p>
+                          <p className="px-2 pb-2 font-mono text-[10px] text-emerald-300/80">
+                            {Math.round(hit.similarity * 100)} % Übereinstimmung
+                          </p>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
                 ) : null}
 
                 {error ? (

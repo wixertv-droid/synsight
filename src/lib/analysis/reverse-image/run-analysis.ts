@@ -4,8 +4,8 @@ import { readStoredProfileImage } from "@/lib/media/image-pipeline";
 import { isGoogleSearchConfigured } from "@/lib/analysis/google/custom-search";
 import {
   compareImagesWithInsightFace,
-  isInsightFaceConfigured,
-  resolveSimilarityThreshold,
+  isInsightFaceConfiguredAsync,
+  resolveSimilarityThresholdAsync,
 } from "@/lib/analysis/reverse-image/insightface-client";
 import { planReverseImageQueries } from "@/lib/analysis/reverse-image/search-planner";
 import {
@@ -14,14 +14,18 @@ import {
   type SerpImageCandidate,
 } from "@/lib/analysis/reverse-image/serpapi-images";
 import {
-  cleanupSerpCache,
+  appendLiveScanResult,
   createEmptySerpCheckpoint,
   markCandidateProcessed,
   markQueryFetched,
   readSerpCheckpoint,
   remainingCandidates,
+  resetCheckpointForRescan,
   scanWorkRemaining,
+  setLiveScanCurrent,
   writeSerpCheckpoint,
+  type ReverseImageLiveScanEntry,
+  type ReverseImageSerpCheckpoint,
 } from "@/lib/analysis/reverse-image/serp-checkpoint";
 import {
   cleanupTempDir,
@@ -29,20 +33,24 @@ import {
   ensureReverseImageDirs,
   persistMatchImage,
   writeTempCandidate,
+  cleanupReverseImageScanStorage,
 } from "@/lib/analysis/reverse-image/storage";
 import {
   assembleReverseImageReport,
   riskLevelFromSimilarity,
 } from "@/lib/analysis/reverse-image/report-metrics";
 import {
+  clearReverseImageHitsForScan,
   completeReverseImageScan,
   createReverseImageScan,
   failReverseImageScan,
   findRunningReverseImageScan,
   getReverseImageHitsForScan,
   getReverseImageReportByScanId,
+  getReverseImageScanMeta,
   getReverseImageScanStatus,
   insertReverseImageHit,
+  resetReverseImageScanForRescan,
   touchReverseImageScanProgress,
 } from "@/lib/analysis/reverse-image/repository";
 import type {
@@ -51,6 +59,7 @@ import type {
 } from "@/lib/analysis/reverse-image/types";
 import {
   computeExpiresAt,
+  isReportExpired,
   parseRetentionDays,
   type ReportRetentionDays,
 } from "@/lib/analysis/retention";
@@ -137,13 +146,16 @@ async function loadReferenceImages(
 }
 
 export async function isReverseImageConfigured(): Promise<boolean> {
-  return (await isGoogleSearchConfigured()) && isInsightFaceConfigured();
+  return (
+    (await isGoogleSearchConfigured()) && (await isInsightFaceConfiguredAsync())
+  );
 }
 
 export interface ReverseImageStartResult {
   scanId: number;
   status: "running";
   resumed?: boolean;
+  rescan?: boolean;
 }
 
 /**
@@ -222,9 +234,104 @@ export async function startReverseImageSearchScan(
     queries,
     retentionDays,
     expiresAt,
+    skipSerpFetch: false,
   });
 
   return { scanId, status: "running", resumed: resumed || undefined };
+}
+
+/**
+ * Re-run InsightFace compare on cached SerpAPI candidates — no new SerpAPI billing.
+ */
+export async function startReverseImageRescan(
+  identity: IdentityView | null,
+  options: {
+    userId: number;
+    scanId: number;
+  }
+): Promise<ReverseImageStartResult> {
+  if (!(await isInsightFaceConfiguredAsync())) {
+    throw new ReverseImageUnavailableError(
+      "Face-Erkennung ist nicht konfiguriert (InsightFace erforderlich)."
+    );
+  }
+
+  const userId = options.userId;
+  const scanId = options.scanId;
+  const scan = await getReverseImageScanMeta(userId, scanId);
+  if (!scan) {
+    throw new ReverseImageUnavailableError("Scan nicht gefunden.");
+  }
+  if (isReportExpired({ expiresAt: scan.expires_at })) {
+    throw new ReverseImageUnavailableError(
+      "Der Report ist abgelaufen — SerpAPI-Quellen sind nicht mehr verfügbar."
+    );
+  }
+
+  const checkpoint = await readSerpCheckpoint(userId, scanId);
+  if (!checkpoint?.serpFetchComplete || checkpoint.candidates.length === 0) {
+    throw new ReverseImageUnavailableError(
+      "Keine gespeicherten SerpAPI-Daten für diesen Scan vorhanden."
+    );
+  }
+
+  const references = await loadReferenceImages(userId, identity);
+  if (references.length === 0) {
+    throw new ReverseImageUnavailableError(
+      "Bitte laden Sie mindestens ein Referenzbild im Identitätsprofil hoch."
+    );
+  }
+
+  await clearReverseImageHitsForScan(scanId);
+  await resetReverseImageScanForRescan(scanId);
+  const resetCheckpoint = resetCheckpointForRescan(checkpoint);
+  await writeSerpCheckpoint(userId, scanId, resetCheckpoint);
+
+  kickOffReverseImagePipeline({
+    userId,
+    scanId,
+    identity,
+    subjectName: scan.subject_name ?? resolveSubjectName(identity),
+    references,
+    queries: checkpoint.queries,
+    retentionDays: scan.retention_days as ReportRetentionDays,
+    expiresAt: scan.expires_at,
+    skipSerpFetch: true,
+  });
+
+  return { scanId, status: "running", rescan: true };
+}
+
+export async function getReverseImageSerpSources(
+  userId: number,
+  scanId: number
+): Promise<{
+  scanId: number;
+  candidates: SerpImageCandidate[];
+  queries: ReverseImageSerpCheckpoint["queries"];
+  serpFetchComplete: boolean;
+  retentionDays: number;
+  expiresAt: string | null;
+} | null> {
+  const scan = await getReverseImageScanMeta(userId, scanId);
+  if (!scan || isReportExpired({ expiresAt: scan.expires_at })) {
+    if (scan && isReportExpired({ expiresAt: scan.expires_at })) {
+      await cleanupReverseImageScanStorage(userId, scanId).catch(
+        () => undefined
+      );
+    }
+    return null;
+  }
+  const checkpoint = await readSerpCheckpoint(userId, scanId);
+  if (!checkpoint) return null;
+  return {
+    scanId,
+    candidates: checkpoint.candidates,
+    queries: checkpoint.queries,
+    serpFetchComplete: checkpoint.serpFetchComplete,
+    retentionDays: scan.retention_days,
+    expiresAt: scan.expires_at,
+  };
 }
 
 function kickOffReverseImagePipeline(input: {
@@ -236,6 +343,7 @@ function kickOffReverseImagePipeline(input: {
   queries: ReturnType<typeof planReverseImageQueries>;
   retentionDays: ReportRetentionDays;
   expiresAt: string | null;
+  skipSerpFetch: boolean;
 }): void {
   const jobs = getReverseImageJobs();
   if (jobs.has(input.scanId)) return;
@@ -268,6 +376,7 @@ async function fetchRemainingSerpCandidates(input: {
   startedAt: number;
   budgetMs: number;
   maxCandidates: number;
+  skipSerpFetch: boolean;
 }): Promise<{
   checkpoint: Awaited<ReturnType<typeof readSerpCheckpoint>>;
   serpCalls: number;
@@ -280,7 +389,7 @@ async function fetchRemainingSerpCandidates(input: {
     throw new Error("SerpAPI-Checkpoint fehlt.");
   }
 
-  if (checkpoint.serpFetchComplete) {
+  if (checkpoint.serpFetchComplete || input.skipSerpFetch) {
     return { checkpoint, serpCalls };
   }
 
@@ -457,6 +566,7 @@ async function executeReverseImagePipeline(input: {
   queries: ReturnType<typeof planReverseImageQueries>;
   retentionDays: ReportRetentionDays;
   expiresAt: string | null;
+  skipSerpFetch: boolean;
 }): Promise<void> {
   const {
     userId,
@@ -466,6 +576,7 @@ async function executeReverseImagePipeline(input: {
     queries,
     retentionDays,
     expiresAt,
+    skipSerpFetch,
   } = input;
   const budgetMs = resolveBudgetMs();
   const maxCandidates = resolveMaxCandidates();
@@ -489,15 +600,19 @@ async function executeReverseImagePipeline(input: {
         startedAt: chunkStartedAt,
         budgetMs,
         maxCandidates,
+        skipSerpFetch,
       });
       checkpoint = fetchResult.checkpoint!;
 
-      const threshold = resolveSimilarityThreshold();
+      const threshold = await resolveSimilarityThresholdAsync();
       let existingHits = await getReverseImageHitsForScan(scanId);
       let budgetExceeded = false;
 
       const pending = remainingCandidates(checkpoint);
       for (const candidate of pending) {
+        checkpoint = setLiveScanCurrent(checkpoint, candidate);
+        await writeSerpCheckpoint(userId, scanId, checkpoint);
+
         const result = await processCandidate({
           userId,
           scanId,
@@ -511,7 +626,17 @@ async function executeReverseImagePipeline(input: {
         compareCalls += result.compareCalls;
         totalCompareCalls += result.compareCalls;
 
-        checkpoint = markCandidateProcessed(checkpoint, candidate.imageUrl);
+        const liveEntry: ReverseImageLiveScanEntry = {
+          imageUrl: candidate.imageUrl,
+          title: candidate.title,
+          match: Boolean(result.hit),
+          similarity: result.hit?.similarity,
+          at: new Date().toISOString(),
+        };
+        checkpoint = appendLiveScanResult(
+          markCandidateProcessed(checkpoint, candidate.imageUrl),
+          liveEntry
+        );
         await writeSerpCheckpoint(userId, scanId, checkpoint);
 
         if (result.hit) {
@@ -536,7 +661,6 @@ async function executeReverseImagePipeline(input: {
 
       if (!scanWorkRemaining(checkpoint)) {
         await cleanupTempDir(userId, scanId).catch(() => undefined);
-        await cleanupSerpCache(userId, scanId).catch(() => undefined);
 
         const report = assembleReverseImageReport({
           scanId,
@@ -619,6 +743,12 @@ export async function getReverseImageScanOutcome(
     candidatesProcessed: number;
     serpFetchComplete: boolean;
   };
+  live?: {
+    currentImageUrl: string | null;
+    currentTitle: string | null;
+    recent: ReverseImageLiveScanEntry[];
+  };
+  liveHits?: ReverseImageHit[];
 }> {
   const report = await getReverseImageReportByScanId(userId, scanId);
   if (report) return { status: "completed", report };
@@ -631,6 +761,7 @@ export async function getReverseImageScanOutcome(
   }
 
   const checkpoint = await readSerpCheckpoint(userId, scanId);
+  const liveHits = await getReverseImageHitsForScan(scanId);
   const progress = checkpoint
     ? {
         candidatesTotal: checkpoint.candidates.length,
@@ -639,7 +770,13 @@ export async function getReverseImageScanOutcome(
       }
     : undefined;
 
-  return { status: "running", report: null, progress };
+  return {
+    status: "running",
+    report: null,
+    progress,
+    live: checkpoint?.live,
+    liveHits,
+  };
 }
 
 /**

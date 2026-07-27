@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { IntelligenceScanStep } from "@/lib/analysis/types";
 import MissionProgressBar from "@/components/analysis/intelligence/MissionProgressBar";
 
@@ -34,6 +34,7 @@ export default function IntelligenceScanSequence({
   onComplete,
   subjectName,
   apiReady = false,
+  rightPanel,
 }: {
   steps: IntelligenceScanStep[];
   minDurationMs: number;
@@ -42,6 +43,8 @@ export default function IntelligenceScanSequence({
   subjectName: string;
   /** true sobald die Analyse-API fertig ist — erst dann darf der Balken 100 % erreichen */
   apiReady?: boolean;
+  /** Optional panel on the right (e.g. live reverse-image scan) */
+  rightPanel?: ReactNode;
 }) {
   const safeSteps = useMemo(() => (Array.isArray(steps) ? steps : []), [steps]);
   const [elapsed, setElapsed] = useState(0);
@@ -323,57 +326,67 @@ export default function IntelligenceScanSequence({
         </div>
 
         <div className="p-5">
-          <p className="mb-3 font-mono text-[8px] tracking-[.14em] text-white/35">
-            PHASE LOG · 8-STAGE PIPELINE
-          </p>
-          <ul className="space-y-1.5">
-            {safeSteps.map((step, index) => {
-              const state =
-                index < activeIndex
-                  ? "done"
-                  : index === activeIndex
-                    ? "active"
-                    : "pending";
-              return (
-                <li
-                  key={step.id}
-                  className={`rounded-lg border px-3 py-2 transition ${
-                    state === "active"
-                      ? "border-sky-400/40 bg-sky-400/[0.08]"
-                      : state === "done"
-                        ? "border-emerald-400/20 bg-emerald-400/[0.04]"
-                        : "border-white/[0.05] bg-transparent"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`font-mono text-[8px] ${
-                        state === "done"
-                          ? "text-emerald-300/80"
-                          : state === "active"
-                            ? "text-sky-300"
-                            : "text-white/25"
+          {rightPanel ?? (
+            <>
+              <p className="mb-3 font-mono text-[8px] tracking-[.14em] text-white/35">
+                PHASE LOG · 8-STAGE PIPELINE
+              </p>
+              <ul className="space-y-1.5">
+                {safeSteps.map((step, index) => {
+                  const state =
+                    index < activeIndex
+                      ? "done"
+                      : index === activeIndex
+                        ? "active"
+                        : "pending";
+                  return (
+                    <li
+                      key={step.id}
+                      className={`rounded-lg border px-3 py-2 transition ${
+                        state === "active"
+                          ? "border-sky-400/40 bg-sky-400/[0.08]"
+                          : state === "done"
+                            ? "border-emerald-400/20 bg-emerald-400/[0.04]"
+                            : "border-white/[0.05] bg-transparent"
                       }`}
                     >
-                      {state === "done" ? "✓" : state === "active" ? "●" : "○"}
-                    </span>
-                    <span
-                      className={`text-[12px] ${
-                        state === "pending" ? "text-white/30" : "text-white/75"
-                      }`}
-                    >
-                      {step.label}
-                    </span>
-                  </div>
-                  {state === "active" ? (
-                    <p className="mt-1 font-mono text-[9px] text-sky-200/50">
-                      {step.terminal}
-                    </p>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`font-mono text-[8px] ${
+                            state === "done"
+                              ? "text-emerald-300/80"
+                              : state === "active"
+                                ? "text-sky-300"
+                                : "text-white/25"
+                          }`}
+                        >
+                          {state === "done"
+                            ? "✓"
+                            : state === "active"
+                              ? "●"
+                              : "○"}
+                        </span>
+                        <span
+                          className={`text-[12px] ${
+                            state === "pending"
+                              ? "text-white/30"
+                              : "text-white/75"
+                          }`}
+                        >
+                          {step.label}
+                        </span>
+                      </div>
+                      {state === "active" ? (
+                        <p className="mt-1 font-mono text-[9px] text-sky-200/50">
+                          {step.terminal}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </div>
       </div>
     </section>

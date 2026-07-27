@@ -4,6 +4,7 @@ import { AnalysisGateError } from "@/lib/analysis/assert-runnable";
 import { runWithAnalysisCredits } from "@/lib/analysis/run-with-credits";
 import {
   ReverseImageUnavailableError,
+  startReverseImageRescan,
   startReverseImageSearchScan,
 } from "@/lib/analysis/reverse-image/run-analysis";
 import { parseRetentionDays } from "@/lib/analysis/retention";
@@ -37,10 +38,14 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     requestId?: unknown;
     retentionDays?: unknown;
+    rescanOnly?: unknown;
+    scanId?: unknown;
   };
   const requestId =
     typeof body.requestId === "string" ? body.requestId.trim() : "";
   const retentionDays = parseRetentionDays(body.retentionDays);
+  const rescanOnly = body.rescanOnly === true;
+  const rescanScanId = Number.parseInt(String(body.scanId ?? ""), 10);
 
   try {
     const started = await runWithAnalysisCredits(
@@ -51,6 +56,12 @@ export async function POST(request: Request) {
       },
       async () => {
         const identity = await getIdentityForUser(userId);
+        if (rescanOnly && Number.isFinite(rescanScanId) && rescanScanId > 0) {
+          return startReverseImageRescan(identity, {
+            userId,
+            scanId: rescanScanId,
+          });
+        }
         return startReverseImageSearchScan(identity, {
           userId,
           retentionDays,
@@ -63,6 +74,7 @@ export async function POST(request: Request) {
         status: started.status,
         scanId: started.scanId,
         report: null,
+        rescan: started.rescan ?? false,
       })
     );
   } catch (error) {

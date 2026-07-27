@@ -6,6 +6,14 @@ import { privateStorageRoot } from "@/lib/analysis/reverse-image/storage";
 
 export const SERP_CHECKPOINT_VERSION = 1 as const;
 
+export interface ReverseImageLiveScanEntry {
+  imageUrl: string;
+  title: string;
+  match: boolean;
+  similarity?: number;
+  at: string;
+}
+
 export interface ReverseImageSerpCheckpoint {
   version: typeof SERP_CHECKPOINT_VERSION;
   queries: ReverseImageQueryPlan[];
@@ -17,6 +25,11 @@ export interface ReverseImageSerpCheckpoint {
   processedImageUrls: string[];
   serpFetchComplete: boolean;
   updatedAt: string;
+  live?: {
+    currentImageUrl: string | null;
+    currentTitle: string | null;
+    recent: ReverseImageLiveScanEntry[];
+  };
 }
 
 function serpCacheDir(userId: number, scanId: number): string {
@@ -112,6 +125,46 @@ export function createEmptySerpCheckpoint(
     processedImageUrls: [],
     serpFetchComplete: false,
     updatedAt: new Date().toISOString(),
+    live: { currentImageUrl: null, currentTitle: null, recent: [] },
+  };
+}
+
+export function resetCheckpointForRescan(
+  checkpoint: ReverseImageSerpCheckpoint
+): ReverseImageSerpCheckpoint {
+  return {
+    ...checkpoint,
+    processedImageUrls: [],
+    live: { currentImageUrl: null, currentTitle: null, recent: [] },
+  };
+}
+
+export function setLiveScanCurrent(
+  checkpoint: ReverseImageSerpCheckpoint,
+  candidate: SerpImageCandidate | null
+): ReverseImageSerpCheckpoint {
+  return {
+    ...checkpoint,
+    live: {
+      currentImageUrl: candidate?.imageUrl ?? null,
+      currentTitle: candidate?.title ?? null,
+      recent: checkpoint.live?.recent ?? [],
+    },
+  };
+}
+
+export function appendLiveScanResult(
+  checkpoint: ReverseImageSerpCheckpoint,
+  entry: ReverseImageLiveScanEntry
+): ReverseImageSerpCheckpoint {
+  const recent = [...(checkpoint.live?.recent ?? []), entry].slice(-20);
+  return {
+    ...checkpoint,
+    live: {
+      currentImageUrl: null,
+      currentTitle: null,
+      recent,
+    },
   };
 }
 

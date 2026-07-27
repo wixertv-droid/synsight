@@ -1818,6 +1818,35 @@ export const usernameModuleSettings = mysqlTable("username_module_settings", {
     .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
 });
 
+export const reverseImageModuleSettings = mysqlTable(
+  "reverse_image_module_settings",
+  {
+    id: int("id", { unsigned: true }).primaryKey().default(1),
+    isActive: boolean("is_active").notNull().default(true),
+    apiEnabled: boolean("api_enabled").notNull().default(true),
+    compareUrl: varchar("compare_url", { length: 500 })
+      .notNull()
+      .default("http://161.97.85.22:8000/compare"),
+    similarityThreshold: decimal("similarity_threshold", {
+      precision: 4,
+      scale: 3,
+    })
+      .notNull()
+      .default("0.600"),
+    compareTimeoutMs: int("compare_timeout_ms", { unsigned: true })
+      .notNull()
+      .default(12_000),
+    updatedByAdminId: bigint("updated_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  }
+);
+
 const threatsSummaryStatusEnum = mysqlEnum("status", [
   "ready",
   "generating",

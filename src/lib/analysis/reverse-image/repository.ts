@@ -358,3 +358,70 @@ export async function touchReverseImageScanProgress(input: {
     WHERE id = ${input.scanId} AND status = 'running'
   `);
 }
+
+export async function resetReverseImageScanForRescan(
+  scanId: number
+): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+  await db.execute(sql`
+    UPDATE reverse_image_scans SET
+      status = 'running',
+      completed_at = NULL,
+      match_count = 0,
+      risk_score = 0,
+      summary = NULL
+    WHERE id = ${scanId}
+  `);
+}
+
+export async function clearReverseImageHitsForScan(
+  scanId: number
+): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+  await db.execute(sql`
+    DELETE FROM reverse_image_hits WHERE scan_id = ${scanId}
+  `);
+}
+
+export async function getReverseImageScanMeta(
+  userId: number,
+  scanId: number
+): Promise<ScanRow | null> {
+  const db = getDatabase();
+  if (!db) return null;
+  const ok = await ensureReverseImageSchema();
+  if (!ok) return null;
+
+  const scans = asRows<ScanRow>(
+    await db.execute(sql`
+      SELECT * FROM reverse_image_scans
+      WHERE id = ${scanId} AND user_id = ${userId}
+      LIMIT 1
+    `)
+  );
+  return scans[0] ?? null;
+}
+
+export async function findLatestCompletedReverseImageScanWithCache(
+  userId: number
+): Promise<{ scanId: number } | null> {
+  const db = getDatabase();
+  if (!db) return null;
+  const ok = await ensureReverseImageSchema();
+  if (!ok) return null;
+
+  const scans = asRows<{ id: number; expires_at: string | null }>(
+    await db.execute(sql`
+      SELECT id, expires_at FROM reverse_image_scans
+      WHERE user_id = ${userId} AND status = 'completed'
+      ORDER BY id DESC LIMIT 5
+    `)
+  );
+  for (const scan of scans) {
+    if (isReportExpired({ expiresAt: scan.expires_at })) continue;
+    return { scanId: scan.id };
+  }
+  return null;
+}

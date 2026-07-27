@@ -5,6 +5,7 @@ import type {
   UsernameFinanceSnapshot,
   UsernameModuleSettings,
 } from "@/lib/analysis/username/types";
+import type { ReverseImageModuleSettings } from "@/lib/analysis/reverse-image/settings-types";
 import { DIGITAL_LEAK_RETENTION_PRESETS } from "@/lib/analysis/retention";
 import type { PlatformSettings } from "@/lib/services/admin-platform-service";
 
@@ -33,6 +34,14 @@ const emptySettings: UsernameModuleSettings = {
   creditValueEur: 0.01,
 };
 
+const emptyReverseImageSettings: ReverseImageModuleSettings = {
+  isActive: true,
+  apiEnabled: true,
+  compareUrl: "http://161.97.85.22:8000/compare",
+  similarityThreshold: 0.6,
+  compareTimeoutMs: 12_000,
+};
+
 export default function AdminAnalysisModulesView() {
   const [rows, setRows] = useState<AnalysisRow[]>([]);
   const [busy, setBusy] = useState<number | null>(null);
@@ -46,6 +55,10 @@ export default function AdminAnalysisModulesView() {
     useState<PlatformSettings | null>(null);
   const [retentionBusy, setRetentionBusy] = useState(false);
   const [retentionMsg, setRetentionMsg] = useState<string | null>(null);
+  const [reverseImageSettings, setReverseImageSettings] =
+    useState<ReverseImageModuleSettings>(emptyReverseImageSettings);
+  const [reverseImageBusy, setReverseImageBusy] = useState(false);
+  const [reverseImageMsg, setReverseImageMsg] = useState<string | null>(null);
 
   const loadUsername = useCallback(async () => {
     const response = await fetch("/api/admin/username-module");
@@ -53,6 +66,14 @@ export default function AdminAnalysisModulesView() {
     if (response.ok && body?.success) {
       setUsernameSettings(body.data.settings);
       setUsernameFinance(body.data.finance);
+    }
+  }, []);
+
+  const loadReverseImage = useCallback(async () => {
+    const response = await fetch("/api/admin/reverse-image-module");
+    const body = await response.json().catch(() => null);
+    if (response.ok && body?.success) {
+      setReverseImageSettings(body.data.settings);
     }
   }, []);
 
@@ -72,8 +93,9 @@ export default function AdminAnalysisModulesView() {
       })
       .catch(() => undefined);
     void loadUsername();
+    void loadReverseImage();
     void loadPlatform();
-  }, [loadUsername, loadPlatform]);
+  }, [loadUsername, loadReverseImage, loadPlatform]);
 
   async function saveDigitalLeakRetention(days: number) {
     if (!platformSettings) return;
@@ -170,6 +192,27 @@ export default function AdminAnalysisModulesView() {
       );
     } finally {
       setUsernameBusy(false);
+    }
+  }
+
+  async function saveReverseImageSettings() {
+    setReverseImageBusy(true);
+    setReverseImageMsg(null);
+    try {
+      const response = await fetch("/api/admin/reverse-image-module", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reverseImageSettings),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body?.success) {
+        setReverseImageMsg(body?.error?.message ?? "Speichern fehlgeschlagen.");
+        return;
+      }
+      setReverseImageSettings(body.data.settings);
+      setReverseImageMsg("Reverse Image / Face-Erkennung gespeichert.");
+    } finally {
+      setReverseImageBusy(false);
     }
   }
 
@@ -334,6 +377,102 @@ export default function AdminAnalysisModulesView() {
           </button>
           {usernameMsg ? (
             <p className="text-xs text-white/45">{usernameMsg}</p>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-violet-400/20 bg-[#060d16]/90 p-5 md:p-6">
+        <p className="font-mono text-[9px] tracking-[.16em] text-violet-300/70">
+          REVERSE IMAGE SEARCH · FACE-ERKENNUNG
+        </p>
+        <p className="mt-2 text-sm text-white/45">
+          InsightFace-Server, Treffer-Schwellenwert und API-Status.
+        </p>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3 sm:col-span-2">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              INSIGHTFACE COMPARE URL
+            </span>
+            <input
+              type="url"
+              value={reverseImageSettings.compareUrl}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  compareUrl: event.target.value,
+                }))
+              }
+              className="mt-2 w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-violet-400/35"
+            />
+          </label>
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              TREFFER-SCHWELLE (0.35–0.95)
+            </span>
+            <input
+              type="number"
+              min={0.35}
+              max={0.95}
+              step={0.05}
+              value={reverseImageSettings.similarityThreshold}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  similarityThreshold: Number(event.target.value),
+                }))
+              }
+              className="mt-2 w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-violet-400/35"
+            />
+          </label>
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              TIMEOUT (MS)
+            </span>
+            <input
+              type="number"
+              min={3000}
+              max={60000}
+              step={1000}
+              value={reverseImageSettings.compareTimeoutMs}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  compareTimeoutMs: Number(event.target.value),
+                }))
+              }
+              className="mt-2 w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-violet-400/35"
+            />
+          </label>
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              API AKTIV
+            </span>
+            <input
+              type="checkbox"
+              checked={reverseImageSettings.apiEnabled}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  apiEnabled: event.target.checked,
+                }))
+              }
+              className="mt-2 block"
+            />
+          </label>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={reverseImageBusy}
+            onClick={() => void saveReverseImageSettings()}
+            className="rounded-lg border border-violet-400/40 bg-violet-400/[0.1] px-4 py-2 text-sm text-violet-200"
+          >
+            {reverseImageBusy ? "Speichern…" : "Face-Erkennung speichern"}
+          </button>
+          {reverseImageMsg ? (
+            <p className="text-xs text-white/45">{reverseImageMsg}</p>
           ) : null}
         </div>
       </section>

@@ -134,3 +134,13 @@ export async function cleanupTempDir(
     force: true,
   });
 }
+
+export async function cleanupReverseImageScanStorage(
+  userId: number,
+  scanId: number
+): Promise<void> {
+  await rm(reverseImageScanRoot(userId, scanId), {
+    recursive: true,
+    force: true,
+  });
+}

@@ -1,3 +1,5 @@
+import { getReverseImageModuleSettings } from "@/lib/analysis/reverse-image/settings";
+
 const DEFAULT_COMPARE_URL = "http://161.97.85.22:8000/compare";
 
 export function resolveInsightFaceCompareUrl(): string {
@@ -16,8 +18,30 @@ export function resolveSimilarityThreshold(): number {
   return Math.max(0.35, Math.min(0.95, raw));
 }
 
+export async function resolveInsightFaceCompareUrlAsync(): Promise<string> {
+  const settings = await getReverseImageModuleSettings();
+  if (!settings.apiEnabled) return "";
+  return settings.compareUrl.trim() || resolveInsightFaceCompareUrl();
+}
+
+export async function resolveSimilarityThresholdAsync(): Promise<number> {
+  const settings = await getReverseImageModuleSettings();
+  return settings.similarityThreshold;
+}
+
+export async function resolveCompareTimeoutMsAsync(): Promise<number> {
+  const settings = await getReverseImageModuleSettings();
+  return settings.compareTimeoutMs;
+}
+
 export function isInsightFaceConfigured(): boolean {
   return Boolean(resolveInsightFaceCompareUrl());
+}
+
+export async function isInsightFaceConfiguredAsync(): Promise<boolean> {
+  const settings = await getReverseImageModuleSettings();
+  if (!settings.apiEnabled) return false;
+  return Boolean(await resolveInsightFaceCompareUrlAsync());
 }
 
 export interface InsightFaceCompareResult {
@@ -33,8 +57,12 @@ export async function compareImagesWithInsightFace(input: {
   candidateBytes: Buffer;
   referenceName?: string;
   candidateName?: string;
+  compareUrl?: string;
+  timeoutMs?: number;
+  threshold?: number;
 }): Promise<InsightFaceCompareResult> {
-  const url = resolveInsightFaceCompareUrl();
+  const url = input.compareUrl ?? (await resolveInsightFaceCompareUrlAsync());
+  const timeoutMs = input.timeoutMs ?? (await resolveCompareTimeoutMsAsync());
   const form = new FormData();
   const refBlob = new Blob([new Uint8Array(input.referenceBytes)], {
     type: "image/jpeg",
@@ -49,7 +77,7 @@ export async function compareImagesWithInsightFace(input: {
   const response = await fetch(url, {
     method: "POST",
     body: form,
-    signal: AbortSignal.timeout(12_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const latencyMs = Date.now() - started;
   const body = (await response.json().catch(() => ({}))) as {
@@ -74,7 +102,8 @@ export async function compareImagesWithInsightFace(input: {
 
 export async function pingInsightFace(): Promise<boolean> {
   try {
-    const url = resolveInsightFaceCompareUrl();
+    const url = await resolveInsightFaceCompareUrlAsync();
+    if (!url) return false;
     const probe = await fetch(url.replace(/\/compare\/?$/, "/"), {
       method: "GET",
       signal: AbortSignal.timeout(4000),
@@ -82,6 +111,6 @@ export async function pingInsightFace(): Promise<boolean> {
     if (probe?.ok) return true;
     return Boolean(url);
   } catch {
-    return Boolean(resolveInsightFaceCompareUrl());
+    return Boolean(await resolveInsightFaceCompareUrlAsync());
   }
 }
