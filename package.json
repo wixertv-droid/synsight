@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "argon2": "^0.44.0",
+    "chart.js": "^4.5.1",
     "drizzle-orm": "^0.45.2",
     "h3-js": "^4.5.0",
     "mysql2": "^3.22.6",
