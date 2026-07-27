@@ -303,3 +303,58 @@ export async function getReverseImageReportByScanId(
 
   return assembleFromScan(scan, hitRows.map(mapHit));
 }
+
+export async function findRunningReverseImageScan(
+  userId: number
+): Promise<{ scanId: number; subjectName: string | null } | null> {
+  const db = getDatabase();
+  if (!db) return null;
+  const ok = await ensureReverseImageSchema();
+  if (!ok) return null;
+
+  const scans = asRows<{ id: number; subject_name: string | null }>(
+    await db.execute(sql`
+      SELECT id, subject_name FROM reverse_image_scans
+      WHERE user_id = ${userId} AND status = 'running'
+      ORDER BY id DESC LIMIT 1
+    `)
+  );
+  const scan = scans[0];
+  if (!scan) return null;
+  return { scanId: scan.id, subjectName: scan.subject_name };
+}
+
+export async function getReverseImageHitsForScan(
+  scanId: number
+): Promise<ReverseImageHit[]> {
+  const db = getDatabase();
+  if (!db) return [];
+  const ok = await ensureReverseImageSchema();
+  if (!ok) return [];
+
+  const hitRows = asRows<HitRow>(
+    await db.execute(sql`
+      SELECT * FROM reverse_image_hits
+      WHERE scan_id = ${scanId}
+      ORDER BY similarity DESC, id ASC
+    `)
+  );
+  return hitRows.map(mapHit);
+}
+
+export async function touchReverseImageScanProgress(input: {
+  scanId: number;
+  queryCount: number;
+  candidateCount: number;
+  matchCount: number;
+}): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+  await db.execute(sql`
+    UPDATE reverse_image_scans SET
+      query_count = ${input.queryCount},
+      candidate_count = ${input.candidateCount},
+      match_count = ${input.matchCount}
+    WHERE id = ${input.scanId} AND status = 'running'
+  `);
+}

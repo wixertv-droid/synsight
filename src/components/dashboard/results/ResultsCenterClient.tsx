@@ -504,8 +504,14 @@ export default function ResultsCenterClient({
         reverseImageSearchModule.minScanMs
     );
 
-    const pollUntilDone = async (scanId: number): Promise<boolean> => {
-      const deadline = Date.now() + 120_000;
+    const pollUntilDone = async (
+      scanId: number,
+      requestId: string,
+      retention: number
+    ): Promise<boolean> => {
+      const deadline = Date.now() + 180_000;
+      let lastResumeAt = Date.now();
+      let resumeAttempts = 0;
       while (Date.now() < deadline) {
         await new Promise((resolve) => window.setTimeout(resolve, 2000));
         try {
@@ -527,6 +533,22 @@ export default function ResultsCenterClient({
               "Reverse Image Search ist fehlgeschlagen. Bitte erneut starten."
             );
             return false;
+          }
+          if (
+            status === "running" &&
+            resumeAttempts < 5 &&
+            Date.now() - lastResumeAt > 85_000
+          ) {
+            resumeAttempts += 1;
+            lastResumeAt = Date.now();
+            await fetch("/api/analysis/reverse-image/run", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                retentionDays: retention,
+                requestId,
+              }),
+            }).catch(() => undefined);
           }
         } catch {
           /* keep polling — background job may still finish */
@@ -654,7 +676,7 @@ export default function ResultsCenterClient({
 
       const scanId = Number(body.data?.scanId);
       if (Number.isFinite(scanId) && scanId > 0) {
-        const ok = await pollUntilDone(scanId);
+        const ok = await pollUntilDone(scanId, requestId, effectiveRetention);
         setScanApiReady(true);
         finishScanAttempt({ tab: "reverse_image_search" });
         void ok;

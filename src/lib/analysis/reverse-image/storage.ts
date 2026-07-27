@@ -3,8 +3,12 @@ import path from "node:path";
 import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 
-function privateRoot(): string {
+export function privateStorageRoot(): string {
   return process.env.PRIVATE_STORAGE_ROOT?.trim() || "./storage/private";
+}
+
+function privateRoot(): string {
+  return privateStorageRoot();
 }
 
 export function reverseImageUserRoot(userId: number): string {

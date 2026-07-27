@@ -37,6 +37,7 @@ export async function GET(request: Request) {
       status: outcome.status,
       report: outcome.report,
       scanId,
+      progress: outcome.progress ?? null,
     })
   );
 }
