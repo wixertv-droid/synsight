@@ -212,9 +212,9 @@ async function persistPlatformSettings(
 
   await db.execute(sql`
     INSERT INTO platform_settings (id, settings_json, updated_by_admin_id)
-    VALUES (1, CAST(${payload} AS JSON), ${adminId})
+    VALUES (1, ${payload}, ${adminId})
     ON DUPLICATE KEY UPDATE
-      settings_json = CAST(${payload} AS JSON),
+      settings_json = ${payload},
       updated_by_admin_id = ${adminId}
   `);
 

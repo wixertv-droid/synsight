@@ -202,23 +202,13 @@ export async function saveReverseImageSerpCache(
   }
   await ensureReverseImageSchema();
   try {
+    // MariaDB: kein CAST(... AS JSON) — JSON-Spalten sind LONGTEXT.
     await db.execute(sql`
-      UPDATE reverse_image_scans SET serp_cache_json = CAST(${cacheJson} AS JSON) WHERE id = ${scanId}
+      UPDATE reverse_image_scans SET serp_cache_json = ${cacheJson} WHERE id = ${scanId}
     `);
   } catch (error) {
-    // Fallback without CAST for drivers that already bind JSON correctly.
-    try {
-      await db.execute(sql`
-        UPDATE reverse_image_scans SET serp_cache_json = ${cacheJson} WHERE id = ${scanId}
-      `);
-    } catch (fallbackError) {
-      console.error(
-        "[reverse-image] saveReverseImageSerpCache failed",
-        error,
-        fallbackError
-      );
-      throw fallbackError instanceof Error ? fallbackError : error;
-    }
+    console.error("[reverse-image] saveReverseImageSerpCache failed", error);
+    throw error instanceof Error ? error : new Error(String(error));
   }
 }
 

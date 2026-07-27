@@ -29,9 +29,10 @@ VALUES (
   )
 );
 
--- Repair double-encoded JSON strings (JSON type STRING → object)
+-- Repair double-encoded JSON strings (JSON type STRING → object).
+-- MariaDB has no CAST(... AS JSON); JSON is LONGTEXT — unquote is enough.
 UPDATE `platform_settings`
-SET `settings_json` = CAST(JSON_UNQUOTE(`settings_json`) AS JSON)
+SET `settings_json` = JSON_UNQUOTE(`settings_json`)
 WHERE `id` = 1
   AND JSON_TYPE(`settings_json`) = 'STRING'
   AND JSON_VALID(JSON_UNQUOTE(`settings_json`));

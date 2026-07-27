@@ -69,11 +69,12 @@ async function runEnsure(): Promise<boolean> {
     )
   `);
 
-  // Repair double-encoded JSON (column holds a JSON string instead of object)
+  // Repair double-encoded JSON (column holds a JSON string instead of object).
+  // MariaDB: kein CAST(... AS JSON) — JSON ist LONGTEXT, Unquote reicht.
   try {
     await db.execute(sql`
       UPDATE platform_settings
-      SET settings_json = CAST(JSON_UNQUOTE(settings_json) AS JSON)
+      SET settings_json = JSON_UNQUOTE(settings_json)
       WHERE id = 1
         AND JSON_TYPE(settings_json) = 'STRING'
         AND JSON_VALID(JSON_UNQUOTE(settings_json))
