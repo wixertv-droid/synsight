@@ -119,7 +119,11 @@ export default function ResultsCenterClient({
   const searchParams = useSearchParams();
   const tabs = modules;
 
-  const requestedTab = searchParams.get("tab") ?? tabs[0]?.id ?? "";
+  const requestedTabRaw = searchParams.get("tab") ?? tabs[0]?.id ?? "";
+  const requestedTab =
+    requestedTabRaw === "reverse_image_discovery"
+      ? "reverse_image_search"
+      : requestedTabRaw;
   const shouldScan = searchParams.get("scan") === "1";
   const requestIdFromUrl = (searchParams.get("requestId") ?? "").trim();
   const retentionFromUrl = parseRetentionDays(
@@ -804,8 +808,10 @@ export default function ResultsCenterClient({
   ]);
 
   useEffect(() => {
+    // Never start Google when the URL asks for another module (e.g. reverse image).
     if (
       shouldScan &&
+      requestedTab === "google_search" &&
       activeTab === "google_search" &&
       !scanning &&
       !scanDone &&
@@ -814,7 +820,7 @@ export default function ResultsCenterClient({
       scanStartedRef.current = true;
       void runGoogleScan();
     }
-  }, [shouldScan, activeTab, scanning, scanDone, runGoogleScan]);
+  }, [shouldScan, requestedTab, activeTab, scanning, scanDone, runGoogleScan]);
 
   useEffect(() => {
     if (
@@ -845,6 +851,8 @@ export default function ResultsCenterClient({
   useEffect(() => {
     if (
       shouldScan &&
+      (requestedTab === "reverse_image_search" ||
+        requestedTab === "reverse_image_discovery") &&
       activeTab === "reverse_image_search" &&
       !scanning &&
       !scanDone &&
@@ -872,6 +880,7 @@ export default function ResultsCenterClient({
     }
   }, [
     shouldScan,
+    requestedTab,
     activeTab,
     scanning,
     scanDone,
