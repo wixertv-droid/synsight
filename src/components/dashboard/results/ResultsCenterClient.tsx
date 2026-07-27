@@ -592,10 +592,11 @@ export default function ResultsCenterClient({
       retention: number,
       compareOnly = false
     ): Promise<boolean> => {
-      const deadline = Date.now() + 180_000;
+      // Pollt bis Discovery/Compare fertig sind — kein hartes UI-Zeitlimit.
+      const hardDeadline = Date.now() + 900_000;
       let lastResumeAt = Date.now();
       let resumeAttempts = 0;
-      while (Date.now() < deadline) {
+      while (Date.now() < hardDeadline) {
         await new Promise((resolve) => window.setTimeout(resolve, 2000));
         try {
           const statusRes = await fetch(
@@ -652,8 +653,8 @@ export default function ResultsCenterClient({
           }
           if (
             (status === "discovering" || status === "comparing") &&
-            resumeAttempts < 5 &&
-            Date.now() - lastResumeAt > 85_000
+            resumeAttempts < 24 &&
+            Date.now() - lastResumeAt > 45_000
           ) {
             resumeAttempts += 1;
             lastResumeAt = Date.now();
@@ -681,8 +682,14 @@ export default function ResultsCenterClient({
         setError(null);
         return true;
       }
+      if (recovered.pending) {
+        setError(
+          "Die Bildanalyse läuft noch. Bitte Seite aktualisieren — der Scan wird fortgesetzt."
+        );
+        return false;
+      }
       setError(
-        "Die Bildanalyse läuft noch oder hat das Zeitlimit erreicht. Bitte Seite in einer Minute aktualisieren."
+        "Die Bildanalyse läuft noch. Bitte Seite in einer Minute aktualisieren."
       );
       return false;
     },

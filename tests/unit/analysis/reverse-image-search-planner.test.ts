@@ -44,7 +44,7 @@ function identity(partial: Partial<IdentityView>): IdentityView {
 }
 
 describe("reverse-image search planner", () => {
-  it("keeps SerpAPI call budget lean for typical profile", () => {
+  it("keeps SerpAPI call budget lean without adult extras", () => {
     const plans = planReverseImageQueries(
       identity({
         personal: { firstName: "Anja", lastName: "Gebert" },
@@ -58,13 +58,13 @@ describe("reverse-image search planner", () => {
       })
     );
 
-    // 2 usernames × 2 + name × 2 = 6 queries
-    expect(plans).toHaveLength(6);
-    expect(estimateSerpApiPageCalls(plans)).toBeLessThanOrEqual(12);
+    // 2 usernames + name × 2 = 4 queries (keine Adult-Extras)
+    expect(plans).toHaveLength(4);
+    expect(estimateSerpApiPageCalls(plans)).toBe(10); // 3+3+2+2
     expect(plans[0]?.group).toBe("username");
     expect(plans.some((p) => p.query === "Anja1921")).toBe(true);
     expect(plans.some((p) => p.query === "Luder-Anja")).toBe(true);
-    // Keine 6 Einzelsite-Queries mehr
+    expect(plans.some((p) => p.id.includes("username-adult-"))).toBe(false);
     expect(plans.some((p) => p.id.includes("username-site-"))).toBe(false);
     expect(plans.some((p) => p.id.includes("exact"))).toBe(false);
   });
@@ -86,7 +86,6 @@ describe("reverse-image search planner", () => {
       plans.some(
         (p) =>
           p.group === "username" &&
-          !p.id.includes("adult") &&
           p.query.includes(" OR ") &&
           p.query.includes("Anja1921") &&
           p.query.includes("Luder-Anja")
@@ -95,7 +94,7 @@ describe("reverse-image search planner", () => {
     expect(plans.some((p) => p.label === "Alias · anjalias")).toBe(true);
   });
 
-  it("bundles adult sites in one query per username", () => {
+  it("does not add adult site dork queries", () => {
     const plans = planReverseImageQueries(
       identity({
         personal: { firstName: "Anja", lastName: "Gebert" },
@@ -108,14 +107,11 @@ describe("reverse-image search planner", () => {
         },
       })
     );
-    expect(
-      plans.some(
-        (p) =>
-          p.id.startsWith("username-adult-") &&
-          p.query.includes("site:amarotic.com") &&
-          p.query.includes("anja_g")
-      )
-    ).toBe(true);
+    expect(plans.some((p) => p.id.startsWith("username-adult-"))).toBe(false);
+    expect(plans.some((p) => p.query.includes("site:amarotic.com"))).toBe(
+      false
+    );
+    expect(plans.some((p) => p.query === "anja_g")).toBe(true);
   });
 });
 

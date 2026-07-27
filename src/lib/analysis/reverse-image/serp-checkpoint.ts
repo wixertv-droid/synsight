@@ -43,9 +43,12 @@ export interface ReverseImageSerpCheckpoint {
   };
 }
 
-/** Pro Query behalten — genug für Auswahl, ohne Speicher/Kosten zu sprengen. */
+/**
+ * Pro Query behalten. Default 300 = bis zu 3 SerpAPI-Seiten (~100/Seite).
+ * Niedriger Cap verwirft bereits bezahlte Seiten — Cap ≥ pages × 100 halten.
+ */
 const MAX_RESULTS_PER_QUERY = Number.parseInt(
-  process.env.REVERSE_IMAGE_MAX_RESULTS_PER_QUERY ?? "100",
+  process.env.REVERSE_IMAGE_MAX_RESULTS_PER_QUERY ?? "300",
   10
 );
 

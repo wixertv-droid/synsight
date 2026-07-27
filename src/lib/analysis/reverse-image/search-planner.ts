@@ -7,20 +7,16 @@ export interface ReverseImageQueryPlan {
   label: string;
   query: string;
   group: ReverseImageQueryGroup;
-  /** SerpAPI `ijn` pages (1 Call ≈ 1 Seite). Keep low — costs scale linearly. */
+  /** SerpAPI `ijn` pages (1 Call ≈ 1 Seite ≈ bis ~100 Bilder). Kosten skalieren linear. */
   pages?: number;
 }
 
 /**
- * Eine Adult-/Nischen-Query statt 6× site:-Einzelsuchen.
- * Spart SerpAPI-Calls, deckt dieselben Plattformen ab.
+ * Seiten pro Query. Jede Seite = 1 SerpAPI-Request.
+ * Username etwas tiefer (Recall), Name/Alias sparsam.
  */
-const ADULT_IMAGE_DORK =
-  '(site:amarotic.com OR site:frivol.com OR site:amateurseite.com OR site:joyclub.de OR site:einfachgeiler.com OR site:ffgv.de OR site:onlyfans.com OR "amateur")';
-
-/** Max. Seiten pro Query (jede Seite = 1 SerpAPI-Request). */
 export const REVERSE_IMAGE_COST_PAGES = {
-  username: 2,
+  username: 3,
   alias: 2,
   name: 2,
 } as const;
@@ -73,15 +69,16 @@ function collectUsernames(identity: IdentityView | null): string[] {
 }
 
 /**
- * Kosteneffizienter Phase-1-Plan.
+ * Phase-1-Plan ohne Extra-Adult-Queries.
  *
- * Pro Benutzername: 2 Queries (offen + Adult-Bundle) — kein OR über Usernames,
- * keine 6 Einzelsite-Calls, keine redundanten „exakt“-Queries.
+ * Pro Benutzername: 1 offene Query (wie manuelles Google) — kein Adult-Dork,
+ * kein OR über Usernames, keine Einzelsite-Calls.
  * Pro Alias: 1 offene Query.
  * Pro Name: 2 Queries (offen + Foto).
  *
  * Beispiel Anja1921 + Luder-Anja + Name:
- * 2×2 + 2 = 6 Queries × 2 Seiten ≈ 12 SerpAPI-Calls (vorher oft 80–100+).
+ * 2 + 2 = 4 Queries × Seiten ≈ 10 SerpAPI-Calls (3+3+2+2).
+ * Mehr Seiten = mehr Bilder = mehr SerpAPI-Kosten (1 Seite ≈ 1 Call ≈ ~100 Bilder).
  */
 export function planReverseImageQueries(
   identity: IdentityView | null
@@ -117,7 +114,7 @@ export function planReverseImageQueries(
     (alias) => !(fullName && normalizeKey(alias) === normalizeKey(fullName))
   );
 
-  // 1) Benutzernamen zuerst — offen (wie manuelles Google) + eine Adult-Bundle-Query
+  // 1) Benutzernamen — nur offene Suche (Adult-Extra-Queries entfallen)
   for (const [index, username] of usernames.entries()) {
     addPlan(
       `username-open-${index}`,
@@ -126,16 +123,9 @@ export function planReverseImageQueries(
       "username",
       REVERSE_IMAGE_COST_PAGES.username
     );
-    addPlan(
-      `username-adult-${index}`,
-      `Benutzername Adult · ${username}`,
-      `${username} ${ADULT_IMAGE_DORK}`,
-      "username",
-      REVERSE_IMAGE_COST_PAGES.username
-    );
   }
 
-  // 2) Alias — eine offene Query reicht (Adult steckt bei Usernames)
+  // 2) Alias
   for (const [index, alias] of aliases.entries()) {
     addPlan(
       `alias-open-${index}`,
@@ -146,7 +136,7 @@ export function planReverseImageQueries(
     );
   }
 
-  // 3) Vollständiger Name — offen + Foto (kein Extra-Adult/Exakt)
+  // 3) Vollständiger Name — offen + Foto
   if (fullName) {
     addPlan(
       "name-open",
@@ -171,7 +161,10 @@ export function planReverseImageQueries(
 export function estimateSerpApiPageCalls(
   plans: ReverseImageQueryPlan[]
 ): number {
-  return plans.reduce((sum, plan) => sum + (plan.pages ?? 2), 0);
+  return plans.reduce(
+    (sum, plan) => sum + (plan.pages ?? REVERSE_IMAGE_COST_PAGES.username),
+    0
+  );
 }
 
 export function resolveReverseImageSubjectName(

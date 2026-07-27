@@ -11,7 +11,7 @@ import { getIdentityForUser } from "@/lib/services/identity-service";
 import { NextResponse } from "next/server";
 import { validateMutationOrigin } from "@/lib/security/request";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const csrfError = validateMutationOrigin(request);

@@ -84,8 +84,9 @@ export class ReverseImageUnavailableError extends Error {
   }
 }
 
+/** Chunk-Budget pro Pipeline-Durchlauf (nicht hartes Scan-Ende). */
 const WALL_CLOCK_BUDGET_MS = Number.parseInt(
-  process.env.REVERSE_IMAGE_BUDGET_MS ?? "180000",
+  process.env.REVERSE_IMAGE_BUDGET_MS ?? "600000",
   10
 );
 const MAX_REFERENCES = Number.parseInt(
@@ -682,7 +683,6 @@ async function executeComparePipeline(input: {
     let compareCalls = 0;
     const threshold = await resolveSimilarityThresholdAsync();
     let existingHits = await getReverseImageHitsForScan(scanId);
-    let budgetExceeded = false;
 
     for (const candidate of remainingCompareCandidates(checkpoint)) {
       checkpoint = setLiveScanCurrent(checkpoint, candidate);
@@ -722,10 +722,8 @@ async function executeComparePipeline(input: {
         matchCount: existingHits.length,
       });
 
-      if (result.budgetExceeded) {
-        budgetExceeded = true;
-        break;
-      }
+      // Chunk-Budget: Pause und neuer Durchlauf — Scan bricht nicht ab.
+      if (result.budgetExceeded) break;
     }
 
     if (!compareWorkRemaining(checkpoint)) {
@@ -773,11 +771,8 @@ async function executeComparePipeline(input: {
       return;
     }
 
-    if (!budgetExceeded) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      continue;
-    }
-    return;
+    // Chunk-Pause — Pipeline läuft weiter bis alle Bilder verglichen sind.
+    await new Promise((resolve) => setTimeout(resolve, 300));
   }
 }
 
@@ -860,7 +855,7 @@ export async function runReverseImageSearchScan(
   options: { userId: number; retentionDays?: ReportRetentionDays }
 ): Promise<ReverseImageReport> {
   const started = await startReverseImageDiscovery(identity, options);
-  const deadline = Date.now() + 180_000;
+  const deadline = Date.now() + resolveBudgetMs() * 2;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 1500));
     const outcome = await getReverseImageScanOutcome(

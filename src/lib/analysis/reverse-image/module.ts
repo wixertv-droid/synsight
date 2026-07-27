@@ -4,9 +4,9 @@ import type { IntelligenceModuleDefinition } from "@/lib/analysis/types";
 export const reverseImageSearchModule: IntelligenceModuleDefinition = {
   key: "reverse_image_search",
   title: "Reverse Image Search",
-  estimatedDurationLabel: "ca. 30–90 Sekunden",
+  estimatedDurationLabel: "ca. 1–5 Minuten",
   minScanMs: 12000,
-  maxScanMs: 45000,
+  maxScanMs: 300000,
   scanSteps: [
     {
       id: "prep",
@@ -45,9 +45,9 @@ export const reverseImageSearchModule: IntelligenceModuleDefinition = {
 export const reverseImageDiscoveryModule: IntelligenceModuleDefinition = {
   key: "reverse_image_search",
   title: "Reverse Image · Bildsuche",
-  estimatedDurationLabel: "ca. 20–60 Sekunden",
+  estimatedDurationLabel: "ca. 30–180 Sekunden",
   minScanMs: 10000,
-  maxScanMs: 90000,
+  maxScanMs: 600000,
   scanSteps: [
     {
       id: "identity",
@@ -70,7 +70,7 @@ export const reverseImageDiscoveryModule: IntelligenceModuleDefinition = {
     {
       id: "serp-user",
       label: "Google Images · Benutzernamen",
-      terminal: "SERPAPI · google_images · username + adult sites",
+      terminal: "SERPAPI · google_images · username open search",
       atMs: 6800,
     },
     {
@@ -86,9 +86,9 @@ export const reverseImageDiscoveryModule: IntelligenceModuleDefinition = {
 export const reverseImageCompareModule: IntelligenceModuleDefinition = {
   key: "reverse_image_search",
   title: "Reverse Image · Gesichtsvergleich",
-  estimatedDurationLabel: "ca. 15–90 Sekunden",
+  estimatedDurationLabel: "ca. 30–300 Sekunden",
   minScanMs: 12000,
-  maxScanMs: 120000,
+  maxScanMs: 600000,
   scanSteps: [
     {
       id: "refs",

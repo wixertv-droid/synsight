@@ -18,9 +18,12 @@ export interface SerpImageCandidate {
   queryLabel?: string;
 }
 
-/** Default depth — bewusst niedrig (jede Seite = 1 SerpAPI-Call). */
+/**
+ * Default-Seiten wenn Plan keine `pages` setzt.
+ * 1 Seite ≈ 1 SerpAPI-Call ≈ bis ~100 Bilder — mehr Seiten = mehr API-Kosten.
+ */
 export const REVERSE_IMAGE_SERP_PAGES = Number.parseInt(
-  process.env.REVERSE_IMAGE_SERP_PAGES ?? "2",
+  process.env.REVERSE_IMAGE_SERP_PAGES ?? "3",
   10
 );
 export const REVERSE_IMAGE_SERP_NUM = Number.parseInt(
