@@ -164,32 +164,48 @@ export class SerpApiProvider implements SearchProvider {
   ): Promise<NormalizedSearchHit[]> {
     if (!query.trim()) return [];
     // SafeSearch bewusst AUS — OSINT muss auch nicht jugendfreie Bildtreffer erfassen.
-    const { body } = await this.request({
-      engine: "google_images",
-      q: query.trim(),
-      num: String(Math.min(Math.max(options?.num ?? 10, 1), 20)),
-      hl: options?.language || "de",
-      gl: options?.country || "de",
-      safe: "off",
-    });
-    const images = Array.isArray(body.images_results)
-      ? body.images_results
-      : [];
+    // Google Images: SerpAPI `ijn` paginiert (~100 Treffer/Seite). `num` allein liefert oft nur ~10–20.
+    const pages = Math.min(Math.max(options?.pages ?? 1, 1), 5);
+    const maxResults = Math.min(Math.max(options?.num ?? 100, 1), 500);
+    const q = query.trim();
+    const hl = options?.language || "de";
+    const gl = options?.country || "de";
     const hits: NormalizedSearchHit[] = [];
-    for (let index = 0; index < images.length; index += 1) {
-      const item = images[index];
-      const link = (item.original || item.link || "").trim();
-      const title = (item.title || "").trim() || `Bild ${index + 1}`;
-      if (!link) continue;
-      hits.push({
-        title,
-        link,
-        snippet: item.source || "Bildtreffer",
-        displayLink: item.source || hostnameOf(link),
-        source: item.source || hostnameOf(link),
-        position: item.position ?? index + 1,
-        raw: item,
+    const seen = new Set<string>();
+
+    for (let ijn = 0; ijn < pages && hits.length < maxResults; ijn += 1) {
+      const { body } = await this.request({
+        engine: "google_images",
+        q,
+        ijn: String(ijn),
+        hl,
+        gl,
+        safe: "off",
       });
+      const images = Array.isArray(body.images_results)
+        ? body.images_results
+        : [];
+      if (images.length === 0) break;
+
+      for (let index = 0; index < images.length; index += 1) {
+        if (hits.length >= maxResults) break;
+        const item = images[index];
+        const link = (item.original || item.link || "").trim();
+        const title = (item.title || "").trim() || `Bild ${hits.length + 1}`;
+        if (!link) continue;
+        const dedupeKey = link.toLowerCase();
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        hits.push({
+          title,
+          link,
+          snippet: item.source || "Bildtreffer",
+          displayLink: item.source || hostnameOf(link),
+          source: item.source || hostnameOf(link),
+          position: item.position ?? hits.length + 1,
+          raw: item,
+        });
+      }
     }
     return hits;
   }

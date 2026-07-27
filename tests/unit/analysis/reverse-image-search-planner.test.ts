@@ -69,6 +69,8 @@ describe("reverse-image search planner", () => {
     expect(
       plans.filter((p) => p.group === "alias").length
     ).toBeGreaterThanOrEqual(1);
+    // Offene Suche wie manuelles Google Images (ohne Quotes)
+    expect(plans.some((p) => p.query === "anja_g")).toBe(true);
     expect(plans.some((p) => p.query === '"anja_g"')).toBe(true);
     // Username-Queries bleiben einzeln (kein OR zwischen Benutzernamen)
     expect(
@@ -76,6 +78,7 @@ describe("reverse-image search planner", () => {
         (p) =>
           p.group === "username" &&
           !p.id.includes("adult") &&
+          !p.id.includes("site") &&
           p.query.includes(" OR ")
       )
     ).toBe(false);
@@ -107,7 +110,15 @@ describe("reverse-image search planner", () => {
         (p) =>
           p.id.startsWith("username-adult-") &&
           p.query.includes("site:onlyfans.com") &&
-          p.query.includes('"anja_g"')
+          p.query.includes("anja_g")
+      )
+    ).toBe(true);
+    expect(
+      plans.some(
+        (p) =>
+          p.id.startsWith("username-site-") &&
+          p.query.includes("site:amarotic.com") &&
+          p.query.includes("anja_g")
       )
     ).toBe(true);
   });

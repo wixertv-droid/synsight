@@ -9,9 +9,17 @@ export interface ReverseImageQueryPlan {
   group: ReverseImageQueryGroup;
 }
 
-/** Adult-/Nischen-Sites — analog zur Google-Textsuche (safeSearch=Off). */
+/** Adult-/Nischen-Sites — erweitert um Plattformen aus manuellen Google-Bildsuchen. */
 const ADULT_IMAGE_DORK =
-  '(site:joyclub.de OR site:einfachgeiler.com OR site:amarotic.com OR site:onlyfans.com OR "amateur" OR "escort")';
+  '(site:joyclub.de OR site:einfachgeiler.com OR site:amarotic.com OR site:onlyfans.com OR site:frivol.com OR site:amateurseite.com OR site:ffgv.de OR "amateur" OR "escort")';
+
+/** Einzel-Sites mit hoher Trefferquote bei Usernames (SafeSearch aus). */
+const USERNAME_FOCUS_SITES = [
+  "amarotic.com",
+  "frivol.com",
+  "amateurseite.com",
+  "ffgv.de",
+] as const;
 
 function quote(value: string): string {
   const safe = value.replace(/"/g, "").trim();
@@ -67,6 +75,7 @@ function collectUsernames(identity: IdentityView | null): string[] {
 
 /**
  * Phase 1 queries — getrennt nach Name, Alias, Benutzername (je eigener Filter-Tab).
+ * Usernames: offene Suche wie manuelles Google Images (ohne Anführungszeichen) + Adult/Sites.
  */
 export function planReverseImageQueries(
   identity: IdentityView | null
@@ -92,7 +101,7 @@ export function planReverseImageQueries(
     addPlan(
       "name-full-photo",
       `Name + Foto · ${fullName}`,
-      `${quote(fullName)} foto`,
+      `${quote(fullName)} photo`,
       "name"
     );
   }
@@ -110,18 +119,33 @@ export function planReverseImageQueries(
 
   for (const [index, username] of collectUsernames(identity).entries()) {
     if (fullName && normalizeKey(username) === normalizeKey(fullName)) continue;
+    // Primär: offene Suche wie manuelles Google Images (hundreds of hits).
+    addPlan(
+      `username-open-${index}`,
+      `Benutzername · ${username}`,
+      username,
+      "username"
+    );
     addPlan(
       `username-${index}`,
-      `Benutzername · ${username}`,
+      `Benutzername exakt · ${username}`,
       quote(username),
       "username"
     );
     addPlan(
       `username-adult-${index}`,
       `Benutzername Adult · ${username}`,
-      `${quote(username)} ${ADULT_IMAGE_DORK}`,
+      `${username} ${ADULT_IMAGE_DORK}`,
       "username"
     );
+    for (const [siteIndex, site] of USERNAME_FOCUS_SITES.entries()) {
+      addPlan(
+        `username-site-${index}-${siteIndex}`,
+        `Benutzername · ${site} · ${username}`,
+        `site:${site} ${username}`,
+        "username"
+      );
+    }
   }
 
   return plans;

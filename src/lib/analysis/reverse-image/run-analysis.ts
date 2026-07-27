@@ -488,7 +488,7 @@ async function executeDiscoveryPipeline(input: {
       try {
         const batch = await fetchGoogleImageCandidates({
           query: plan.query,
-          num: 12,
+          // Tiefe wie manuelle Google-Bildsuche: mehrere Seiten (ijn), nicht nur ~12 Treffer.
           userId,
         });
         checkpoint = markQueryFetched(checkpoint, plan, batch);

@@ -32,6 +32,11 @@ export interface SearchProviderSearchOptions {
   country?: string;
   /** SerpAPI engine — google (default) or bing for uncensored niche/adult footprint. */
   engine?: SerpSearchEngine;
+  /**
+   * Google Images only: number of result pages via SerpAPI `ijn` (0-based).
+   * Each page typically yields up to ~100 images. Default 1.
+   */
+  pages?: number;
 }
 
 export interface SearchProvider {

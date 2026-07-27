@@ -16,6 +16,16 @@ export interface SerpImageCandidate {
   queryLabel?: string;
 }
 
+/** Default depth for reverse-image discovery (SerpAPI google_images pages). */
+export const REVERSE_IMAGE_SERP_PAGES = Number.parseInt(
+  process.env.REVERSE_IMAGE_SERP_PAGES ?? "3",
+  10
+);
+export const REVERSE_IMAGE_SERP_NUM = Number.parseInt(
+  process.env.REVERSE_IMAGE_SERP_NUM ?? "250",
+  10
+);
+
 function hostOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -27,6 +37,7 @@ function hostOf(url: string): string {
 export async function fetchGoogleImageCandidates(input: {
   query: string;
   num?: number;
+  pages?: number;
   userId?: number;
 }): Promise<SerpImageCandidate[]> {
   const apiKey = await resolveSearchProviderApiKey("serpapi");
@@ -35,10 +46,31 @@ export async function fetchGoogleImageCandidates(input: {
   const provider = new SerpApiProvider(apiKey);
   const started = Date.now();
   const referenceKey = `serpapi-google_images:${Date.now()}`;
+  const pages = Math.min(
+    Math.max(
+      input.pages ??
+        (Number.isFinite(REVERSE_IMAGE_SERP_PAGES)
+          ? REVERSE_IMAGE_SERP_PAGES
+          : 3),
+      1
+    ),
+    5
+  );
+  const num = Math.min(
+    Math.max(
+      input.num ??
+        (Number.isFinite(REVERSE_IMAGE_SERP_NUM)
+          ? REVERSE_IMAGE_SERP_NUM
+          : 250),
+      1
+    ),
+    500
+  );
 
   try {
     const hits = await provider.searchImages(input.query, {
-      num: Math.min(Math.max(input.num ?? 12, 1), 20),
+      num,
+      pages,
     });
     await recordSearchProviderRequest({
       provider: "serpapi",
@@ -49,7 +81,7 @@ export async function fetchGoogleImageCandidates(input: {
       query: input.query,
       referenceKey,
       userId: input.userId ?? null,
-      requestCount: 1,
+      requestCount: pages,
       recordFinance: true,
     });
 
@@ -81,7 +113,7 @@ export async function fetchGoogleImageCandidates(input: {
       query: input.query,
       referenceKey,
       userId: input.userId ?? null,
-      requestCount: 1,
+      requestCount: pages,
       recordFinance: true,
     });
     throw error instanceof Error ? error : new Error(message);
