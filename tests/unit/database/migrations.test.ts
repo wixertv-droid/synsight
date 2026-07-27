@@ -8,7 +8,7 @@ describe("database migrations workflow", () => {
     .filter((name) => /^\d{3}_.+\.sql$/i.test(name))
     .sort((a, b) => a.localeCompare(b));
 
-  it("ships ordered 001–034 migration files", () => {
+  it("ships ordered 001–037 migration files", () => {
     expect(files).toEqual([
       "001_initial_schema.sql",
       "002_production_identity.sql",
@@ -46,6 +46,7 @@ describe("database migrations workflow", () => {
       "034_reverse_image_search.sql",
       "035_reverse_image_module_settings.sql",
       "036_reverse_image_two_phase.sql",
+      "037_admin_platform_repair.sql",
     ]);
   });
 
@@ -367,5 +368,28 @@ describe("database migrations workflow", () => {
     expect(pricingService).toContain("ensureDigitalLeakCatalog");
     expect(financeService).toContain("ensureDigitalLeakCatalog");
     expect(instrumentation).toContain("ensureDigitalLeakCatalog");
+  });
+
+  it("fixes reverse-image pricing column and makes two-phase migrate idempotent", () => {
+    const m034 = readFileSync(
+      path.join(dir, "034_reverse_image_search.sql"),
+      "utf8"
+    );
+    const m036 = readFileSync(
+      path.join(dir, "036_reverse_image_two_phase.sql"),
+      "utf8"
+    );
+    const m037 = readFileSync(
+      path.join(dir, "037_admin_platform_repair.sql"),
+      "utf8"
+    );
+    expect(m034).toContain("`credits`");
+    expect(m034).not.toContain("syn_credits");
+    expect(m036).toContain("information_schema.COLUMNS");
+    expect(m036).toContain("reverse_image_discovery");
+    expect(m036).toContain("reverse_image_compare");
+    expect(m037).toContain("platform_settings");
+    expect(m037).toContain("JSON_TYPE");
+    expect(m037).toContain("reverse_image_module_settings");
   });
 });

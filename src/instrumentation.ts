@@ -12,8 +12,28 @@ export async function register() {
       .catch(() => {
         /* pricing heal retries on read */
       });
+    void import("@/lib/credits/ensure-username-catalog")
+      .then((mod) => mod.ensureUsernameCatalog(true))
+      .catch(() => {
+        /* pricing heal retries on read */
+      });
+    void import("@/lib/credits/ensure-reverse-image-catalog")
+      .then((mod) => mod.ensureReverseImageCatalog(true))
+      .catch(() => {
+        /* pricing heal retries on read */
+      });
+    void import("@/lib/services/ensure-platform-settings")
+      .then((mod) => mod.ensurePlatformSettingsSchema(true))
+      .catch(() => {
+        /* settings heal retries on read */
+      });
     void import("@/lib/analysis/digital-exposure/ensure-schema")
       .then((mod) => mod.ensureDigitalExposureSchema(true))
+      .catch(() => {
+        /* DDL heal retries on scan/read */
+      });
+    void import("@/lib/analysis/reverse-image/ensure-schema")
+      .then((mod) => mod.ensureReverseImageSchema(true))
       .catch(() => {
         /* DDL heal retries on scan/read */
       });

@@ -3,7 +3,8 @@ import { isStaffRole } from "@/lib/admin/permissions";
 import { getDatabase } from "@/lib/database/client";
 import { apiCredentials, platformSettings } from "@/lib/database/schema";
 import { decryptSecret, encryptSecret } from "@/lib/security/secret-vault";
-import { eq } from "drizzle-orm";
+import { ensurePlatformSettingsSchema } from "@/lib/services/ensure-platform-settings";
+import { eq, sql } from "drizzle-orm";
 
 export const ADMIN_API_PROVIDERS = [
   "gemini",
@@ -69,23 +70,114 @@ function assertStaff(actor: AuthenticatedUser): void {
   if (!isStaffRole(actor.role)) throw new Error("STAFF_FORBIDDEN");
 }
 
+function asNumber(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function asBool(value: unknown, fallback: boolean): boolean {
+  if (typeof value === "boolean") return value;
+  if (value === 1 || value === "1" || value === "true") return true;
+  if (value === 0 || value === "0" || value === "false") return false;
+  return fallback;
+}
+
+function asString(value: unknown, fallback: string): string {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  return fallback;
+}
+
+function parseSettingsJson(raw: unknown): Partial<PlatformSettings> | null {
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Partial<PlatformSettings>;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Partial<PlatformSettings>;
+  }
+  return null;
+}
+
 function normalizeSettings(
   value: Partial<PlatformSettings> | null | undefined
 ): PlatformSettings {
+  const raw = value ?? {};
   return {
-    ...DEFAULT_PLATFORM_SETTINGS,
-    ...value,
+    imageMaxUploadMb: asNumber(
+      raw.imageMaxUploadMb,
+      DEFAULT_PLATFORM_SETTINGS.imageMaxUploadMb
+    ),
+    imageCompressionQuality: asNumber(
+      raw.imageCompressionQuality,
+      DEFAULT_PLATFORM_SETTINGS.imageCompressionQuality
+    ),
+    imageWebpQuality: asNumber(
+      raw.imageWebpQuality,
+      DEFAULT_PLATFORM_SETTINGS.imageWebpQuality
+    ),
+    imageThumbnailQuality: asNumber(
+      raw.imageThumbnailQuality,
+      DEFAULT_PLATFORM_SETTINGS.imageThumbnailQuality
+    ),
+    imageMaxResolution: asNumber(
+      raw.imageMaxResolution,
+      DEFAULT_PLATFORM_SETTINGS.imageMaxResolution
+    ),
+    encryptOriginals: asBool(
+      raw.encryptOriginals,
+      DEFAULT_PLATFORM_SETTINGS.encryptOriginals
+    ),
+    generateAnalysisImages: asBool(
+      raw.generateAnalysisImages,
+      DEFAULT_PLATFORM_SETTINGS.generateAnalysisImages
+    ),
+    supportHoursStart: asString(
+      raw.supportHoursStart,
+      DEFAULT_PLATFORM_SETTINGS.supportHoursStart
+    ),
+    supportHoursEnd: asString(
+      raw.supportHoursEnd,
+      DEFAULT_PLATFORM_SETTINGS.supportHoursEnd
+    ),
+    supportTimezone: asString(
+      raw.supportTimezone,
+      DEFAULT_PLATFORM_SETTINGS.supportTimezone
+    ),
+    supportResponseText: asString(
+      raw.supportResponseText,
+      DEFAULT_PLATFORM_SETTINGS.supportResponseText
+    ),
+    digitalLeakDefaultRetentionDays: asNumber(
+      raw.digitalLeakDefaultRetentionDays,
+      DEFAULT_PLATFORM_SETTINGS.digitalLeakDefaultRetentionDays
+    ),
   };
 }
 
 export async function getPublicPlatformSettings(): Promise<PlatformSettings> {
+  await ensurePlatformSettingsSchema();
   const db = getDatabase();
   if (!db) return { ...DEFAULT_PLATFORM_SETTINGS };
 
-  const rows = await db.select().from(platformSettings).limit(1);
-  return normalizeSettings(
-    (rows[0]?.settingsJson as Partial<PlatformSettings> | undefined) ?? null
-  );
+  try {
+    const rows = await db.select().from(platformSettings).limit(1);
+    return normalizeSettings(parseSettingsJson(rows[0]?.settingsJson));
+  } catch (error) {
+    console.error("[getPublicPlatformSettings] failed", error);
+    return { ...DEFAULT_PLATFORM_SETTINGS };
+  }
 }
 
 export async function getAdminPlatformSettings(
@@ -107,21 +199,24 @@ async function persistPlatformSettings(
   const db = getDatabase();
   if (!db) return merged;
 
-  const actorId = Number(actor.id);
+  const ensured = await ensurePlatformSettingsSchema(true);
+  if (!ensured) {
+    throw new Error(
+      "platform_settings konnte nicht initialisiert werden — bitte db:migrate ausführen."
+    );
+  }
 
-  await db
-    .insert(platformSettings)
-    .values({
-      id: 1,
-      settingsJson: merged,
-      updatedByAdminId: actorId,
-    })
-    .onDuplicateKeyUpdate({
-      set: {
-        settingsJson: merged,
-        updatedByAdminId: actorId,
-      },
-    });
+  const actorId = Number(actor.id);
+  const adminId = Number.isFinite(actorId) ? actorId : null;
+  const payload = JSON.stringify(merged);
+
+  await db.execute(sql`
+    INSERT INTO platform_settings (id, settings_json, updated_by_admin_id)
+    VALUES (1, CAST(${payload} AS JSON), ${adminId})
+    ON DUPLICATE KEY UPDATE
+      settings_json = CAST(${payload} AS JSON),
+      updated_by_admin_id = ${adminId}
+  `);
 
   return merged;
 }

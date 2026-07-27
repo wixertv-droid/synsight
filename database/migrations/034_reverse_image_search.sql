@@ -46,7 +46,8 @@ CREATE TABLE IF NOT EXISTS `reverse_image_hits` (
 
 -- Ensure pricing catalog row is active
 INSERT INTO `analysis_pricing` (
-  `analysis_key`, `label`, `description`, `syn_credits`, `is_active`, `sort_order`
+  `analysis_key`, `label`, `description`, `credits`, `is_active`, `sort_order`,
+  `is_system_default`, `default_label`, `default_description`, `default_credits`
 )
 SELECT
   'reverse_image_search',
@@ -54,7 +55,11 @@ SELECT
   'Visuelle Treffersuche über Google Images (SerpAPI) mit InsightFace-Abgleich.',
   25,
   1,
-  60
+  90,
+  1,
+  'Reverse Image Search',
+  'Visuelle Treffersuche über Google Images (SerpAPI) mit InsightFace-Abgleich.',
+  25
 FROM DUAL
 WHERE NOT EXISTS (
   SELECT 1 FROM `analysis_pricing` WHERE `analysis_key` = 'reverse_image_search'
@@ -62,7 +67,10 @@ WHERE NOT EXISTS (
 
 UPDATE `analysis_pricing`
 SET
-  `is_active` = 1,
   `label` = 'Reverse Image Search',
-  `description` = 'Visuelle Treffersuche über Google Images (SerpAPI) mit InsightFace-Abgleich.'
+  `description` = 'Visuelle Treffersuche über Google Images (SerpAPI) mit InsightFace-Abgleich.',
+  `default_label` = 'Reverse Image Search',
+  `default_description` = 'Visuelle Treffersuche über Google Images (SerpAPI) mit InsightFace-Abgleich.',
+  `default_credits` = 25,
+  `is_system_default` = 1
 WHERE `analysis_key` = 'reverse_image_search';

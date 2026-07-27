@@ -26,6 +26,7 @@ export default function AdminImageSettingsView() {
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/admin/platform-settings");
@@ -41,16 +42,29 @@ export default function AdminImageSettingsView() {
     if (!settings) return;
     setBusy(true);
     setSaved(false);
+    setError(null);
     try {
       const response = await fetch("/api/admin/platform-settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({
+          imageMaxUploadMb: settings.imageMaxUploadMb,
+          imageCompressionQuality: settings.imageCompressionQuality,
+          imageWebpQuality: settings.imageWebpQuality,
+          imageThumbnailQuality: settings.imageThumbnailQuality,
+          imageMaxResolution: settings.imageMaxResolution,
+          encryptOriginals: settings.encryptOriginals,
+          generateAnalysisImages: settings.generateAnalysisImages,
+          digitalLeakDefaultRetentionDays:
+            settings.digitalLeakDefaultRetentionDays,
+        }),
       });
       const body = await response.json();
       if (body.success) {
         setSettings(body.data.settings);
         setSaved(true);
+      } else {
+        setError(body?.error?.message ?? "Speichern fehlgeschlagen.");
       }
     } finally {
       setBusy(false);
@@ -123,6 +137,11 @@ export default function AdminImageSettingsView() {
         </button>
         {saved ? (
           <span className="text-xs text-emerald-300/75">Gespeichert</span>
+        ) : null}
+        {error ? (
+          <span className="text-xs text-rose-200/80" role="alert">
+            {error}
+          </span>
         ) : null}
       </div>
     </div>

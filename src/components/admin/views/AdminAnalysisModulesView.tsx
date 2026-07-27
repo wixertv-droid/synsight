@@ -45,6 +45,7 @@ const emptyReverseImageSettings: ReverseImageModuleSettings = {
 export default function AdminAnalysisModulesView() {
   const [rows, setRows] = useState<AnalysisRow[]>([]);
   const [busy, setBusy] = useState<number | null>(null);
+  const [moduleMsg, setModuleMsg] = useState<string | null>(null);
   const [usernameSettings, setUsernameSettings] =
     useState<UsernameModuleSettings>(emptySettings);
   const [usernameFinance, setUsernameFinance] =
@@ -130,8 +131,9 @@ export default function AdminAnalysisModulesView() {
 
   async function toggle(row: AnalysisRow) {
     setBusy(row.id);
+    setModuleMsg(null);
     try {
-      await fetch("/api/admin/pricing", {
+      const response = await fetch("/api/admin/pricing", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -144,6 +146,14 @@ export default function AdminAnalysisModulesView() {
           sortOrder: Number.isFinite(row.sortOrder) ? row.sortOrder : 100,
         }),
       });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body?.success) {
+        setModuleMsg(
+          body?.error?.message ??
+            `Modul „${row.label}“ konnte nicht gespeichert werden.`
+        );
+        return;
+      }
       setRows((current) =>
         current.map((item) =>
           item.id === row.id ? { ...item, isActive: !item.isActive } : item
@@ -156,6 +166,17 @@ export default function AdminAnalysisModulesView() {
           body: JSON.stringify({ isActive: !row.isActive }),
         });
         void loadUsername();
+      }
+      if (
+        row.analysisKey === "reverse_image_discovery" ||
+        row.analysisKey === "reverse_image_search"
+      ) {
+        await fetch("/api/admin/reverse-image-module", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: !row.isActive }),
+        });
+        void loadReverseImage();
       }
     } finally {
       setBusy(null);
@@ -245,6 +266,12 @@ export default function AdminAnalysisModulesView() {
           </li>
         ))}
       </ul>
+
+      {moduleMsg ? (
+        <p className="text-sm text-rose-200/80" role="alert">
+          {moduleMsg}
+        </p>
+      ) : null}
 
       <section className="rounded-2xl border border-white/[0.08] bg-[#060d16]/90 p-5 md:p-6">
         <p className="font-mono text-[9px] tracking-[.16em] text-white/45">

@@ -46,6 +46,23 @@ export async function PUT(request: Request) {
     );
   }
 
-  const settings = await updateAdminPlatformSettings(access.user, parsed.data);
-  return NextResponse.json(apiSuccess({ settings }));
+  try {
+    const settings = await updateAdminPlatformSettings(
+      access.user,
+      parsed.data
+    );
+    return NextResponse.json(apiSuccess({ settings }));
+  } catch (error) {
+    console.error("[admin/platform-settings] PUT failed", error);
+    const raw = error instanceof Error ? error.message : "";
+    const message =
+      raw === "ADMIN_FORBIDDEN"
+        ? "Administratorrechte erforderlich."
+        : raw.includes("platform_settings")
+          ? raw
+          : raw
+            ? `Speichern fehlgeschlagen: ${raw}`
+            : "Plattform-Einstellungen konnten nicht gespeichert werden.";
+    return NextResponse.json(apiError("SAVE_FAILED", message), { status: 500 });
+  }
 }

@@ -38,8 +38,16 @@ async function main() {
       connection,
       "database/migrations/023_username_intelligence.sql"
     );
+    await applySql(
+      connection,
+      "database/migrations/035_reverse_image_module_settings.sql"
+    );
+    await applySql(
+      connection,
+      "database/migrations/037_admin_platform_repair.sql"
+    );
     console.log(
-      "Catalog + schema repair applied (Digital Leak + Username Intelligence)."
+      "Catalog + schema repair applied (Digital Leak + Username + Reverse Image + Platform Settings)."
     );
   } finally {
     await connection.end();

@@ -4,6 +4,7 @@ import {
   verifyDigitalLeakCatalog,
 } from "@/lib/credits/ensure-digital-leak-catalog";
 import { ensureUsernameCatalog } from "@/lib/credits/ensure-username-catalog";
+import { ensureReverseImageCatalog } from "@/lib/credits/ensure-reverse-image-catalog";
 import {
   formatEuroFromCents,
   isReplacedAnalysisKey,
@@ -63,6 +64,7 @@ export async function getPublicPricingCatalog() {
   try {
     await ensureDigitalLeakCatalog(false);
     await ensureUsernameCatalog(false);
+    await ensureReverseImageCatalog(false);
     const repository = getPricingRepository();
     let analyses = await repository.listAnalyses(true);
     let mapped = analyses.map((entry) => ({
@@ -76,11 +78,13 @@ export async function getPublicPricingCatalog() {
     const needsRepair =
       !mapped.some((row) => row.key === "digital_leak_exposure") ||
       !mapped.some((row) => row.key === "username_intelligence") ||
+      !mapped.some((row) => row.key === "reverse_image_discovery") ||
       mapped.some((row) => isReplacedAnalysisKey(row.key));
 
     if (needsRepair) {
       await ensureDigitalLeakCatalog(true);
       await ensureUsernameCatalog(true);
+      await ensureReverseImageCatalog(true);
       analyses = await repository.listAnalyses(true);
       mapped = analyses.map((entry) => ({
         key: entry.analysisKey,
@@ -111,6 +115,7 @@ export async function getPublicPricingCatalog() {
 export async function getAnalysisQuote(userId: number, analysisKey: string) {
   await ensureDigitalLeakCatalog(false);
   await ensureUsernameCatalog(false);
+  await ensureReverseImageCatalog(false);
   const pricing = await getPricingRepository().findAnalysisByKey(analysisKey);
   if (!pricing || !pricing.isActive) return null;
   const account = await getCreditsRepository().ensureAccount(userId);
@@ -128,6 +133,7 @@ export async function getAdminPricingCatalog(actor: AuthenticatedUser) {
   assertAdmin(actor);
   await ensureDigitalLeakCatalog(true);
   await ensureUsernameCatalog(true);
+  await ensureReverseImageCatalog(true);
   const repository = getPricingRepository();
   const [analyses, packages] = await Promise.all([
     repository.listAnalyses(false),
@@ -198,6 +204,25 @@ export async function updateAnalysisPricing(input: {
       );
     } catch (error) {
       console.error("[pricing] username module settings sync failed", error);
+    }
+  }
+
+  if (
+    updated.analysisKey === "reverse_image_discovery" ||
+    updated.analysisKey === "reverse_image_search"
+  ) {
+    try {
+      const { updateReverseImageModuleSettings } =
+        await import("@/lib/analysis/reverse-image/settings");
+      await updateReverseImageModuleSettings(
+        { isActive: updated.isActive },
+        adminId
+      );
+    } catch (error) {
+      console.error(
+        "[pricing] reverse-image module settings sync failed",
+        error
+      );
     }
   }
 
