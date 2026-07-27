@@ -43,9 +43,9 @@ export interface ReverseImageSerpCheckpoint {
   };
 }
 
-/** Pro Query behalten — manuelle Google-Bildsuche liefert oft 100+ Treffer. */
+/** Pro Query behalten — genug für Auswahl, ohne Speicher/Kosten zu sprengen. */
 const MAX_RESULTS_PER_QUERY = Number.parseInt(
-  process.env.REVERSE_IMAGE_MAX_RESULTS_PER_QUERY ?? "250",
+  process.env.REVERSE_IMAGE_MAX_RESULTS_PER_QUERY ?? "100",
   10
 );
 
@@ -316,8 +316,8 @@ export function markQueryFetched(
   }));
 
   const perQueryCap = Number.isFinite(MAX_RESULTS_PER_QUERY)
-    ? Math.max(MAX_RESULTS_PER_QUERY, 50)
-    : 250;
+    ? Math.max(MAX_RESULTS_PER_QUERY, 40)
+    : 100;
   const mergedForQuery = dedupeCandidates([
     ...(checkpoint.resultsByQuery[plan.id] ?? []),
     ...tagged,

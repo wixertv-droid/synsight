@@ -7,27 +7,23 @@ export interface ReverseImageQueryPlan {
   label: string;
   query: string;
   group: ReverseImageQueryGroup;
-  /** Extra SerpAPI pages for high-recall queries (usernames). */
+  /** SerpAPI `ijn` pages (1 Call ≈ 1 Seite). Keep low — costs scale linearly. */
   pages?: number;
 }
 
-/** Adult-/Nischen-Sites — analog manueller Google-Bildsuche (SafeSearch aus). */
+/**
+ * Eine Adult-/Nischen-Query statt 6× site:-Einzelsuchen.
+ * Spart SerpAPI-Calls, deckt dieselben Plattformen ab.
+ */
 const ADULT_IMAGE_DORK =
-  '(site:joyclub.de OR site:einfachgeiler.com OR site:amarotic.com OR site:onlyfans.com OR site:frivol.com OR site:amateurseite.com OR site:ffgv.de OR "amateur" OR "escort")';
+  '(site:amarotic.com OR site:frivol.com OR site:amateurseite.com OR site:joyclub.de OR site:einfachgeiler.com OR site:ffgv.de OR site:onlyfans.com OR "amateur")';
 
-const USERNAME_FOCUS_SITES = [
-  "amarotic.com",
-  "frivol.com",
-  "amateurseite.com",
-  "ffgv.de",
-  "einfachgeiler.com",
-  "joyclub.de",
-] as const;
-
-function quote(value: string): string {
-  const safe = value.replace(/"/g, "").trim();
-  return `"${safe}"`;
-}
+/** Max. Seiten pro Query (jede Seite = 1 SerpAPI-Request). */
+export const REVERSE_IMAGE_COST_PAGES = {
+  username: 2,
+  alias: 2,
+  name: 2,
+} as const;
 
 function normalizeKey(value: string): string {
   return value.trim().toLowerCase();
@@ -77,9 +73,15 @@ function collectUsernames(identity: IdentityView | null): string[] {
 }
 
 /**
- * Phase 1 queries.
- * WICHTIG: Jeder Benutzername einzeln und ZUERST (kein OR-Batch — Google Images
- * liefert bei `"a" OR "b"` oft 0 Treffer). SafeSearch bleibt off in SerpAPI.
+ * Kosteneffizienter Phase-1-Plan.
+ *
+ * Pro Benutzername: 2 Queries (offen + Adult-Bundle) — kein OR über Usernames,
+ * keine 6 Einzelsite-Calls, keine redundanten „exakt“-Queries.
+ * Pro Alias: 1 offene Query.
+ * Pro Name: 2 Queries (offen + Foto).
+ *
+ * Beispiel Anja1921 + Luder-Anja + Name:
+ * 2×2 + 2 = 6 Queries × 2 Seiten ≈ 12 SerpAPI-Calls (vorher oft 80–100+).
  */
 export function planReverseImageQueries(
   identity: IdentityView | null
@@ -92,7 +94,7 @@ export function planReverseImageQueries(
     label: string,
     query: string,
     group: ReverseImageQueryGroup,
-    pages?: number
+    pages: number
   ) => {
     const normalized = query.trim().toLowerCase();
     if (!normalized || seenQueries.has(normalized)) return;
@@ -102,7 +104,7 @@ export function planReverseImageQueries(
       label,
       query: query.trim(),
       group,
-      ...(pages ? { pages } : {}),
+      pages,
     });
   };
 
@@ -115,86 +117,61 @@ export function planReverseImageQueries(
     (alias) => !(fullName && normalizeKey(alias) === normalizeKey(fullName))
   );
 
-  // 1) Benutzernamen zuerst — höchste Trefferquote bei Adult/OSINT.
+  // 1) Benutzernamen zuerst — offen (wie manuelles Google) + eine Adult-Bundle-Query
   for (const [index, username] of usernames.entries()) {
     addPlan(
       `username-open-${index}`,
       `Benutzername · ${username}`,
       username,
       "username",
-      5
-    );
-    addPlan(
-      `username-exact-${index}`,
-      `Benutzername exakt · ${username}`,
-      quote(username),
-      "username",
-      3
+      REVERSE_IMAGE_COST_PAGES.username
     );
     addPlan(
       `username-adult-${index}`,
       `Benutzername Adult · ${username}`,
       `${username} ${ADULT_IMAGE_DORK}`,
       "username",
-      4
+      REVERSE_IMAGE_COST_PAGES.username
     );
-    for (const [siteIndex, site] of USERNAME_FOCUS_SITES.entries()) {
-      addPlan(
-        `username-site-${index}-${siteIndex}`,
-        `Benutzername · ${site} · ${username}`,
-        `site:${site} ${username}`,
-        "username",
-        2
-      );
-    }
   }
 
-  // 2) Alias
+  // 2) Alias — eine offene Query reicht (Adult steckt bei Usernames)
   for (const [index, alias] of aliases.entries()) {
-    addPlan(`alias-open-${index}`, `Alias · ${alias}`, alias, "alias", 4);
     addPlan(
-      `alias-exact-${index}`,
-      `Alias exakt · ${alias}`,
-      quote(alias),
+      `alias-open-${index}`,
+      `Alias · ${alias}`,
+      alias,
       "alias",
-      2
-    );
-    addPlan(
-      `alias-adult-${index}`,
-      `Alias Adult · ${alias}`,
-      `${alias} ${ADULT_IMAGE_DORK}`,
-      "alias",
-      3
+      REVERSE_IMAGE_COST_PAGES.alias
     );
   }
 
-  // 3) Vollständiger Name
+  // 3) Vollständiger Name — offen + Foto (kein Extra-Adult/Exakt)
   if (fullName) {
-    addPlan("name-open", `Name · ${fullName}`, fullName, "name", 4);
     addPlan(
-      "name-exact",
-      `Name exakt · ${fullName}`,
-      quote(fullName),
+      "name-open",
+      `Name · ${fullName}`,
+      fullName,
       "name",
-      3
+      REVERSE_IMAGE_COST_PAGES.name
     );
     addPlan(
       "name-photo",
       `Name + Foto · ${fullName}`,
-      `${fullName} (photo OR foto OR bild OR gallery)`,
+      `${fullName} (photo OR foto OR bild)`,
       "name",
-      4
-    );
-    addPlan(
-      "name-adult",
-      `Name Adult · ${fullName}`,
-      `${fullName} ${ADULT_IMAGE_DORK}`,
-      "name",
-      3
+      REVERSE_IMAGE_COST_PAGES.name
     );
   }
 
   return plans;
+}
+
+/** Geschätzte SerpAPI-Seiten-Calls für einen Plan (Kostenindikator). */
+export function estimateSerpApiPageCalls(
+  plans: ReverseImageQueryPlan[]
+): number {
+  return plans.reduce((sum, plan) => sum + (plan.pages ?? 2), 0);
 }
 
 export function resolveReverseImageSubjectName(

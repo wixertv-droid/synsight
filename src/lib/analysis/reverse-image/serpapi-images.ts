@@ -18,13 +18,13 @@ export interface SerpImageCandidate {
   queryLabel?: string;
 }
 
-/** Default depth for reverse-image discovery (SerpAPI google_images pages). */
+/** Default depth — bewusst niedrig (jede Seite = 1 SerpAPI-Call). */
 export const REVERSE_IMAGE_SERP_PAGES = Number.parseInt(
-  process.env.REVERSE_IMAGE_SERP_PAGES ?? "5",
+  process.env.REVERSE_IMAGE_SERP_PAGES ?? "2",
   10
 );
 export const REVERSE_IMAGE_SERP_NUM = Number.parseInt(
-  process.env.REVERSE_IMAGE_SERP_NUM ?? "400",
+  process.env.REVERSE_IMAGE_SERP_NUM ?? "100",
   10
 );
 
