@@ -406,6 +406,7 @@ export async function getReverseImageSerpSources(
   selectedImageUrls: string[];
   retentionDays: number;
   expiresAt: string | null;
+  funnel: ReverseImageSerpCheckpoint["funnel"] | null;
 } | null> {
   const scan = await getReverseImageScanMeta(userId, scanId);
   if (!scan || isReportExpired({ expiresAt: scan.expires_at })) {
