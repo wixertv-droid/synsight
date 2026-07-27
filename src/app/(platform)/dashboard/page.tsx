@@ -16,10 +16,12 @@ import { getProfileRepository } from "@/lib/repositories";
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
 import { getLatestDigitalExposureReport } from "@/lib/analysis/digital-exposure/repository";
 import { getLatestUsernameReport } from "@/lib/analysis/username/repository";
+import { getLatestReverseImageReport } from "@/lib/analysis/reverse-image/repository";
 import {
   filterIgnoredFromDigitalExposureReport,
   filterIgnoredFromGoogleReport,
   filterIgnoredFromUsernameReport,
+  filterIgnoredFromReverseImageReport,
 } from "@/lib/services/report-stats-filter";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import {
@@ -40,6 +42,7 @@ const IMPLEMENTED_REPORT_KEYS = new Set([
   "google_search",
   "digital_leak_exposure",
   "username_intelligence",
+  "reverse_image_search",
 ]);
 
 async function loadModuleReport(
@@ -58,6 +61,10 @@ async function loadModuleReport(
   if (key === "username_intelligence") {
     const report = await getLatestUsernameReport(userId);
     return filterIgnoredFromUsernameReport(userId, report);
+  }
+  if (key === "reverse_image_search") {
+    const report = await getLatestReverseImageReport(userId);
+    return filterIgnoredFromReverseImageReport(userId, report);
   }
   return null;
 }

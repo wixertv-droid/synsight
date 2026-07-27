@@ -5,9 +5,12 @@ import ResultsCenterClient, {
 import { getIntelligenceReport } from "@/lib/analysis/session-store";
 import { getLatestDigitalExposureReport } from "@/lib/analysis/digital-exposure/repository";
 import { getLatestUsernameReport } from "@/lib/analysis/username/repository";
+import { getLatestReverseImageReport } from "@/lib/analysis/reverse-image/repository";
 import { filterIgnoredFromUsernameReport } from "@/lib/services/username-actions-service";
+import { filterIgnoredFromReverseImageReport } from "@/lib/services/report-stats-filter";
 import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/types";
 import type { UsernameReport } from "@/lib/analysis/username/types";
+import type { ReverseImageReport } from "@/lib/analysis/reverse-image/types";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import { resolveSubjectName } from "@/lib/analysis/google/queries";
 import { resolveActiveAnalyses } from "@/lib/dashboard/resolve-active-analyses";
@@ -21,6 +24,7 @@ function tabSortRank(id: string): number {
   if (id === "google_search") return 10;
   if (id === "digital_leak_exposure") return 20;
   if (id === "username_intelligence") return 30;
+  if (id === "reverse_image_search") return 40;
   return 100;
 }
 
@@ -49,7 +53,7 @@ function tabTitle(id: string, fallback: string): string {
     case "social_media":
       return "Social Analyse";
     case "reverse_image_search":
-      return "Bildanalyse";
+      return "Reverse Image Search";
     default:
       return fallback;
   }
@@ -59,7 +63,8 @@ function isAvailableModule(id: string): boolean {
   return (
     id === "google_search" ||
     id === "digital_leak_exposure" ||
-    id === "username_intelligence"
+    id === "username_intelligence" ||
+    id === "reverse_image_search"
   );
 }
 
@@ -68,6 +73,7 @@ async function loadResultsData(): Promise<{
   googleReport: IntelligenceReport | null;
   exposureReport: DigitalExposureReport | null;
   usernameReport: UsernameReport | null;
+  reverseImageReport: ReverseImageReport | null;
   subjectName: string;
 }> {
   // No hardcoded available FALLBACK — inactive/missing catalog → no tabs.
@@ -75,6 +81,7 @@ async function loadResultsData(): Promise<{
   let googleReport: IntelligenceReport | null = null;
   let exposureReport: DigitalExposureReport | null = null;
   let usernameReport: UsernameReport | null = null;
+  let reverseImageReport: ReverseImageReport | null = null;
   let subjectName = "Unbekannt";
 
   try {
@@ -111,6 +118,7 @@ async function loadResultsData(): Promise<{
         googleReport,
         exposureReport,
         usernameReport,
+        reverseImageReport,
         subjectName,
       };
     }
@@ -148,7 +156,25 @@ async function loadResultsData(): Promise<{
       usernameReport = null;
     }
 
-    return { tabs, googleReport, exposureReport, usernameReport, subjectName };
+    try {
+      const rawReverse = await getLatestReverseImageReport(userId);
+      reverseImageReport = await filterIgnoredFromReverseImageReport(
+        userId,
+        rawReverse
+      );
+    } catch (error) {
+      console.error("[ResultsCenter] reverse image report load failed", error);
+      reverseImageReport = null;
+    }
+
+    return {
+      tabs,
+      googleReport,
+      exposureReport,
+      usernameReport,
+      reverseImageReport,
+      subjectName,
+    };
   } catch (error) {
     console.error("[ResultsCenter] unexpected load failure", error);
     return {
@@ -156,6 +182,7 @@ async function loadResultsData(): Promise<{
       googleReport: null,
       exposureReport: null,
       usernameReport: null,
+      reverseImageReport: null,
       subjectName,
     };
   }
@@ -168,6 +195,7 @@ export default async function ResultsCenter() {
     initialGoogleReport: data.googleReport,
     initialExposureReport: data.exposureReport,
     initialUsernameReport: data.usernameReport,
+    initialReverseImageReport: data.reverseImageReport,
     subjectName: data.subjectName || "Unbekannt",
   });
 
@@ -184,6 +212,7 @@ export default async function ResultsCenter() {
         initialGoogleReport={props.initialGoogleReport}
         initialExposureReport={props.initialExposureReport}
         initialUsernameReport={props.initialUsernameReport}
+        initialReverseImageReport={props.initialReverseImageReport}
         subjectName={props.subjectName}
       />
     </Suspense>

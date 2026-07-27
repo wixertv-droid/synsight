@@ -9,7 +9,11 @@ export type IntelligenceRelevance = "relevant" | "neutral" | "low" | "stale";
 export type SerpSearchEngine = "google" | "bing";
 
 export type IntelligenceHitSource =
-  "serpapi_google" | "serpapi_bing" | "identity_profile" | "dehashed_leak";
+  | "serpapi_google"
+  | "serpapi_bing"
+  | "serpapi_images"
+  | "identity_profile"
+  | "dehashed_leak";
 
 export function isLiveSerpSource(
   sourceType: IntelligenceHitSource | undefined

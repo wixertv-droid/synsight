@@ -7,6 +7,7 @@ import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/type
 import type { IntelligenceReport } from "@/lib/analysis/types";
 import { isLiveSerpSource } from "@/lib/analysis/types";
 import type { UsernameReport } from "@/lib/analysis/username/types";
+import type { ReverseImageReport } from "@/lib/analysis/reverse-image/types";
 import type {
   AnalysisSource,
   DashboardMetric,
@@ -18,6 +19,7 @@ import {
   partitionGoogleHits,
   scoreHitsRisk,
   scoreLeakFindings,
+  scoreReverseImageHits,
   scoreUsernameHits,
 } from "@/lib/dashboard/channel-risk";
 
@@ -160,6 +162,15 @@ function isUsernameReport(value: unknown): value is UsernameReport {
     typeof value === "object" &&
     "moduleKey" in value &&
     (value as UsernameReport).moduleKey === "username_intelligence"
+  );
+}
+
+function isReverseImageReport(value: unknown): value is ReverseImageReport {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    "moduleKey" in value &&
+    (value as ReverseImageReport).moduleKey === "reverse_image_search"
   );
 }
 
@@ -537,6 +548,76 @@ const usernameAdapter: ModuleAdapter = (label, raw) => {
   };
 };
 
+const reverseImageAdapter: ModuleAdapter = (label, raw) => {
+  const reverse = isReverseImageReport(raw) ? raw : null;
+  if (!reverse) {
+    return {
+      ...emptyContribution(),
+      metrics: [pendingMetric("Bildtreffer", "Noch kein Bild-Scan")],
+      analysisSources: [pendingSource("Profile")],
+    };
+  }
+
+  const hitCount = reverse.matchCount ?? reverse.hits?.length ?? 0;
+  const riskScore = reverse.riskScore ?? 0;
+  const highMatches =
+    reverse.managementOverview?.highConfidenceCount ??
+    reverse.hits.filter((h) => h.similarity >= 0.85).length;
+  const reverseScored = scoreReverseImageHits(reverse.hits ?? []);
+
+  return {
+    metrics: [
+      {
+        label: "Bildtreffer",
+        value: String(hitCount),
+        detail:
+          hitCount > 0
+            ? `${highMatches} mit hoher Übereinstimmung`
+            : "Keine Treffer über Schwellenwert",
+        trend: `Score ${riskScore}/100`,
+        tone:
+          highMatches > 0 || riskScore >= 70
+            ? "red"
+            : hitCount > 0
+              ? "amber"
+              : "green",
+        info: "Visuelle Treffer aus Google Images + InsightFace-Abgleich.",
+      },
+    ],
+    riskSignals:
+      hitCount > 0
+        ? [
+            {
+              id: "risk-reverse-image",
+              level: highMatches > 0 ? ("high" as const) : ("medium" as const),
+              title: "Visuelle Bildübereinstimmung",
+              description:
+                reverse.summary ??
+                reverse.managementOverview.headline ??
+                `${hitCount} Treffer in öffentlichen Bildindex-Vorschauen.`,
+              source: label,
+              info: "Reverse Image Search — nur Google-Index-Vorschauen.",
+            },
+          ]
+        : [],
+    recommendations: [],
+    analysisSources: [
+      {
+        label: "Profile",
+        value: reverseScored.value,
+        status: "ready",
+        count: reverseScored.count,
+      },
+    ],
+    lastAnalysisAt: reverse.completedAt ?? null,
+    riskScore,
+    openActions: highMatches,
+    signalCount: hitCount,
+    hasReport: true,
+    summaryBits: ["Bild"],
+  };
+};
+
 const unknownAdapter: ModuleAdapter = (label, report) => {
   if (report) {
     return {
@@ -568,6 +649,7 @@ const MODULE_ADAPTERS: Record<string, ModuleAdapter> = {
   google_search: googleAdapter,
   digital_leak_exposure: exposureAdapter,
   username_intelligence: usernameAdapter,
+  reverse_image_search: reverseImageAdapter,
 };
 
 function contributeModule(module: DashboardModuleInput): ModuleContribution {

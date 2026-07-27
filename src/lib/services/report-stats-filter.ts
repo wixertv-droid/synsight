@@ -23,6 +23,9 @@ import {
   listExcludedFromStatsFingerprints,
 } from "@/lib/services/hit-actions-service";
 import type { UsernameReport } from "@/lib/analysis/username/types";
+import type { ReverseImageReport } from "@/lib/analysis/reverse-image/types";
+import { reverseImageHitToIntelligenceHit } from "@/lib/analysis/reverse-image/to-intelligence-hit";
+import { assembleReverseImageReport } from "@/lib/analysis/reverse-image/report-metrics";
 
 export async function filterIgnoredFromGoogleReport(
   userId: number,
@@ -118,6 +121,38 @@ export async function filterIgnoredFromDigitalExposureReport(
 }
 
 export { filterIgnoredFromUsernameReport };
+
+export async function filterIgnoredFromReverseImageReport(
+  userId: number,
+  report: ReverseImageReport | null
+): Promise<ReverseImageReport | null> {
+  if (!report) return null;
+  const excluded = await listExcludedFromStatsFingerprints(
+    userId,
+    "reverse_image_search"
+  );
+  if (excluded.size === 0) return report;
+
+  const hits = report.hits.filter((hit) => {
+    const intel = reverseImageHitToIntelligenceHit(hit);
+    const fp = fingerprintForIntelligenceHit("reverse_image_search", intel);
+    return !excluded.has(fp);
+  });
+
+  return assembleReverseImageReport({
+    scanId: report.scanId,
+    status: report.status,
+    subjectName: report.subjectName,
+    startedAt: report.startedAt,
+    completedAt: report.completedAt,
+    hits,
+    queryCount: report.queryCount,
+    candidateCount: report.candidateCount,
+    referenceImageCount: report.referenceImageCount,
+    retentionDays: report.retentionDays,
+    expiresAt: report.expiresAt,
+  });
+}
 
 export async function filterIgnoredFromUsernameReportSafe(
   userId: number,

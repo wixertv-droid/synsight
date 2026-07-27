@@ -15,6 +15,7 @@ const moduleSchema = z.enum([
   "google_search",
   "username_intelligence",
   "digital_leak_exposure",
+  "reverse_image_search",
 ]);
 
 const actionSchema = z.object({

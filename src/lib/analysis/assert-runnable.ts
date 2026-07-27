@@ -7,6 +7,7 @@ import { getPricingRepository, getCreditsRepository } from "@/lib/repositories";
 import { consumeCredits } from "@/lib/services/credits-service";
 import { isGoogleSearchConfigured } from "@/lib/analysis/google/custom-search";
 import { isDehashedConfiguredAndActive } from "@/lib/analysis/digital-exposure/dehashed-client";
+import { isReverseImageConfigured } from "@/lib/analysis/reverse-image/run-analysis";
 import { getUsernameModuleSettings } from "@/lib/analysis/username/settings";
 import { isReplacedAnalysisKey } from "@/lib/credits/pricing";
 
@@ -64,6 +65,9 @@ async function assertProviderReady(analysisKey: string): Promise<boolean> {
     const settings = await getUsernameModuleSettings();
     if (!settings.isActive || !settings.apiEnabled) return false;
     return isGoogleSearchConfigured();
+  }
+  if (analysisKey === "reverse_image_search") {
+    return isReverseImageConfigured();
   }
   return false;
 }

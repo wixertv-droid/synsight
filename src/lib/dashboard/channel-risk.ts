@@ -91,6 +91,20 @@ export function scoreUsernameHits(hits: UsernameHit[]): {
   return { value: saturate(sum, 44), count: hits.length };
 }
 
+export function scoreReverseImageHits(
+  hits: Array<{ similarity: number; riskLevel?: string }>
+): { value: number; count: number } {
+  if (hits.length === 0) return { value: 0, count: 0 };
+  let sum = 0;
+  for (const hit of hits) {
+    const pct = hit.similarity * 100;
+    if (pct >= 90 || hit.riskLevel === "high") sum += 40;
+    else if (pct >= 75 || hit.riskLevel === "medium") sum += 22;
+    else sum += 10;
+  }
+  return { value: saturate(sum, 42), count: hits.length };
+}
+
 export function rebuildGoogleCategoryStats(hits: IntelligenceHit[]) {
   const live = hits.filter((h) => isLiveSerpSource(h.sourceType));
   const stats = {

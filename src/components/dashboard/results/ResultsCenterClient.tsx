@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import GoogleIntelligenceReport from "@/components/analysis/google/GoogleIntelligenceReport";
 import DigitalExposureReportView from "@/components/analysis/digital-exposure/DigitalExposureReportView";
 import UsernameIntelligenceReportView from "@/components/analysis/username/UsernameIntelligenceReportView";
+import ReverseImageReportView from "@/components/analysis/reverse-image/ReverseImageReportView";
 import IntelligenceScanSequence from "@/components/analysis/intelligence/IntelligenceScanSequence";
 import DashboardPageRail from "@/components/dashboard/DashboardPageRail";
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
@@ -12,6 +13,8 @@ import { digitalLeakExposureModule } from "@/lib/analysis/digital-exposure/modul
 import type { DigitalExposureReport } from "@/lib/analysis/digital-exposure/types";
 import { usernameIntelligenceModule } from "@/lib/analysis/username/module";
 import type { UsernameReport } from "@/lib/analysis/username/types";
+import { reverseImageSearchModule } from "@/lib/analysis/reverse-image/module";
+import type { ReverseImageReport } from "@/lib/analysis/reverse-image/types";
 import { googleIntelligenceModule } from "@/lib/analysis/google/module";
 import { normalizeIntelligenceReport } from "@/lib/analysis/normalize-report";
 import {
@@ -70,17 +73,28 @@ async function loadLatestUsernameReport(): Promise<UsernameReport | null> {
   return (body.data?.report as UsernameReport | null) ?? null;
 }
 
+async function loadLatestReverseImageReport(): Promise<ReverseImageReport | null> {
+  const response = await fetch("/api/analysis/reverse-image/latest", {
+    cache: "no-store",
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !body?.success) return null;
+  return (body.data?.report as ReverseImageReport | null) ?? null;
+}
+
 export default function ResultsCenterClient({
   modules,
   initialGoogleReport,
   initialExposureReport = null,
   initialUsernameReport = null,
+  initialReverseImageReport = null,
   subjectName,
 }: {
   modules: ResultsTabModule[];
   initialGoogleReport: IntelligenceReport | null;
   initialExposureReport?: DigitalExposureReport | null;
   initialUsernameReport?: UsernameReport | null;
+  initialReverseImageReport?: ReverseImageReport | null;
   subjectName: string;
 }) {
   const router = useRouter();
@@ -111,6 +125,8 @@ export default function ResultsCenterClient({
   const [usernameReport, setUsernameReport] = useState<UsernameReport | null>(
     initialUsernameReport
   );
+  const [reverseImageReport, setReverseImageReport] =
+    useState<ReverseImageReport | null>(initialReverseImageReport);
   const [scanning, setScanning] = useState(false);
   const [scanApiReady, setScanApiReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -477,6 +493,106 @@ export default function ResultsCenterClient({
     }
   }, [finishScanAttempt, requestIdFromUrl, retentionDays, searchParams]);
 
+  const runReverseImageScan = useCallback(async () => {
+    setError(null);
+    setScanning(true);
+    setScanApiReady(false);
+    const scanStart = Date.now();
+    const minScanMs = Math.max(
+      reverseImageSearchModule.minScanMs,
+      reverseImageSearchModule.scanSteps.at(-1)?.atMs ??
+        reverseImageSearchModule.minScanMs
+    );
+
+    try {
+      const effectiveRetention = parseRetentionDays(
+        searchParams.get("retention") ??
+          (typeof window !== "undefined"
+            ? window.localStorage.getItem(REPORT_RETENTION_STORAGE_KEY)
+            : null),
+        retentionDays
+      );
+      if (effectiveRetention !== retentionDays) {
+        setRetentionDays(effectiveRetention);
+      }
+
+      const requestId = (
+        searchParams.get("requestId") ?? requestIdFromUrl
+      ).trim();
+      if (!requestId) {
+        setError(
+          "Anfragekennung fehlt. Bitte starten Sie die Analyse erneut über das Analyse Center."
+        );
+        finishScanAttempt({ tab: "reverse_image_search" });
+        return;
+      }
+
+      const response = await fetch("/api/analysis/reverse-image/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          retentionDays: effectiveRetention,
+          requestId,
+        }),
+      });
+      setScanApiReady(true);
+      let body: {
+        success?: boolean;
+        data?: { report?: ReverseImageReport };
+        error?: { message?: string };
+      } = {};
+      try {
+        body = await response.json();
+      } catch {
+        body = {};
+      }
+
+      const elapsed = Date.now() - scanStart;
+      const waitMs = Math.max(0, minScanMs - elapsed);
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, waitMs > 0 ? waitMs : 500)
+      );
+
+      if (!response.ok || !body.success) {
+        if (response.status === 503) {
+          setError(
+            body.error?.message ??
+              "Reverse Image Search ist aktuell nicht verfügbar."
+          );
+          finishScanAttempt({ tab: "reverse_image_search" });
+          return;
+        }
+        const recovered = await loadLatestReverseImageReport();
+        if (recovered) {
+          setReverseImageReport(recovered);
+          setError(null);
+          finishScanAttempt({ tab: "reverse_image_search" });
+          return;
+        }
+        setError(
+          body.error?.message ??
+            "Reverse Image Search konnte nicht abgeschlossen werden."
+        );
+        finishScanAttempt({ tab: "reverse_image_search" });
+        return;
+      }
+
+      if (body.data?.report) {
+        setReverseImageReport(body.data.report);
+      }
+      finishScanAttempt({ tab: "reverse_image_search" });
+    } catch {
+      const recovered = await loadLatestReverseImageReport().catch(() => null);
+      if (recovered) {
+        setReverseImageReport(recovered);
+        finishScanAttempt({ tab: "reverse_image_search" });
+        return;
+      }
+      setError("Verbindung zum Server nicht möglich.");
+      finishScanAttempt({ tab: "reverse_image_search" });
+    }
+  }, [finishScanAttempt, requestIdFromUrl, retentionDays, searchParams]);
+
   useEffect(() => {
     if (
       shouldScan &&
@@ -516,6 +632,19 @@ export default function ResultsCenterClient({
     }
   }, [shouldScan, activeTab, scanning, scanDone, runUsernameScan]);
 
+  useEffect(() => {
+    if (
+      shouldScan &&
+      activeTab === "reverse_image_search" &&
+      !scanning &&
+      !scanDone &&
+      !scanStartedRef.current
+    ) {
+      scanStartedRef.current = true;
+      void runReverseImageScan();
+    }
+  }, [shouldScan, activeTab, scanning, scanDone, runReverseImageScan]);
+
   function selectTab(id: string) {
     setActiveTab(id);
     router.replace(`/dashboard/results?tab=${id}`, { scroll: false });
@@ -552,11 +681,13 @@ export default function ResultsCenterClient({
     !scanning &&
     ((activeModule.id === "google_search" && report) ||
       (activeModule.id === "username_intelligence" && usernameReport) ||
-      (activeModule.id === "digital_leak_exposure" && exposureReport));
+      (activeModule.id === "digital_leak_exposure" && exposureReport) ||
+      (activeModule.id === "reverse_image_search" && reverseImageReport));
 
   const showRetention =
     activeModule.id === "google_search" ||
-    activeModule.id === "username_intelligence";
+    activeModule.id === "username_intelligence" ||
+    activeModule.id === "reverse_image_search";
 
   const tabsNav = (
     <nav
@@ -655,6 +786,10 @@ export default function ResultsCenterClient({
                 report={exposureReport}
                 revealSections
               />
+            ) : null}
+            {activeModule.id === "reverse_image_search" &&
+            reverseImageReport ? (
+              <ReverseImageReportView report={reverseImageReport} />
             ) : null}
           </div>
         </>
@@ -775,6 +910,43 @@ export default function ResultsCenterClient({
                   </section>
                 ) : null}
               </>
+            ) : activeModule.id === "reverse_image_search" ? (
+              <>
+                {scanning ? (
+                  <IntelligenceScanSequence
+                    steps={reverseImageSearchModule.scanSteps}
+                    minDurationMs={reverseImageSearchModule.minScanMs}
+                    running={scanning}
+                    subjectName={subjectName}
+                    apiReady={scanApiReady}
+                    onComplete={() => undefined}
+                  />
+                ) : null}
+
+                {error ? (
+                  <p className="mt-4 rounded-lg border border-rose-400/20 bg-rose-400/[0.05] px-4 py-3 text-sm text-rose-100/70">
+                    {error}
+                  </p>
+                ) : null}
+
+                {!scanning && !reverseImageReport && !error ? (
+                  <section className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] p-6 md:p-8">
+                    <p className="font-mono text-[9px] tracking-[.16em] text-white/35">
+                      REVERSE IMAGE SEARCH
+                    </p>
+                    <p className="mt-3 text-sm text-white/50">
+                      Noch kein Bildanalyse-Report vorhanden. Referenzfotos
+                      hochladen und Analyse im Analyse Center starten.
+                    </p>
+                    <a
+                      href="/dashboard/analysis/reverse-image?start=1"
+                      className="mt-5 inline-flex rounded-lg border border-cyber-cyan/50 bg-cyber-cyan/[0.1] px-4 py-2.5 text-sm font-medium text-cyber-cyan"
+                    >
+                      Reverse Image Search starten
+                    </a>
+                  </section>
+                ) : null}
+              </>
             ) : (
               <section className="glass-strong hardware-panel rounded-[1.4rem] border border-white/[0.08] p-6 md:p-8">
                 <p className="font-mono text-[9px] tracking-[.16em] text-white/35">
@@ -783,7 +955,7 @@ export default function ResultsCenterClient({
                 <p className="mt-3 text-sm text-white/50">
                   {activeModule.available
                     ? activeModule.tagline
-                    : "Dieses Modul wird in einem späteren Sprint freigeschaltet. Google Analyse, Digital Leak & Exposure und Username Intelligence sind bereits verfügbar."}
+                    : "Dieses Modul wird in einem späteren Sprint freigeschaltet."}
                 </p>
               </section>
             )}

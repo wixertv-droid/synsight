@@ -17,7 +17,10 @@ import {
 } from "@/lib/analysis/username/report-metrics";
 
 export type AnalysisSourceModule =
-  "google_search" | "username_intelligence" | "digital_leak_exposure";
+  | "google_search"
+  | "username_intelligence"
+  | "digital_leak_exposure"
+  | "reverse_image_search";
 
 export type HitActionKind = "ignored" | "self" | "ordered" | "resolved";
 
