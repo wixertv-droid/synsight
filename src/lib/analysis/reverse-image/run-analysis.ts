@@ -18,6 +18,7 @@ import {
   allCandidates,
   appendLiveScanResult,
   compareWorkRemaining,
+  completeRemainingQueries,
   createEmptySerpCheckpoint,
   discoveryWorkRemaining,
   groupLabelsFromCheckpoint,
@@ -25,6 +26,7 @@ import {
   markQueryFetched,
   parseSerpCheckpointJson,
   readSerpCheckpoint,
+  recomputeDiscoveryFunnel,
   remainingCompareCandidates,
   resetCheckpointForCompare,
   selectedCandidates,
@@ -34,6 +36,7 @@ import {
   type ReverseImageLiveScanEntry,
   type ReverseImageSerpCheckpoint,
 } from "@/lib/analysis/reverse-image/serp-checkpoint";
+import { enrichCandidateWithScore } from "@/lib/analysis/reverse-image/candidate-score";
 import {
   cleanupTempDir,
   deleteTempRelativePath,
@@ -91,6 +94,11 @@ const WALL_CLOCK_BUDGET_MS = Number.parseInt(
 );
 const MAX_REFERENCES = Number.parseInt(
   process.env.REVERSE_IMAGE_MAX_REFERENCES ?? "2",
+  10
+);
+/** Discovery Early-Stop: genug eindeutige Kandidaten → keine weiteren SerpAPI-Seiten. */
+const TARGET_UNIQUE_CANDIDATES = Number.parseInt(
+  process.env.REVERSE_IMAGE_TARGET_CANDIDATES ?? "120",
   10
 );
 
@@ -492,11 +500,14 @@ async function executeDiscoveryPipeline(input: {
 }): Promise<void> {
   const { userId, scanId, queries, subjectName } = input;
   const budgetMs = resolveBudgetMs();
+  const targetUnique = Number.isFinite(TARGET_UNIQUE_CANDIDATES)
+    ? Math.max(40, TARGET_UNIQUE_CANDIDATES)
+    : 120;
 
   let checkpoint = await loadCheckpointForScan(userId, scanId);
-  // Frischer Scan oder veralteter OR-Batch-Plan → immer aktuellen Query-Plan nutzen.
-  const planIsCurrent = checkpoint?.queries.some((q) =>
-    q.id.startsWith("username-open-")
+  // Frischer Scan oder veralteter Plan → aktuellen priorisierten Query-Plan nutzen.
+  const planIsCurrent = checkpoint?.queries.some(
+    (q) => q.id.startsWith("username-open-") || typeof q.priority === "number"
   );
   if (!checkpoint || checkpoint.serpFetchComplete || !planIsCurrent) {
     checkpoint = createEmptySerpCheckpoint(queries);
@@ -505,22 +516,55 @@ async function executeDiscoveryPipeline(input: {
 
   while (discoveryWorkRemaining(checkpoint)) {
     const chunkStartedAt = Date.now();
-    for (const plan of checkpoint.queries) {
+    // Höchste Priority zuerst
+    const orderedPlans = [...checkpoint.queries].sort(
+      (a, b) => (b.priority ?? 0) - (a.priority ?? 0)
+    );
+
+    for (const plan of orderedPlans) {
       if (Date.now() - chunkStartedAt > budgetMs * 0.85) break;
       if (checkpoint.completedQueryIds.includes(plan.id)) continue;
 
+      if (checkpoint.candidates.length >= targetUnique) {
+        checkpoint = completeRemainingQueries(
+          checkpoint,
+          `Ziel von ${targetUnique} eindeutigen Bildern erreicht`
+        );
+        await persistCheckpoint(userId, scanId, checkpoint);
+        break;
+      }
+
       try {
-        const batch = await fetchGoogleImageCandidates({
-          query: plan.query,
-          pages: plan.pages,
-          userId,
-        });
+        const known = new Set(
+          checkpoint.candidates.map((c) => c.imageUrl.toLowerCase())
+        );
+        const { candidates: batch, pagesFetched } =
+          await fetchGoogleImageCandidates({
+            query: plan.query,
+            pages: plan.pages,
+            userId,
+            knownImageUrls: known,
+          });
         checkpoint = markQueryFetched(checkpoint, plan, batch);
+        checkpoint = recomputeDiscoveryFunnel(checkpoint, {
+          pagesFetchedTotal:
+            (checkpoint.funnel?.pagesFetchedTotal ?? 0) + pagesFetched,
+          queriesRun: checkpoint.completedQueryIds.length,
+        });
       } catch (error) {
         console.error("[reverse-image] serp query failed", plan.query, error);
         checkpoint = markQueryFetched(checkpoint, plan, []);
       }
       await persistCheckpoint(userId, scanId, checkpoint);
+
+      if (checkpoint.candidates.length >= targetUnique) {
+        checkpoint = completeRemainingQueries(
+          checkpoint,
+          `Ziel von ${targetUnique} eindeutigen Bildern erreicht`
+        );
+        await persistCheckpoint(userId, scanId, checkpoint);
+        break;
+      }
     }
 
     if (!discoveryWorkRemaining(checkpoint)) break;
@@ -529,20 +573,29 @@ async function executeDiscoveryPipeline(input: {
 
   if (discoveryWorkRemaining(checkpoint)) return;
 
-  checkpoint = { ...checkpoint, phase: "discovery_complete" };
+  checkpoint = recomputeDiscoveryFunnel({
+    ...checkpoint,
+    phase: "discovery_complete",
+  });
   await persistCheckpoint(userId, scanId, checkpoint);
 
-  // Ohne DB-Cache keine persistente Quellenliste nach Refresh.
   const cached = await loadReverseImageSerpCache(scanId);
   if (!cached) {
     await persistCheckpoint(userId, scanId, checkpoint);
   }
 
+  const funnel = checkpoint.funnel;
+  const summary = funnel
+    ? `${funnel.uniqueCandidates} Bildlinks gefunden für ${subjectName} · ${funnel.compareEligible} vergleichstauglich · ${funnel.compareFiltered} vorgefiltert${
+        funnel.earlyStop ? ` · Early-Stop (${funnel.earlyStopReason})` : ""
+      } — bitte Auswahl treffen und Vergleich starten.`
+    : `${checkpoint.candidates.length} Bildlinks gefunden für ${subjectName} — bitte Auswahl treffen und Vergleich starten.`;
+
   await completeReverseImageDiscovery({
     scanId,
     queryCount: checkpoint.queries.length,
     candidateCount: checkpoint.candidates.length,
-    summary: `${checkpoint.candidates.length} Bildlinks gefunden für ${subjectName} — bitte Auswahl treffen und Vergleich starten.`,
+    summary,
   });
 }
 
@@ -563,6 +616,16 @@ async function processCandidate(input: {
   let compareCalls = 0;
   if (Date.now() - input.startedAt > input.budgetMs) {
     return { hit: null, compareCalls, budgetExceeded: true };
+  }
+
+  // Vorfilter: Produkte/Logos/niedrige Scores nicht an InsightFace schicken
+  const scored =
+    input.candidate.candidateScore != null &&
+    input.candidate.allowFaceCompare != null
+      ? input.candidate
+      : enrichCandidateWithScore(input.candidate);
+  if (scored.allowFaceCompare === false) {
+    return { hit: null, compareCalls, budgetExceeded: false };
   }
 
   const bytes = await downloadPublicImage(input.candidate.imageUrl);

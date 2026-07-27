@@ -164,16 +164,34 @@ export class SerpApiProvider implements SearchProvider {
   ): Promise<NormalizedSearchHit[]> {
     if (!query.trim()) return [];
     // SafeSearch bewusst AUS — OSINT muss auch nicht jugendfreie Bildtreffer erfassen.
-    // Google Images: SerpAPI `ijn` paginiert (~100 Treffer/Seite). `num` allein liefert oft nur ~10–20.
-    const pages = Math.min(Math.max(options?.pages ?? 1, 1), 5);
+    // Google Images: SerpAPI `ijn` paginiert (~100 Treffer/Seite).
     const maxResults = Math.min(Math.max(options?.num ?? 100, 1), 500);
+    const minNewPerPage = Math.max(0, options?.minNewPerPage ?? 0);
     const q = query.trim();
     const hl = options?.language || "de";
     const gl = options?.country || "de";
     const hits: NormalizedSearchHit[] = [];
-    const seen = new Set<string>();
+    const seen = new Set<string>(
+      options?.knownImageUrls
+        ? [...options.knownImageUrls].map((u) => u.trim().toLowerCase())
+        : []
+    );
 
-    for (let ijn = 0; ijn < pages && hits.length < maxResults; ijn += 1) {
+    const startIjn =
+      typeof options?.ijn === "number" && Number.isFinite(options.ijn)
+        ? Math.max(0, Math.floor(options.ijn))
+        : 0;
+    const pageCount =
+      typeof options?.ijn === "number"
+        ? 1
+        : Math.min(Math.max(options?.pages ?? 1, 1), 5);
+
+    for (
+      let offset = 0;
+      offset < pageCount && hits.length < maxResults;
+      offset += 1
+    ) {
+      const ijn = startIjn + offset;
       const { body } = await this.request({
         engine: "google_images",
         q,
@@ -187,6 +205,7 @@ export class SerpApiProvider implements SearchProvider {
         : [];
       if (images.length === 0) break;
 
+      let newOnPage = 0;
       for (let index = 0; index < images.length; index += 1) {
         if (hits.length >= maxResults) break;
         const item = images[index];
@@ -196,6 +215,7 @@ export class SerpApiProvider implements SearchProvider {
         const dedupeKey = link.toLowerCase();
         if (seen.has(dedupeKey)) continue;
         seen.add(dedupeKey);
+        newOnPage += 1;
         hits.push({
           title,
           link,
@@ -206,6 +226,12 @@ export class SerpApiProvider implements SearchProvider {
           raw: item,
         });
       }
+
+      // Adaptive Pagination: kaum neue Bilder → weitere Seiten lohnen sich nicht
+      if (minNewPerPage > 0 && offset > 0 && newOnPage < minNewPerPage) {
+        break;
+      }
+      if (images.length === 0) break;
     }
     return hits;
   }

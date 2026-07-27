@@ -20,6 +20,17 @@ export interface ReverseImageLiveScanEntry {
   at: string;
 }
 
+export interface ReverseImageDiscoveryFunnel {
+  uniqueCandidates: number;
+  pagesFetchedTotal: number;
+  queriesRun: number;
+  queriesSkipped: number;
+  earlyStop: boolean;
+  earlyStopReason: string | null;
+  compareEligible: number;
+  compareFiltered: number;
+}
+
 export interface ReverseImageSerpCheckpoint {
   version: typeof SERP_CHECKPOINT_VERSION;
   phase: ReverseImageScanPhase;
@@ -41,6 +52,7 @@ export interface ReverseImageSerpCheckpoint {
     currentTitle: string | null;
     recent: ReverseImageLiveScanEntry[];
   };
+  funnel?: ReverseImageDiscoveryFunnel;
 }
 
 /**
@@ -118,6 +130,7 @@ function migrateCheckpoint(raw: unknown): ReverseImageSerpCheckpoint | null {
       serpFetchComplete: Boolean(parsed.serpFetchComplete),
       updatedAt: parsed.updatedAt ?? new Date().toISOString(),
       live: parsed.live,
+      funnel: parsed.funnel,
     };
   }
 
@@ -143,6 +156,7 @@ function migrateCheckpoint(raw: unknown): ReverseImageSerpCheckpoint | null {
       serpFetchComplete: Boolean(parsed.serpFetchComplete),
       updatedAt: parsed.updatedAt ?? new Date().toISOString(),
       live: parsed.live,
+      funnel: undefined,
     };
   }
 
@@ -256,7 +270,71 @@ export function createEmptySerpCheckpoint(
     serpFetchComplete: false,
     updatedAt: new Date().toISOString(),
     live: { currentImageUrl: null, currentTitle: null, recent: [] },
+    funnel: {
+      uniqueCandidates: 0,
+      pagesFetchedTotal: 0,
+      queriesRun: 0,
+      queriesSkipped: 0,
+      earlyStop: false,
+      earlyStopReason: null,
+      compareEligible: 0,
+      compareFiltered: 0,
+    },
   };
+}
+
+export function recomputeDiscoveryFunnel(
+  checkpoint: ReverseImageSerpCheckpoint,
+  patch?: Partial<ReverseImageDiscoveryFunnel>
+): ReverseImageSerpCheckpoint {
+  const eligible = checkpoint.candidates.filter(
+    (c) => c.allowFaceCompare !== false && (c.candidateScore ?? 0) >= 40
+  ).length;
+  const funnel: ReverseImageDiscoveryFunnel = {
+    uniqueCandidates: checkpoint.candidates.length,
+    pagesFetchedTotal: checkpoint.funnel?.pagesFetchedTotal ?? 0,
+    queriesRun: checkpoint.completedQueryIds.length,
+    queriesSkipped: Math.max(
+      0,
+      checkpoint.queries.length - checkpoint.completedQueryIds.length
+    ),
+    earlyStop: checkpoint.funnel?.earlyStop ?? false,
+    earlyStopReason: checkpoint.funnel?.earlyStopReason ?? null,
+    compareEligible: eligible,
+    compareFiltered: Math.max(0, checkpoint.candidates.length - eligible),
+    ...patch,
+  };
+  return { ...checkpoint, funnel };
+}
+
+/** Restliche Queries als erledigt markieren (Early-Stop / Target erreicht). */
+export function completeRemainingQueries(
+  checkpoint: ReverseImageSerpCheckpoint,
+  reason: string
+): ReverseImageSerpCheckpoint {
+  const skipped = checkpoint.queries.filter(
+    (q) => !checkpoint.completedQueryIds.includes(q.id)
+  ).length;
+  const completedQueryIds = [
+    ...new Set([
+      ...checkpoint.completedQueryIds,
+      ...checkpoint.queries.map((q) => q.id),
+    ]),
+  ];
+  return recomputeDiscoveryFunnel(
+    {
+      ...checkpoint,
+      completedQueryIds,
+      serpFetchComplete: true,
+      phase: "discovery_complete",
+    },
+    {
+      earlyStop: true,
+      earlyStopReason: reason,
+      queriesRun: checkpoint.completedQueryIds.length,
+      queriesSkipped: skipped,
+    }
+  );
 }
 
 export function resetCheckpointForCompare(

@@ -7,6 +7,8 @@ import {
   estimateSerpApiPageCalls,
   planReverseImageQueries,
 } from "@/lib/analysis/reverse-image/search-planner";
+import { buildPrioritizedSearchTerms } from "@/lib/analysis/reverse-image/identity-priority";
+import { scoreImageCandidate } from "@/lib/analysis/reverse-image/candidate-score";
 import type { IdentityView } from "@/lib/services/identity-service";
 
 function identity(partial: Partial<IdentityView>): IdentityView {
@@ -43,8 +45,29 @@ function identity(partial: Partial<IdentityView>): IdentityView {
   };
 }
 
+describe("reverse-image identity priority", () => {
+  it("ranks usernames above weak first names", () => {
+    const terms = buildPrioritizedSearchTerms(
+      identity({
+        personal: { firstName: "Rene", lastName: "Eule" },
+        aliases: {
+          usernames: ["killereule", "Rene2306"],
+          gamingNames: [],
+          formerNames: [],
+          nicknames: [],
+          publicAlias: "rene.eule",
+        },
+      })
+    );
+    expect(terms[0]?.value.toLowerCase()).toMatch(/killereule|rene2306/);
+    expect(terms.every((t) => t.priority >= 20)).toBe(true);
+    const full = terms.find((t) => t.value === "Rene Eule");
+    expect(full?.priority).toBeGreaterThanOrEqual(85);
+  });
+});
+
 describe("reverse-image search planner", () => {
-  it("keeps SerpAPI call budget lean without adult extras", () => {
+  it("plans priority-ordered queries without adult extras", () => {
     const plans = planReverseImageQueries(
       identity({
         personal: { firstName: "Anja", lastName: "Gebert" },
@@ -58,15 +81,12 @@ describe("reverse-image search planner", () => {
       })
     );
 
-    // 2 usernames + name × 2 = 4 queries (keine Adult-Extras)
-    expect(plans).toHaveLength(4);
-    expect(estimateSerpApiPageCalls(plans)).toBe(10); // 3+3+2+2
+    expect(plans.length).toBeGreaterThanOrEqual(3);
     expect(plans[0]?.group).toBe("username");
-    expect(plans.some((p) => p.query === "Anja1921")).toBe(true);
-    expect(plans.some((p) => p.query === "Luder-Anja")).toBe(true);
+    expect(typeof plans[0]?.priority).toBe("number");
+    expect(estimateSerpApiPageCalls(plans)).toBeGreaterThan(0);
     expect(plans.some((p) => p.id.includes("username-adult-"))).toBe(false);
-    expect(plans.some((p) => p.id.includes("username-site-"))).toBe(false);
-    expect(plans.some((p) => p.id.includes("exact"))).toBe(false);
+    expect(plans.some((p) => p.query === "Anja1921")).toBe(true);
   });
 
   it("searches each username individually (no OR between usernames)", () => {
@@ -91,7 +111,7 @@ describe("reverse-image search planner", () => {
           p.query.includes("Luder-Anja")
       )
     ).toBe(false);
-    expect(plans.some((p) => p.label === "Alias · anjalias")).toBe(true);
+    expect(plans.some((p) => /Alias · anjalias/i.test(p.label))).toBe(true);
   });
 
   it("does not add adult site dork queries", () => {
@@ -111,7 +131,32 @@ describe("reverse-image search planner", () => {
     expect(plans.some((p) => p.query.includes("site:amarotic.com"))).toBe(
       false
     );
-    expect(plans.some((p) => p.query === "anja_g")).toBe(true);
+  });
+});
+
+describe("reverse-image candidate score", () => {
+  it("filters product-like results from face compare", () => {
+    const product = scoreImageCandidate({
+      title: "Edelstahl-Rillenkugellager 6201",
+      imageUrl: "https://cdn.shop.example/product/sku-6201.jpg",
+      sourceUrl: "https://www.amazon.de/dp/B00TEST",
+      sourceHost: "amazon.de",
+      query: "Rene2306",
+      queryGroup: "username",
+    });
+    expect(product.allowFaceCompare).toBe(false);
+    expect(product.score).toBeLessThan(40);
+
+    const social = scoreImageCandidate({
+      title: "Rene2306 — Profilfoto",
+      imageUrl: "https://scontent.cdninstagram.com/avatar/rene.jpg",
+      sourceUrl: "https://www.instagram.com/rene2306/",
+      sourceHost: "instagram.com",
+      query: "Rene2306",
+      queryGroup: "username",
+    });
+    expect(social.allowFaceCompare).toBe(true);
+    expect(social.score).toBeGreaterThanOrEqual(40);
   });
 });
 

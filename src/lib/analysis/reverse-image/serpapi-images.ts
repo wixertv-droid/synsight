@@ -3,6 +3,11 @@ import {
   recordSearchProviderRequest,
   resolveSearchProviderApiKey,
 } from "@/lib/services/search-provider-service";
+import { enrichCandidateWithScore } from "@/lib/analysis/reverse-image/candidate-score";
+import type {
+  CandidateRiskBand,
+  ImageKindHeuristic,
+} from "@/lib/analysis/reverse-image/candidate-score";
 
 export interface SerpImageCandidate {
   title: string;
@@ -16,11 +21,17 @@ export interface SerpImageCandidate {
   queryId?: string;
   queryGroup?: "name" | "alias" | "username";
   queryLabel?: string;
+  /** Heuristischer Relevanz-Score 0–100 */
+  candidateScore?: number;
+  imageKind?: ImageKindHeuristic;
+  allowFaceCompare?: boolean;
+  scoreReasons?: string[];
+  riskBand?: CandidateRiskBand;
 }
 
 /**
- * Default-Seiten wenn Plan keine `pages` setzt.
- * 1 Seite ≈ 1 SerpAPI-Call ≈ bis ~100 Bilder — mehr Seiten = mehr API-Kosten.
+ * Default-Max-Seiten wenn Plan keine `pages` setzt.
+ * Adaptive Pagination stoppt früher bei wenigen Neu-Treffern.
  */
 export const REVERSE_IMAGE_SERP_PAGES = Number.parseInt(
   process.env.REVERSE_IMAGE_SERP_PAGES ?? "3",
@@ -28,6 +39,11 @@ export const REVERSE_IMAGE_SERP_PAGES = Number.parseInt(
 );
 export const REVERSE_IMAGE_SERP_NUM = Number.parseInt(
   process.env.REVERSE_IMAGE_SERP_NUM ?? "100",
+  10
+);
+/** Stop weitere Seite wenn weniger als N neue URLs (nach Dedup). */
+export const REVERSE_IMAGE_MIN_NEW_PER_PAGE = Number.parseInt(
+  process.env.REVERSE_IMAGE_MIN_NEW_PER_PAGE ?? "15",
   10
 );
 
@@ -41,9 +57,7 @@ function hostOf(url: string): string {
 
 function looksLikeImageBytes(bytes: Buffer): boolean {
   if (bytes.byteLength < 12) return false;
-  // JPEG
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
-  // PNG
   if (
     bytes[0] === 0x89 &&
     bytes[1] === 0x50 &&
@@ -51,9 +65,7 @@ function looksLikeImageBytes(bytes: Buffer): boolean {
     bytes[3] === 0x47
   )
     return true;
-  // GIF
   if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return true;
-  // WEBP (RIFF....WEBP)
   if (
     bytes[0] === 0x52 &&
     bytes[1] === 0x49 &&
@@ -68,24 +80,66 @@ function looksLikeImageBytes(bytes: Buffer): boolean {
   return false;
 }
 
+function mapHit(
+  hit: {
+    title: string;
+    link: string;
+    position?: number;
+    raw?: unknown;
+  },
+  query: string,
+  index: number
+): SerpImageCandidate {
+  const raw = (hit.raw ?? {}) as {
+    link?: string;
+    original?: string;
+    thumbnail?: string;
+  };
+  const imageUrl = (raw.original || hit.link || "").trim();
+  const pageUrl = (raw.link || hit.link || "").trim() || null;
+  const thumbnailUrl = (raw.thumbnail || "").trim() || null;
+  const base: SerpImageCandidate = {
+    title: hit.title,
+    imageUrl,
+    thumbnailUrl,
+    sourceUrl: pageUrl,
+    sourceHost: hostOf(pageUrl || imageUrl),
+    query,
+    position: hit.position ?? index + 1,
+  };
+  return enrichCandidateWithScore(base);
+}
+
+/**
+ * Adaptive Google-Images-Fetch:
+ * Seite für Seite, stoppt wenn kaum neue URLs oder maxPages erreicht.
+ * Finance: requestCount = tatsächlich geladene Seiten.
+ */
 export async function fetchGoogleImageCandidates(input: {
   query: string;
   num?: number;
   pages?: number;
   userId?: number;
-}): Promise<SerpImageCandidate[]> {
+  knownImageUrls?: Set<string>;
+  minNewPerPage?: number;
+}): Promise<{
+  candidates: SerpImageCandidate[];
+  pagesFetched: number;
+}> {
   const apiKey = await resolveSearchProviderApiKey("serpapi");
-  if (!apiKey || !input.query.trim()) return [];
+  if (!apiKey || !input.query.trim()) {
+    return { candidates: [], pagesFetched: 0 };
+  }
 
   const provider = new SerpApiProvider(apiKey);
   const started = Date.now();
   const referenceKey = `serpapi-google_images:${Date.now()}`;
-  const pages = Math.min(
+  const maxPages = Math.min(
     Math.max(
       input.pages ??
         (Number.isFinite(REVERSE_IMAGE_SERP_PAGES)
           ? REVERSE_IMAGE_SERP_PAGES
-          : 5),
+          : 3),
       1
     ),
     5
@@ -95,17 +149,49 @@ export async function fetchGoogleImageCandidates(input: {
       input.num ??
         (Number.isFinite(REVERSE_IMAGE_SERP_NUM)
           ? REVERSE_IMAGE_SERP_NUM
-          : 400),
+          : 100),
       1
     ),
-    500
+    100
   );
+  const minNew =
+    input.minNewPerPage ??
+    (Number.isFinite(REVERSE_IMAGE_MIN_NEW_PER_PAGE)
+      ? REVERSE_IMAGE_MIN_NEW_PER_PAGE
+      : 15);
+
+  const known = new Set(
+    [...(input.knownImageUrls ?? [])].map((u) => u.trim().toLowerCase())
+  );
+  const candidates: SerpImageCandidate[] = [];
+  let pagesFetched = 0;
 
   try {
-    const hits = await provider.searchImages(input.query, {
-      num,
-      pages,
-    });
+    for (let ijn = 0; ijn < maxPages; ijn += 1) {
+      const pageHits = await provider.searchImages(input.query, {
+        num,
+        ijn,
+        knownImageUrls: known,
+      });
+      pagesFetched += 1;
+
+      let newOnPage = 0;
+      for (const hit of pageHits) {
+        const mapped = mapHit(hit, input.query, candidates.length);
+        if (!mapped.imageUrl) continue;
+        const key = mapped.imageUrl.toLowerCase();
+        if (known.has(key)) continue;
+        known.add(key);
+        candidates.push(mapped);
+        newOnPage += 1;
+      }
+
+      if (pageHits.length === 0) break;
+      // Seite 2+: stoppen wenn kaum Neuware
+      if (ijn > 0 && newOnPage < minNew) break;
+      if (newOnPage === 0) break;
+    }
+
     await recordSearchProviderRequest({
       provider: "serpapi",
       ok: true,
@@ -115,29 +201,11 @@ export async function fetchGoogleImageCandidates(input: {
       query: input.query,
       referenceKey,
       userId: input.userId ?? null,
-      requestCount: pages,
+      requestCount: Math.max(1, pagesFetched),
       recordFinance: true,
     });
 
-    return hits.map((hit, index) => {
-      const raw = (hit.raw ?? {}) as {
-        link?: string;
-        original?: string;
-        thumbnail?: string;
-      };
-      const imageUrl = (raw.original || hit.link || "").trim();
-      const pageUrl = (raw.link || hit.link || "").trim() || null;
-      const thumbnailUrl = (raw.thumbnail || "").trim() || null;
-      return {
-        title: hit.title,
-        imageUrl,
-        thumbnailUrl,
-        sourceUrl: pageUrl,
-        sourceHost: hostOf(pageUrl || imageUrl),
-        query: input.query,
-        position: hit.position ?? index + 1,
-      };
-    });
+    return { candidates, pagesFetched };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "image search failed";
@@ -150,7 +218,7 @@ export async function fetchGoogleImageCandidates(input: {
       query: input.query,
       referenceKey,
       userId: input.userId ?? null,
-      requestCount: pages,
+      requestCount: Math.max(1, pagesFetched || 1),
       recordFinance: true,
     });
     throw error instanceof Error ? error : new Error(message);
@@ -166,41 +234,19 @@ export async function downloadPublicImage(url: string): Promise<Buffer | null> {
     const response = await fetch(trimmed, {
       method: "GET",
       redirect: "follow",
-      headers: {
-        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-        Referer: "https://www.google.com/",
-      },
       signal: AbortSignal.timeout(15_000),
+      headers: {
+        Accept: "image/*,*/*;q=0.8",
+        "User-Agent":
+          "Mozilla/5.0 (compatible; SynSightBot/1.0; +https://synsight.de)",
+      },
     });
     if (!response.ok) return null;
-    const contentType = (response.headers.get("content-type") ?? "")
-      .split(";")[0]
-      .trim()
-      .toLowerCase();
     const bytes = Buffer.from(await response.arrayBuffer());
-    if (bytes.byteLength <= 256 || bytes.byteLength > 12 * 1024 * 1024) {
-      return null;
-    }
-    const declaredImage = contentType.startsWith("image/");
-    const opaqueBinary =
-      !contentType ||
-      contentType === "application/octet-stream" ||
-      contentType === "binary/octet-stream";
-    if (!declaredImage && !opaqueBinary && !looksLikeImageBytes(bytes)) {
-      return null;
-    }
-    if (!declaredImage && !looksLikeImageBytes(bytes)) {
-      return null;
-    }
+    if (!looksLikeImageBytes(bytes)) return null;
+    if (bytes.byteLength < 64 || bytes.byteLength > 12_000_000) return null;
     return bytes;
   } catch {
     return null;
   }
-}
-
-export function isReverseImageSearchConfigured(): boolean {
-  return Boolean(process.env.SERPAPI_API_KEY?.trim());
 }

@@ -37,6 +37,15 @@ export interface SearchProviderSearchOptions {
    * Each page typically yields up to ~100 images. Default 1.
    */
   pages?: number;
+  /**
+   * Adaptive pagination: stop when a page adds fewer than N new unique images.
+   * Default off (0). Typical: 15.
+   */
+  minNewPerPage?: number;
+  /** Already known image URLs (dedupe across queries / pages). */
+  knownImageUrls?: Set<string>;
+  /** Fetch exactly one SerpAPI `ijn` page (0-based). Ignores `pages` when set. */
+  ijn?: number;
 }
 
 export interface SearchProvider {
