@@ -242,6 +242,38 @@ export async function getLatestReverseImageReport(
   return assembleFromScan(scan, hitRows.map(mapHit));
 }
 
+export async function getReverseImageScanStatus(
+  userId: number,
+  scanId: number
+): Promise<
+  "running" | "completed" | "failed" | "pending" | "unavailable" | null
+> {
+  const db = getDatabase();
+  if (!db) return null;
+  const ok = await ensureReverseImageSchema();
+  if (!ok) return null;
+
+  const scans = asRows<{ status: string }>(
+    await db.execute(sql`
+      SELECT status FROM reverse_image_scans
+      WHERE id = ${scanId} AND user_id = ${userId}
+      LIMIT 1
+    `)
+  );
+  const status = scans[0]?.status;
+  if (!status) return null;
+  if (
+    status === "running" ||
+    status === "completed" ||
+    status === "failed" ||
+    status === "pending" ||
+    status === "unavailable"
+  ) {
+    return status;
+  }
+  return null;
+}
+
 export async function getReverseImageReportByScanId(
   userId: number,
   scanId: number

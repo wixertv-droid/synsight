@@ -49,7 +49,7 @@ export async function compareImagesWithInsightFace(input: {
   const response = await fetch(url, {
     method: "POST",
     body: form,
-    signal: AbortSignal.timeout(25_000),
+    signal: AbortSignal.timeout(12_000),
   });
   const latencyMs = Date.now() - started;
   const body = (await response.json().catch(() => ({}))) as {

@@ -504,6 +504,46 @@ export default function ResultsCenterClient({
         reverseImageSearchModule.minScanMs
     );
 
+    const pollUntilDone = async (scanId: number): Promise<boolean> => {
+      const deadline = Date.now() + 120_000;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+        try {
+          const statusRes = await fetch(
+            `/api/analysis/reverse-image/status?scanId=${scanId}`,
+            { cache: "no-store" }
+          );
+          const statusBody = await statusRes.json().catch(() => null);
+          const status = statusBody?.data?.status as string | undefined;
+          const report = statusBody?.data?.report as
+            ReverseImageReport | null | undefined;
+          if (status === "completed" && report) {
+            setReverseImageReport(report);
+            setError(null);
+            return true;
+          }
+          if (status === "failed") {
+            setError(
+              "Reverse Image Search ist fehlgeschlagen. Bitte erneut starten."
+            );
+            return false;
+          }
+        } catch {
+          /* keep polling — background job may still finish */
+        }
+      }
+      const recovered = await loadLatestReverseImageReport().catch(() => null);
+      if (recovered) {
+        setReverseImageReport(recovered);
+        setError(null);
+        return true;
+      }
+      setError(
+        "Die Bildanalyse läuft noch oder hat das Zeitlimit erreicht. Bitte Seite in einer Minute aktualisieren."
+      );
+      return false;
+    };
+
     try {
       const effectiveRetention = parseRetentionDays(
         searchParams.get("retention") ??
@@ -535,10 +575,14 @@ export default function ResultsCenterClient({
           requestId,
         }),
       });
-      setScanApiReady(true);
+
       let body: {
         success?: boolean;
-        data?: { report?: ReverseImageReport };
+        data?: {
+          report?: ReverseImageReport | null;
+          scanId?: number;
+          status?: string;
+        };
         error?: { message?: string };
       } = {};
       try {
@@ -547,13 +591,37 @@ export default function ResultsCenterClient({
         body = {};
       }
 
+      // Keep scan theater visible while background pipeline finishes
       const elapsed = Date.now() - scanStart;
-      const waitMs = Math.max(0, minScanMs - elapsed);
-      await new Promise((resolve) =>
-        window.setTimeout(resolve, waitMs > 0 ? waitMs : 500)
-      );
+      const waitMs = Math.max(0, Math.min(minScanMs, 12_000) - elapsed);
+      if (waitMs > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, waitMs));
+      }
+
+      if (response.status === 502 || response.status === 504) {
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          await new Promise((resolve) =>
+            window.setTimeout(resolve, 2000 + attempt * 500)
+          );
+          const recovered = await loadLatestReverseImageReport();
+          if (recovered) {
+            setReverseImageReport(recovered);
+            setScanApiReady(true);
+            setError(null);
+            finishScanAttempt({ tab: "reverse_image_search" });
+            return;
+          }
+        }
+        setScanApiReady(true);
+        setError(
+          "Gateway-Timeout — der Scan läuft oft trotzdem weiter. Bitte Seite in 1–2 Minuten aktualisieren."
+        );
+        finishScanAttempt({ tab: "reverse_image_search" });
+        return;
+      }
 
       if (!response.ok || !body.success) {
+        setScanApiReady(true);
         if (response.status === 503) {
           setError(
             body.error?.message ??
@@ -571,17 +639,34 @@ export default function ResultsCenterClient({
         }
         setError(
           body.error?.message ??
-            "Reverse Image Search konnte nicht abgeschlossen werden."
+            "Reverse Image Search konnte nicht gestartet werden."
         );
         finishScanAttempt({ tab: "reverse_image_search" });
         return;
       }
 
       if (body.data?.report) {
+        setScanApiReady(true);
         setReverseImageReport(body.data.report);
+        finishScanAttempt({ tab: "reverse_image_search" });
+        return;
       }
+
+      const scanId = Number(body.data?.scanId);
+      if (Number.isFinite(scanId) && scanId > 0) {
+        const ok = await pollUntilDone(scanId);
+        setScanApiReady(true);
+        finishScanAttempt({ tab: "reverse_image_search" });
+        void ok;
+        return;
+      }
+
+      setScanApiReady(true);
+      const recovered = await loadLatestReverseImageReport();
+      if (recovered) setReverseImageReport(recovered);
       finishScanAttempt({ tab: "reverse_image_search" });
     } catch {
+      setScanApiReady(true);
       const recovered = await loadLatestReverseImageReport().catch(() => null);
       if (recovered) {
         setReverseImageReport(recovered);

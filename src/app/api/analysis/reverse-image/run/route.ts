@@ -4,15 +4,15 @@ import { AnalysisGateError } from "@/lib/analysis/assert-runnable";
 import { runWithAnalysisCredits } from "@/lib/analysis/run-with-credits";
 import {
   ReverseImageUnavailableError,
-  runReverseImageSearchScan,
+  startReverseImageSearchScan,
 } from "@/lib/analysis/reverse-image/run-analysis";
 import { parseRetentionDays } from "@/lib/analysis/retention";
 import { getIdentityForUser } from "@/lib/services/identity-service";
-import { queueThreatsSummaryRegeneration } from "@/lib/services/threats-summary-service";
 import { NextResponse } from "next/server";
 import { validateMutationOrigin } from "@/lib/security/request";
 
-export const maxDuration = 180;
+/** Short — scan continues in background after response. */
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const csrfError = validateMutationOrigin(request);
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   const retentionDays = parseRetentionDays(body.retentionDays);
 
   try {
-    const report = await runWithAnalysisCredits(
+    const started = await runWithAnalysisCredits(
       {
         userId,
         analysisKey: "reverse_image_search",
@@ -51,15 +51,20 @@ export async function POST(request: Request) {
       },
       async () => {
         const identity = await getIdentityForUser(userId);
-        const report = await runReverseImageSearchScan(identity, {
+        return startReverseImageSearchScan(identity, {
           userId,
           retentionDays,
         });
-        queueThreatsSummaryRegeneration(userId);
-        return report;
       }
     );
-    return NextResponse.json(apiSuccess({ report }));
+    // HTTP returns immediately; InsightFace pipeline runs in background.
+    return NextResponse.json(
+      apiSuccess({
+        status: started.status,
+        scanId: started.scanId,
+        report: null,
+      })
+    );
   } catch (error) {
     if (error instanceof AnalysisGateError) {
       return NextResponse.json(apiError(error.code, error.message), {
