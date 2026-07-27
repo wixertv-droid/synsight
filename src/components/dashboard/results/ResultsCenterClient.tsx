@@ -117,15 +117,17 @@ export default function ResultsCenterClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tabs = modules;
-
-  const requestedTabRaw = searchParams.get("tab") ?? tabs[0]?.id ?? "";
+  const requestedTabRaw = searchParams.get("tab") ?? modules[0]?.id ?? "";
   const requestedTab =
     requestedTabRaw === "reverse_image_discovery"
       ? "reverse_image_search"
       : requestedTabRaw;
   const requestedModule = searchParams.get("module") ?? "";
-  const forceReverseImage = requestedModule === "reverse_image";
+  const wantsReverseImage =
+    requestedModule === "reverse_image" ||
+    requestedTab === "reverse_image_search" ||
+    requestedTab === "reverse_image_discovery";
+  const forceReverseImage = wantsReverseImage;
   const shouldScan = searchParams.get("scan") === "1";
   const requestIdFromUrl = (searchParams.get("requestId") ?? "").trim();
   const retentionFromUrl = parseRetentionDays(
@@ -133,19 +135,43 @@ export default function ResultsCenterClient({
     DEFAULT_REPORT_RETENTION_DAYS
   );
 
+  /** Ensure Reverse Image tab exists even if catalog briefly omits it. */
+  const tabsWithReverse = useMemo(() => {
+    if (!wantsReverseImage) return modules;
+    if (modules.some((tab) => tab.id === "reverse_image_search"))
+      return modules;
+    return [
+      ...modules,
+      {
+        id: "reverse_image_search",
+        title: "Reverse Image Search",
+        help: "Zwei Phasen: Bildlinks finden, dann optional Gesichtsvergleich.",
+        tagline: "Wo im Netz tauchen Ihre Bilder auf?",
+        available: true,
+      },
+    ];
+  }, [modules, wantsReverseImage]);
+
   const [activeTab, setActiveTab] = useState(() => {
-    if (tabs.some((tab) => tab.id === requestedTab)) return requestedTab;
-    return tabs[0]?.id ?? "google_search";
+    if (wantsReverseImage) return "reverse_image_search";
+    if (tabsWithReverse.some((tab) => tab.id === requestedTab))
+      return requestedTab;
+    return tabsWithReverse[0]?.id ?? "google_search";
   });
 
   useEffect(() => {
+    if (wantsReverseImage && activeTab !== "reverse_image_search") {
+      setActiveTab("reverse_image_search");
+      return;
+    }
     if (
-      tabs.some((tab) => tab.id === requestedTab) &&
+      !wantsReverseImage &&
+      tabsWithReverse.some((tab) => tab.id === requestedTab) &&
       activeTab !== requestedTab
     ) {
       setActiveTab(requestedTab);
     }
-  }, [tabs, requestedTab, activeTab]);
+  }, [tabsWithReverse, requestedTab, activeTab, wantsReverseImage]);
   const [report, setReport] = useState<IntelligenceReport | null>(() => {
     try {
       return normalizeIntelligenceReport(initialGoogleReport);
@@ -212,8 +238,11 @@ export default function ResultsCenterClient({
   }, [retentionFromUrl, searchParams]);
 
   const activeModule = useMemo(
-    () => tabs.find((tab) => tab.id === activeTab) ?? tabs[0] ?? null,
-    [activeTab, tabs]
+    () =>
+      tabsWithReverse.find((tab) => tab.id === activeTab) ??
+      tabsWithReverse[0] ??
+      null,
+    [activeTab, tabsWithReverse]
   );
 
   const finishScanAttempt = useCallback(
@@ -223,7 +252,11 @@ export default function ResultsCenterClient({
       setScanDone(true);
       if (options?.clearScanParam !== false) {
         const tab = options?.tab ?? "google_search";
-        router.replace(`/dashboard/results?tab=${tab}`, {
+        const params = new URLSearchParams({ tab });
+        if (tab === "reverse_image_search") {
+          params.set("module", "reverse_image");
+        }
+        router.replace(`/dashboard/results?${params.toString()}`, {
           scroll: false,
         });
       }
@@ -589,6 +622,7 @@ export default function ResultsCenterClient({
             return true;
           }
           if (status === "discovery_complete" && !compareOnly) {
+            setReverseImageReport(null);
             setReverseImageDiscoveryDone(true);
             setReverseImageComparePhase(false);
             setScanApiReady(true);
@@ -648,6 +682,8 @@ export default function ResultsCenterClient({
     setError(null);
     setScanning(true);
     setScanApiReady(false);
+    // Alte Reports dürfen die neue Bildsuche/Quellenliste nicht überdecken.
+    setReverseImageReport(null);
     setReverseImageLive({
       currentImageUrl: null,
       currentTitle: null,
@@ -871,14 +907,14 @@ export default function ResultsCenterClient({
   useEffect(() => {
     if (
       shouldScan &&
-      (forceReverseImage ||
-        requestedTab === "reverse_image_search" ||
-        requestedTab === "reverse_image_discovery") &&
-      activeTab === "reverse_image_search" &&
+      forceReverseImage &&
       !scanning &&
       !scanDone &&
       !scanStartedRef.current
     ) {
+      if (activeTab !== "reverse_image_search") {
+        setActiveTab("reverse_image_search");
+      }
       const compareWatch = searchParams.get("compareWatch") === "1";
       const watchScanId = Number.parseInt(searchParams.get("scanId") ?? "", 10);
       if (compareWatch && Number.isFinite(watchScanId) && watchScanId > 0) {
@@ -886,6 +922,7 @@ export default function ResultsCenterClient({
         setReverseImageScanId(watchScanId);
         setReverseImageComparePhase(true);
         setReverseImageDiscoveryDone(true);
+        setReverseImageReport(null);
         setScanning(true);
         setScanApiReady(false);
         void pollReverseImageScan(watchScanId, "", retentionDays, true).then(
@@ -902,7 +939,6 @@ export default function ResultsCenterClient({
   }, [
     shouldScan,
     forceReverseImage,
-    requestedTab,
     activeTab,
     scanning,
     scanDone,
@@ -954,7 +990,13 @@ export default function ResultsCenterClient({
 
   function selectTab(id: string) {
     setActiveTab(id);
-    router.replace(`/dashboard/results?tab=${id}`, { scroll: false });
+    const params = new URLSearchParams({ tab: id });
+    if (id === "reverse_image_search") {
+      params.set("module", "reverse_image");
+    }
+    router.replace(`/dashboard/results?${params.toString()}`, {
+      scroll: false,
+    });
   }
 
   function updateRetention(days: ReportRetentionDays) {
@@ -984,8 +1026,17 @@ export default function ResultsCenterClient({
     );
   }
 
+  const showReverseDiscoveryPicker = Boolean(
+    activeModule?.id === "reverse_image_search" &&
+    !scanning &&
+    reverseImageDiscoveryDone &&
+    reverseImageScanId &&
+    (!reverseImageReport || reverseImageReport.scanId !== reverseImageScanId)
+  );
+
   const readyReport =
     !scanning &&
+    !showReverseDiscoveryPicker &&
     ((activeModule.id === "google_search" && report) ||
       (activeModule.id === "username_intelligence" && usernameReport) ||
       (activeModule.id === "digital_leak_exposure" && exposureReport) ||
@@ -1002,7 +1053,7 @@ export default function ResultsCenterClient({
       aria-label="Analyse-Reiter"
       className="mt-6 flex gap-1 overflow-x-auto rounded-[1.2rem] border border-white/[0.07] bg-white/[0.015] p-1.5"
     >
-      {tabs.map((tab) => {
+      {tabsWithReverse.map((tab) => {
         const active = tab.id === activeTab;
         return (
           <button
@@ -1256,7 +1307,8 @@ export default function ResultsCenterClient({
                 {!scanning &&
                 reverseImageDiscoveryDone &&
                 reverseImageScanId &&
-                !reverseImageReport ? (
+                (!reverseImageReport ||
+                  reverseImageReport.scanId !== reverseImageScanId) ? (
                   <ReverseImageCandidatePicker
                     scanId={reverseImageScanId}
                     onCompareStarted={() => {

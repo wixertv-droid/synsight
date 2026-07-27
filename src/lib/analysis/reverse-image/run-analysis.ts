@@ -15,6 +15,7 @@ import {
 } from "@/lib/analysis/reverse-image/serpapi-images";
 import {
   addManualCandidate,
+  allCandidates,
   appendLiveScanResult,
   compareWorkRemaining,
   createEmptySerpCheckpoint,
@@ -126,10 +127,18 @@ export async function loadCheckpointForScan(
   userId: number,
   scanId: number
 ): Promise<ReverseImageSerpCheckpoint | null> {
+  // DB is durable across deploys/restarts; disk can be wiped. Prefer richer set.
+  const fromDb = parseSerpCheckpointJson(
+    await loadReverseImageSerpCache(scanId)
+  );
   const fromDisk = await readSerpCheckpoint(userId, scanId);
-  if (fromDisk) return fromDisk;
-  const fromDb = await loadReverseImageSerpCache(scanId);
-  return parseSerpCheckpointJson(fromDb);
+  if (fromDb && fromDisk) {
+    const dbCount = fromDb.candidates.length;
+    const diskCount = fromDisk.candidates.length;
+    if (diskCount > dbCount) return fromDisk;
+    return fromDb;
+  }
+  return fromDb ?? fromDisk;
 }
 
 async function loadReferenceImages(
@@ -712,7 +721,8 @@ async function executeComparePipeline(input: {
         completedAt: new Date().toISOString(),
         hits: existingHits,
         queryCount: checkpoint.queries.length,
-        candidateCount: selectedCandidates(checkpoint).length,
+        // Discovery-Pool behalten — nicht nur die Auswahl für den Vergleich.
+        candidateCount: allCandidates(checkpoint).length,
         referenceImageCount: references.length,
         retentionDays,
         expiresAt,
@@ -721,7 +731,7 @@ async function executeComparePipeline(input: {
       await completeReverseImageScan({
         scanId,
         queryCount: checkpoint.queries.length,
-        candidateCount: selectedCandidates(checkpoint).length,
+        candidateCount: allCandidates(checkpoint).length,
         matchCount: existingHits.length,
         riskScore: report.riskScore,
         summary: report.summary ?? report.managementOverview.headline,

@@ -196,10 +196,30 @@ export async function saveReverseImageSerpCache(
   cacheJson: string
 ): Promise<void> {
   const db = getDatabase();
-  if (!db) return;
-  await db.execute(sql`
-    UPDATE reverse_image_scans SET serp_cache_json = ${cacheJson} WHERE id = ${scanId}
-  `);
+  if (!db) {
+    console.error("[reverse-image] saveReverseImageSerpCache: no database");
+    return;
+  }
+  await ensureReverseImageSchema();
+  try {
+    await db.execute(sql`
+      UPDATE reverse_image_scans SET serp_cache_json = CAST(${cacheJson} AS JSON) WHERE id = ${scanId}
+    `);
+  } catch (error) {
+    // Fallback without CAST for drivers that already bind JSON correctly.
+    try {
+      await db.execute(sql`
+        UPDATE reverse_image_scans SET serp_cache_json = ${cacheJson} WHERE id = ${scanId}
+      `);
+    } catch (fallbackError) {
+      console.error(
+        "[reverse-image] saveReverseImageSerpCache failed",
+        error,
+        fallbackError
+      );
+      throw fallbackError instanceof Error ? fallbackError : error;
+    }
+  }
 }
 
 export async function loadReverseImageSerpCache(

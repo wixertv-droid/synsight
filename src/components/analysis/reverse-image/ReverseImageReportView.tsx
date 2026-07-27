@@ -56,6 +56,7 @@ export default function ReverseImageReportView({
   >({});
   const [activeSourceFilter, setActiveSourceFilter] = useState("all");
   const [sourcesLoading, setSourcesLoading] = useState(true);
+  const [sourcesError, setSourcesError] = useState<string | null>(null);
   const [showComparePicker, setShowComparePicker] = useState(false);
   const { actionFor, onActionChange } = useAnalysisHitActions(
     "reverse_image_search"
@@ -63,6 +64,7 @@ export default function ReverseImageReportView({
 
   const loadSources = useCallback(async () => {
     setSourcesLoading(true);
+    setSourcesError(null);
     try {
       const response = await fetch(
         `/api/analysis/reverse-image/sources?scanId=${report.scanId}`,
@@ -73,7 +75,20 @@ export default function ReverseImageReportView({
         setSources(body.data.candidates ?? []);
         setSourceGroups(body.data.groups ?? []);
         setResultsByQuery(body.data.resultsByQuery ?? {});
+        return;
       }
+      setSources([]);
+      setSourceGroups([]);
+      setResultsByQuery({});
+      setSourcesError(
+        body?.error?.message ??
+          "Quellen konnten nicht geladen werden. Bitte Bildsuche erneut starten."
+      );
+    } catch {
+      setSources([]);
+      setSourcesError(
+        "Quellen konnten nicht geladen werden. Bitte Bildsuche erneut starten."
+      );
     } finally {
       setSourcesLoading(false);
     }
@@ -166,12 +181,21 @@ export default function ReverseImageReportView({
               <button
                 type="button"
                 onClick={() => setShowComparePicker((open) => !open)}
-                className="rounded-lg border border-cyber-cyan/35 bg-cyber-cyan/[0.08] px-4 py-2 text-sm text-cyber-cyan transition hover:bg-cyber-cyan/[0.14]"
+                disabled={sourcesLoading || sources.length === 0}
+                className="rounded-lg border border-cyber-cyan/35 bg-cyber-cyan/[0.08] px-4 py-2 text-sm text-cyber-cyan transition hover:bg-cyber-cyan/[0.14] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {showComparePicker
                   ? "Auswahl schließen"
                   : "Gesichtsvergleich starten (aus gespeicherten Quellen)"}
               </button>
+              {sourcesError ? (
+                <a
+                  href="/dashboard/analysis/reverse-image?start=1"
+                  className="rounded-lg border border-amber-300/30 bg-amber-300/[0.06] px-4 py-2 text-sm text-amber-100/85"
+                >
+                  Bildsuche neu starten
+                </a>
+              ) : null}
             </div>
 
             {showComparePicker ? (
@@ -216,10 +240,25 @@ export default function ReverseImageReportView({
               <div className="border-t border-white/[0.06] px-5 py-4 md:px-6">
                 {sourcesLoading ? (
                   <p className="text-sm text-white/40">Lade Quellen…</p>
+                ) : sourcesError ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-amber-100/75">{sourcesError}</p>
+                    <p className="text-xs text-white/40">
+                      Ohne gespeicherte SerpAPI-Quellen kann der
+                      Gesichtsvergleich nicht gestartet werden.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void loadSources()}
+                      className="text-xs text-cyber-cyan/80 hover:underline"
+                    >
+                      Erneut laden
+                    </button>
+                  </div>
                 ) : sources.length === 0 ? (
                   <p className="text-sm text-white/40">
-                    Keine gespeicherten Quellen verfügbar — ggf. abgelaufen oder
-                    Scan vor Zwei-Phasen-Update.
+                    Keine gespeicherten Quellen für diesen Scan. Bitte Bildsuche
+                    erneut starten (nicht den alten Report öffnen).
                   </p>
                 ) : (
                   <>
