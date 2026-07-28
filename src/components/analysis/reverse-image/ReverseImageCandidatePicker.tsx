@@ -385,7 +385,7 @@ export default function ReverseImageCandidatePicker({
         ) : (
           <div>
             <ConsumeConfirm
-              analysisKey="reverse_image_compare"
+              analysisKey="face_identity_verification"
               units={selected.size}
               confirmLabel={`Vergleich bestätigen (${selected.size} SynCredits)`}
               onCompleted={(payload) => void handleCompareConfirmed(payload)}

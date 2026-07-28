@@ -131,6 +131,11 @@ export async function filterIgnoredFromReverseImageReport(
     userId,
     "reverse_image_search"
   );
+  const faceExcluded = await listExcludedFromStatsFingerprints(
+    userId,
+    "face_identity_verification"
+  );
+  for (const fp of faceExcluded) excluded.add(fp);
   if (excluded.size === 0) return report;
 
   const hits = report.hits.filter((hit) => {

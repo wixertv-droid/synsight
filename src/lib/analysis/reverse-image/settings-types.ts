@@ -1,5 +1,8 @@
 export interface ReverseImageModuleSettings {
+  /** Legacy toggle kept for backward compatibility. */
   isActive: boolean;
+  publicScanActive: boolean;
+  faceVerificationActive: boolean;
   apiEnabled: boolean;
   /** InsightFace compare endpoint */
   compareUrl: string;
@@ -11,6 +14,8 @@ export interface ReverseImageModuleSettings {
 export const DEFAULT_REVERSE_IMAGE_MODULE_SETTINGS: ReverseImageModuleSettings =
   {
     isActive: true,
+    publicScanActive: true,
+    faceVerificationActive: true,
     apiEnabled: true,
     compareUrl:
       process.env.INSIGHTFACE_COMPARE_URL?.trim() ||

@@ -1,5 +1,5 @@
 /**
- * Runtime catalog self-heal for Reverse Image Search (discovery + compare).
+ * Runtime catalog self-heal for Public Image + Face Verification.
  */
 import { sql, eq } from "drizzle-orm";
 import { getDatabase } from "@/lib/database/client";
@@ -59,26 +59,26 @@ async function runEnsure(): Promise<boolean> {
          default_description, default_credits)
       VALUES
         (
-          'reverse_image_discovery',
-          'Reverse Image · Bildsuche',
-          'SerpAPI Google Images — Namen, Alias und Benutzernamen durchsuchen.',
+          'public_image_exposure_scan',
+          'Public Image Exposure Scan',
+          'Öffentliche Bildquellen via Suchmaschine finden, gruppieren und kontextualisieren.',
           12,
           118,
           1,
           1,
-          'Reverse Image · Bildsuche',
-          'SerpAPI Google Images — Namen, Alias und Benutzernamen durchsuchen.',
+          'Public Image Exposure Scan',
+          'Öffentliche Bildquellen via Suchmaschine finden, gruppieren und kontextualisieren.',
           12
         ),
         (
-          'reverse_image_compare',
-          'Reverse Image · Gesichtsvergleich',
+          'face_identity_verification',
+          'Face Identity Verification',
           'InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.',
           1,
           119,
           1,
           1,
-          'Reverse Image · Gesichtsvergleich',
+          'Face Identity Verification',
           'InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.',
           1
         )
@@ -101,6 +101,24 @@ async function runEnsure(): Promise<boolean> {
         default_credits = 1,
         description = 'InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.',
         default_description = 'InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.'
+      WHERE analysis_key IN ('reverse_image_compare', 'face_identity_verification')
+    `);
+
+    await db.execute(sql`
+      UPDATE analysis_pricing
+      SET
+        label = 'Public Image Exposure Scan',
+        description = 'Öffentliche Bildquellen via Suchmaschine finden, gruppieren und kontextualisieren.',
+        is_active = 0
+      WHERE analysis_key = 'reverse_image_discovery'
+    `);
+
+    await db.execute(sql`
+      UPDATE analysis_pricing
+      SET
+        label = 'Face Identity Verification',
+        description = 'InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.',
+        is_active = 0
       WHERE analysis_key = 'reverse_image_compare'
     `);
 
@@ -120,7 +138,7 @@ async function runEnsure(): Promise<boolean> {
   const rows = await db
     .select({ id: analysisPricing.id })
     .from(analysisPricing)
-    .where(eq(analysisPricing.analysisKey, "reverse_image_discovery"))
+    .where(eq(analysisPricing.analysisKey, "public_image_exposure_scan"))
     .limit(1);
 
   return Boolean(rows[0]);

@@ -20,7 +20,9 @@ export type AnalysisSourceModule =
   | "google_search"
   | "username_intelligence"
   | "digital_leak_exposure"
-  | "reverse_image_search";
+  | "reverse_image_search"
+  | "public_image_exposure_scan"
+  | "face_identity_verification";
 
 export type HitActionKind = "ignored" | "self" | "ordered" | "resolved";
 

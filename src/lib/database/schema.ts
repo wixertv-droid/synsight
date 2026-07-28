@@ -1823,6 +1823,10 @@ export const reverseImageModuleSettings = mysqlTable(
   {
     id: int("id", { unsigned: true }).primaryKey().default(1),
     isActive: boolean("is_active").notNull().default(true),
+    publicScanActive: boolean("public_scan_active").notNull().default(true),
+    faceVerificationActive: boolean("face_verification_active")
+      .notNull()
+      .default(true),
     apiEnabled: boolean("api_enabled").notNull().default(true),
     compareUrl: varchar("compare_url", { length: 500 })
       .notNull()

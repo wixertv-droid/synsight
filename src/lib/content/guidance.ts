@@ -214,6 +214,18 @@ export const analysisGuidance: Record<
     result:
       "Gesichtsübereinstimmungen mit Ähnlichkeit und gespeicherten Trefferbildern.",
   },
+  public_image_exposure_scan: {
+    what: "Sucht öffentlich auffindbare Bilder zu Name, Alias und Benutzernamen.",
+    why: "So sehen Sie, welche Bildquellen und Kontexte ohne Gesichtsvergleich öffentlich sichtbar sind.",
+    result:
+      "Gruppierte Bildkandidaten mit Kontextbewertung als Basis für weitere Maßnahmen.",
+  },
+  face_identity_verification: {
+    what: "Vergleicht vorhandene Bildkandidaten mit Ihren Referenzbildern via InsightFace.",
+    why: "So werden aus allgemeinen Bildfunden verifizierbare Identitäts-Treffer.",
+    result:
+      "Ähnlichkeitswerte, Trefferstatus und priorisierte Verifikationsfunde.",
+  },
   ai_summary: {
     what: "Fasst Analyseergebnisse in verständlicher Sprache zusammen.",
     why: "Sie müssen keine Rohdaten lesen — die KI priorisiert das Wichtige.",

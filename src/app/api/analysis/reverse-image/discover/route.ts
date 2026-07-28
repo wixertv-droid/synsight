@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
   try {
     const started = await runWithAnalysisCredits(
-      { userId, analysisKey: "reverse_image_discovery", requestId },
+      { userId, analysisKey: "public_image_exposure_scan", requestId },
       async () => {
         const identity = await getIdentityForUser(userId);
         return startReverseImageDiscovery(identity, { userId, retentionDays });

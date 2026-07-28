@@ -67,6 +67,8 @@ export async function loadUserThreatBundle(userId: number): Promise<{
     }
   }
   if (
+    activeKeys.includes("public_image_exposure_scan") ||
+    activeKeys.includes("face_identity_verification") ||
     activeKeys.includes("reverse_image_discovery") ||
     activeKeys.includes("reverse_image_search")
   ) {

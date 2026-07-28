@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       const started = await runWithAnalysisCredits(
         {
           userId,
-          analysisKey: "reverse_image_compare",
+          analysisKey: "face_identity_verification",
           requestId,
           units,
         },
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     }
 
     const started = await runWithAnalysisCredits(
-      { userId, analysisKey: "reverse_image_discovery", requestId },
+      { userId, analysisKey: "public_image_exposure_scan", requestId },
       async () => {
         const identity = await getIdentityForUser(userId);
         return startReverseImageDiscovery(identity, { userId, retentionDays });

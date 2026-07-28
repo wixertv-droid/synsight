@@ -31,6 +31,14 @@ function mapRow(
   if (!row) return { ...DEFAULT_REVERSE_IMAGE_MODULE_SETTINGS };
   return {
     isActive: Boolean(row.isActive),
+    publicScanActive:
+      typeof row.publicScanActive === "boolean"
+        ? row.publicScanActive
+        : Boolean(row.isActive),
+    faceVerificationActive:
+      typeof row.faceVerificationActive === "boolean"
+        ? row.faceVerificationActive
+        : Boolean(row.isActive),
     apiEnabled: Boolean(row.apiEnabled),
     compareUrl:
       row.compareUrl?.trim() ||
@@ -78,6 +86,12 @@ export async function updateReverseImageModuleSettings(
   const next: ReverseImageModuleSettings = {
     ...current,
     ...patch,
+    publicScanActive:
+      patch.publicScanActive ?? current.publicScanActive ?? current.isActive,
+    faceVerificationActive:
+      patch.faceVerificationActive ??
+      current.faceVerificationActive ??
+      current.isActive,
     compareUrl: (patch.compareUrl ?? current.compareUrl).trim(),
     similarityThreshold: clampThreshold(
       toNumber(
@@ -94,11 +108,17 @@ export async function updateReverseImageModuleSettings(
     ),
   };
 
+  const mergedIsActive = Boolean(
+    next.isActive || next.publicScanActive || next.faceVerificationActive
+  );
+
   await db
     .insert(reverseImageModuleSettings)
     .values({
       id: 1,
-      isActive: next.isActive,
+      isActive: mergedIsActive,
+      publicScanActive: next.publicScanActive,
+      faceVerificationActive: next.faceVerificationActive,
       apiEnabled: next.apiEnabled,
       compareUrl: next.compareUrl,
       similarityThreshold: String(next.similarityThreshold),
@@ -107,7 +127,9 @@ export async function updateReverseImageModuleSettings(
     })
     .onDuplicateKeyUpdate({
       set: {
-        isActive: next.isActive,
+        isActive: mergedIsActive,
+        publicScanActive: next.publicScanActive,
+        faceVerificationActive: next.faceVerificationActive,
         apiEnabled: next.apiEnabled,
         compareUrl: next.compareUrl,
         similarityThreshold: String(next.similarityThreshold),
@@ -116,5 +138,5 @@ export async function updateReverseImageModuleSettings(
       },
     });
 
-  return next;
+  return { ...next, isActive: mergedIsActive };
 }

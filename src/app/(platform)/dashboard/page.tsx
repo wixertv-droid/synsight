@@ -44,6 +44,9 @@ const IMPLEMENTED_REPORT_KEYS = new Set([
   "username_intelligence",
   "reverse_image_search",
   "reverse_image_discovery",
+  "reverse_image_compare",
+  "public_image_exposure_scan",
+  "face_identity_verification",
 ]);
 
 async function loadModuleReport(
@@ -63,7 +66,13 @@ async function loadModuleReport(
     const report = await getLatestUsernameReport(userId);
     return filterIgnoredFromUsernameReport(userId, report);
   }
-  if (key === "reverse_image_search" || key === "reverse_image_discovery") {
+  if (
+    key === "reverse_image_search" ||
+    key === "reverse_image_discovery" ||
+    key === "reverse_image_compare" ||
+    key === "public_image_exposure_scan" ||
+    key === "face_identity_verification"
+  ) {
     const report = await getLatestReverseImageReport(userId);
     return filterIgnoredFromReverseImageReport(userId, report);
   }

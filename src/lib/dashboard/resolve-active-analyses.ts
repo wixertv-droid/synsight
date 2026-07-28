@@ -29,7 +29,7 @@ function inferTier(credits: number): AnalysisTier {
 }
 
 /** Keys that are billed in-flow (not standalone Analyse Center cards). */
-const IN_FLOW_ANALYSIS_KEYS = new Set<string>(["reverse_image_compare"]);
+const IN_FLOW_ANALYSIS_KEYS = new Set<string>([]);
 
 /**
  * Build the user-facing analysis list from the **active** admin catalog.
@@ -58,8 +58,12 @@ export function resolveActiveAnalyses(
     .map((entry) => {
       const lookupKey =
         entry.key === "reverse_image_search"
-          ? "reverse_image_discovery"
-          : entry.key;
+          ? "public_image_exposure_scan"
+          : entry.key === "reverse_image_discovery"
+            ? "public_image_exposure_scan"
+            : entry.key === "reverse_image_compare"
+              ? "face_identity_verification"
+              : entry.key;
       const known = enrichment.get(lookupKey as AnalysisKey);
       if (known) {
         return {

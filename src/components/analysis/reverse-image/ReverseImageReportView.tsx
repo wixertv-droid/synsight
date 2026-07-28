@@ -83,7 +83,7 @@ export default function ReverseImageReportView({
   const [sourcesError, setSourcesError] = useState<string | null>(null);
   const [showComparePicker, setShowComparePicker] = useState(false);
   const { actionFor, onActionChange } = useAnalysisHitActions(
-    "reverse_image_search"
+    "face_identity_verification"
   );
 
   const loadSources = useCallback(async () => {
@@ -130,7 +130,7 @@ export default function ReverseImageReportView({
       }
       // Fallback: deep-link into Results Center compare watch
       const params = new URLSearchParams({
-        tab: "reverse_image_search",
+        tab: "face_identity_verification",
         module: "reverse_image",
         scan: "1",
         compareWatch: "1",
@@ -391,7 +391,7 @@ export default function ReverseImageReportView({
                 </button>
                 {sourcesError ? (
                   <a
-                    href="/dashboard/analysis/reverse-image?start=1"
+                    href="/dashboard/analysis/public-image-exposure?start=1"
                     className="rounded-lg border border-amber-300/30 bg-amber-300/[0.06] px-4 py-2 text-sm text-amber-100/85"
                   >
                     Bildsuche neu starten
@@ -456,7 +456,7 @@ export default function ReverseImageReportView({
                   {filteredHits.map((hit) => {
                     const intel = reverseImageHitToIntelligenceHit(hit);
                     const fingerprint = fingerprintForIntelligenceHit(
-                      "reverse_image_search",
+                      "face_identity_verification",
                       intel
                     );
                     const imageUrl = `/api/analysis/reverse-image/hits/${hit.id}/image?scanId=${report.scanId}`;
@@ -482,7 +482,7 @@ export default function ReverseImageReportView({
                           <div className="p-1">
                             <IntelligenceHitCard
                               hit={intel}
-                              sourceModule="reverse_image_search"
+                              sourceModule="face_identity_verification"
                               analysisId={report.scanId}
                               orderType={orderTypeForReverseImageHit()}
                               selfGuide={selfGuideForReverseImageHit(hit)}

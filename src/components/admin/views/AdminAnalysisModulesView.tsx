@@ -36,6 +36,8 @@ const emptySettings: UsernameModuleSettings = {
 
 const emptyReverseImageSettings: ReverseImageModuleSettings = {
   isActive: true,
+  publicScanActive: true,
+  faceVerificationActive: true,
   apiEnabled: true,
   compareUrl: "http://161.97.85.22:8000/compare",
   similarityThreshold: 0.35,
@@ -168,13 +170,25 @@ export default function AdminAnalysisModulesView() {
         void loadUsername();
       }
       if (
+        row.analysisKey === "public_image_exposure_scan" ||
         row.analysisKey === "reverse_image_discovery" ||
         row.analysisKey === "reverse_image_search"
       ) {
         await fetch("/api/admin/reverse-image-module", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive: !row.isActive }),
+          body: JSON.stringify({ publicScanActive: !row.isActive }),
+        });
+        void loadReverseImage();
+      }
+      if (
+        row.analysisKey === "face_identity_verification" ||
+        row.analysisKey === "reverse_image_compare"
+      ) {
+        await fetch("/api/admin/reverse-image-module", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ faceVerificationActive: !row.isActive }),
         });
         void loadReverseImage();
       }
@@ -410,7 +424,7 @@ export default function AdminAnalysisModulesView() {
 
       <section className="rounded-2xl border border-violet-400/20 bg-[#060d16]/90 p-5 md:p-6">
         <p className="font-mono text-[9px] tracking-[.16em] text-violet-300/70">
-          REVERSE IMAGE SEARCH · FACE-ERKENNUNG
+          PUBLIC IMAGE EXPOSURE + FACE IDENTITY · EINSTELLUNGEN
         </p>
         <p className="mt-2 text-sm text-white/45">
           InsightFace-Server, Treffer-Schwellenwert und API-Status.
@@ -482,6 +496,38 @@ export default function AdminAnalysisModulesView() {
                 setReverseImageSettings((current) => ({
                   ...current,
                   apiEnabled: event.target.checked,
+                }))
+              }
+              className="mt-2 block"
+            />
+          </label>
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              PUBLIC SCAN AKTIV
+            </span>
+            <input
+              type="checkbox"
+              checked={reverseImageSettings.publicScanActive}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  publicScanActive: event.target.checked,
+                }))
+              }
+              className="mt-2 block"
+            />
+          </label>
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              FACE VERIFICATION AKTIV
+            </span>
+            <input
+              type="checkbox"
+              checked={reverseImageSettings.faceVerificationActive}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  faceVerificationActive: event.target.checked,
                 }))
               }
               className="mt-2 block"

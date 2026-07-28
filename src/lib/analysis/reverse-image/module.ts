@@ -2,8 +2,8 @@ import type { IntelligenceModuleDefinition } from "@/lib/analysis/types";
 
 /** Combined module meta (Results Center / duration labels). */
 export const reverseImageSearchModule: IntelligenceModuleDefinition = {
-  key: "reverse_image_search",
-  title: "Reverse Image Search",
+  key: "public_image_exposure_scan",
+  title: "Public Image Exposure Scan",
   estimatedDurationLabel: "ca. 1–5 Minuten",
   minScanMs: 12000,
   maxScanMs: 300000,
@@ -43,8 +43,8 @@ export const reverseImageSearchModule: IntelligenceModuleDefinition = {
 
 /** Phase 1 — SerpAPI Bildsuche (eigene Animation im Reverse-Image-Tab). */
 export const reverseImageDiscoveryModule: IntelligenceModuleDefinition = {
-  key: "reverse_image_search",
-  title: "Reverse Image · Bildsuche",
+  key: "public_image_exposure_scan",
+  title: "Public Image Exposure Scan",
   estimatedDurationLabel: "ca. 30–180 Sekunden",
   minScanMs: 10000,
   maxScanMs: 600000,
@@ -84,8 +84,8 @@ export const reverseImageDiscoveryModule: IntelligenceModuleDefinition = {
 
 /** Phase 2 — InsightFace Gesichtsvergleich (eigene Animation). */
 export const reverseImageCompareModule: IntelligenceModuleDefinition = {
-  key: "reverse_image_search",
-  title: "Reverse Image · Gesichtsvergleich",
+  key: "face_identity_verification",
+  title: "Face Identity Verification",
   estimatedDurationLabel: "ca. 30–300 Sekunden",
   minScanMs: 12000,
   maxScanMs: 600000,

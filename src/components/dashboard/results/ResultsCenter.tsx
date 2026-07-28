@@ -24,8 +24,14 @@ function tabSortRank(id: string): number {
   if (id === "google_search") return 10;
   if (id === "digital_leak_exposure") return 20;
   if (id === "username_intelligence") return 30;
-  if (id === "reverse_image_search" || id === "reverse_image_discovery")
+  if (
+    id === "public_image_exposure_scan" ||
+    id === "reverse_image_search" ||
+    id === "reverse_image_discovery"
+  )
     return 40;
+  if (id === "face_identity_verification" || id === "reverse_image_compare")
+    return 50;
   return 100;
 }
 
@@ -55,7 +61,11 @@ function tabTitle(id: string, fallback: string): string {
       return "Social Analyse";
     case "reverse_image_search":
     case "reverse_image_discovery":
-      return "Reverse Image Search";
+    case "public_image_exposure_scan":
+      return "Public Image Exposure Scan";
+    case "reverse_image_compare":
+    case "face_identity_verification":
+      return "Face Identity Verification";
     default:
       return fallback;
   }
@@ -67,7 +77,9 @@ function tabTitle(id: string, fallback: string): string {
  * Billing key `reverse_image_discovery` is only used in Analyse Center / credits.
  */
 function normalizeResultsTabId(id: string): string {
-  if (id === "reverse_image_discovery") return "reverse_image_search";
+  if (id === "reverse_image_discovery") return "public_image_exposure_scan";
+  if (id === "reverse_image_search") return "public_image_exposure_scan";
+  if (id === "reverse_image_compare") return "face_identity_verification";
   return id;
 }
 
@@ -76,8 +88,8 @@ function isAvailableModule(id: string): boolean {
     id === "google_search" ||
     id === "digital_leak_exposure" ||
     id === "username_intelligence" ||
-    id === "reverse_image_search" ||
-    id === "reverse_image_discovery"
+    id === "public_image_exposure_scan" ||
+    id === "face_identity_verification"
   );
 }
 
@@ -107,7 +119,6 @@ async function loadResultsData(): Promise<{
       const catalog = await getPublicPricingCatalog();
       const modules = resolveActiveAnalyses(catalog.analyses ?? []);
       tabs = modules
-        .filter((module) => module.id !== "reverse_image_compare")
         .map((module) => {
           const id = normalizeResultsTabId(module.id);
           return {

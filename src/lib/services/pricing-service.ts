@@ -78,7 +78,8 @@ export async function getPublicPricingCatalog() {
     const needsRepair =
       !mapped.some((row) => row.key === "digital_leak_exposure") ||
       !mapped.some((row) => row.key === "username_intelligence") ||
-      !mapped.some((row) => row.key === "reverse_image_discovery") ||
+      !mapped.some((row) => row.key === "public_image_exposure_scan") ||
+      !mapped.some((row) => row.key === "face_identity_verification") ||
       mapped.some((row) => isReplacedAnalysisKey(row.key));
 
     if (needsRepair) {
@@ -126,7 +127,7 @@ export async function getAnalysisQuote(
   const safeUnits = Math.min(Math.max(Math.floor(units) || 1, 1), 200);
   const credits = pricing.credits * safeUnits;
   const label =
-    safeUnits > 1 && analysisKey === "reverse_image_compare"
+    safeUnits > 1 && analysisKey === "face_identity_verification"
       ? `${pricing.label} · ${safeUnits} Bilder × ${pricing.credits} SynCredit`
       : pricing.label;
   return {
@@ -220,7 +221,10 @@ export async function updateAnalysisPricing(input: {
   }
 
   if (
+    updated.analysisKey === "public_image_exposure_scan" ||
+    updated.analysisKey === "face_identity_verification" ||
     updated.analysisKey === "reverse_image_discovery" ||
+    updated.analysisKey === "reverse_image_compare" ||
     updated.analysisKey === "reverse_image_search"
   ) {
     try {

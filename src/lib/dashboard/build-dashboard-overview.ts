@@ -651,6 +651,9 @@ const MODULE_ADAPTERS: Record<string, ModuleAdapter> = {
   username_intelligence: usernameAdapter,
   reverse_image_search: reverseImageAdapter,
   reverse_image_discovery: reverseImageAdapter,
+  reverse_image_compare: reverseImageAdapter,
+  public_image_exposure_scan: reverseImageAdapter,
+  face_identity_verification: reverseImageAdapter,
 };
 
 function contributeModule(module: DashboardModuleInput): ModuleContribution {

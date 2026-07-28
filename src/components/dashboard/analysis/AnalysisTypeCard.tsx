@@ -18,10 +18,14 @@ export default function AnalysisTypeCard({
         ? "/dashboard/analysis/digital-exposure?start=1"
         : module.id === "username_intelligence"
           ? "/dashboard/analysis/username?start=1"
-          : module.id === "reverse_image_discovery" ||
-              module.id === "reverse_image_search"
-            ? "/dashboard/analysis/reverse-image?start=1"
-            : `/dashboard/results#${module.id}`;
+          : module.id === "public_image_exposure_scan"
+            ? "/dashboard/analysis/public-image-exposure?start=1"
+            : module.id === "face_identity_verification"
+              ? "/dashboard/analysis/face-identity-verification?start=1"
+              : module.id === "reverse_image_discovery" ||
+                  module.id === "reverse_image_search"
+                ? "/dashboard/analysis/reverse-image?start=1"
+                : `/dashboard/results#${module.id}`;
 
   return (
     <article

@@ -123,14 +123,17 @@ export default function ResultsCenterClient({
   const searchParams = useSearchParams();
   const requestedTabRaw = searchParams.get("tab") ?? modules[0]?.id ?? "";
   const requestedTab =
-    requestedTabRaw === "reverse_image_discovery"
-      ? "reverse_image_search"
-      : requestedTabRaw;
+    requestedTabRaw === "reverse_image_discovery" ||
+    requestedTabRaw === "reverse_image_search"
+      ? "public_image_exposure_scan"
+      : requestedTabRaw === "reverse_image_compare"
+        ? "face_identity_verification"
+        : requestedTabRaw;
   const requestedModule = searchParams.get("module") ?? "";
   const wantsReverseImage =
     requestedModule === "reverse_image" ||
-    requestedTab === "reverse_image_search" ||
-    requestedTab === "reverse_image_discovery";
+    requestedTab === "public_image_exposure_scan" ||
+    requestedTab === "face_identity_verification";
   const forceReverseImage = wantsReverseImage;
   const shouldScan = searchParams.get("scan") === "1";
   const requestIdFromUrl = (searchParams.get("requestId") ?? "").trim();
@@ -142,13 +145,13 @@ export default function ResultsCenterClient({
   /** Ensure Reverse Image tab exists even if catalog briefly omits it. */
   const tabsWithReverse = useMemo(() => {
     if (!wantsReverseImage) return modules;
-    if (modules.some((tab) => tab.id === "reverse_image_search"))
+    if (modules.some((tab) => tab.id === "public_image_exposure_scan"))
       return modules;
     return [
       ...modules,
       {
-        id: "reverse_image_search",
-        title: "Reverse Image Search",
+        id: "public_image_exposure_scan",
+        title: "Public Image Exposure Scan",
         help: "Zwei Phasen: Bildlinks finden, dann optional Gesichtsvergleich.",
         tagline: "Wo im Netz tauchen Ihre Bilder auf?",
         available: true,
@@ -157,15 +160,15 @@ export default function ResultsCenterClient({
   }, [modules, wantsReverseImage]);
 
   const [activeTab, setActiveTab] = useState(() => {
-    if (wantsReverseImage) return "reverse_image_search";
+    if (wantsReverseImage) return requestedTab;
     if (tabsWithReverse.some((tab) => tab.id === requestedTab))
       return requestedTab;
     return tabsWithReverse[0]?.id ?? "google_search";
   });
 
   useEffect(() => {
-    if (wantsReverseImage && activeTab !== "reverse_image_search") {
-      setActiveTab("reverse_image_search");
+    if (wantsReverseImage && activeTab !== requestedTab) {
+      setActiveTab(requestedTab);
       return;
     }
     if (
@@ -266,7 +269,10 @@ export default function ResultsCenterClient({
       if (options?.clearScanParam !== false) {
         const tab = options?.tab ?? "google_search";
         const params = new URLSearchParams({ tab });
-        if (tab === "reverse_image_search") {
+        if (
+          tab === "public_image_exposure_scan" ||
+          tab === "face_identity_verification"
+        ) {
           params.set("module", "reverse_image");
           if (options?.scanId && options.scanId > 0) {
             params.set("scanId", String(options.scanId));
@@ -774,7 +780,7 @@ export default function ResultsCenterClient({
         setError(
           "Anfragekennung fehlt. Bitte starten Sie die Analyse erneut über das Analyse Center."
         );
-        finishScanAttempt({ tab: "reverse_image_search" });
+        finishScanAttempt({ tab: "public_image_exposure_scan" });
         return;
       }
 
@@ -828,7 +834,7 @@ export default function ResultsCenterClient({
             setReverseImageReport(recovered.report);
             setScanApiReady(true);
             setError(null);
-            finishScanAttempt({ tab: "reverse_image_search" });
+            finishScanAttempt({ tab: "public_image_exposure_scan" });
             return;
           }
         }
@@ -836,7 +842,7 @@ export default function ResultsCenterClient({
         setError(
           "Gateway-Timeout — der Scan läuft oft trotzdem weiter. Bitte Seite in 1–2 Minuten aktualisieren."
         );
-        finishScanAttempt({ tab: "reverse_image_search" });
+        finishScanAttempt({ tab: "public_image_exposure_scan" });
         return;
       }
 
@@ -847,28 +853,28 @@ export default function ResultsCenterClient({
             body.error?.message ??
               "Reverse Image Search ist aktuell nicht verfügbar."
           );
-          finishScanAttempt({ tab: "reverse_image_search" });
+          finishScanAttempt({ tab: "public_image_exposure_scan" });
           return;
         }
         const recovered = await loadLatestReverseImageReport();
         if (recovered.report) {
           setReverseImageReport(recovered.report);
           setError(null);
-          finishScanAttempt({ tab: "reverse_image_search" });
+          finishScanAttempt({ tab: "public_image_exposure_scan" });
           return;
         }
         setError(
           body.error?.message ??
             "Reverse Image Search konnte nicht gestartet werden."
         );
-        finishScanAttempt({ tab: "reverse_image_search" });
+        finishScanAttempt({ tab: "public_image_exposure_scan" });
         return;
       }
 
       if (body.data?.report) {
         setScanApiReady(true);
         setReverseImageReport(body.data.report);
-        finishScanAttempt({ tab: "reverse_image_search" });
+        finishScanAttempt({ tab: "public_image_exposure_scan" });
         return;
       }
 
@@ -877,7 +883,7 @@ export default function ResultsCenterClient({
         setReverseImageScanId(scanId);
         const ok = await pollUntilDone(scanId, requestId, effectiveRetention);
         setScanApiReady(true);
-        finishScanAttempt({ tab: "reverse_image_search", scanId });
+        finishScanAttempt({ tab: "public_image_exposure_scan", scanId });
         void ok;
         return;
       }
@@ -885,7 +891,7 @@ export default function ResultsCenterClient({
       setScanApiReady(true);
       const recovered = await loadLatestReverseImageReport();
       if (recovered.report) setReverseImageReport(recovered.report);
-      finishScanAttempt({ tab: "reverse_image_search" });
+      finishScanAttempt({ tab: "public_image_exposure_scan" });
     } catch {
       setScanApiReady(true);
       const recovered = await loadLatestReverseImageReport().catch(() => ({
@@ -894,11 +900,11 @@ export default function ResultsCenterClient({
       }));
       if (recovered.report) {
         setReverseImageReport(recovered.report);
-        finishScanAttempt({ tab: "reverse_image_search" });
+        finishScanAttempt({ tab: "public_image_exposure_scan" });
         return;
       }
       setError("Verbindung zum Server nicht möglich.");
-      finishScanAttempt({ tab: "reverse_image_search" });
+      finishScanAttempt({ tab: "public_image_exposure_scan" });
     }
   }, [
     finishScanAttempt,
@@ -980,7 +986,7 @@ export default function ResultsCenterClient({
       void pollReverseImageScan(scanId, requestId, retentionDays, true).then(
         () => {
           setScanApiReady(true);
-          finishScanAttempt({ tab: "reverse_image_search", scanId });
+          finishScanAttempt({ tab: "face_identity_verification", scanId });
           // Nächster Facescan in derselben Session erlauben
           compareWatchStartedRef.current = false;
         }
@@ -1003,8 +1009,8 @@ export default function ResultsCenterClient({
     ) {
       return;
     }
-    if (activeTab !== "reverse_image_search") {
-      setActiveTab("reverse_image_search");
+    if (activeTab !== "face_identity_verification") {
+      setActiveTab("face_identity_verification");
     }
     const requestId = (
       searchParams.get("requestId") ?? requestIdFromUrl
@@ -1027,8 +1033,8 @@ export default function ResultsCenterClient({
       !scanStartedRef.current
     ) {
       if (searchParams.get("compareWatch") === "1") return;
-      if (activeTab !== "reverse_image_search") {
-        setActiveTab("reverse_image_search");
+      if (activeTab !== "public_image_exposure_scan") {
+        setActiveTab("public_image_exposure_scan");
       }
       scanStartedRef.current = true;
       void runReverseImageScan();
@@ -1045,7 +1051,8 @@ export default function ResultsCenterClient({
 
   useEffect(() => {
     if (
-      activeTab !== "reverse_image_search" ||
+      (activeTab !== "public_image_exposure_scan" &&
+        activeTab !== "face_identity_verification") ||
       shouldScan ||
       reverseImageReport ||
       reverseImageDiscoveryDone
@@ -1088,7 +1095,10 @@ export default function ResultsCenterClient({
   function selectTab(id: string) {
     setActiveTab(id);
     const params = new URLSearchParams({ tab: id });
-    if (id === "reverse_image_search") {
+    if (
+      id === "public_image_exposure_scan" ||
+      id === "face_identity_verification"
+    ) {
       params.set("module", "reverse_image");
     }
     router.replace(`/dashboard/results?${params.toString()}`, {
@@ -1124,7 +1134,8 @@ export default function ResultsCenterClient({
   }
 
   const showReverseDiscoveryPicker = Boolean(
-    activeModule?.id === "reverse_image_search" &&
+    (activeModule?.id === "public_image_exposure_scan" ||
+      activeModule?.id === "face_identity_verification") &&
     !scanning &&
     reverseImageDiscoveryDone &&
     reverseImageScanId &&
@@ -1137,12 +1148,15 @@ export default function ResultsCenterClient({
     ((activeModule.id === "google_search" && report) ||
       (activeModule.id === "username_intelligence" && usernameReport) ||
       (activeModule.id === "digital_leak_exposure" && exposureReport) ||
-      (activeModule.id === "reverse_image_search" && reverseImageReport));
+      ((activeModule.id === "public_image_exposure_scan" ||
+        activeModule.id === "face_identity_verification") &&
+        reverseImageReport));
 
   const showRetention =
     activeModule.id === "google_search" ||
     activeModule.id === "username_intelligence" ||
-    activeModule.id === "reverse_image_search";
+    activeModule.id === "public_image_exposure_scan" ||
+    activeModule.id === "face_identity_verification";
 
   const tabsNav = (
     <nav
@@ -1242,7 +1256,8 @@ export default function ResultsCenterClient({
                 revealSections
               />
             ) : null}
-            {activeModule.id === "reverse_image_search" &&
+            {(activeModule.id === "public_image_exposure_scan" ||
+              activeModule.id === "face_identity_verification") &&
             reverseImageReport ? (
               <ReverseImageReportView
                 report={reverseImageReport}
@@ -1373,7 +1388,8 @@ export default function ResultsCenterClient({
                   </section>
                 ) : null}
               </>
-            ) : activeModule.id === "reverse_image_search" ? (
+            ) : activeModule.id === "public_image_exposure_scan" ||
+              activeModule.id === "face_identity_verification" ? (
               <>
                 {scanning && reverseImageComparePhase ? (
                   <IntelligenceScanSequence
@@ -1480,10 +1496,10 @@ export default function ResultsCenterClient({
                       hochladen und Analyse im Analyse Center starten.
                     </p>
                     <a
-                      href="/dashboard/analysis/reverse-image?start=1"
+                      href="/dashboard/analysis/public-image-exposure?start=1"
                       className="mt-5 inline-flex rounded-lg border border-cyber-cyan/50 bg-cyber-cyan/[0.1] px-4 py-2.5 text-sm font-medium text-cyber-cyan"
                     >
-                      Reverse Image Search starten
+                      Public Image Exposure Scan starten
                     </a>
                   </section>
                 ) : null}

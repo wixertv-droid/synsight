@@ -22,6 +22,8 @@ export type AnalysisKey =
   | "reverse_image_search"
   | "reverse_image_discovery"
   | "reverse_image_compare"
+  | "public_image_exposure_scan"
+  | "face_identity_verification"
   | "ai_summary"
   | "pdf_report"
   | "deep_intelligence"
@@ -106,13 +108,27 @@ export const DEFAULT_ANALYSIS_PRICES: readonly AnalysisPrice[] = [
   },
   {
     key: "reverse_image_discovery",
-    label: "Reverse Image · Bildsuche",
+    label: "Public Image Exposure Scan",
     credits: 12,
-    description: "SerpAPI Google Images — Namen, Alias und Benutzernamen.",
+    description:
+      "Öffentliche Bildquellen via Suchmaschine finden, gruppieren und kontextualisieren.",
   },
   {
     key: "reverse_image_compare",
-    label: "Reverse Image · Gesichtsvergleich",
+    label: "Face Identity Verification",
+    credits: 1,
+    description: "InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.",
+  },
+  {
+    key: "public_image_exposure_scan",
+    label: "Public Image Exposure Scan",
+    credits: 12,
+    description:
+      "Öffentliche Bildquellen via Suchmaschine finden, gruppieren und kontextualisieren.",
+  },
+  {
+    key: "face_identity_verification",
+    label: "Face Identity Verification",
     credits: 1,
     description: "InsightFace-Abgleich — 1 SynCredit pro ausgewähltem Bild.",
   },
@@ -153,6 +169,10 @@ export const REPLACED_ANALYSIS_KEYS = [
   "alias_analysis",
   /** Superseded by reverse_image_discovery + reverse_image_compare */
   "reverse_image_search",
+  /** Superseded by Public Image Exposure Scan */
+  "reverse_image_discovery",
+  /** Superseded by Face Identity Verification */
+  "reverse_image_compare",
 ] as const satisfies readonly AnalysisKey[];
 
 export function isReplacedAnalysisKey(key: string): boolean {

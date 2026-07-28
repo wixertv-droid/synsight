@@ -1094,19 +1094,33 @@ export default function IdentityProfilePanel({
 
       {/* 8. Reverse Image */}
       {isActive("reverse_image_search") ||
-      isActive("reverse_image_discovery") ? (
+      isActive("reverse_image_discovery") ||
+      isActive("public_image_exposure_scan") ||
+      isActive("face_identity_verification") ? (
         <CollapsibleCard
           id="image"
-          title="Reverse Image Search"
+          title="Public Image Exposure / Face Identity"
           subtitle="Vier biometrische Referenzansichten"
           open={openCards.image}
           onToggle={() => toggle("image")}
           badge={
-            byKey.reverse_image_search ? (
+            byKey.face_identity_verification || byKey.reverse_image_search ? (
               <ReadyBadge
-                ready={byKey.reverse_image_search.ready}
-                filled={byKey.reverse_image_search.filled}
-                total={byKey.reverse_image_search.total}
+                ready={
+                  byKey.face_identity_verification?.ready ??
+                  byKey.reverse_image_search?.ready ??
+                  false
+                }
+                filled={
+                  byKey.face_identity_verification?.filled ??
+                  byKey.reverse_image_search?.filled ??
+                  0
+                }
+                total={
+                  byKey.face_identity_verification?.total ??
+                  byKey.reverse_image_search?.total ??
+                  0
+                }
               />
             ) : null
           }

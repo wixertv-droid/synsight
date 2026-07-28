@@ -81,6 +81,8 @@ async function runEnsure(): Promise<boolean> {
     CREATE TABLE IF NOT EXISTS reverse_image_module_settings (
       id TINYINT UNSIGNED NOT NULL PRIMARY KEY DEFAULT 1,
       is_active TINYINT(1) NOT NULL DEFAULT 1,
+      public_scan_active TINYINT(1) NOT NULL DEFAULT 1,
+      face_verification_active TINYINT(1) NOT NULL DEFAULT 1,
       api_enabled TINYINT(1) NOT NULL DEFAULT 1,
       compare_url VARCHAR(500) NOT NULL DEFAULT 'http://161.97.85.22:8000/compare',
       similarity_threshold DECIMAL(4,3) NOT NULL DEFAULT 0.600,
@@ -98,6 +100,24 @@ async function runEnsure(): Promise<boolean> {
     await db.execute(sql`
       ALTER TABLE reverse_image_scans
       ADD COLUMN serp_cache_json JSON NULL AFTER expires_at
+    `);
+  } catch {
+    /* column may already exist */
+  }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE reverse_image_module_settings
+      ADD COLUMN public_scan_active TINYINT(1) NOT NULL DEFAULT 1 AFTER is_active
+    `);
+  } catch {
+    /* column may already exist */
+  }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE reverse_image_module_settings
+      ADD COLUMN face_verification_active TINYINT(1) NOT NULL DEFAULT 1 AFTER public_scan_active
     `);
   } catch {
     /* column may already exist */

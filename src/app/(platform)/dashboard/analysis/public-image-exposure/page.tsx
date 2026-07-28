@@ -20,24 +20,19 @@ export const metadata: Metadata = {
     "Öffentliche Bildfunde und Kontextanalyse ohne Gesichtsvergleich.",
 };
 
-export default async function ReverseImageAnalysisPage() {
+export default async function PublicImageExposurePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   let moduleActive = false;
   try {
     const catalog = await getPublicPricingCatalog();
-    moduleActive =
-      isAnalysisKeyActive(
-        extractActiveAnalysisKeys(catalog.analyses),
-        "reverse_image_discovery"
-      ) ||
-      isAnalysisKeyActive(
-        extractActiveAnalysisKeys(catalog.analyses),
-        "public_image_exposure_scan"
-      );
+    moduleActive = isAnalysisKeyActive(
+      extractActiveAnalysisKeys(catalog.analyses),
+      "public_image_exposure_scan"
+    );
   } catch (error) {
-    console.error("[ReverseImagePage] catalog check failed", error);
+    console.error("[PublicImageExposurePage] catalog check failed", error);
   }
   if (!moduleActive) redirect("/dashboard/analysis");
 
@@ -53,12 +48,12 @@ export default async function ReverseImageAnalysisPage() {
     subjectName = resolveSubjectName(identity);
     referenceImageCount = identity?.images?.length ?? 0;
   } catch (error) {
-    console.error("[ReverseImagePage] identity failed", error);
+    console.error("[PublicImageExposurePage] identity failed", error);
   }
 
   try {
     apiAvailable = await isReverseImageDiscoveryConfigured();
-  } catch (error) {
+  } catch {
     apiAvailable = false;
   }
 
@@ -74,6 +69,7 @@ export default async function ReverseImageAnalysisPage() {
         subjectName={subjectName}
         apiAvailable={apiAvailable}
         referenceImageCount={referenceImageCount}
+        mode="public"
       />
     </Suspense>
   );

@@ -24,7 +24,9 @@ export type ThreatModuleKey =
   | "google_search"
   | "digital_leak_exposure"
   | "username_intelligence"
-  | "reverse_image_search";
+  | "reverse_image_search"
+  | "public_image_exposure_scan"
+  | "face_identity_verification";
 
 export interface PlatformThreat {
   id: string;
@@ -71,6 +73,14 @@ export const THREAT_MODULE_META: Record<
   reverse_image_search: {
     label: "Reverse Image Search",
     short: "BILD",
+  },
+  public_image_exposure_scan: {
+    label: "Public Image Exposure Scan",
+    short: "BILD",
+  },
+  face_identity_verification: {
+    label: "Face Identity Verification",
+    short: "FACE",
   },
 };
 

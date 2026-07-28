@@ -16,6 +16,8 @@ const moduleSchema = z.enum([
   "username_intelligence",
   "digital_leak_exposure",
   "reverse_image_search",
+  "public_image_exposure_scan",
+  "face_identity_verification",
 ]);
 
 const actionSchema = z.object({

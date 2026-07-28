@@ -10,6 +10,7 @@ import { isDehashedConfiguredAndActive } from "@/lib/analysis/digital-exposure/d
 import { isReverseImageConfigured } from "@/lib/analysis/reverse-image/run-analysis";
 import { isInsightFaceConfiguredAsync } from "@/lib/analysis/reverse-image/insightface-client";
 import { getUsernameModuleSettings } from "@/lib/analysis/username/settings";
+import { getReverseImageModuleSettings } from "@/lib/analysis/reverse-image/settings";
 import { isReplacedAnalysisKey } from "@/lib/credits/pricing";
 
 export type AnalysisGateCode =
@@ -72,6 +73,39 @@ async function assertProviderReady(analysisKey: string): Promise<boolean> {
     if (!settings.isActive || !settings.apiEnabled) return false;
     return isGoogleSearchConfigured();
   }
+  if (
+    analysisKey === "public_image_exposure_scan" ||
+    analysisKey === "face_identity_verification"
+  ) {
+    const settings = await getReverseImageModuleSettings();
+    if (!settings.isActive || !settings.apiEnabled) {
+      throw new AnalysisGateError(
+        "MODULE_INACTIVE",
+        "Bildanalyse-Modul ist deaktiviert.",
+        403
+      );
+    }
+    if (
+      analysisKey === "public_image_exposure_scan" &&
+      !settings.publicScanActive
+    ) {
+      throw new AnalysisGateError(
+        "MODULE_INACTIVE",
+        "Public Image Exposure Scan ist deaktiviert.",
+        403
+      );
+    }
+    if (
+      analysisKey === "face_identity_verification" &&
+      !settings.faceVerificationActive
+    ) {
+      throw new AnalysisGateError(
+        "MODULE_INACTIVE",
+        "Face Identity Verification ist deaktiviert.",
+        403
+      );
+    }
+  }
   if (analysisKey === "reverse_image_search") {
     return isReverseImageConfigured();
   }
@@ -79,6 +113,12 @@ async function assertProviderReady(analysisKey: string): Promise<boolean> {
     return isGoogleSearchConfigured();
   }
   if (analysisKey === "reverse_image_compare") {
+    return isInsightFaceConfiguredAsync();
+  }
+  if (analysisKey === "public_image_exposure_scan") {
+    return isGoogleSearchConfigured();
+  }
+  if (analysisKey === "face_identity_verification") {
     return isInsightFaceConfiguredAsync();
   }
   return false;

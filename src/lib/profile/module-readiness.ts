@@ -129,8 +129,18 @@ export function buildProfileModuleReadiness(
       ...score([{ ok: hasSocial(view), label: "Social-Account" }]),
     },
     {
-      key: "reverse_image_search",
-      label: "Reverse Image Search",
+      key: "public_image_exposure_scan",
+      label: "Public Image Exposure Scan",
+      ...score([
+        {
+          ok: hasAlias(view) || hasName(view),
+          label: "Name/Alias/Benutzername",
+        },
+      ]),
+    },
+    {
+      key: "face_identity_verification",
+      label: "Face Identity Verification",
       ...score([
         { ok: hasImages(view), label: "Referenzbild" },
         {

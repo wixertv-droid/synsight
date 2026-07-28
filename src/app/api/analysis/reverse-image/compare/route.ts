@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     const started = await runWithAnalysisCredits(
       {
         userId,
-        analysisKey: "reverse_image_compare",
+        analysisKey: "face_identity_verification",
         requestId,
         units,
       },
