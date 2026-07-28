@@ -206,7 +206,7 @@ export default function DemoScanner() {
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-3 h-3 rounded-full bg-cyber-cyan animate-pulse" />
                   <p className="font-mono text-sm text-cyber-cyan">
-                    ANALYSE ABGESCHLOSSEN — Ergebnisse für "{input}"
+                    ANALYSE ABGESCHLOSSEN — Ergebnisse für &quot;{input}&quot;
                   </p>
                 </div>
 
