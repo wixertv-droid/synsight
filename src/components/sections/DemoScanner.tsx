@@ -47,11 +47,15 @@ export default function DemoScanner() {
   // States für die Animationen
   const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  
+  // NEU: Ref für das Terminal-Fenster (nicht mehr das Ende der Seite)
+  const terminalRef = useRef<HTMLDivElement>(null);
 
-  // Auto-Scroll für das Terminal
+  // Gefixter Auto-Scroll: Scrollt nur innerhalb der Box, lässt die Seite in Ruhe!
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
   }, [logs]);
 
   // Der Animations-Loop während des Scannens
@@ -68,7 +72,7 @@ export default function DemoScanner() {
     const logInterval = setInterval(() => {
       const randomLog = terminalLogs[Math.floor(Math.random() * terminalLogs.length)];
       const time = new Date().toISOString().split('T')[1].slice(0, -1); // HH:MM:SS.mmm
-      setLogs(prev => [...prev, `[${time}] ${randomLog}`].slice(-8)); // Zeigt immer die letzten 8 Logs
+      setLogs(prev => [...prev, `[${time}] ${randomLog}`].slice(-20)); // Behält mehr Logs im Speicher
     }, 400);
 
     return () => {
@@ -84,7 +88,7 @@ export default function DemoScanner() {
     setProgress(0);
     setApiResult(null);
 
-    const minWaitTime = new Promise(resolve => setTimeout(resolve, 5000)); // Mindestens 5 Sekunden coole Animation zeigen
+    const minWaitTime = new Promise(resolve => setTimeout(resolve, 5000)); // Mindestens 5 Sekunden Animation
 
     try {
       const apiCall = fetch("/api/scan", {
@@ -188,17 +192,19 @@ export default function DemoScanner() {
                   </div>
                 </div>
 
-                {/* Terminal Feed */}
+                {/* Terminal Feed - Jetzt mit sicherem, internem Scroll! */}
                 <div className="w-full bg-[#0a0a0f] border border-cyber-cyan/20 rounded-lg p-4 font-mono text-xs text-cyber-cyan/80 h-40 overflow-hidden relative shadow-[inset_0_0_20px_rgba(0,255,255,0.05)]">
-                  <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-b from-[#0a0a0f] to-transparent z-10" />
-                  <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-[#0a0a0f] to-transparent z-10" />
-                  <div className="space-y-1 mt-2">
+                  {/* Blenden-Effekt oben und unten, pointer-events-none lässt Klicks durch */}
+                  <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-b from-[#0a0a0f] to-transparent z-10 pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-[#0a0a0f] to-transparent z-10 pointer-events-none" />
+                  
+                  {/* Das ist die Box, die scrollt */}
+                  <div ref={terminalRef} className="space-y-1 mt-2 h-full overflow-y-auto pb-8 scrollbar-hide">
                     {logs.map((log, i) => (
                       <div key={i} className="animate-fade-in-up whitespace-nowrap overflow-hidden text-ellipsis">
                         <span className="text-gray-500 mr-2">&gt;</span>{log}
                       </div>
                     ))}
-                    <div ref={logsEndRef} />
                   </div>
                 </div>
               </div>
