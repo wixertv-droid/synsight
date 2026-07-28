@@ -39,6 +39,12 @@ const emptyReverseImageSettings: ReverseImageModuleSettings = {
   publicScanActive: true,
   faceVerificationActive: true,
   apiEnabled: true,
+  maxPagesPerQuery: 2,
+  maxImagesPerQuery: 100,
+  identityScoreThreshold: 45,
+  domainRelevanceMin: 35,
+  aiRelevanceFilter: true,
+  minConfidence: 55,
   compareUrl: "http://161.97.85.22:8000/compare",
   similarityThreshold: 0.35,
   compareTimeoutMs: 12_000,
@@ -427,13 +433,124 @@ export default function AdminAnalysisModulesView() {
           PUBLIC IMAGE EXPOSURE + FACE IDENTITY · EINSTELLUNGEN
         </p>
         <p className="mt-2 text-sm text-white/45">
-          InsightFace-Server, Treffer-Schwellenwert und API-Status.
+          Smart-Discovery-Limits, Relevanzfilter und vorbereitete Face-Settings.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              MAX. SEITEN PRO QUERY
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={4}
+              step={1}
+              value={reverseImageSettings.maxPagesPerQuery}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  maxPagesPerQuery: Number(event.target.value),
+                }))
+              }
+              className="mt-2 w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-violet-400/35"
+            />
+          </label>
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              MAX. BILDER PRO QUERY
+            </span>
+            <input
+              type="number"
+              min={20}
+              max={200}
+              step={10}
+              value={reverseImageSettings.maxImagesPerQuery}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  maxImagesPerQuery: Number(event.target.value),
+                }))
+              }
+              className="mt-2 w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-violet-400/35"
+            />
+          </label>
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              IDENTITY-SCORE MINIMUM
+            </span>
+            <input
+              type="number"
+              min={20}
+              max={95}
+              step={1}
+              value={reverseImageSettings.identityScoreThreshold}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  identityScoreThreshold: Number(event.target.value),
+                }))
+              }
+              className="mt-2 w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-violet-400/35"
+            />
+          </label>
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              DOMAIN-RELEVANZ MINIMUM
+            </span>
+            <input
+              type="number"
+              min={0}
+              max={95}
+              step={1}
+              value={reverseImageSettings.domainRelevanceMin}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  domainRelevanceMin: Number(event.target.value),
+                }))
+              }
+              className="mt-2 w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-violet-400/35"
+            />
+          </label>
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              MINDEST-CONFIDENCE
+            </span>
+            <input
+              type="number"
+              min={30}
+              max={95}
+              step={1}
+              value={reverseImageSettings.minConfidence}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  minConfidence: Number(event.target.value),
+                }))
+              }
+              className="mt-2 w-full rounded-lg border border-white/10 bg-[#070d16] px-3 py-2 text-sm text-white/80 outline-none focus:border-violet-400/35"
+            />
+          </label>
+          <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3">
+            <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
+              KI-RELEVANZFILTER
+            </span>
+            <input
+              type="checkbox"
+              checked={reverseImageSettings.aiRelevanceFilter}
+              onChange={(event) =>
+                setReverseImageSettings((current) => ({
+                  ...current,
+                  aiRelevanceFilter: event.target.checked,
+                }))
+              }
+              className="mt-2 block"
+            />
+          </label>
           <label className="rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3 sm:col-span-2">
             <span className="font-mono text-[8px] tracking-[.12em] text-white/30">
-              INSIGHTFACE COMPARE URL
+              FACE INTELLIGENCE URL (VORBEREITET)
             </span>
             <input
               type="url"

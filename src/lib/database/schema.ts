@@ -1828,6 +1828,22 @@ export const reverseImageModuleSettings = mysqlTable(
       .notNull()
       .default(true),
     apiEnabled: boolean("api_enabled").notNull().default(true),
+    maxPagesPerQuery: int("max_pages_per_query", { unsigned: true })
+      .notNull()
+      .default(2),
+    maxImagesPerQuery: int("max_images_per_query", { unsigned: true })
+      .notNull()
+      .default(100),
+    identityScoreThreshold: int("identity_score_threshold", { unsigned: true })
+      .notNull()
+      .default(45),
+    domainRelevanceMin: int("domain_relevance_min", { unsigned: true })
+      .notNull()
+      .default(35),
+    aiRelevanceFilter: boolean("ai_relevance_filter").notNull().default(true),
+    minConfidence: int("min_confidence", { unsigned: true })
+      .notNull()
+      .default(55),
     compareUrl: varchar("compare_url", { length: 500 })
       .notNull()
       .default("http://161.97.85.22:8000/compare"),

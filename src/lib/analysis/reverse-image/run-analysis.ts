@@ -44,6 +44,7 @@ import {
   writeTempCandidate,
   cleanupReverseImageScanStorage,
 } from "@/lib/analysis/reverse-image/storage";
+import { getReverseImageModuleSettings } from "@/lib/analysis/reverse-image/settings";
 import {
   assembleReverseImageReport,
   riskLevelFromSimilarity,
@@ -208,7 +209,11 @@ export async function startReverseImageDiscovery(
 
   const userId = options.userId;
   const subjectName = resolveSubjectName(identity);
-  const queries = planReverseImageQueries(identity);
+  const moduleSettings = await getReverseImageModuleSettings();
+  const queries = planReverseImageQueries(identity, {
+    identityScoreThreshold: moduleSettings.identityScoreThreshold,
+    maxPagesPerQuery: moduleSettings.maxPagesPerQuery,
+  });
   if (queries.length === 0) {
     throw new ReverseImageUnavailableError(
       "Kein Name oder Benutzername im Profil — Suche nicht möglich."
@@ -529,12 +534,19 @@ async function executeDiscoveryPipeline(input: {
   scanId: number;
   queries: ReturnType<typeof planReverseImageQueries>;
   subjectName: string;
+  retentionDays: ReportRetentionDays;
+  expiresAt: string | null;
 }): Promise<void> {
-  const { userId, scanId, queries, subjectName } = input;
+  const { userId, scanId, queries, subjectName, retentionDays, expiresAt } =
+    input;
+  const moduleSettings = await getReverseImageModuleSettings();
   const budgetMs = resolveBudgetMs();
-  const targetUnique = Number.isFinite(TARGET_UNIQUE_CANDIDATES)
-    ? Math.max(40, TARGET_UNIQUE_CANDIDATES)
-    : 120;
+  const targetUnique = Math.min(
+    Math.max(40, (queries.length || 1) * moduleSettings.maxImagesPerQuery),
+    Number.isFinite(TARGET_UNIQUE_CANDIDATES)
+      ? Math.max(40, TARGET_UNIQUE_CANDIDATES)
+      : 120
+  );
 
   let checkpoint = await loadCheckpointForScan(userId, scanId);
   // Frischer Scan oder veralteter Plan → aktuellen priorisierten Query-Plan nutzen.
@@ -573,9 +585,14 @@ async function executeDiscoveryPipeline(input: {
         const { candidates: batch, pagesFetched } =
           await fetchGoogleImageCandidates({
             query: plan.query,
-            pages: plan.pages,
+            pages: Math.min(plan.pages ?? 2, moduleSettings.maxPagesPerQuery),
             userId,
             knownImageUrls: known,
+            scoringOptions: {
+              domainRelevanceMin: moduleSettings.domainRelevanceMin,
+              minConfidence: moduleSettings.minConfidence,
+              aiRelevanceFilter: moduleSettings.aiRelevanceFilter,
+            },
           });
         checkpoint = markQueryFetched(checkpoint, plan, batch);
         checkpoint = recomputeDiscoveryFunnel(checkpoint, {
@@ -618,15 +635,33 @@ async function executeDiscoveryPipeline(input: {
 
   const funnel = checkpoint.funnel;
   const summary = funnel
-    ? `${funnel.uniqueCandidates} Bildlinks gefunden für ${subjectName} · ${funnel.compareEligible} vergleichstauglich · ${funnel.compareFiltered} vorgefiltert${
+    ? `${funnel.uniqueCandidates} Bildlinks gefunden für ${subjectName} · ${funnel.compareEligible} relevant · ${funnel.compareFiltered} automatisch verworfen${
         funnel.earlyStop ? ` · Early-Stop (${funnel.earlyStopReason})` : ""
-      } — bitte Auswahl treffen und Vergleich starten.`
-    : `${checkpoint.candidates.length} Bildlinks gefunden für ${subjectName} — bitte Auswahl treffen und Vergleich starten.`;
+      }.`
+    : `${checkpoint.candidates.length} Bildlinks gefunden für ${subjectName}.`;
 
-  await completeReverseImageDiscovery({
+  const relevantCandidateCount = checkpoint.candidates.filter(
+    (candidate) => (candidate.candidateScore ?? 0) >= 55
+  ).length;
+  const discoveryReport = assembleReverseImageReport({
+    scanId,
+    status: "completed",
+    subjectName,
+    startedAt: null,
+    completedAt: new Date().toISOString(),
+    hits: [],
+    queryCount: checkpoint.queries.length,
+    candidateCount: checkpoint.candidates.length,
+    referenceImageCount: 0,
+    retentionDays,
+    expiresAt,
+  });
+  await completeReverseImageScan({
     scanId,
     queryCount: checkpoint.queries.length,
     candidateCount: checkpoint.candidates.length,
+    matchCount: relevantCandidateCount,
+    riskScore: discoveryReport.riskScore,
     summary,
   });
 }

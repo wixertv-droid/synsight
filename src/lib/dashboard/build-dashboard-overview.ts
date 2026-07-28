@@ -170,7 +170,8 @@ function isReverseImageReport(value: unknown): value is ReverseImageReport {
     value &&
     typeof value === "object" &&
     "moduleKey" in value &&
-    (value as ReverseImageReport).moduleKey === "reverse_image_search"
+    ((value as ReverseImageReport).moduleKey === "public_image_exposure_scan" ||
+      (value as ReverseImageReport).moduleKey === "face_identity_verification")
   );
 }
 
@@ -562,18 +563,18 @@ const reverseImageAdapter: ModuleAdapter = (label, raw) => {
   const riskScore = reverse.riskScore ?? 0;
   const highMatches =
     reverse.managementOverview?.highConfidenceCount ??
-    reverse.hits.filter((h) => h.similarity >= 0.85).length;
+    reverse.hits.filter((h) => h.similarity >= 0.8).length;
   const reverseScored = scoreReverseImageHits(reverse.hits ?? []);
 
   return {
     metrics: [
       {
-        label: "Bildtreffer",
+        label: "Relevante Bilder",
         value: String(hitCount),
         detail:
           hitCount > 0
-            ? `${highMatches} mit hoher Übereinstimmung`
-            : "Keine Treffer über Schwellenwert",
+            ? `${reverse.managementOverview.socialMediaCount} Social-Media-Treffer`
+            : "Keine relevanten Bildtreffer",
         trend: `Score ${riskScore}/100`,
         tone:
           highMatches > 0 || riskScore >= 70
@@ -581,7 +582,7 @@ const reverseImageAdapter: ModuleAdapter = (label, raw) => {
             : hitCount > 0
               ? "amber"
               : "green",
-        info: "Visuelle Treffer aus Google Images + InsightFace-Abgleich.",
+        info: "Relevante öffentliche Bildtreffer aus der Smart Discovery.",
       },
     ],
     riskSignals:
@@ -590,13 +591,13 @@ const reverseImageAdapter: ModuleAdapter = (label, raw) => {
             {
               id: "risk-reverse-image",
               level: highMatches > 0 ? ("high" as const) : ("medium" as const),
-              title: "Visuelle Bildübereinstimmung",
+              title: "Öffentliche Bildexposition",
               description:
                 reverse.summary ??
                 reverse.managementOverview.headline ??
-                `${hitCount} Treffer in öffentlichen Bildindex-Vorschauen.`,
+                `${hitCount} relevante Bildtreffer in öffentlichen Quellen.`,
               source: label,
-              info: "Reverse Image Search — nur Google-Index-Vorschauen.",
+              info: "Public Image Exposure Scan — Smart Discovery.",
             },
           ]
         : [],

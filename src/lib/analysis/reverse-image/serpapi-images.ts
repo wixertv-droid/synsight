@@ -5,6 +5,7 @@ import {
 } from "@/lib/services/search-provider-service";
 import { enrichCandidateWithScore } from "@/lib/analysis/reverse-image/candidate-score";
 import type {
+  CandidateScoringOptions,
   CandidateRiskBand,
   ImageKindHeuristic,
 } from "@/lib/analysis/reverse-image/candidate-score";
@@ -19,7 +20,7 @@ export interface SerpImageCandidate {
   query: string;
   position: number;
   queryId?: string;
-  queryGroup?: "name" | "alias" | "username";
+  queryGroup?: "name" | "alias" | "username" | "social";
   queryLabel?: string;
   /** Heuristischer Relevanz-Score 0–100 */
   candidateScore?: number;
@@ -88,7 +89,8 @@ function mapHit(
     raw?: unknown;
   },
   query: string,
-  index: number
+  index: number,
+  scoringOptions?: CandidateScoringOptions
 ): SerpImageCandidate {
   const raw = (hit.raw ?? {}) as {
     link?: string;
@@ -107,7 +109,7 @@ function mapHit(
     query,
     position: hit.position ?? index + 1,
   };
-  return enrichCandidateWithScore(base);
+  return enrichCandidateWithScore(base, scoringOptions);
 }
 
 /**
@@ -122,6 +124,7 @@ export async function fetchGoogleImageCandidates(input: {
   userId?: number;
   knownImageUrls?: Set<string>;
   minNewPerPage?: number;
+  scoringOptions?: CandidateScoringOptions;
 }): Promise<{
   candidates: SerpImageCandidate[];
   pagesFetched: number;
@@ -177,7 +180,12 @@ export async function fetchGoogleImageCandidates(input: {
 
       let newOnPage = 0;
       for (const hit of pageHits) {
-        const mapped = mapHit(hit, input.query, candidates.length);
+        const mapped = mapHit(
+          hit,
+          input.query,
+          candidates.length,
+          input.scoringOptions
+        );
         if (!mapped.imageUrl) continue;
         const key = mapped.imageUrl.toLowerCase();
         if (known.has(key)) continue;

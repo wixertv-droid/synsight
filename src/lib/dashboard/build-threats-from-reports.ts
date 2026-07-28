@@ -343,9 +343,9 @@ export function buildThreatsFromReports(input: {
           "Öffentliche Bildtreffer mit Gesichtsübereinstimmung können Identitätszuordnung und Missbrauch erleichtern.",
         userAction:
           "Quelle prüfen, unerwünschte Veröffentlichung melden oder entfernen lassen.",
-        source: hit.sourceHost || "Reverse Image Search",
-        moduleKey: "reverse_image_search",
-        moduleLabel: THREAT_MODULE_META.reverse_image_search.label,
+        source: hit.sourceHost || "Public Image Exposure Scan",
+        moduleKey: "public_image_exposure_scan",
+        moduleLabel: THREAT_MODULE_META.public_image_exposure_scan.label,
         url: hit.sourceUrl?.startsWith("http")
           ? hit.sourceUrl
           : hit.imageUrl?.startsWith("http")

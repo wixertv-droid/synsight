@@ -21,9 +21,9 @@ export interface ReverseImageHit {
   title: string;
   sourceUrl: string | null;
   imageUrl: string;
-  /** 0–1 cosine similarity from InsightFace */
+  /** 0–1 overall confidence / relevance for the discovery result. */
   similarity: number;
-  /** Best-matching reference slot from identity profile */
+  /** Reserved for a later standalone Face Intelligence module. */
   referenceImageType: string | null;
   riskLevel: ReverseImageRiskLevel;
   /** Relative path under storage/private/reverse-image/users/{userId}/ */
@@ -31,6 +31,11 @@ export interface ReverseImageHit {
   thumbnailPath: string | null;
   sourceHost: string | null;
   fetchedAt: string;
+  candidateScore?: number | null;
+  imageKind?: string | null;
+  riskBand?: string | null;
+  scoreReasons?: string[];
+  queryGroup?: "name" | "alias" | "username" | "social";
 }
 
 export interface ReverseImageManagementOverview {
@@ -44,11 +49,17 @@ export interface ReverseImageManagementOverview {
   avgSimilarity: number;
   maxSimilarity: number;
   highConfidenceCount: number;
+  relevantImageCount: number;
+  discardedImageCount: number;
+  socialMediaCount: number;
+  publicWebsiteCount: number;
+  possiblePersonImageCount: number;
+  confidenceScore: number;
 }
 
 export interface ReverseImageReport {
   scanId: number;
-  moduleKey: "reverse_image_search";
+  moduleKey: "public_image_exposure_scan" | "face_identity_verification";
   status: ReverseImageScanStatus;
   subjectName: string;
   startedAt: string | null;

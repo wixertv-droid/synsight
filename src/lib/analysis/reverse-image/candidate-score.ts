@@ -27,8 +27,14 @@ export interface CandidateScoreInput {
   sourceUrl: string | null;
   sourceHost: string;
   query: string;
-  queryGroup?: "name" | "alias" | "username";
+  queryGroup?: "name" | "alias" | "username" | "social";
   snippet?: string | null;
+}
+
+export interface CandidateScoringOptions {
+  domainRelevanceMin?: number;
+  minConfidence?: number;
+  aiRelevanceFilter?: boolean;
 }
 
 export interface CandidateScoreResult {
@@ -109,7 +115,7 @@ const PERSON_RE =
 const GROUP_RE = /gruppe|group|team|familie|family|friends/i;
 
 export const CANDIDATE_COMPARE_MIN_SCORE = Number.parseInt(
-  process.env.REVERSE_IMAGE_COMPARE_MIN_SCORE ?? "40",
+  process.env.REVERSE_IMAGE_DISCOVERY_MIN_SCORE ?? "55",
   10
 );
 
@@ -206,7 +212,8 @@ const FACE_KINDS = new Set<ImageKindHeuristic>([
 ]);
 
 export function scoreImageCandidate(
-  input: CandidateScoreInput
+  input: CandidateScoreInput,
+  options?: CandidateScoringOptions
 ): CandidateScoreResult {
   const reasons: string[] = [];
   const domain = resolveDomainReputation(input.sourceHost || "unknown");
@@ -273,8 +280,18 @@ export function scoreImageCandidate(
   const minScore = Number.isFinite(CANDIDATE_COMPARE_MIN_SCORE)
     ? CANDIDATE_COMPARE_MIN_SCORE
     : 40;
+  const domainMin = Math.max(0, options?.domainRelevanceMin ?? 35);
+  const minConfidence = Math.max(0, options?.minConfidence ?? minScore);
+  const strictFilter = options?.aiRelevanceFilter !== false;
+  if (strictFilter && domain.score < domainMin) {
+    score = Math.max(0, Math.min(score, domain.score));
+    reasons.push("Niedrige Domain-Relevanz");
+  }
   const allowFaceCompare =
-    score >= minScore && FACE_KINDS.has(imageKind) && imageKind !== "logo";
+    score >= minConfidence &&
+    FACE_KINDS.has(imageKind) &&
+    imageKind !== "logo" &&
+    domain.score >= domainMin;
 
   let riskBand: CandidateRiskBand = "public";
   if (
@@ -301,7 +318,8 @@ export function scoreImageCandidate(
 }
 
 export function enrichCandidateWithScore<T extends CandidateScoreInput>(
-  candidate: T
+  candidate: T,
+  options?: CandidateScoringOptions
 ): T & {
   candidateScore: number;
   imageKind: ImageKindHeuristic;
@@ -309,7 +327,7 @@ export function enrichCandidateWithScore<T extends CandidateScoreInput>(
   scoreReasons: string[];
   riskBand: CandidateRiskBand;
 } {
-  const scored = scoreImageCandidate(candidate);
+  const scored = scoreImageCandidate(candidate, options);
   return {
     ...candidate,
     candidateScore: scored.score,

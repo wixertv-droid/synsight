@@ -288,7 +288,7 @@ export function recomputeDiscoveryFunnel(
   patch?: Partial<ReverseImageDiscoveryFunnel>
 ): ReverseImageSerpCheckpoint {
   const eligible = checkpoint.candidates.filter(
-    (c) => c.allowFaceCompare !== false && (c.candidateScore ?? 0) >= 40
+    (c) => (c.candidateScore ?? 0) >= 55
   ).length;
   const funnel: ReverseImageDiscoveryFunnel = {
     uniqueCandidates: checkpoint.candidates.length,

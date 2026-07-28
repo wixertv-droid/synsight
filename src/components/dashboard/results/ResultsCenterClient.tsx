@@ -1259,15 +1259,7 @@ export default function ResultsCenterClient({
             {(activeModule.id === "public_image_exposure_scan" ||
               activeModule.id === "face_identity_verification") &&
             reverseImageReport ? (
-              <ReverseImageReportView
-                report={reverseImageReport}
-                onCompareStarted={({ requestId }) => {
-                  beginReverseImageCompareWatch(
-                    reverseImageReport.scanId,
-                    requestId
-                  );
-                }}
-              />
+              <ReverseImageReportView report={reverseImageReport} />
             ) : null}
           </div>
         </>

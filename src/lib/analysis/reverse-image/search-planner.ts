@@ -4,7 +4,7 @@ import {
   maxPagesForPriority,
 } from "@/lib/analysis/reverse-image/identity-priority";
 
-export type ReverseImageQueryGroup = "name" | "alias" | "username";
+export type ReverseImageQueryGroup = "name" | "alias" | "username" | "social";
 
 export interface ReverseImageQueryPlan {
   id: string;
@@ -23,9 +23,10 @@ export interface ReverseImageQueryPlan {
 
 /** @deprecated feste Caps — adaptive Pagination nutzt priority + maxPagesForPriority */
 export const REVERSE_IMAGE_COST_PAGES = {
-  username: 3,
+  username: 2,
   alias: 2,
   name: 2,
+  social: 2,
 } as const;
 
 /**
@@ -36,14 +37,23 @@ export const REVERSE_IMAGE_COST_PAGES = {
  * - optional eine Foto-Variante für starken vollen Namen
  */
 export function planReverseImageQueries(
-  identity: IdentityView | null
+  identity: IdentityView | null,
+  options?: {
+    identityScoreThreshold?: number;
+    maxPagesPerQuery?: number;
+  }
 ): ReverseImageQueryPlan[] {
-  const terms = buildPrioritizedSearchTerms(identity);
+  const terms = buildPrioritizedSearchTerms(identity, {
+    identityScoreThreshold: options?.identityScoreThreshold,
+  });
   const plans: ReverseImageQueryPlan[] = [];
   const seenQueries = new Set<string>();
 
   for (const [index, term] of terms.entries()) {
-    const maxPages = maxPagesForPriority(term.priority);
+    const maxPages = Math.min(
+      options?.maxPagesPerQuery ?? 2,
+      maxPagesForPriority(term.priority)
+    );
     if (maxPages <= 0) continue;
 
     const normalized = term.value.trim().toLowerCase();
@@ -53,9 +63,11 @@ export function planReverseImageQueries(
     const idPrefix =
       term.group === "username"
         ? "username-open"
-        : term.group === "alias"
-          ? "alias-open"
-          : "name-open";
+        : term.group === "social"
+          ? "social-open"
+          : term.group === "alias"
+            ? "alias-open"
+            : "name-open";
     const id =
       term.group === "name" &&
       index === terms.findIndex((t) => t.group === "name")
@@ -65,9 +77,11 @@ export function planReverseImageQueries(
     const labelPrefix =
       term.group === "username"
         ? "Benutzername"
-        : term.group === "alias"
-          ? "Alias"
-          : "Name";
+        : term.group === "social"
+          ? "Social"
+          : term.group === "alias"
+            ? "Alias"
+            : "Name";
 
     plans.push({
       id,
@@ -79,29 +93,32 @@ export function planReverseImageQueries(
       priorityReason: term.reason,
     });
 
-    // Foto-Variante nur für starken vollen Namen
+    // Foto-Varianten nur für starke Personensignale
     if (
-      term.group === "name" &&
+      (term.group === "name" || term.group === "alias") &&
       term.priority >= 85 &&
       !seenQueries.has(`${normalized}::photo`)
     ) {
       seenQueries.add(`${normalized}::photo`);
       plans.push({
-        id: "name-photo",
-        label: `Name + Foto · ${term.value}`,
-        query: `${term.value.trim()} (photo OR foto OR bild)`,
-        group: "name",
+        id: `${idPrefix}-photo-${index}`,
+        label: `${labelPrefix} + Foto · ${term.value}`,
+        query: `"${term.value.trim()}" portrait`,
+        group: term.group,
         pages: Math.min(2, maxPages),
         priority: Math.max(0, term.priority - 5),
-        priorityReason: "Name + Foto-Hinweis",
+        priorityReason: `${labelPrefix} + Foto-Hinweis`,
       });
     }
   }
 
-  return plans.sort(
-    (a, b) =>
-      (b.priority ?? 0) - (a.priority ?? 0) || a.query.localeCompare(b.query)
-  );
+  const MAX_QUERIES = 15;
+  return plans
+    .sort(
+      (a, b) =>
+        (b.priority ?? 0) - (a.priority ?? 0) || a.query.localeCompare(b.query)
+    )
+    .slice(0, MAX_QUERIES);
 }
 
 /** Geschätzte Max-SerpAPI-Calls (Obergrenze — adaptiv oft weniger). */

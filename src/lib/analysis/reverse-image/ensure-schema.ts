@@ -84,6 +84,12 @@ async function runEnsure(): Promise<boolean> {
       public_scan_active TINYINT(1) NOT NULL DEFAULT 1,
       face_verification_active TINYINT(1) NOT NULL DEFAULT 1,
       api_enabled TINYINT(1) NOT NULL DEFAULT 1,
+      max_pages_per_query INT UNSIGNED NOT NULL DEFAULT 2,
+      max_images_per_query INT UNSIGNED NOT NULL DEFAULT 100,
+      identity_score_threshold INT UNSIGNED NOT NULL DEFAULT 45,
+      domain_relevance_min INT UNSIGNED NOT NULL DEFAULT 35,
+      ai_relevance_filter TINYINT(1) NOT NULL DEFAULT 1,
+      min_confidence INT UNSIGNED NOT NULL DEFAULT 55,
       compare_url VARCHAR(500) NOT NULL DEFAULT 'http://161.97.85.22:8000/compare',
       similarity_threshold DECIMAL(4,3) NOT NULL DEFAULT 0.600,
       compare_timeout_ms INT UNSIGNED NOT NULL DEFAULT 12000,
@@ -121,6 +127,44 @@ async function runEnsure(): Promise<boolean> {
     `);
   } catch {
     /* column may already exist */
+  }
+
+  const settingColumns = [
+    [
+      "max_pages_per_query",
+      "INT UNSIGNED NOT NULL DEFAULT 2 AFTER api_enabled",
+    ],
+    [
+      "max_images_per_query",
+      "INT UNSIGNED NOT NULL DEFAULT 100 AFTER max_pages_per_query",
+    ],
+    [
+      "identity_score_threshold",
+      "INT UNSIGNED NOT NULL DEFAULT 45 AFTER max_images_per_query",
+    ],
+    [
+      "domain_relevance_min",
+      "INT UNSIGNED NOT NULL DEFAULT 35 AFTER identity_score_threshold",
+    ],
+    [
+      "ai_relevance_filter",
+      "TINYINT(1) NOT NULL DEFAULT 1 AFTER domain_relevance_min",
+    ],
+    [
+      "min_confidence",
+      "INT UNSIGNED NOT NULL DEFAULT 55 AFTER ai_relevance_filter",
+    ],
+  ] as const;
+  for (const [name, ddl] of settingColumns) {
+    try {
+      await db.execute(
+        sql.raw(
+          `ALTER TABLE reverse_image_module_settings ADD COLUMN ${name} ${ddl}`
+        )
+      );
+    } catch {
+      /* column may already exist */
+    }
   }
 
   return true;

@@ -13,8 +13,8 @@ function clampScore(value: number): number {
 export function riskLevelFromSimilarity(
   similarity: number
 ): ReverseImageRiskLevel {
-  if (similarity >= 0.85) return "high";
-  if (similarity >= 0.7) return "medium";
+  if (similarity >= 0.82) return "high";
+  if (similarity >= 0.62) return "medium";
   return "low";
 }
 
@@ -32,28 +32,48 @@ export function buildManagementOverview(
       ? similarities.reduce((a, b) => a + b, 0) / similarities.length
       : 0;
   const maxSimilarity = similarities.length > 0 ? Math.max(...similarities) : 0;
-  const highConfidenceCount = hits.filter((h) => h.similarity >= 0.85).length;
+  const highConfidenceCount = hits.filter((h) => h.similarity >= 0.8).length;
+  const relevantImageCount = hits.length;
+  const possiblePersonImageCount = hits.filter((h) =>
+    ["portrait", "selfie", "person", "group", "avatar", "unknown"].includes(
+      h.imageKind ?? "unknown"
+    )
+  ).length;
+  const socialMediaCount = hits.filter((h) =>
+    /(instagram|facebook|linkedin|tiktok|x\.com|twitter|youtube|pinterest)/i.test(
+      h.sourceHost ?? ""
+    )
+  ).length;
+  const publicWebsiteCount = Math.max(0, hits.length - socialMediaCount);
+  const confidenceScore =
+    similarities.length > 0
+      ? Math.round(
+          similarities.reduce((sum, value) => sum + value * 100, 0) /
+            similarities.length
+        )
+      : 0;
+  const discardedImageCount = Math.max(0, candidateCount - relevantImageCount);
 
   let overallRisk: ReverseImageRiskLevel = "low";
-  if (highConfidenceCount > 0 || maxSimilarity >= 0.9) overallRisk = "high";
-  else if (matchCount > 0 || maxSimilarity >= 0.75) overallRisk = "medium";
+  if (highConfidenceCount >= 3 || maxSimilarity >= 0.85) overallRisk = "high";
+  else if (matchCount > 0 || maxSimilarity >= 0.65) overallRisk = "medium";
 
   const overallRiskLabel =
     overallRisk === "high"
-      ? "Hohe visuelle Übereinstimmung"
+      ? "Hohe öffentliche Bildexposition"
       : overallRisk === "medium"
-        ? "Auffällige Bildtreffer"
+        ? "Auffällige öffentliche Bildsignale"
         : status === "discovery_complete" || status === "discovering"
-          ? "Bildsuche abgeschlossen — Auswahl ausstehend"
+          ? "Smart Discovery abgeschlossen"
           : "Keine kritischen Treffer";
 
   const headline =
     matchCount > 0
-      ? `${matchCount} visuelle Treffer über öffentliche Google-Index-Vorschauen (max. ${Math.round(maxSimilarity * 100)} % Ähnlichkeit).`
+      ? `${matchCount} relevante öffentliche Bildtreffer erkannt (${socialMediaCount} Social-Media, ${publicWebsiteCount} Webseiten).`
       : status === "discovery_complete" || status === "discovering"
-        ? `${candidateCount} Bildlinks gespeichert — bitte Quellen prüfen und Gesichtsvergleich starten.`
+        ? `${candidateCount} Bildkandidaten wurden analysiert. Keine relevanten öffentlichen Personenbilder blieben übrig.`
         : candidateCount > 0
-          ? `${candidateCount} Kandidaten geprüft — keine Übereinstimmung über dem Schwellenwert.`
+          ? `${candidateCount} Kandidaten geprüft — keine relevanten öffentlichen Personenbilder gefunden.`
           : "Keine verwertbaren Bildkandidaten in der Index-Suche gefunden.";
 
   return {
@@ -67,6 +87,12 @@ export function buildManagementOverview(
     avgSimilarity,
     maxSimilarity,
     highConfidenceCount,
+    relevantImageCount,
+    discardedImageCount,
+    socialMediaCount,
+    publicWebsiteCount,
+    possiblePersonImageCount,
+    confidenceScore,
   };
 }
 
@@ -75,10 +101,18 @@ export function computeReverseImageRiskScore(hits: ReverseImageHit[]): number {
   let sum = 0;
   for (const hit of hits) {
     const pct = hit.similarity * 100;
-    if (pct >= 90) sum += 42;
-    else if (pct >= 80) sum += 30;
-    else if (pct >= 70) sum += 18;
-    else sum += 10;
+    const bandBonus =
+      hit.riskBand === "critical"
+        ? 18
+        : hit.riskBand === "identity"
+          ? 12
+          : hit.riskBand === "public"
+            ? 8
+            : 2;
+    if (pct >= 85) sum += 36 + bandBonus;
+    else if (pct >= 70) sum += 24 + bandBonus;
+    else if (pct >= 55) sum += 14 + bandBonus;
+    else sum += 8 + bandBonus;
   }
   return clampScore(100 * (1 - Math.exp(-sum / 48)));
 }
@@ -86,7 +120,7 @@ export function computeReverseImageRiskScore(hits: ReverseImageHit[]): number {
 export function buildReverseImageSummary(
   overview: ReverseImageManagementOverview
 ): string {
-  return overview.headline;
+  return `${overview.headline} ${overview.discardedImageCount} unpassende oder technische Bilder wurden automatisch verworfen. Confidence ${overview.confidenceScore}/100.`;
 }
 
 export function assembleReverseImageReport(input: {
@@ -113,7 +147,7 @@ export function assembleReverseImageReport(input: {
 
   return {
     scanId: input.scanId,
-    moduleKey: "reverse_image_search",
+    moduleKey: "public_image_exposure_scan",
     status: input.status,
     subjectName: input.subjectName,
     startedAt: input.startedAt,

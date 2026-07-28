@@ -2,6 +2,9 @@ import { sql } from "drizzle-orm";
 import { getDatabase } from "@/lib/database/client";
 import { ensureReverseImageSchema } from "@/lib/analysis/reverse-image/ensure-schema";
 import { assembleReverseImageReport } from "@/lib/analysis/reverse-image/report-metrics";
+import { parseSerpCheckpointJson } from "@/lib/analysis/reverse-image/serp-checkpoint";
+import type { SerpImageCandidate } from "@/lib/analysis/reverse-image/serpapi-images";
+import { riskLevelFromSimilarity } from "@/lib/analysis/reverse-image/report-metrics";
 import type {
   ReverseImageHit,
   ReverseImageReport,
@@ -81,17 +84,79 @@ function mapHit(row: HitRow): ReverseImageHit {
   };
 }
 
+function mapCandidateToDiscoveryHit(
+  scanId: number,
+  candidate: SerpImageCandidate,
+  index: number
+): ReverseImageHit {
+  const confidence = Math.max(
+    0.35,
+    Math.min(0.98, Number(candidate.candidateScore ?? 0) / 100)
+  );
+  return {
+    id: `ri-discovery-${scanId}-${index + 1}`,
+    query: candidate.queryLabel ?? candidate.query,
+    title: candidate.title || "Öffentlicher Bildtreffer",
+    sourceUrl: candidate.sourceUrl,
+    imageUrl: candidate.imageUrl,
+    similarity: confidence,
+    referenceImageType: null,
+    riskLevel: riskLevelFromSimilarity(confidence),
+    storedPath: null,
+    thumbnailPath: null,
+    sourceHost: candidate.sourceHost || null,
+    fetchedAt: new Date().toISOString(),
+    candidateScore: candidate.candidateScore ?? null,
+    imageKind: candidate.imageKind ?? null,
+    riskBand: candidate.riskBand ?? null,
+    scoreReasons: candidate.scoreReasons ?? [],
+    queryGroup:
+      candidate.queryGroup === "name" ||
+      candidate.queryGroup === "alias" ||
+      candidate.queryGroup === "username"
+        ? candidate.queryGroup
+        : undefined,
+  };
+}
+
+function fallbackDiscoveryHits(scan: ScanRow): ReverseImageHit[] {
+  const checkpoint = parseSerpCheckpointJson(scan.serp_cache_json);
+  if (!checkpoint) return [];
+  return checkpoint.candidates
+    .filter((candidate) => (candidate.candidateScore ?? 0) >= 55)
+    .filter((candidate) => candidate.imageKind !== "product")
+    .filter((candidate) => candidate.imageKind !== "logo")
+    .filter((candidate) => candidate.imageKind !== "icon")
+    .filter((candidate) => candidate.imageKind !== "text")
+    .filter((candidate) => candidate.imageKind !== "screenshot")
+    .sort(
+      (a, b) =>
+        (b.candidateScore ?? 0) - (a.candidateScore ?? 0) ||
+        a.title.localeCompare(b.title)
+    )
+    .slice(0, 80)
+    .map((candidate, index) =>
+      mapCandidateToDiscoveryHit(scan.id, candidate, index)
+    );
+}
+
 function assembleFromScan(
   scan: ScanRow,
   hits: ReverseImageHit[]
 ): ReverseImageReport {
+  const effectiveHits =
+    hits.length > 0 && scan.status === "completed"
+      ? hits
+      : scan.status === "discovery_complete" || scan.status === "completed"
+        ? fallbackDiscoveryHits(scan)
+        : hits;
   return assembleReverseImageReport({
     scanId: scan.id,
     status: scan.status as ReverseImageScanStatus,
     subjectName: scan.subject_name ?? "Unbekannt",
     startedAt: scan.started_at,
     completedAt: scan.completed_at,
-    hits,
+    hits: effectiveHits,
     queryCount: scan.query_count,
     candidateCount: scan.candidate_count,
     referenceImageCount: scan.reference_image_count,

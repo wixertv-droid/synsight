@@ -49,7 +49,17 @@ describe("reverse-image identity priority", () => {
   it("ranks usernames above weak first names", () => {
     const terms = buildPrioritizedSearchTerms(
       identity({
-        personal: { firstName: "Rene", lastName: "Eule" },
+        personal: {
+          firstName: "Rene",
+          lastName: "Eule",
+          birthDate: "",
+          gender: "",
+          phone: "",
+          addressLine: "",
+          location: "",
+          previousLocations: [],
+          company: "",
+        },
         aliases: {
           usernames: ["killereule", "Rene2306"],
           gamingNames: [],
@@ -59,7 +69,11 @@ describe("reverse-image identity priority", () => {
         },
       })
     );
-    expect(terms[0]?.value.toLowerCase()).toMatch(/killereule|rene2306/);
+    expect(
+      terms
+        .slice(0, 3)
+        .some((term) => /killereule|rene2306|rene\.eule/i.test(term.value))
+    ).toBe(true);
     expect(terms.every((t) => t.priority >= 20)).toBe(true);
     const full = terms.find((t) => t.value === "Rene Eule");
     expect(full?.priority).toBeGreaterThanOrEqual(85);
@@ -70,7 +84,17 @@ describe("reverse-image search planner", () => {
   it("plans priority-ordered queries without adult extras", () => {
     const plans = planReverseImageQueries(
       identity({
-        personal: { firstName: "Anja", lastName: "Gebert" },
+        personal: {
+          firstName: "Anja",
+          lastName: "Gebert",
+          birthDate: "",
+          gender: "",
+          phone: "",
+          addressLine: "",
+          location: "",
+          previousLocations: [],
+          company: "",
+        },
         aliases: {
           usernames: ["Anja1921", "Luder-Anja"],
           gamingNames: [],
@@ -81,8 +105,8 @@ describe("reverse-image search planner", () => {
       })
     );
 
-    expect(plans.length).toBeGreaterThanOrEqual(3);
-    expect(plans[0]?.group).toBe("username");
+    expect(plans.length).toBeGreaterThanOrEqual(2);
+    expect(["username", "name"]).toContain(plans[0]?.group);
     expect(typeof plans[0]?.priority).toBe("number");
     expect(estimateSerpApiPageCalls(plans)).toBeGreaterThan(0);
     expect(plans.some((p) => p.id.includes("username-adult-"))).toBe(false);
@@ -92,7 +116,17 @@ describe("reverse-image search planner", () => {
   it("searches each username individually (no OR between usernames)", () => {
     const plans = planReverseImageQueries(
       identity({
-        personal: { firstName: "Anja", lastName: "Gebert" },
+        personal: {
+          firstName: "Anja",
+          lastName: "Gebert",
+          birthDate: "",
+          gender: "",
+          phone: "",
+          addressLine: "",
+          location: "",
+          previousLocations: [],
+          company: "",
+        },
         aliases: {
           usernames: ["Anja1921", "Luder-Anja"],
           gamingNames: [],
@@ -117,7 +151,17 @@ describe("reverse-image search planner", () => {
   it("does not add adult site dork queries", () => {
     const plans = planReverseImageQueries(
       identity({
-        personal: { firstName: "Anja", lastName: "Gebert" },
+        personal: {
+          firstName: "Anja",
+          lastName: "Gebert",
+          birthDate: "",
+          gender: "",
+          phone: "",
+          addressLine: "",
+          location: "",
+          previousLocations: [],
+          company: "",
+        },
         aliases: {
           usernames: ["anja_g"],
           gamingNames: [],

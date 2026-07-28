@@ -40,6 +40,57 @@ function mapRow(
         ? row.faceVerificationActive
         : Boolean(row.isActive),
     apiEnabled: Boolean(row.apiEnabled),
+    maxPagesPerQuery: Math.min(
+      4,
+      Math.max(
+        1,
+        toNumber(
+          row.maxPagesPerQuery,
+          DEFAULT_REVERSE_IMAGE_MODULE_SETTINGS.maxPagesPerQuery
+        )
+      )
+    ),
+    maxImagesPerQuery: Math.min(
+      200,
+      Math.max(
+        20,
+        toNumber(
+          row.maxImagesPerQuery,
+          DEFAULT_REVERSE_IMAGE_MODULE_SETTINGS.maxImagesPerQuery
+        )
+      )
+    ),
+    identityScoreThreshold: Math.min(
+      95,
+      Math.max(
+        20,
+        toNumber(
+          row.identityScoreThreshold,
+          DEFAULT_REVERSE_IMAGE_MODULE_SETTINGS.identityScoreThreshold
+        )
+      )
+    ),
+    domainRelevanceMin: Math.min(
+      95,
+      Math.max(
+        0,
+        toNumber(
+          row.domainRelevanceMin,
+          DEFAULT_REVERSE_IMAGE_MODULE_SETTINGS.domainRelevanceMin
+        )
+      )
+    ),
+    aiRelevanceFilter: Boolean(row.aiRelevanceFilter),
+    minConfidence: Math.min(
+      95,
+      Math.max(
+        30,
+        toNumber(
+          row.minConfidence,
+          DEFAULT_REVERSE_IMAGE_MODULE_SETTINGS.minConfidence
+        )
+      )
+    ),
     compareUrl:
       row.compareUrl?.trim() ||
       DEFAULT_REVERSE_IMAGE_MODULE_SETTINGS.compareUrl,
@@ -92,6 +143,56 @@ export async function updateReverseImageModuleSettings(
       patch.faceVerificationActive ??
       current.faceVerificationActive ??
       current.isActive,
+    maxPagesPerQuery: Math.min(
+      4,
+      Math.max(
+        1,
+        toNumber(
+          patch.maxPagesPerQuery ?? current.maxPagesPerQuery,
+          current.maxPagesPerQuery
+        )
+      )
+    ),
+    maxImagesPerQuery: Math.min(
+      200,
+      Math.max(
+        20,
+        toNumber(
+          patch.maxImagesPerQuery ?? current.maxImagesPerQuery,
+          current.maxImagesPerQuery
+        )
+      )
+    ),
+    identityScoreThreshold: Math.min(
+      95,
+      Math.max(
+        20,
+        toNumber(
+          patch.identityScoreThreshold ?? current.identityScoreThreshold,
+          current.identityScoreThreshold
+        )
+      )
+    ),
+    domainRelevanceMin: Math.min(
+      95,
+      Math.max(
+        0,
+        toNumber(
+          patch.domainRelevanceMin ?? current.domainRelevanceMin,
+          current.domainRelevanceMin
+        )
+      )
+    ),
+    minConfidence: Math.min(
+      95,
+      Math.max(
+        30,
+        toNumber(
+          patch.minConfidence ?? current.minConfidence,
+          current.minConfidence
+        )
+      )
+    ),
     compareUrl: (patch.compareUrl ?? current.compareUrl).trim(),
     similarityThreshold: clampThreshold(
       toNumber(
@@ -120,6 +221,12 @@ export async function updateReverseImageModuleSettings(
       publicScanActive: next.publicScanActive,
       faceVerificationActive: next.faceVerificationActive,
       apiEnabled: next.apiEnabled,
+      maxPagesPerQuery: next.maxPagesPerQuery,
+      maxImagesPerQuery: next.maxImagesPerQuery,
+      identityScoreThreshold: next.identityScoreThreshold,
+      domainRelevanceMin: next.domainRelevanceMin,
+      aiRelevanceFilter: next.aiRelevanceFilter,
+      minConfidence: next.minConfidence,
       compareUrl: next.compareUrl,
       similarityThreshold: String(next.similarityThreshold),
       compareTimeoutMs: next.compareTimeoutMs,
@@ -131,6 +238,12 @@ export async function updateReverseImageModuleSettings(
         publicScanActive: next.publicScanActive,
         faceVerificationActive: next.faceVerificationActive,
         apiEnabled: next.apiEnabled,
+        maxPagesPerQuery: next.maxPagesPerQuery,
+        maxImagesPerQuery: next.maxImagesPerQuery,
+        identityScoreThreshold: next.identityScoreThreshold,
+        domainRelevanceMin: next.domainRelevanceMin,
+        aiRelevanceFilter: next.aiRelevanceFilter,
+        minConfidence: next.minConfidence,
         compareUrl: next.compareUrl,
         similarityThreshold: String(next.similarityThreshold),
         compareTimeoutMs: next.compareTimeoutMs,

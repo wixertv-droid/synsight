@@ -24,17 +24,17 @@ export function reverseImageHitToIntelligenceHit(
 ): IntelligenceHit {
   const similarityPct = Math.round(hit.similarity * 100);
   const severity =
-    hit.similarity >= 0.9
+    hit.similarity >= 0.85
       ? "critical"
-      : hit.similarity >= 0.8
+      : hit.similarity >= 0.72
         ? "high"
-        : hit.similarity >= 0.7
+        : hit.similarity >= 0.58
           ? "medium"
           : "low";
   const risk =
-    hit.similarity >= 0.85
+    hit.similarity >= 0.8
       ? "action"
-      : hit.similarity >= 0.7
+      : hit.similarity >= 0.62
         ? "review"
         : "watch";
 
@@ -43,62 +43,66 @@ export function reverseImageHitToIntelligenceHit(
     query: hit.query,
     title: hit.title,
     url: hit.sourceUrl || hit.imageUrl,
-    snippet: `Visuelle Übereinstimmung ${similarityPct} % · Quelle ${hit.sourceHost ?? "Web"} · Referenz ${hit.referenceImageType ?? "Profil"}.`,
+    snippet: `Öffentliches Bildsignal ${similarityPct} % · Quelle ${hit.sourceHost ?? "Web"} · Suchbezug ${hit.query}.`,
     category: "image",
     filterCategory: "image",
     displayCategory: "Bildtreffer",
     fetchedAt: hit.fetchedAt,
-    source: hit.sourceHost ?? "Google Images",
+    source: hit.sourceHost ?? "Public Image Discovery",
     sourceType: "serpapi_images",
     visibility: "public_index",
     relevance: "relevant",
     risk,
     status: "verified",
-    whyFound: `Google Images Index-Vorschau für „${hit.query}“ — öffentlich indexierte Seite.`,
-    whyRelevant: `InsightFace-Abgleich mit Ihrem Referenzbild (${similarityPct} % Ähnlichkeit).`,
+    whyFound: `Öffentlich indexierter Bildtreffer für „${hit.query}“ über die Smart Discovery.`,
+    whyRelevant:
+      hit.scoreReasons?.join(" · ") ||
+      `Hoher Personen- und Kontextbezug (${similarityPct} % Confidence).`,
     visibleData: "Vorschaubild, Seitenkontext, Index-Quelle",
     isPublic: true,
-    isProblematic: hit.similarity >= 0.85,
+    isProblematic: hit.similarity >= 0.8,
     risks:
-      hit.similarity >= 0.85
-        ? "Hohe Wahrscheinlichkeit, dass es Ihr Gesicht zeigt — prüfen Sie Kontext und Sichtbarkeit."
-        : "Möglicher visueller Treffer — manuelle Prüfung empfohlen.",
+      hit.similarity >= 0.8
+        ? "Öffentliches Bild mit hohem Personen- und Kontextbezug — Sichtbarkeit und Umfeld prüfen."
+        : "Möglicher personenrelevanter Bildtreffer — manuelle Prüfung empfohlen.",
     canIgnore: true,
-    shouldAct: hit.similarity >= 0.75,
+    shouldAct: hit.similarity >= 0.7,
     recommendation:
-      hit.similarity >= 0.85
-        ? "Bild und Quelle prüfen; bei unerwünschter Veröffentlichung Entfernung veranlassen."
-        : "Treffer verifizieren und bei Bedarf Maßnahmen einleiten.",
+      hit.similarity >= 0.8
+        ? "Bild und Quelle prüfen; bei unerwünschter Veröffentlichung Entfernung oder Datenschutzanfrage veranlassen."
+        : "Treffer verifizieren und Sichtbarkeit bewerten.",
     severity,
     riskPercent: similarityPct,
     identityConfidence: similarityPct,
     identityConfidenceLabel:
-      similarityPct >= 85 ? "Sehr wahrscheinlich Sie" : "Prüfen empfohlen",
-    whyFoundPlain: `Gefunden über Google-Bildersuche nach „${hit.query}“.`,
-    whyRelevantPlain: `${similarityPct} % visuelle Übereinstimmung mit Ihrem Referenzfoto.`,
+      similarityPct >= 85 ? "Sehr hoher Personenbezug" : "Prüfen empfohlen",
+    whyFoundPlain: `Gefunden über die öffentliche Bildsuche nach „${hit.query}“.`,
+    whyRelevantPlain: `${similarityPct} % Relevanz-/Confidence-Wert aus Suchbezug, Domain und Kontext.`,
     belongsToYou:
       similarityPct >= 80
-        ? "Sehr wahrscheinlich — bitte kurz visuell bestätigen."
+        ? "Hoher Personenbezug — bitte kurz verifizieren."
         : "Unklar — manuell prüfen.",
     isDangerous:
-      hit.similarity >= 0.9
-        ? "Kann reputationsschädigend sein, wenn der Kontext sensibel ist."
+      hit.similarity >= 0.85
+        ? "Kann reputations- oder datenschutzrelevant sein, wenn Name, Alias oder sensible Plattformen sichtbar sind."
         : "Abhängig vom Veröffentlichungskontext.",
-    needsAction: hit.similarity >= 0.75 ? "Ja — Quelle prüfen" : "Optional",
+    needsAction: hit.similarity >= 0.7 ? "Ja — Quelle prüfen" : "Optional",
     aiEvaluation: {
-      stars: hit.similarity >= 0.9 ? 5 : hit.similarity >= 0.8 ? 4 : 3,
-      headline: `${similarityPct} % visuelle Übereinstimmung`,
+      stars: hit.similarity >= 0.85 ? 5 : hit.similarity >= 0.72 ? 4 : 3,
+      headline: `${similarityPct} % Discovery-Confidence`,
       reasons: [
-        "Öffentliche Google-Index-Vorschau (kein direkter Plattform-Scrape).",
-        `Referenz: ${hit.referenceImageType ?? "Profilbild"}.`,
+        "Öffentlich indexierter Bildtreffer.",
+        `Treffergruppe: ${hit.queryGroup ?? "allgemein"}.`,
         `Quelle: ${hit.sourceHost ?? "Web"}.`,
       ],
       dangers:
-        hit.similarity >= 0.85
-          ? ["Unerwünschte Veröffentlichung Ihres Gesichts im Netz."]
+        hit.similarity >= 0.8
+          ? [
+              "Unerwünschte öffentliche Sichtbarkeit einer personenrelevanten Bildquelle.",
+            ]
           : [],
       recommendation:
-        hit.similarity >= 0.85
+        hit.similarity >= 0.8
           ? "Originalseite öffnen, Kontext prüfen, ggf. Entfernung veranlassen."
           : "Treffer manuell verifizieren.",
     },

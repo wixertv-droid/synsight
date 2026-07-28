@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { ReverseImageReport } from "@/lib/analysis/reverse-image/types";
 import type { SerpImageCandidate } from "@/lib/analysis/reverse-image/serpapi-images";
 import {
@@ -13,7 +12,6 @@ import { fingerprintForIntelligenceHit } from "@/lib/analysis/hit-action-state";
 import { useAnalysisHitActions } from "@/hooks/use-analysis-hit-actions";
 import IntelligenceHitCard from "@/components/analysis/intelligence/IntelligenceHitCard";
 import SectionReveal from "@/components/analysis/intelligence/SectionReveal";
-import ReverseImageCandidatePicker from "@/components/analysis/reverse-image/ReverseImageCandidatePicker";
 import {
   countSeverities,
   matchesSeverityFilter,
@@ -27,7 +25,6 @@ import SystemRail, {
 const RAIL: SystemRailSection[] = [
   { id: "report-overview", label: "ÜBERBLICK" },
   { id: "report-sources", label: "QUELLEN" },
-  { id: "report-facescan", label: "FACESCAN" },
   { id: "report-summary", label: "ZUSAMMENFASSUNG" },
   { id: "report-hits", label: "TREFFER" },
 ];
@@ -62,13 +59,9 @@ function riskTone(level: string): {
 
 export default function ReverseImageReportView({
   report,
-  onCompareStarted,
 }: {
   report: ReverseImageReport;
-  /** Prefer parent handler so Results Center can show the compare animation. */
-  onCompareStarted?: (payload: { requestId: string }) => void;
 }) {
-  const router = useRouter();
   const [filter, setFilter] = useState<SeverityRiskFilterId>("all");
   const [sourcesOpen, setSourcesOpen] = useState(true);
   const [sources, setSources] = useState<SerpImageCandidate[]>([]);
@@ -81,9 +74,8 @@ export default function ReverseImageReportView({
   const [activeSourceFilter, setActiveSourceFilter] = useState("all");
   const [sourcesLoading, setSourcesLoading] = useState(true);
   const [sourcesError, setSourcesError] = useState<string | null>(null);
-  const [showComparePicker, setShowComparePicker] = useState(false);
   const { actionFor, onActionChange } = useAnalysisHitActions(
-    "face_identity_verification"
+    "public_image_exposure_scan"
   );
 
   const loadSources = useCallback(async () => {
@@ -122,26 +114,6 @@ export default function ReverseImageReportView({
     void loadSources();
   }, [loadSources]);
 
-  const handleCompareStarted = useCallback(
-    (payload: { requestId: string }) => {
-      if (onCompareStarted) {
-        onCompareStarted(payload);
-        return;
-      }
-      // Fallback: deep-link into Results Center compare watch
-      const params = new URLSearchParams({
-        tab: "face_identity_verification",
-        module: "reverse_image",
-        scan: "1",
-        compareWatch: "1",
-        scanId: String(report.scanId),
-      });
-      if (payload.requestId) params.set("requestId", payload.requestId);
-      router.push(`/dashboard/results?${params.toString()}`);
-    },
-    [onCompareStarted, report.scanId, router]
-  );
-
   const visibleSources = useMemo(() => {
     if (activeSourceFilter === "all") return sources;
     return resultsByQuery[activeSourceFilter] ?? [];
@@ -178,10 +150,10 @@ export default function ReverseImageReportView({
               className="relative scroll-mt-28 overflow-hidden rounded-2xl border border-cyber-cyan/25 bg-gradient-to-br from-cyber-cyan/[0.08] via-[#071018] to-transparent p-5 md:p-7"
             >
               <p className="font-mono text-[9px] tracking-[.18em] text-cyber-cyan/70">
-                REVERSE IMAGE SEARCH · SICHERHEITSBERICHT
+                PUBLIC IMAGE EXPOSURE SCAN · SICHERHEITSBERICHT
               </p>
               <h2 className="mt-2 max-w-4xl text-2xl font-semibold tracking-[-.03em] text-white/95 md:text-3xl">
-                Visuelle Treffer von {report.subjectName}
+                Öffentliche Bildsignale zu {report.subjectName}
               </h2>
 
               <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -194,15 +166,54 @@ export default function ReverseImageReportView({
                   </span>
                 </div>
                 <p className="text-[11px] text-white/40">
-                  Phase 1 SerpAPI · Phase 2 InsightFace (optional)
+                  Smart Discovery · Domain- und Kontextbewertung
                 </p>
               </div>
 
               <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {(
                   [
-                    ["Bildtreffer", report.matchCount],
-                    ["Kandidaten", report.candidateCount],
+                    [
+                      "Relevante Bilder",
+                      report.managementOverview.relevantImageCount,
+                    ],
+                    [
+                      "Verworfen",
+                      report.managementOverview.discardedImageCount,
+                    ],
+                    [
+                      "Social Media",
+                      report.managementOverview.socialMediaCount,
+                    ],
+                    ["Confidence", report.managementOverview.confidenceScore],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-xl border border-white/[0.08] bg-black/25 px-3 py-3"
+                  >
+                    <p className="font-mono text-[7px] tracking-[.12em] text-white/30">
+                      {label.toUpperCase()}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-cyber-cyan/90">
+                      {value}
+                      {label === "Confidence" ? "/100" : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {(
+                  [
+                    [
+                      "Öffentliche Webseiten",
+                      report.managementOverview.publicWebsiteCount,
+                    ],
+                    [
+                      "Mögliche Personenbilder",
+                      report.managementOverview.possiblePersonImageCount,
+                    ],
                     ["Risiko-Score", report.riskScore],
                     ["Suchanfragen", report.queryCount],
                   ] as const
@@ -222,8 +233,6 @@ export default function ReverseImageReportView({
               </div>
 
               <p className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-white/35">
-                {report.referenceImageCount} Referenzbilder
-                <span className="text-white/15">·</span>
                 Aufbewahrung:{" "}
                 {report.retentionDays === 0
                   ? "unbegrenzt"
@@ -246,10 +255,10 @@ export default function ReverseImageReportView({
               >
                 <div>
                   <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
-                    SERPAPI QUELLEN · GESPEICHERT
+                    SMART DISCOVERY · QUELLEN
                   </p>
                   <p className="mt-1 text-sm text-white/55">
-                    {report.candidateCount} Bild-Links aus Google Images
+                    {report.candidateCount} analysierte Bildkandidaten
                   </p>
                 </div>
                 <span className="font-mono text-sm text-white/40">
@@ -267,7 +276,7 @@ export default function ReverseImageReportView({
                       </p>
                       <p className="text-xs text-white/40">
                         Ohne gespeicherte SerpAPI-Quellen kann der
-                        Gesichtsvergleich nicht gestartet werden.
+                        Smart-Discovery-Quellen konnten nicht geladen werden.
                       </p>
                       <button
                         type="button"
@@ -364,53 +373,6 @@ export default function ReverseImageReportView({
 
           <SectionReveal delayMs={100} enabled>
             <section
-              id="report-facescan"
-              className="scroll-mt-28 rounded-2xl border border-cyber-cyan/20 bg-gradient-to-br from-cyber-cyan/[0.06] to-transparent p-5 md:p-6"
-            >
-              <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
-                FACESCAN · GESICHTSVERGLEICH
-              </p>
-              <h3 className="mt-2 text-lg font-medium text-white/88">
-                InsightFace Abgleich starten
-              </h3>
-              <p className="mt-2 max-w-2xl text-sm text-white/50">
-                Wähle gespeicherte Bildquellen aus und starte den Vergleich mit
-                den Referenzfotos aus dem Profil. 1 SynCredit pro ausgewähltem
-                Bild.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowComparePicker((open) => !open)}
-                  disabled={sourcesLoading || sources.length === 0}
-                  className="rounded-lg border border-cyber-cyan/35 bg-cyber-cyan/[0.08] px-4 py-2 text-sm text-cyber-cyan transition hover:bg-cyber-cyan/[0.14] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {showComparePicker
-                    ? "Auswahl schließen"
-                    : "Gesichtsvergleich starten"}
-                </button>
-                {sourcesError ? (
-                  <a
-                    href="/dashboard/analysis/public-image-exposure?start=1"
-                    className="rounded-lg border border-amber-300/30 bg-amber-300/[0.06] px-4 py-2 text-sm text-amber-100/85"
-                  >
-                    Bildsuche neu starten
-                  </a>
-                ) : null}
-              </div>
-              {showComparePicker ? (
-                <div className="mt-5">
-                  <ReverseImageCandidatePicker
-                    scanId={report.scanId}
-                    onCompareStarted={handleCompareStarted}
-                  />
-                </div>
-              ) : null}
-            </section>
-          </SectionReveal>
-
-          <SectionReveal delayMs={140} enabled>
-            <section
               id="report-summary"
               className="scroll-mt-28 rounded-2xl border border-cyber-cyan/20 bg-gradient-to-br from-cyber-cyan/[0.06] to-transparent p-5 md:p-6"
             >
@@ -420,14 +382,21 @@ export default function ReverseImageReportView({
               <p className="mt-3 text-sm leading-relaxed text-white/75">
                 {report.summary ?? report.managementOverview.headline}
               </p>
+              <p className="mt-3 text-sm leading-relaxed text-white/55">
+                Die Analyse priorisiert nur oeffentliche Bilder mit erkennbarem
+                Personenbezug, relevanter Domain und nachvollziehbarem Kontext.
+                Produktbilder, technische Kataloge und sonstiger Suchmuell
+                werden automatisch herausgefiltert.
+              </p>
               <p className="mt-3 font-mono text-[9px] tracking-[.12em] text-white/35">
-                {report.queryCount} Suchanfragen · {report.referenceImageCount}{" "}
-                Referenzbilder · {report.candidateCount} Kandidaten
+                {report.queryCount} Suchanfragen · {report.candidateCount}{" "}
+                Kandidaten · {report.managementOverview.relevantImageCount}{" "}
+                relevante Funde
               </p>
             </section>
           </SectionReveal>
 
-          <SectionReveal delayMs={200} enabled>
+          <SectionReveal delayMs={140} enabled>
             <section id="report-hits" className="scroll-mt-28 space-y-4">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -435,7 +404,7 @@ export default function ReverseImageReportView({
                     BILDTREFFER
                   </p>
                   <h3 className="mt-1 text-lg font-medium text-white/88">
-                    Gefundene Übereinstimmungen
+                    Relevante oeffentliche Bildtreffer
                   </h3>
                 </div>
                 <SeverityRiskFilterBar
@@ -447,16 +416,14 @@ export default function ReverseImageReportView({
 
               {filteredHits.length === 0 ? (
                 <p className="rounded-2xl border border-white/[0.08] bg-black/25 px-4 py-8 text-center text-sm text-white/45">
-                  Keine Treffer in diesem Filter — oder keine Übereinstimmung
-                  über dem Schwellenwert. Starte den Facescan, um Bilder zu
-                  vergleichen.
+                  Keine relevanten Bildtreffer in diesem Filter.
                 </p>
               ) : (
                 <div className="space-y-5">
                   {filteredHits.map((hit) => {
                     const intel = reverseImageHitToIntelligenceHit(hit);
                     const fingerprint = fingerprintForIntelligenceHit(
-                      "face_identity_verification",
+                      "public_image_exposure_scan",
                       intel
                     );
                     const imageUrl = `/api/analysis/reverse-image/hits/${hit.id}/image?scanId=${report.scanId}`;
