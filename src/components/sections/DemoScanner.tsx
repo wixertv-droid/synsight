@@ -53,7 +53,7 @@ export default function DemoScanner() {
 
     try {
       // 2. WÄHREND die Animation läuft, fragen wir unseren Server an!
-      const response = await fetch("http://161.97.85.22:5000/api/scan", {
+      const response = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: input }),
