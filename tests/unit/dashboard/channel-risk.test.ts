@@ -86,6 +86,13 @@ describe("channel-risk", () => {
   it("weights password exposure as extreme leak risk", () => {
     const mild = scoreLeakFindings([
       {
+  type: "BREACH", // oder "PASSWORD_EXPOSURE"
+  title: "...",
+  description: "...",
+  riskLevel: "low",
+  recommendation: "..."
+}
+      {
         type: "BREACH",
         title: "Old",
         description: "",
@@ -94,6 +101,13 @@ describe("channel-risk", () => {
       },
     ]);
     const hot = scoreLeakFindings([
+      {
+  type: "BREACH", // oder "PASSWORD_EXPOSURE"
+  title: "...",
+  description: "...",
+  riskLevel: "low",
+  recommendation: "..."
+}
       {
         type: "PASSWORD_EXPOSURE",
         title: "Pwd",
