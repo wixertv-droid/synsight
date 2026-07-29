@@ -152,3 +152,130 @@ opacity:0;
 
 
 }
+/* Radar Rotation */
+
+.radar-spin {
+
+animation:
+radarSpin 8s linear infinite;
+
+}
+
+
+@keyframes radarSpin {
+
+
+from {
+
+transform:
+rotate(0deg);
+
+}
+
+
+to {
+
+transform:
+rotate(360deg);
+
+}
+
+}
+
+
+
+
+/* Pulsierender Core */
+
+.core-pulse {
+
+animation:
+
+corePulse
+2s
+ease-in-out
+infinite;
+
+}
+
+
+@keyframes corePulse {
+
+
+0% {
+
+box-shadow:
+0 0 20px rgba(0,255,255,.2);
+
+}
+
+
+50% {
+
+box-shadow:
+0 0 70px rgba(0,255,255,.8);
+
+}
+
+
+100% {
+
+box-shadow:
+0 0 20px rgba(0,255,255,.2);
+
+}
+
+
+}
+
+
+
+
+
+/* Datenstrom */
+
+.data-stream {
+
+
+animation:
+
+dataStream
+.5s
+linear
+infinite;
+
+
+}
+
+
+@keyframes dataStream {
+
+
+0% {
+
+opacity:.3;
+
+transform:
+translateY(4px);
+
+}
+
+
+50% {
+
+opacity:1;
+
+}
+
+
+100% {
+
+opacity:.3;
+
+transform:
+translateY(-4px);
+
+}
+
+
+}
