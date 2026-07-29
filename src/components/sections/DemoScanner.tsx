@@ -99,24 +99,23 @@ export default function DemoScanner() {
   : [
       {
         category: "BREACH",
-        title: "Breach Database Exposure,
+        title: "Breach Database Exposure",
         description: "E-Mail-Adresse wurde in bekannten Datenleck-Sammlungen gefunden.",
         risk: "high"
       },
       {
         category: "OSINT",
         title: "Öffentliches Profil erkannt",
-        description: "Öffentliche Profile oder Metadaten konnten über offene Quellen korreliert werden.",
+        description: "Öffentliche Spuren und Metadaten wurden in offenen Quellen gefunden.",
         risk: "low"
       },
       {
-        category: "PASTE",
-        title: "Paste-Dump Erwähnung",
-        description: "Mögliche Erwähnung in veröffentlichten Text-Dumps erkannt.",
+        category: "LEAK",
+        title: "Pastebin / Dump Erwähnung",
+        description: "Mögliche Erwähnung in veröffentlichten Datensätzen erkannt.",
         risk: "medium"
       }
     ];
-
       const finalPlatforms = data.platforms && data.platforms.length > 0 ? data.platforms : [
         "GitHub", "Pastebin", "Breach-DB", "OSINT-Search"
       ];
