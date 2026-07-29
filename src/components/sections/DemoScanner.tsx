@@ -367,15 +367,28 @@ summary:
 
 
 
-setTimeout(()=>{
+const waitForScanner = setInterval(()=>{
 
+
+if(scanFinished){
+
+
+clearInterval(waitForScanner);
+
+
+setTimeout(()=>{
 
 setPhase(
 "fullscreen_result"
 );
 
+},800);
 
-},1200);
+
+}
+
+
+},200);
 
 
 
