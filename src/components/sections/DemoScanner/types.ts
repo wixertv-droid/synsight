@@ -17,5 +17,16 @@ export interface ScanData {
   summary?: string;
   risk_level?: string;
   message?: string;
+  error?: string;
+
   [key: string]: unknown;
+}
+
+
+export interface ScannerOverlayProps {
+  phase: ScanPhase;
+  target: string;
+  apiResult: ApiResult | null;
+  rawData: ScanData | null;
+  onClose: () => void;
 }
