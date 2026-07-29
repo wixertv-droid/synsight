@@ -14,19 +14,19 @@ export interface ApiResult {
 
 export interface ScanData {
   status?: string;
-  summary?: string;
   risk_level?: string;
-  message?: string;
-  error?: string;
+  summary?: string;
+
+  findings?: {
+    category: string;
+    title: string;
+    value: string;
+    severity: "low" | "medium" | "high";
+  }[];
+
+  exposure_count?: number;
+  sources_found?: number;
+  identity_matches?: number;
 
   [key: string]: unknown;
-}
-
-
-export interface ScannerOverlayProps {
-  phase: ScanPhase;
-  target: string;
-  apiResult: ApiResult | null;
-  rawData: ScanData | null;
-  onClose: () => void;
 }
