@@ -93,7 +93,7 @@ export default function DemoScanner() {
     try {
       // HIER IST DIE WICHTIGSTE ÄNDERUNG:
       // Wir leiten die Anfrage direkt an deinen Contabo-Server (Flask API) weiter!
-      const apiCall = fetch("http://161.97.85.22:5000/api/scan", {
+      const apiCall = fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: input }),
