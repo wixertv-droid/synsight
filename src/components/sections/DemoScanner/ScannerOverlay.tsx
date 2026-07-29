@@ -76,7 +76,7 @@ overflow-hidden
 
 ${phase==="closing_crt"
 ?
-"crt-shutdown"
+.crt-off
 :
 "animate-in fade-in duration-700"
 }
