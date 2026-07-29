@@ -234,7 +234,7 @@ await new Promise(
 resolve=>
 setTimeout(
 resolve,
-35000
+10000
 )
 );
 
