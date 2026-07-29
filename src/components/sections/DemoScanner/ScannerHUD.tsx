@@ -23,8 +23,7 @@ const operations = [
 
 export default function ScannerHUD({
   progress,
-  query,
-  onClose
+  query
 }: ScannerHUDProps) {
   const [isShuttingDown, setIsShuttingDown] = useState(false);
   const [isBooting, setIsBooting] = useState(true);
@@ -34,24 +33,10 @@ export default function ScannerHUD({
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    if (progress >= 100 && !isShuttingDown) {
-      triggerShutdown();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progress]);
-
   const activeLogIndex = Math.min(
     Math.floor((progress / 100) * operations.length),
     operations.length - 1
   );
-
-  const triggerShutdown = () => {
-    setIsShuttingDown(true);
-    setTimeout(() => {
-      if (onClose) onClose();
-    }, 500);
-  };
 
   return (
     <>
