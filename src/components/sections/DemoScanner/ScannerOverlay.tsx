@@ -68,19 +68,17 @@ return (
 <div
 
 className={`
-fixed
-inset-0
-z-[999]
-bg-black
+fixed inset-0 z-[100]
+flex items-center justify-center
+bg-black/95
+backdrop-blur-xl
+font-mono
 overflow-hidden
-
-${phase==="closing_crt"
-?
-crt-off
-:
-"animate-in fade-in duration-700"
+${
+  phase === "closing_crt"
+    ? "crt-off"
+    : "animate-in fade-in duration-700"
 }
-
 `}
 
 >
