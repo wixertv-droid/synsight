@@ -1,32 +1,56 @@
 export type ScanPhase =
   | "idle"
+  | "booting"
   | "scanning"
-  | "fullscreen_result"
-  | "closing_crt"
-  | "complete";
-
-
-export interface ApiResult {
-  summary: string;
-  riskLevel: string;
-}
+  | "analysis"
+  | "complete"
+  | "closing_crt";
 
 
 export interface ScanData {
-  status?: string;
-  risk_level?: string;
-  summary?: string;
+  query: string;
 
-  findings?: {
+  queryType:
+    | "email"
+    | "username"
+    | "name"
+    | "unknown";
+
+  findings: {
     category: string;
     title: string;
-    value: string;
-    severity: "low" | "medium" | "high";
+    description: string;
+    risk:
+      | "low"
+      | "medium"
+      | "high";
   }[];
 
-  exposure_count?: number;
-  sources_found?: number;
-  identity_matches?: number;
+  platforms: string[];
 
-  [key: string]: unknown;
+  exposureScore: number;
+
+  riskLevel:
+    | "Niedrig"
+    | "Erhöht"
+    | "Hoch"
+    | "Kritisch";
+
+
+  summary: string;
+
+  timestamp: string;
+}
+
+
+export interface ApiResult {
+
+  status:
+    | "success"
+    | "error";
+
+  data?: ScanData;
+
+  message?: string;
+
 }
