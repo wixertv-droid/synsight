@@ -261,12 +261,11 @@ mb-10
 title="Digitale Spuren"
 
 value={
-String(
-rawData?.exposure_count ?? 
-"Erkannt"
-)
+ String(
+ rawData?.findings?.length ??
+ "0"
+ )
 }
-
 />
 
 
@@ -275,10 +274,10 @@ rawData?.exposure_count ??
 title="Öffentliche Quellen"
 
 value={
-String(
-rawData?.sources_found ??
-"Analysiert"
-)
+ String(
+ rawData?.platforms?.length ??
+ "0"
+ )
 }
 
 />
