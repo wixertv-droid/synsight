@@ -48,10 +48,10 @@ export default function DemoScanner() {
   const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   
-  // NEU: Ref für das Terminal-Fenster (nicht mehr das Ende der Seite)
+  // Ref für das Terminal-Fenster
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  // Gefixter Auto-Scroll: Scrollt nur innerhalb der Box, lässt die Seite in Ruhe!
+  // Auto-Scroll innerhalb der Box
   useEffect(() => {
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
@@ -65,14 +65,14 @@ export default function DemoScanner() {
     let progressValue = 0;
     const progressInterval = setInterval(() => {
       progressValue += Math.random() * 3;
-      if (progressValue > 95) progressValue = 95; // Hält bei 95% an, bis KI fertig ist
+      if (progressValue > 95) progressValue = 95; // Hält bei 95% an, bis Backend fertig ist
       setProgress(Math.floor(progressValue));
     }, 150);
 
     const logInterval = setInterval(() => {
       const randomLog = terminalLogs[Math.floor(Math.random() * terminalLogs.length)];
-      const time = new Date().toISOString().split('T')[1].slice(0, -1); // HH:MM:SS.mmm
-      setLogs(prev => [...prev, `[${time}] ${randomLog}`].slice(-20)); // Behält mehr Logs im Speicher
+      const time = new Date().toISOString().split('T')[1].slice(0, -1);
+      setLogs(prev => [...prev, `[${time}] ${randomLog}`].slice(-20));
     }, 400);
 
     return () => {
@@ -91,7 +91,9 @@ export default function DemoScanner() {
     const minWaitTime = new Promise(resolve => setTimeout(resolve, 5000)); // Mindestens 5 Sekunden Animation
 
     try {
-      const apiCall = fetch("/api/scan", {
+      // HIER IST DIE WICHTIGSTE ÄNDERUNG:
+      // Wir leiten die Anfrage direkt an deinen Contabo-Server (Flask API) weiter!
+      const apiCall = fetch("http://161.97.85.22:5000/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: input }),
@@ -108,14 +110,14 @@ export default function DemoScanner() {
         });
       } else {
         setApiResult({
-          summary: "Fehler bei der KI-Analyse: " + data.message,
+          summary: "Fehler bei der Analyse: " + data.message,
           riskLevel: "Fehler"
         });
       }
     } catch (error) {
       setProgress(100);
       setApiResult({
-        summary: "Netzwerkfehler: Der Analyse-Server ist momentan nicht erreichbar.",
+        summary: "Netzwerkfehler: Der externe Scan-Server (Contabo) ist momentan nicht erreichbar oder blockiert die Anfrage.",
         riskLevel: "Offline"
       });
     } finally {
@@ -192,13 +194,11 @@ export default function DemoScanner() {
                   </div>
                 </div>
 
-                {/* Terminal Feed - Jetzt mit sicherem, internem Scroll! */}
+                {/* Terminal Feed */}
                 <div className="w-full bg-[#0a0a0f] border border-cyber-cyan/20 rounded-lg p-4 font-mono text-xs text-cyber-cyan/80 h-40 overflow-hidden relative shadow-[inset_0_0_20px_rgba(0,255,255,0.05)]">
-                  {/* Blenden-Effekt oben und unten, pointer-events-none lässt Klicks durch */}
                   <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-b from-[#0a0a0f] to-transparent z-10 pointer-events-none" />
                   <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-[#0a0a0f] to-transparent z-10 pointer-events-none" />
                   
-                  {/* Das ist die Box, die scrollt */}
                   <div ref={terminalRef} className="space-y-1 mt-2 h-full overflow-y-auto pb-8 scrollbar-hide">
                     {logs.map((log, i) => (
                       <div key={i} className="animate-fade-in-up whitespace-nowrap overflow-hidden text-ellipsis">
@@ -223,12 +223,12 @@ export default function DemoScanner() {
                   <div className="glass rounded-xl p-6 mb-8 border border-cyber-blue/30 bg-cyber-blue/[0.03] shadow-[0_0_30px_rgba(0,191,255,0.05)] transition-all duration-500 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-cyber-cyan"></div>
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs font-mono tracking-widest text-gray-400">KI-ZUSAMMENFASSUNG</span>
+                      <span className="text-xs font-mono tracking-widest text-gray-400">SCAN-ZUSAMMENFASSUNG</span>
                       <span className="text-xs font-mono px-3 py-1 rounded bg-cyber-blue/10 text-cyber-cyan border border-cyber-cyan/20">
                         {apiResult.riskLevel}
                       </span>
                     </div>
-                    <p className="text-white text-base leading-relaxed">
+                    <p className="text-white text-base leading-relaxed whitespace-pre-line">
                       {apiResult.summary}
                     </p>
                   </div>
@@ -237,7 +237,7 @@ export default function DemoScanner() {
                 <div className="mb-8 rounded-xl border border-yellow-400/20 bg-yellow-400/[0.04] p-5">
                   <p className="mb-2 font-semibold text-white">Das war nur die Oberfläche.</p>
                   <p className="text-sm leading-relaxed text-gray-400">
-                    Die KI hat erste Muster erkannt. Mit einem Konto speichert SynSight Ihren Status, kombiniert diese Daten mit echten Deep-Web-Scans und zeigt Ihnen, was zuerst geschützt werden sollte.
+                    Mit einem Konto speichert SynSight Ihren Status, kombiniert diese Daten mit echten Deep-Web-Scans und zeigt Ihnen, was zuerst geschützt werden sollte.
                   </p>
                 </div>
 
@@ -256,7 +256,7 @@ export default function DemoScanner() {
           </div>
         </GlassCard>
 
-        {/* SynSight Protect Banner */}
+        {/* SynSight Protect Banner bleibt unverändert */}
         <div className={`mt-10 transition-all duration-700 ${phase === "complete" ? "opacity-100 translate-y-0" : "opacity-70 translate-y-0"}`}>
           <div id="protect-package" className="relative scroll-mt-24 overflow-hidden rounded-2xl border border-cyber-blue/30 bg-gradient-to-br from-cyber-blue/[0.12] via-space-panel/95 to-cyber-cyan/[0.06] p-6 md:p-8 shadow-[0_0_50px_rgba(0,191,255,0.08)]">
             <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-cyber-cyan/10 blur-3xl" />
