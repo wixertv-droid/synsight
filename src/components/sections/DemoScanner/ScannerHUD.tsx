@@ -72,9 +72,9 @@ export default function ScannerHUD({
           20%, 22%, 24%, 55% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(34,211,238,0.8)); }
         }
         
-        /* Angepasste EKG Animation für die 500er Breite */
+        /* EKG Animation: Dash-Werte erhöht, da die Linie durch die vielen Ausschläge länger ist */
         @keyframes ekgPulse {
-          0% { stroke-dashoffset: 500; opacity: 0; }
+          0% { stroke-dashoffset: 800; opacity: 0; }
           10% { opacity: 1; }
           90% { opacity: 1; }
           100% { stroke-dashoffset: 0; opacity: 0; }
@@ -85,7 +85,6 @@ export default function ScannerHUD({
           100% { transform: translateY(100vh); }
         }
 
-        /* Langsames Atmen des neuronalen Netzes im Hintergrund */
         @keyframes neuralBreathe {
           0%, 100% { opacity: 0.3; }
           50% { opacity: 0.6; }
@@ -160,7 +159,7 @@ export default function ScannerHUD({
             </div>
           </div>
 
-          {/* CENTER: SYSTEM STATUS & NEUES 3D EKG MIT NEURONALEM NETZ */}
+          {/* CENTER: SYSTEM STATUS & NEUES 3D EKG MIT PROZENTZAHL */}
           <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-5 flex flex-col justify-center items-center shadow-[inset_0_0_20px_rgba(34,211,238,0.05)]">
             
             {/* HINTERGRUND: Neuronales Netz (SVG) */}
@@ -198,33 +197,45 @@ export default function ScannerHUD({
                />
             </div>
 
-            {/* VORDERGRUND: Volle Breite 3D EKG Linie mit Datenpunkten */}
-            <div className="w-full h-10 mt-2 flex justify-center opacity-90 z-10">
-              {/* preserveAspectRatio="none" zwingt das SVG, die volle Box-Breite auszufüllen */}
+            {/* VORDERGRUND: Volle Breite 3D EKG Linie mit MEHR Ausschlägen, tiefer gesetzt (mt-6) */}
+            <div className="w-full h-12 mt-6 flex justify-center opacity-90 z-10">
               <svg width="100%" height="100%" viewBox="0 0 500 40" preserveAspectRatio="none" className="drop-shadow-[0_0_5px_#22d3ee]">
                 
-                {/* Layer 1: Der verschwommene 3D-Schatten im Hintergrund */}
+                {/* Layer 1: Der verschwommene 3D-Schatten */}
                 <path 
-                  d="M0,20 L200,20 L220,5 L250,35 L280,10 L300,20 L500,20" 
+                  d="M0,20 L120,20 L135,5 L150,35 L165,10 L180,30 L195,5 L215,35 L230,15 L245,20 L320,20 L330,10 L340,30 L350,20 L500,20" 
                   className="stroke-cyan-700/60 fill-none stroke-[6px] blur-[3px]"
                 />
                 
-                {/* Layer 2: Die scharfe, helle Hauptlinie (animiert) */}
+                {/* Layer 2: Die scharfe Hauptlinie */}
                 <path 
-                  d="M0,20 L200,20 L220,5 L250,35 L280,10 L300,20 L500,20" 
+                  d="M0,20 L120,20 L135,5 L150,35 L165,10 L180,30 L195,5 L215,35 L230,15 L245,20 L320,20 L330,10 L340,30 L350,20 L500,20" 
                   className="stroke-cyan-300 fill-none stroke-[2px]"
-                  strokeDasharray="500"
-                  strokeDashoffset="500"
-                  style={{ animation: 'ekgPulse 1.5s linear infinite' }}
+                  strokeDasharray="800"
+                  strokeDashoffset="800"
+                  style={{ animation: 'ekgPulse 1.8s linear infinite' }}
                 />
                 
-                {/* Layer 3: Leuchtende Datenpunkte an den Spitzen (animiert pulsierend) */}
+                {/* Layer 3: Leuchtende Datenpunkte an JEDER Spitze */}
                 <g className="animate-pulse">
-                  <circle cx="220" cy="5" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="250" cy="35" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="280" cy="10" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="135" cy="5" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="150" cy="35" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="165" cy="10" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="180" cy="30" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="195" cy="5" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="215" cy="35" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  
+                  {/* Der zweite, kleine Nachbeben-Ausschlag */}
+                  <circle cx="330" cy="10" r="2.5" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="340" cy="30" r="2.5" className="fill-white drop-shadow-[0_0_6px_#fff]" />
                 </g>
               </svg>
+            </div>
+
+            {/* NEU: Prozentzahl unter dem EKG */}
+            <div className="mt-3 flex items-center gap-2 z-10 text-cyan-400 font-mono">
+              <span className="text-[9px] uppercase tracking-[0.3em] opacity-70">Progress</span>
+              <span className="text-xl font-bold drop-shadow-[0_0_8px_#22d3ee]">{progress}%</span>
             </div>
 
           </div>
