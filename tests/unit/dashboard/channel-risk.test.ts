@@ -86,34 +86,55 @@ describe("channel-risk", () => {
   it("weights password exposure as extreme leak risk", () => {
     const mild = scoreLeakFindings([
       {
-  type: "BREACH", // oder "PASSWORD_EXPOSURE"
-  title: "...",
-  description: "...",
-  riskLevel: "low",
-  recommendation: "..."
-}
+        type: "BREACH",
+        title: "Test Breach",
+        description: "Test description",
+        riskLevel: "low",
+        recommendation: "Test recommendation",
+        sourceName: "System Scan",
+        sourceDate: "2026-07-29",
+        sourceUrl: "https://synsight.de",
+        identifierMasked: "user@domain.com",
+        dataClasses: ["Email"]
+      },
       {
         type: "BREACH",
         title: "Old",
         description: "",
         riskLevel: "low",
         recommendation: "",
+        sourceName: "System Scan",
+        sourceDate: "2026-07-29",
+        sourceUrl: "https://synsight.de",
+        identifierMasked: "user@domain.com",
+        dataClasses: ["Email"]
       },
     ]);
+    
     const hot = scoreLeakFindings([
       {
-  type: "BREACH", // oder "PASSWORD_EXPOSURE"
-  title: "...",
-  description: "...",
-  riskLevel: "low",
-  recommendation: "..."
-}
+        type: "BREACH",
+        title: "Test Breach",
+        description: "Test description",
+        riskLevel: "low",
+        recommendation: "Test recommendation",
+        sourceName: "System Scan",
+        sourceDate: "2026-07-29",
+        sourceUrl: "https://synsight.de",
+        identifierMasked: "user@domain.com",
+        dataClasses: ["Email"]
+      },
       {
         type: "PASSWORD_EXPOSURE",
         title: "Pwd",
         description: "",
         riskLevel: "high",
         recommendation: "",
+        sourceName: "System Scan",
+        sourceDate: "2026-07-29",
+        sourceUrl: "https://synsight.de",
+        identifierMasked: "user@domain.com",
+        dataClasses: ["Email", "Password"]
       },
     ]);
     expect(hot.value).toBeGreaterThan(mild.value);
