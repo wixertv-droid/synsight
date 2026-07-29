@@ -145,6 +145,9 @@ addLog(
 let current = 0;
 
 
+let scanFinished = false;
+
+
 const scanInterval = setInterval(()=>{
 
 
@@ -175,6 +178,8 @@ scanStages[stageIndex]
 if(current >= 100){
 
 clearInterval(scanInterval);
+
+scanFinished = true;
 
 }
 
