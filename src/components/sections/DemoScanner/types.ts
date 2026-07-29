@@ -7,7 +7,24 @@ export type ScanPhase =
   | "closing_crt";
 
 
+export interface ScanFinding {
+
+  category: string;
+
+  title: string;
+
+  description: string;
+
+  risk:
+    | "low"
+    | "medium"
+    | "high";
+
+}
+
+
 export interface ScanData {
+
   query: string;
 
   queryType:
@@ -16,19 +33,15 @@ export interface ScanData {
     | "name"
     | "unknown";
 
-  findings: {
-    category: string;
-    title: string;
-    description: string;
-    risk:
-      | "low"
-      | "medium"
-      | "high";
-  }[];
+
+  findings: ScanFinding[];
+
 
   platforms: string[];
 
+
   exposureScore: number;
+
 
   riskLevel:
     | "Niedrig"
@@ -39,18 +52,41 @@ export interface ScanData {
 
   summary: string;
 
+
   timestamp: string;
+
 }
 
 
+
 export interface ApiResult {
+
 
   status:
     | "success"
     | "error";
 
+
   data?: ScanData;
 
+
   message?: string;
+
+
+
+  // Übergangs-Kompatibilität
+  // für DemoScanner UI
+
+  riskLevel?: string;
+
+
+  summary?: string;
+
+
+  findings?: ScanFinding[];
+
+
+  platforms?: string[];
+
 
 }
