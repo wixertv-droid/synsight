@@ -103,11 +103,13 @@ phase==="scanning"
 
 <ScannerHUD
 
+phase={phase}
+
 progress={progress}
 
-target={target}
+query={target}
 
-logs={logs}
+data={rawData ?? undefined}
 
 />
 
