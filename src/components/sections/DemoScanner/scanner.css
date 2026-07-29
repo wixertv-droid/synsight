@@ -279,3 +279,26 @@ translateY(-4px);
 
 
 }
+
+.crt-off {
+ animation: crtShutdown .7s ease forwards;
+}
+
+@keyframes crtShutdown {
+
+0% {
+ transform:scale(1);
+ filter:brightness(1);
+}
+
+70% {
+ transform:scaleY(.05);
+ filter:brightness(3);
+}
+
+100% {
+ transform:scaleY(0);
+ opacity:0;
+}
+
+}
