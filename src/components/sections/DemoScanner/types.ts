@@ -24,9 +24,11 @@ export interface ScanFinding {
 }
 
 
+
 export interface ScanData {
 
   query: string;
+
 
   queryType:
     | "email"
@@ -35,13 +37,17 @@ export interface ScanData {
     | "unknown";
 
 
+
   findings: ScanFinding[];
+
 
 
   platforms: string[];
 
 
+
   exposureScore: number;
+
 
 
   riskLevel:
@@ -51,10 +57,21 @@ export interface ScanData {
     | "Kritisch";
 
 
+
   summary: string;
 
 
+
   timestamp: string;
+
+
+
+  // optionale Felder für zukünftige Analysemodule
+
+  exposure_count?: number;
+
+
+  sources_found?: number;
 
 }
 
@@ -68,23 +85,27 @@ export interface ApiResult {
     | "error";
 
 
+
   data?: ScanData;
+
 
 
   message?: string;
 
 
 
-  // Übergangs-Kompatibilität
-  // für DemoScanner UI
+  // Darstellung im Demo Scanner
 
   riskLevel?: string;
+
 
 
   summary?: string;
 
 
+
   findings?: ScanFinding[];
+
 
 
   platforms?: string[];
