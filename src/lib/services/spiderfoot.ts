@@ -91,11 +91,11 @@ export async function getSpiderFootResults(
   const data = await response.json();
 
 
-  return data.map((item: any[]) => ({
-    timestamp: item[0],
-    data: item[1],
-    source: item[2],
-    module: item[3],
-    type: item[10],
-  }));
+return data.map((item: unknown[]) => ({
+    timestamp: String(item[0] ?? ""),
+    data: String(item[1] ?? ""),
+    source: String(item[2] ?? ""),
+    module: String(item[3] ?? ""),
+    type: String(item[10] ?? ""),
+}));
 }
