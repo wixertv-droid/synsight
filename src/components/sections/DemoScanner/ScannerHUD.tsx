@@ -1,8 +1,8 @@
 "use client";
 
-import {
+import type {
   ScanPhase,
-  ScanData,
+  ScanData
 } from "./types";
 
 
@@ -10,33 +10,31 @@ interface ScannerHUDProps {
 
   phase: ScanPhase;
 
-  progress: number;
+  progress:number;
 
-  query: string;
+  query:string;
 
-  data?: ScanData;
+  data?:ScanData;
 
 }
 
 
 
-const codeLines = [
+const operations = [
 
-"INITIALIZING NEURAL IDENTITY GRAPH",
+"IDENTITY MATRIX INITIALIZED",
 
-"CONNECTING PUBLIC DATA NODES",
+"PUBLIC INTELLIGENCE CHANNELS ONLINE",
 
-"CORRELATING DIGITAL FOOTPRINTS",
+"ENTITY RESOLUTION RUNNING",
 
-"ANALYZING USERNAME PATTERNS",
+"DIGITAL FOOTPRINT MAPPING",
 
-"SEARCHING OPEN INTELLIGENCE SOURCES",
+"CORRELATION ENGINE ACTIVE",
 
-"BUILDING EXPOSURE MAP",
+"RISK MODEL CALCULATING",
 
-"CALCULATING RISK VECTOR",
-
-"GENERATING SYN|SIGHT MODEL"
+"AI ASSESSMENT GENERATING"
 
 ];
 
@@ -45,16 +43,11 @@ const codeLines = [
 
 export default function ScannerHUD({
 
-phase,
-
 progress,
 
-query,
-
-data
+query
 
 }:ScannerHUDProps){
-
 
 
 return (
@@ -67,15 +60,17 @@ relative
 
 h-full
 
+w-full
+
+overflow-hidden
+
+bg-[#02070d]
+
 flex
 
 items-center
 
 justify-center
-
-overflow-hidden
-
-bg-black
 
 "
 
@@ -83,60 +78,7 @@ bg-black
 
 
 
-{/* Network Background */}
-
-<div className="absolute inset-0 opacity-40">
-
-
-{
-
-Array.from({length:18}).map((_,i)=>(
-
-<div
-
-key={i}
-
-className="
-
-absolute
-
-w-2
-
-h-2
-
-rounded-full
-
-bg-cyan-400
-
-animate-pulse
-
-"
-
-style={{
-
-left:`${Math.random()*90}%`,
-
-top:`${Math.random()*90}%`,
-
-animationDelay:`${i*120}ms`
-
-}}
-
-/>
-
-))
-
-}
-
-
-</div>
-
-
-
-
-
-
-{/* Animated Neural Lines */}
+{/* Deep Space Grid */}
 
 <div
 
@@ -146,60 +88,21 @@ absolute
 
 inset-0
 
-"
+opacity-20
 
->
+bg-[linear-gradient(rgba(0,200,255,.12)_1px,transparent_1px),linear-gradient(90deg,rgba(0,200,255,.12)_1px,transparent_1px)]
 
-<svg
-
-width="100%"
-
-height="100%"
-
->
-
-{
-
-Array.from({length:15}).map((_,i)=>(
-
-<line
-
-key={i}
-
-x1={`${Math.random()*100}%`}
-
-y1={`${Math.random()*100}%`}
-
-x2={`${Math.random()*100}%`}
-
-y2={`${Math.random()*100}%`}
-
-stroke="currentColor"
-
-className="
-
-text-cyan-500/30
-
-animate-pulse
+bg-[size:80px_80px]
 
 "
 
 />
 
-))
-
-}
-
-</svg>
-
-
-</div>
 
 
 
 
-
-
+{/* Scanner Core */}
 
 <div
 
@@ -209,82 +112,195 @@ relative
 
 z-10
 
-w-full
+w-[650px]
 
-max-w-5xl
-
-px-10
-
-"
-
->
-
-
-
-
-<div
-
-className="
-
-border
-
-border-cyan-400/30
-
-rounded-2xl
-
-bg-black/70
-
-backdrop-blur-xl
-
-p-8
-
-shadow-[0_0_80px_rgba(0,200,255,.15)]
-
-"
-
->
-
-
-
-
-<div
-
-className="
+h-[650px]
 
 flex
 
-justify-between
+items-center
 
-mb-8
+justify-center
 
 "
 
 >
 
-
-<div>
 
 
 <div
 
 className="
 
-text-cyan-400
+absolute
 
-font-mono
+inset-0
 
-text-xs
+rounded-full
 
-tracking-[0.5em]
+border
+
+border-cyan-400/20
+
+animate-[spin_18s_linear_infinite]
 
 "
 
 >
 
-SYN|SIGHT INTELLIGENCE CORE
+
+
+<div
+
+className="
+
+absolute
+
+top-0
+
+left-1/2
+
+w-2
+
+h-2
+
+rounded-full
+
+bg-cyan-400
+
+shadow-[0_0_30px_#22d3ee]
+
+"
+
+/>
+
 
 </div>
 
+
+
+
+
+
+
+<div
+
+className="
+
+absolute
+
+w-[420px]
+
+h-[420px]
+
+rounded-full
+
+border
+
+border-cyan-400/20
+
+"
+
+>
+
+
+
+<div
+
+className="
+
+absolute
+
+inset-10
+
+rounded-full
+
+bg-cyan-400/5
+
+blur-xl
+
+animate-pulse
+
+"
+
+/>
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+{/* AI Core */}
+
+<div
+
+className="
+
+relative
+
+w-52
+
+h-52
+
+rounded-full
+
+border
+
+border-cyan-300/50
+
+bg-cyan-400/10
+
+backdrop-blur-xl
+
+flex
+
+items-center
+
+justify-center
+
+shadow-[0_0_100px_rgba(34,211,238,.35)]
+
+"
+
+>
+
+
+<div
+
+className="
+
+text-center
+
+font-mono
+
+"
+
+>
+
+<div
+
+className="
+
+text-cyan-300
+
+text-xs
+
+tracking-[.5em]
+
+"
+
+>
+
+AI CORE
+
+</div>
 
 
 <div
@@ -293,32 +309,11 @@ className="
 
 text-white
 
-text-2xl
+text-4xl
+
+font-bold
 
 mt-3
-
-font-semibold
-
-"
-
->
-
-DIGITAL RECON SCAN
-
-</div>
-
-
-</div>
-
-
-
-<div
-
-className="
-
-font-mono
-
-text-cyan-300
 
 "
 
@@ -329,6 +324,9 @@ text-cyan-300
 </div>
 
 
+</div>
+
+
 
 </div>
 
@@ -337,33 +335,81 @@ text-cyan-300
 
 
 
+</div>
+
+
+
+
+
+
+
+
+{/* HUD Panel */}
+
 <div
 
 className="
 
-mb-8
+absolute
+
+z-20
+
+bottom-10
+
+left-10
+
+right-10
+
+grid
+
+lg:grid-cols-3
+
+gap-5
 
 "
 
 >
 
+
+
+
+
 <div
 
 className="
 
-text-gray-400
+border
+
+border-cyan-400/20
+
+bg-black/70
+
+backdrop-blur-xl
+
+rounded-xl
+
+p-5
+
+"
+
+>
+
+
+<div
+
+className="
 
 text-xs
 
-mb-2
+text-gray-500
 
-tracking-widest
+tracking-[.3em]
 
 "
 
 >
 
-TARGET ENTITY
+TARGET
 
 </div>
 
@@ -376,7 +422,9 @@ text-white
 
 font-mono
 
-text-lg
+mt-3
+
+truncate
 
 "
 
@@ -396,29 +444,128 @@ text-lg
 
 
 
-{/* Code Stream */}
-
 <div
 
 className="
-
-h-48
-
-overflow-hidden
 
 border
 
 border-cyan-400/20
 
-rounded-xl
+bg-black/70
 
-bg-black
+backdrop-blur-xl
+
+rounded-xl
 
 p-5
 
+"
+
+>
+
+
+<div
+
+className="
+
+text-xs
+
+text-gray-500
+
+tracking-[.3em]
+
+"
+
+>
+
+SYSTEM STATUS
+
+</div>
+
+
+<div
+
+className="
+
+text-cyan-300
+
 font-mono
 
-text-sm
+mt-3
+
+"
+
+>
+
+ONLINE / ANALYZING
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+<div
+
+className="
+
+border
+
+border-cyan-400/20
+
+bg-black/70
+
+backdrop-blur-xl
+
+rounded-xl
+
+p-5
+
+overflow-hidden
+
+"
+
+>
+
+
+<div
+
+className="
+
+text-xs
+
+text-gray-500
+
+tracking-[.3em]
+
+"
+
+>
+
+LIVE PROCESS
+
+</div>
+
+
+<div
+
+className="
+
+mt-3
+
+space-y-1
+
+font-mono
+
+text-xs
+
+text-cyan-300
 
 "
 
@@ -427,213 +574,51 @@ text-sm
 
 {
 
-codeLines.map((line,index)=>(
+operations.map((item,index)=>(
 
 
 <div
 
-key={line}
+key={item}
 
-className="
-
-text-cyan-300
-
-animate-pulse
-
-mb-2
-
-"
-
-style={{
-
-animationDelay:`${index*150}ms`
-
-}}
+className="opacity-80"
 
 >
 
 <span className="text-gray-600">
 
-[{String(index+1).padStart(2,"0")}]
+0{index+1}
 
 </span>
 
 {" "}
 
-{line}
-
-<span className="text-white">
-
-_
-
-</span>
-
+{item}
 
 </div>
-
 
 
 ))
 
-}
-
-
-</div>
-
-
-
-
-
-
-
-
-<div
-
-className="
-
-mt-8
-
-grid
-
-grid-cols-3
-
-gap-4
-
-"
-
->
-
-
-<StatusBox
-
-title="NEURAL LINKS"
-
-value="ACTIVE"
-
-/>
-
-
-<StatusBox
-
-title="DATA STREAM"
-
-value="CONNECTED"
-
-/>
-
-
-<StatusBox
-
-title="RISK ENGINE"
-
-value="RUNNING"
-
-/>
-
-
-</div>
-
-
-
-
-</div>
-
-
-
-</div>
-
-
-</div>
-
-
-);
-
 
 }
 
 
 
-
-
-
-
-function StatusBox({
-
-title,
-
-value
-
-}:{
-
-title:string;
-
-value:string;
-
-}){
-
-
-return (
-
-<div
-
-className="
-
-border
-
-border-cyan-400/20
-
-rounded-xl
-
-p-4
-
-bg-cyan-400/5
-
-"
-
->
-
-
-<div
-
-className="
-
-text-gray-500
-
-text-xs
-
-tracking-widest
-
-"
-
->
-
-{title}
-
-</div>
-
-
-
-<div
-
-className="
-
-text-cyan-300
-
-font-mono
-
-mt-2
-
-"
-
->
-
-{value}
-
 </div>
 
 
 </div>
 
+
+
+</div>
+
+
+
+
+
+</div>
 
 );
 
