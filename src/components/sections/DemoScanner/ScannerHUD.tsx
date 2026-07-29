@@ -1,1179 +1,280 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { ScanPhase } from "./types";
-
+import { useState, useEffect } from "react";
+import type { ScanPhase, ScanData } from "./types";
 
 interface ScannerHUDProps {
-
   phase?: ScanPhase;
-
-  progress:number;
-
-  query:string;
-
-  onClose?:()=>void;
-
+  progress: number;
+  query: string;
+  data?: ScanData;
+  onClose?: () => void;
 }
-
-
 
 const operations = [
-
-"IDENTITY CORE ONLINE",
-
-"PUBLIC DATA STREAM CONNECTED",
-
-"ENTITY MATCHING ACTIVE",
-
-"DIGITAL FOOTPRINT MAPPING",
-
-"NEURAL CORRELATION ENGINE",
-
-"EXPOSURE RISK ANALYSIS",
-
-"INTELLIGENCE REPORT BUILDING"
-
+  "IDENTITY MATRIX INITIALIZED",
+  "PUBLIC INTELLIGENCE CHANNELS ONLINE",
+  "ENTITY RESOLUTION RUNNING",
+  "DIGITAL FOOTPRINT MAPPING",
+  "CORRELATION ENGINE ACTIVE",
+  "RISK MODEL CALCULATING",
+  "AI ASSESSMENT GENERATING"
 ];
-
-
-
-const nodes = [
-
-{x:18,y:22},
-
-{x:35,y:40},
-
-{x:55,y:18},
-
-{x:72,y:35},
-
-{x:82,y:65},
-
-{x:60,y:78},
-
-{x:30,y:70},
-
-{x:45,y:55},
-
-];
-
-
-
-
 
 export default function ScannerHUD({
-
-progress,
-
-query,
-
-onClose
-
-}:ScannerHUDProps){
-
-
-
-const [boot,setBoot]=useState(true);
-
-const [shutdown,setShutdown]=useState(false);
-
-
-
-useEffect(()=>{
-
-const t=setTimeout(()=>{
-
-setBoot(false);
-
-},700);
-
-
-return()=>clearTimeout(t);
-
-
-},[]);
-
-
-
-const activeOperation = useMemo(()=>{
-
-
-return Math.min(
-
-Math.floor(
-(progress/100)*operations.length
-),
-
-operations.length-1
-
-);
-
-
-},[progress]);
-
-
-
-
-
-const shutdownCRT=()=>{
-
-
-setShutdown(true);
-
-
-setTimeout(()=>{
-
-onClose?.();
-
-},600);
-
-
-};
-
-
-
-
-
-return (
-
-<>
-
-<style>{`
-
-@keyframes corePulse {
-
-0%,100%{
-transform:scale(1);
-opacity:.7;
-}
-
-50%{
-transform:scale(1.08);
-opacity:1;
-}
-
-}
-
-
-
-@keyframes rotate {
-
-from{
-transform:rotate(0deg);
-}
-
-to{
-transform:rotate(360deg);
-}
-
-}
-
-
-
-@keyframes rotateReverse {
-
-from{
-transform:rotate(360deg);
-}
-
-to{
-transform:rotate(0deg);
-}
-
-}
-
-
-
-@keyframes nodePulse {
-
-0%,100%{
-opacity:.3;
-}
-
-50%{
-opacity:1;
-}
-
-}
-
-
-
-@keyframes dataFlow {
-
-
-from{
-
-stroke-dashoffset:1000;
-
-}
-
-to{
-
-stroke-dashoffset:0;
-
-}
-
-
-}
-
-
-
-@keyframes crtOn {
-
-
-0%{
-
-transform:
-scaleY(.01);
-
-filter:
-brightness(8);
-
-opacity:0;
-
-}
-
-
-100%{
-
-transform:
-scaleY(1);
-
-filter:
-brightness(1);
-
-opacity:1;
-
-}
-
-}
-
-
-
-@keyframes crtOff {
-
-
-0%{
-
-transform:
-scaleY(1);
-
-}
-
-
-50%{
-
-transform:
-scaleY(.01);
-
-filter:
-brightness(10);
-
-}
-
-
-100%{
-
-transform:
-scaleY(.001);
-
-opacity:0;
-
-}
-
-
-}
-
-
-
-.hud-on{
-
-animation:
-crtOn .7s ease-out;
-
-}
-
-
-
-.hud-off{
-
-animation:
-crtOff .6s ease-in forwards;
-
-}
-
-
-
-`}</style>
-
-
-
-
-
-<div
-
-className={`
-fixed
-inset-0
-z-[999]
-overflow-hidden
-bg-[#02050b]
-font-mono
-
-${boot?"hud-on":""}
-
-${shutdown?"hud-off":""}
-
-`}
-
->
-
-
-
-
-{/* Hintergrund Atmosphäre */}
-
-
-<div className="absolute inset-0
-
-bg-[radial-gradient(circle_at_center,rgba(0,255,255,.15),transparent_45%)]
-
-"/>
-
-
-
-{/* neuronales Netzwerk */}
-
-
-<svg
-
-className="
-absolute
-inset-0
-w-full
-h-full
-opacity-40
-"
-
->
-
-
-{
-
-nodes.map((n,i)=>(
-
-
-<circle
-
-key={i}
-
-cx={`${n.x}%`}
-
-cy={`${n.y}%`}
-
-r="4"
-
-fill="cyan"
-
-className="animate-pulse"
-
-/>
-
-
-))
-
-}
-
-
-
-{
-
-nodes.map((n,i)=>(
-
-nodes.slice(i+1,i+3).map((b,j)=>(
-
-
-<line
-
-key={`${i}-${j}`}
-
-x1={`${n.x}%`}
-
-y1={`${n.y}%`}
-
-x2={`${b.x}%`}
-
-y2={`${b.y}%`}
-
-stroke="cyan"
-
-strokeWidth="1"
-
-strokeDasharray="8 12"
-
-style={{
-
-animation:
-
-"dataFlow 3s linear infinite"
-
-}}
-
-/>
-
-
-))
-
-))
-
-}
-
-
-</svg>
-        {/* ZENTRALER SYN|SIGHT CORE */}
-
-
-      <div
-
-      className="
-      absolute
-      inset-0
-      flex
-      items-center
-      justify-center
-      "
-
+  progress,
+  query,
+  onClose
+}: ScannerHUDProps) {
+  const [isShuttingDown, setIsShuttingDown] = useState(false);
+  const [isBooting, setIsBooting] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsBooting(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (progress >= 100 && !isShuttingDown) {
+      triggerShutdown();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress]);
+
+  const activeLogIndex = Math.min(
+    Math.floor((progress / 100) * operations.length),
+    operations.length - 1
+  );
+
+  const triggerShutdown = () => {
+    setIsShuttingDown(true);
+    setTimeout(() => {
+      if (onClose) onClose();
+    }, 500);
+  };
+
+  return (
+    <>
+      <style>{`
+        @keyframes crtTurnOn {
+          0% { transform: scale(0, 0.002); filter: brightness(0); opacity: 0; }
+          40% { transform: scale(1, 0.002); filter: brightness(10); opacity: 1; }
+          100% { transform: scale(1, 1); filter: brightness(1); opacity: 1; }
+        }
+        @keyframes crtTurnOff {
+          0% { transform: scale(1, 1.3); filter: brightness(1); }
+          60% { transform: scale(1, 0.001); filter: brightness(10); }
+          100% { transform: scale(0, 0.001); filter: brightness(0); opacity: 0; }
+        }
+        
+        @keyframes hologramFlicker {
+          0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+          20%, 22%, 24%, 55% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(34,211,238,0.8)); }
+        }
+        
+        /* EKG Animation: Dash-Werte erhöht, da die Linie durch die vielen Ausschläge länger ist */
+        @keyframes ekgPulse {
+          0% { stroke-dashoffset: 800; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { stroke-dashoffset: 0; opacity: 0; }
+        }
+
+        @keyframes scanline {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
+        }
+
+        @keyframes neuralBreathe {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.6; }
+        }
+        
+        .crt-boot { animation: crtTurnOn 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+        .crt-shutdown { animation: crtTurnOff 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+      `}</style>
+
+      <div 
+        className={`relative h-full w-full overflow-hidden bg-[#02070d] flex items-center justify-center font-mono select-none ${isBooting ? 'crt-boot' : ''} ${isShuttingDown ? 'crt-shutdown' : ''}`}
       >
+        
+        {/* === BACKGROUND === */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.1)_0%,rgba(2,7,13,1)_70%)]" />
+        <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(34,211,238,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.2)_1px,transparent_1px)] bg-[size:60px_60px]" style={{ perspective: '800px', transform: 'rotateX(60deg) scale(2) translateY(-20%)' }} />
+        
+        <div className="absolute inset-0 pointer-events-none z-50">
+          <div className="w-full h-[2px] bg-cyan-400/40 blur-[1px] opacity-70 shadow-[0_0_30px_#22d3ee]" style={{ animation: 'scanline 2s linear infinite' }} />
+        </div>
+        
+        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_150px_rgba(2,7,13,0.9)] z-40" />
 
+        {/* === ZENTRALER SCANNER CORE === */}
+        <div className="relative z-10 flex items-center justify-center w-[800px] h-[800px]" style={{ animation: 'hologramFlicker 8s infinite' }}>
+          
+          <div className="absolute w-[90%] h-[90%] rounded-full border border-cyan-500/10 shadow-[0_0_50px_rgba(34,211,238,0.05)_inset,0_0_50px_rgba(34,211,238,0.05)]" />
+          <div className="absolute w-[75%] h-[75%] rounded-full border-[2px] border-dashed border-cyan-400/30 animate-[spin_10s_linear_infinite]" />
+          <div className="absolute w-[68%] h-[68%] rounded-full border-[2px] border-dotted border-blue-400/40 animate-[spin_8s_linear_infinite_reverse]" />
 
+          <div className="absolute w-[60%] h-[60%] rounded-full overflow-hidden animate-[spin_1.5s_linear_infinite]">
+            <div className="w-full h-full bg-[conic-gradient(from_0deg,transparent_0%,transparent_60%,rgba(34,211,238,0.1)_90%,rgba(34,211,238,0.5)_100%)]" />
+          </div>
 
-        {/* äußere Rotationsringe */}
+          <div className="absolute w-[50%] h-[50%] rounded-full border-[6px] border-transparent border-t-cyan-500 border-b-cyan-500 animate-[spin_4s_linear_infinite] opacity-60 drop-shadow-[0_0_15px_#22d3ee]" />
+          <div className="absolute w-[45%] h-[45%] rounded-full border-[3px] border-transparent border-l-blue-400 border-r-blue-400 animate-[spin_2s_linear_infinite_reverse] drop-shadow-[0_0_10px_#60a5fa]" />
 
+          <div className="absolute w-[30%] h-[30%] rounded-full border border-cyan-300 bg-cyan-900/20 animate-pulse backdrop-blur-md shadow-[0_0_40px_#22d3ee_inset]" />
 
-        <div
+          <div className="relative z-20 flex flex-col items-center justify-center w-[30%] h-[30%] rounded-full border border-cyan-200/40 bg-[#02070d]/80 shadow-[0_0_60px_rgba(34,211,238,0.5)] overflow-hidden">
+            <span className="text-cyan-400 text-[10px] tracking-[0.4em] mb-1 uppercase opacity-80">SynSight Core</span>
+            <div className="text-white text-7xl font-black tracking-tighter drop-shadow-[0_0_15px_#22d3ee] z-10 mt-2 mb-2">
+              {progress}
+            </div>
+            <span className="text-blue-400 text-[10px] tracking-[0.3em] mt-1 animate-pulse z-10">ANALYZING</span>
+            
+            <div className="absolute -top-3 w-[1px] h-3 bg-cyan-400" />
+            <div className="absolute -bottom-3 w-[1px] h-3 bg-cyan-400" />
+            <div className="absolute -left-3 w-3 h-[1px] bg-cyan-400" />
+            <div className="absolute -right-3 w-3 h-[1px] bg-cyan-400" />
+          </div>
 
-        className="
-        absolute
-        w-[620px]
-        h-[620px]
-        rounded-full
-        border
-        border-cyan-400/20
-        "
+        </div>
 
-        style={{
+        {/* === BOTTOM DASHBOARD PANELS === */}
+        <div className="absolute z-40 bottom-10 left-0 w-full px-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          {/* LEFT: TARGET INFO */}
+          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
+            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-50" />
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-3 h-3 bg-cyan-400 rounded-sm animate-ping shadow-[0_0_10px_#22d3ee]" />
+              <div className="text-cyan-500 text-xs font-bold tracking-[0.4em] uppercase font-mono">Ziel-Objekt</div>
+            </div>
+            <div className="text-white text-2xl font-sans font-medium drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] truncate">
+              {query || "Unbekannt"}
+            </div>
+            <div className="mt-4 flex gap-2">
+              <div className="h-1 w-12 bg-cyan-500 shadow-[0_0_8px_#22d3ee]" />
+              <div className="h-1 w-4 bg-blue-600" />
+              <div className="h-1 w-2 bg-blue-800" />
+            </div>
+          </div>
 
-          animation:
-          "rotate 18s linear infinite"
-
-        }}
-
-        />
-
-
-
-        <div
-
-        className="
-        absolute
-        w-[520px]
-        h-[520px]
-        rounded-full
-        border
-        border-dashed
-        border-cyan-300/30
-        "
-
-        style={{
-
-          animation:
-          "rotateReverse 12s linear infinite"
-
-        }}
-
-        />
-
-
-
-        <div
-
-        className="
-        absolute
-        w-[430px]
-        h-[430px]
-        rounded-full
-        border
-        border-blue-400/30
-        "
-
-        style={{
-
-          animation:
-          "rotate 8s linear infinite"
-
-        }}
-
-        />
-
-
-
-
-
-        {/* Energie Kern */}
-
-
-        <div
-
-        className="
-        relative
-        flex
-        items-center
-        justify-center
-        w-[260px]
-        h-[260px]
-        rounded-full
-        border
-        border-cyan-300/50
-        bg-cyan-950/40
-        shadow-[0_0_80px_rgba(0,255,255,.5)]
-        backdrop-blur-xl
-        "
-
-        style={{
-
-        animation:
-        "corePulse 3s infinite"
-
-        }}
-
-        >
-
-
-
-          {/* Core Linien */}
-
-
-          <div
-
-          className="
-          absolute
-          inset-8
-          rounded-full
-          border
-          border-cyan-400/30
-          "
-
-          />
-
-
-
-          <div
-
-          className="
-          text-center
-          z-10
-          "
-
-          >
-
-
-
-            <div
-
-            className="
-            text-cyan-400
-            text-xs
-            tracking-[.5em]
-            mb-3
-            "
-
-            >
-
-            SYN|SIGHT AI
-
+          {/* CENTER: SYSTEM STATUS & NEUES 3D EKG MIT PROZENTZAHL */}
+          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-5 flex flex-col justify-center items-center shadow-[inset_0_0_20px_rgba(34,211,238,0.05)]">
+            
+            {/* HINTERGRUND: Neuronales Netz (SVG) */}
+            <div className="absolute inset-0 pointer-events-none" style={{ animation: 'neuralBreathe 4s infinite' }}>
+              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="stroke-cyan-500/20 fill-cyan-500/20">
+                <circle cx="10%" cy="20%" r="2" />
+                <circle cx="30%" cy="80%" r="1.5" />
+                <circle cx="50%" cy="30%" r="2.5" />
+                <circle cx="70%" cy="70%" r="1" />
+                <circle cx="90%" cy="40%" r="2" />
+                <line x1="10%" y1="20%" x2="50%" y2="30%" strokeWidth="1" />
+                <line x1="10%" y1="20%" x2="30%" y2="80%" strokeWidth="0.5" />
+                <line x1="50%" y1="30%" x2="30%" y2="80%" strokeWidth="1" />
+                <line x1="50%" y1="30%" x2="70%" y2="70%" strokeWidth="0.5" />
+                <line x1="50%" y1="30%" x2="90%" y2="40%" strokeWidth="1" />
+                <line x1="70%" y1="70%" x2="90%" y2="40%" strokeWidth="0.5" />
+              </svg>
             </div>
 
+            <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400 z-10" />
+            <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-400 z-10" />
+            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-400 z-10" />
+            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-400 z-10" />
 
-
-            <div
-
-            className="
-            text-white
-            text-7xl
-            font-black
-            "
-
-            >
-
-            {progress}
-
+            <div className="text-cyan-500 text-[10px] font-bold tracking-[0.4em] mb-1 uppercase font-mono z-10">Status</div>
+            <div className="text-white text-lg font-bold tracking-widest animate-pulse drop-shadow-[0_0_8px_#fff] font-mono z-10">
+               KI-ANALYSE AKTIV
+            </div>
+            
+            {/* Ladebalken */}
+            <div className="w-full h-1.5 bg-[#041224] mt-3 border border-cyan-900/50 relative overflow-hidden rounded-full z-10">
+               <div 
+                 className="absolute top-0 left-0 h-full bg-cyan-400 shadow-[0_0_15px_#22d3ee] transition-all duration-100 ease-linear"
+                 style={{ width: `${progress}%` }}
+               />
             </div>
 
-
-
-            <div
-
-            className="
-            text-cyan-300
-            text-xs
-            tracking-[.4em]
-            mt-2
-            "
-
-            >
-
-            %
-
+            {/* VORDERGRUND: Volle Breite 3D EKG Linie mit MEHR Ausschlägen, tiefer gesetzt (mt-6) */}
+            <div className="w-full h-12 mt-6 flex justify-center opacity-90 z-10">
+              <svg width="100%" height="100%" viewBox="0 0 500 40" preserveAspectRatio="none" className="drop-shadow-[0_0_5px_#22d3ee]">
+                
+                {/* Layer 1: Der verschwommene 3D-Schatten */}
+                <path 
+                  d="M0,20 L120,20 L135,5 L150,35 L165,10 L180,30 L195,5 L215,35 L230,15 L245,20 L320,20 L330,10 L340,30 L350,20 L500,20" 
+                  className="stroke-cyan-700/60 fill-none stroke-[6px] blur-[3px]"
+                />
+                
+                {/* Layer 2: Die scharfe Hauptlinie */}
+                <path 
+                  d="M0,20 L120,20 L135,5 L150,35 L165,10 L180,30 L195,5 L215,35 L230,15 L245,20 L320,20 L330,10 L340,30 L350,20 L500,20" 
+                  className="stroke-cyan-300 fill-none stroke-[2px]"
+                  strokeDasharray="800"
+                  strokeDashoffset="800"
+                  style={{ animation: 'ekgPulse 1.8s linear infinite' }}
+                />
+                
+                {/* Layer 3: Leuchtende Datenpunkte an JEDER Spitze */}
+                <g className="animate-pulse">
+                  <circle cx="135" cy="5" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="150" cy="35" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="165" cy="10" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="180" cy="30" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="195" cy="5" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="215" cy="35" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  
+                  {/* Der zweite, kleine Nachbeben-Ausschlag */}
+                  <circle cx="330" cy="10" r="2.5" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="340" cy="30" r="2.5" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                </g>
+              </svg>
             </div>
 
-
-
-
-            <div
-
-            className="
-            mt-5
-            text-blue-300
-            text-xs
-            tracking-[.35em]
-            animate-pulse
-            "
-
-            >
-
-            ANALYZING
-
+            {/* NEU: Prozentzahl unter dem EKG */}
+            <div className="mt-3 flex items-center gap-2 z-10 text-cyan-400 font-mono">
+              <span className="text-[9px] uppercase tracking-[0.3em] opacity-70">Progress</span>
+              <span className="text-xl font-bold drop-shadow-[0_0_8px_#22d3ee]">{progress}%</span>
             </div>
-
-
 
           </div>
 
-
-
-          {/* Core Scan Strahl */}
-
-
-          <div
-
-          className="
-          absolute
-          top-0
-          left-1/2
-          -translate-x-1/2
-          w-[2px]
-          h-full
-          bg-cyan-400/60
-          shadow-[0_0_20px_cyan]
-          "
-
-          />
-
-
+          {/* RIGHT: LIVE LOGS */}
+          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
+            <div className="absolute top-0 right-0 w-full h-[2px] bg-gradient-to-l from-transparent via-cyan-400 to-transparent opacity-50" />
+            <div className="text-cyan-500 text-xs font-bold tracking-[0.4em] mb-4 uppercase font-mono">Live Logs</div>
+            
+            <div className="space-y-2 text-xs font-medium tracking-widest font-mono">
+              {operations.map((item, index) => {
+                const isActive = index === activeLogIndex;
+                const isPast = index < activeLogIndex;
+                
+                return (
+                  <div 
+                    key={item} 
+                    className={`flex items-center transition-all duration-300 ease-in-out ${
+                      isActive ? "text-cyan-300 drop-shadow-[0_0_8px_#22d3ee] translate-x-3 scale-105" : 
+                      isPast ? "text-cyan-800/80" : "text-slate-700"
+                    }`}
+                  >
+                    <span className="w-8 opacity-60 font-bold border-r border-current mr-2">
+                      0{index + 1}
+                    </span>
+                    <span className="truncate">
+                      {item}
+                    </span>
+                    {isActive && (
+                      <span className="ml-auto w-2 h-4 bg-cyan-400 animate-pulse shadow-[0_0_10px_#22d3ee]" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
         </div>
-
-
       </div>
-
-
-
-
-
-      {/* OBEN STATUS */}
-
-
-
-      <div
-
-      className="
-      absolute
-      top-8
-      left-1/2
-      -translate-x-1/2
-      text-center
-      "
-
-      >
-
-
-        <div
-
-        className="
-        text-cyan-400
-        text-xs
-        tracking-[.7em]
-        "
-
-        >
-
-        SYN|SIGHT INTELLIGENCE SYSTEM
-
-        </div>
-
-
-
-        <div
-
-        className="
-        mt-3
-        text-white
-        text-lg
-        tracking-[.4em]
-        "
-
-        >
-
-        DIGITAL EXPOSURE SCAN
-
-        </div>
-
-
-      </div>
-
-
-
-
-
-      {/* LINKES TARGET PANEL */}
-
-
-
-      <div
-
-      className="
-      absolute
-      left-10
-      bottom-10
-      w-[330px]
-      border
-      border-cyan-400/30
-      bg-black/60
-      backdrop-blur-xl
-      p-5
-      "
-
-      >
-
-
-
-        <div
-
-        className="
-        text-cyan-400
-        text-xs
-        tracking-[.4em]
-        mb-3
-        "
-
-        >
-
-        TARGET ENTITY
-
-        </div>
-
-
-
-        <div
-
-        className="
-        text-white
-        text-xl
-        truncate
-        "
-
-        >
-
-        {query || "UNKNOWN"}
-
-        </div>
-
-
-
-
-        <div
-
-        className="
-        mt-5
-        flex
-        gap-2
-        "
-
-        >
-
-
-        {
-
-        [1,2,3,4,5].map(i=>(
-
-
-          <div
-
-          key={i}
-
-          className={`
-          h-1
-          flex-1
-          ${
-
-          progress >
-          i*20
-
-          ?
-
-          "bg-cyan-400 shadow-[0_0_10px_cyan]"
-
-          :
-
-          "bg-cyan-900"
-
-          }
-
-          `}
-
-          />
-
-
-        ))
-
-        }
-
-
-
-        </div>
-
-
-      </div>
-
-
-
-
-
-
-      {/* RECHTES LIVE SYSTEM */}
-
-
-
-      <div
-
-      className="
-      absolute
-      right-10
-      bottom-10
-      w-[390px]
-      border
-      border-cyan-400/30
-      bg-black/60
-      backdrop-blur-xl
-      p-5
-      "
-
-      >
-
-
-        <div
-
-        className="
-        text-cyan-400
-        text-xs
-        tracking-[.4em]
-        mb-4
-        "
-
-        >
-
-        LIVE PROCESSING
-
-        </div>
-
-
-
-
-        {
-
-        operations.map((op,index)=>(
-
-
-        <div
-
-        key={op}
-
-        className={`
-
-        flex
-        items-center
-        gap-3
-        text-xs
-        mb-3
-        transition-all
-
-        ${
-
-        index===activeOperation
-
-        ?
-
-        "text-cyan-300 scale-105"
-
-        :
-
-        index<activeOperation
-
-        ?
-
-        "text-cyan-700"
-
-        :
-
-        "text-slate-600"
-
-        }
-
-        `}
-
-        >
-
-
-          <div
-
-          className={`
-
-          w-2
-          h-2
-          rounded-full
-
-          ${
-
-          index===activeOperation
-
-          ?
-
-          "bg-cyan-300 shadow-[0_0_15px_cyan] animate-pulse"
-
-          :
-
-          "bg-cyan-900"
-
-          }
-
-          `}
-
-          />
-
-
-
-          {op}
-
-
-        </div>
-
-
-        ))
-
-        }
-
-
-
-      </div>
-
-        {/* UNTERES DATENFLUSS HUD */}
-
-
-      <div
-
-      className="
-      absolute
-      bottom-10
-      left-1/2
-      -translate-x-1/2
-      w-[420px]
-      border
-      border-cyan-400/20
-      bg-black/50
-      backdrop-blur-xl
-      p-4
-      "
-
-      >
-
-
-
-        <div
-
-        className="
-        flex
-        justify-between
-        items-center
-        text-[10px]
-        tracking-[.35em]
-        text-cyan-500
-        mb-3
-        "
-
-        >
-
-          <span>
-          NEURAL ENGINE
-          </span>
-
-
-          <span>
-          {progress}% COMPLETE
-          </span>
-
-
-        </div>
-
-
-
-
-        <div
-
-        className="
-        h-2
-        bg-cyan-950
-        overflow-hidden
-        relative
-        "
-
-        >
-
-
-          <div
-
-          className="
-          absolute
-          inset-y-0
-          left-0
-          bg-cyan-400
-          shadow-[0_0_20px_cyan]
-          transition-all
-          duration-300
-          "
-
-          style={{
-
-          width:`${progress}%`
-
-          }}
-
-          />
-
-
-          <div
-
-          className="
-          absolute
-          inset-0
-          bg-gradient-to-r
-          from-transparent
-          via-white/40
-          to-transparent
-          "
-
-          style={{
-
-          animation:
-          "dataFlow 1.5s linear infinite"
-
-          }}
-
-          />
-
-
-        </div>
-
-
-      </div>
-
-
-
-
-
-      {/* SCHLIESSEN BUTTON */}
-
-
-
-      {
-
-      progress>=100 &&
-
-
-      <button
-
-      onClick={shutdownCRT}
-
-      className="
-
-      absolute
-
-      top-8
-
-      right-10
-
-      px-6
-
-      py-3
-
-      border
-
-      border-red-400/40
-
-      text-red-300
-
-      text-xs
-
-      tracking-[.4em]
-
-      bg-black/60
-
-      hover:bg-red-500/10
-
-      transition
-
-      "
-
-      >
-
-      CLOSE SYSTEM
-
-
-      </button>
-
-
-      }
-
-
-
-      {/* CRT Scanlines Overlay */}
-
-
-      <div
-
-      className="
-      pointer-events-none
-      absolute
-      inset-0
-      opacity-[0.06]
-      "
-
-      style={{
-
-      background:
-
-      "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.8) 4px)"
-
-      }}
-
-      />
-
-
-
-    </div>
-
-  </>
-
- );
-
+    </>
+  );
 }
