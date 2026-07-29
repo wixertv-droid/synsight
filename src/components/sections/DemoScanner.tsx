@@ -21,6 +21,7 @@ import ScannerOverlay from "./DemoScanner/ScannerOverlay";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 
+
 const scanStages = [
 
   "Initialisiere SynSight Intelligence Core",
@@ -49,1012 +50,1101 @@ const scanStages = [
 export default function DemoScanner(){
 
 
-const router = useRouter();
+  const router = useRouter();
 
 
-const {
-ref,
-isVisible
 
-}=useScrollAnimation();
+  const {
+    ref,
+    isVisible
+  } = useScrollAnimation();
 
 
 
-const [input,setInput]=useState("");
+  const [input,setInput] = useState("");
 
-const [phase,setPhase]=useState<ScanPhase>("idle");
+  const [phase,setPhase] =
+    useState<ScanPhase>("idle");
 
-const [progress,setProgress]=useState(0);
+  const [progress,setProgress] =
+    useState(0);
 
-const [logs,setLogs]=useState<string[]>([]);
+  const [logs,setLogs] =
+    useState<string[]>([]);
 
-const [apiResult,setApiResult]=useState<ApiResult|null>(null);
+  const [apiResult,setApiResult] =
+    useState<ApiResult|null>(null);
 
-const [rawData,setRawData]=useState<ScanData|null>(null);
+  const [rawData,setRawData] =
+    useState<ScanData|null>(null);
 
 
 
 
 
-const addLog=(text:string)=>{
+  const addLog = (text:string)=>{
 
 
-const time =
-new Date()
-.toLocaleTimeString(
-"de-DE",
-{
-hour12:false
-}
-);
+    const time =
+      new Date()
+      .toLocaleTimeString(
+        "de-DE",
+        {
+          hour12:false
+        }
+      );
 
 
-setLogs(prev=>[
+    setLogs(prev=>[
 
-...prev,
+      ...prev,
 
-`[${time}] ${text}`
+      `[${time}] ${text}`
 
-].slice(-12));
+    ].slice(-12));
 
 
-};
+  };
 
 
 
 
 
 
-const startScan = useCallback(async()=>{
 
+  const startScan = useCallback(async()=>{
 
-if(
-!input.trim() ||
-phase==="scanning"
-){
 
-return;
+    if(
+      !input.trim() ||
+      phase==="scanning"
+    ){
 
-}
+      return;
 
+    }
 
 
-setPhase("scanning");
 
-setProgress(0);
+    setPhase("scanning");
 
-setLogs([]);
+    setProgress(0);
 
-setApiResult(null);
+    setLogs([]);
 
-setRawData(null);
+    setApiResult(null);
 
+    setRawData(null);
 
 
-addLog(
-"SYN|SIGHT CORE ONLINE"
-);
 
+    addLog(
+      "SYN|SIGHT CORE ONLINE"
+    );
 
 
 
-let current=0;
+    let current = 0;
 
 
-const scanInterval=setInterval(()=>{
 
+    const scanInterval =
+      setInterval(()=>{
 
-current += Math.random()*3;
 
+        current += Math.random()*3;
 
-if(current>=92){
 
-current=92;
 
-}
+        if(current >= 92){
 
+          current = 92;
 
+        }
 
-setProgress(
-Math.floor(current)
-);
 
 
+        setProgress(
+          Math.floor(current)
+        );
 
-const stageIndex =
-Math.floor(
-(current/100)
-*
-scanStages.length
-);
 
 
+        const stageIndex =
+          Math.floor(
+            (current / 100)
+            *
+            scanStages.length
+          );
 
-if(scanStages[stageIndex]){
 
-addLog(
-scanStages[stageIndex]
-);
 
-}
+        if(scanStages[stageIndex]){
 
 
+          addLog(
+            scanStages[stageIndex]
+          );
 
-},700);
 
+        }
 
 
 
-try{
+      },700);
 
 
-const response =
-await fetch(
-"/api/scan",
-{
 
-method:"POST",
 
-headers:{
 
-"Content-Type":
-"application/json"
 
-},
 
-body:
+    try{
 
-JSON.stringify({
 
-query:input
+      const response =
+        await fetch(
+          "/api/scan",
+          {
 
-})
+            method:"POST",
 
-}
+            headers:{
 
-);
+              "Content-Type":
+              "application/json"
 
+            },
 
 
-const data =
-await response.json();
+            body:
+            JSON.stringify({
 
+              query:input
 
+            })
 
-await new Promise(
-resolve=>
-setTimeout(
-resolve,
-35000
-)
-);
+          }
+        );
 
 
 
-clearInterval(scanInterval);
 
 
+      const data =
+        await response.json();
 
-setProgress(100);
 
 
 
-addLog(
-"Analyse abgeschlossen"
-);
 
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            35000
+          )
+      );
 
 
-if(
-data.status==="success"
-){
 
 
-const scanData:ScanData={
 
+      clearInterval(scanInterval);
 
-query:
-data.query ??
-input,
 
 
-queryType:
-data.query_type ??
-"unknown",
+      setProgress(100);
 
 
 
-findings:
-data.findings ??
-[],
+      addLog(
+        "Analyse abgeschlossen"
+      );
 
 
 
-platforms:
-data.platforms ??
-[],
 
 
+      if(
+        data.status === "success"
+      ){
 
-exposureScore:
-data.exposure_score ??
-0,
 
 
+        const scanData:ScanData = {
 
-riskLevel:
-data.risk_level ??
-"Niedrig",
 
+          query:
+            data.query ??
+            input,
 
 
-summary:
-data.summary ??
-"Analyse abgeschlossen.",
 
+          queryType:
+            data.query_type ??
+            "unknown",
 
 
-timestamp:
-new Date()
-.toISOString()
 
+          findings:
+            data.findings ??
+            [],
 
-};
 
 
+          platforms:
+            data.platforms ??
+            [],
 
-setRawData(scanData);
 
 
+          exposureScore:
+            data.exposure_score ??
+            0,
 
-setApiResult({
 
-status:"success",
 
-data:scanData,
+          riskLevel:
+            data.risk_level ??
+            "Niedrig",
 
 
-riskLevel:
-scanData.riskLevel,
 
+          summary:
+            data.summary ??
+            "Analyse abgeschlossen.",
 
-summary:
-scanData.summary,
 
 
-findings:
-scanData.findings,
+          timestamp:
+            new Date()
+            .toISOString()
 
 
-platforms:
-scanData.platforms
+        };
 
 
-});
 
 
 
-}
+        setRawData(scanData);
 
-else{
 
 
-setApiResult({
 
-status:"error",
 
-message:
-"Analyse konnte nicht abgeschlossen werden.",
+        setApiResult({
 
+          status:"success",
 
-riskLevel:
-"Niedrig",
+          data:scanData,
 
+          riskLevel:
+            scanData.riskLevel,
 
-summary:
-"Keine vollständige Analyse verfügbar."
+          summary:
+            scanData.summary,
 
+          findings:
+            scanData.findings,
 
-});
+          platforms:
+            scanData.platforms
 
+        });
 
-}
 
 
+      }
 
-setTimeout(()=>{
+      else{
 
 
-setPhase(
-"fullscreen_result"
-);
+        setApiResult({
 
+          status:"error",
 
-},1200);
+          message:
+            "Analyse konnte nicht abgeschlossen werden.",
 
 
+          riskLevel:
+            "Niedrig",
 
-}
-catch{
 
+          summary:
+            "Keine vollständige Analyse verfügbar."
 
-clearInterval(scanInterval);
+        });
 
 
+      }
 
-setApiResult({
 
-status:"error",
 
-message:
-"Analyse Dienst nicht erreichbar.",
 
 
-riskLevel:
-"Unbekannt",
+      setTimeout(()=>{
 
 
-summary:
-"Der Analyse-Dienst konnte nicht erreicht werden."
+        setPhase(
+          "fullscreen_result"
+        );
 
 
-});
+      },1200);
 
 
 
-setPhase(
-"fullscreen_result"
-);
 
 
+    }
 
-}
+    catch(error){
 
 
 
-},[
-input,
-phase
-]);
+      clearInterval(scanInterval);
 
 
 
+      console.error(
+        "DemoScanner Error:",
+        error
+      );
 
 
-const closeFullscreen=()=>{
 
+      setApiResult({
 
-setPhase(
-"closing_crt"
-);
+        status:"error",
 
+        message:
+          "Analyse Dienst nicht erreichbar.",
 
 
-setTimeout(()=>{
+        riskLevel:
+          "Unbekannt",
 
 
-setPhase(
-"complete"
-);
+        summary:
+          "Der Analyse-Dienst konnte nicht erreicht werden."
 
+      });
 
 
-},700);
 
 
-};
+      setPhase(
+        "fullscreen_result"
+      );
 
 
 
+    }
 
 
-const reset=()=>{
 
+  },[
+    input,
+    phase
+  ]);
 
-setPhase("idle");
+  const closeFullscreen = () => {
 
-setInput("");
 
-setProgress(0);
+    setPhase(
+      "closing_crt"
+    );
 
-setLogs([]);
 
-setApiResult(null);
+    setTimeout(()=>{
 
-setRawData(null);
 
+      setPhase(
+        "complete"
+      );
 
-};
 
+    },700);
 
 
-return (
+  };
 
-<>
 
-<ScannerOverlay
 
-phase={phase}
 
-progress={progress}
 
-target={input}
 
-logs={logs}
+  const reset = () => {
 
-apiResult={apiResult}
 
-rawData={rawData}
+    setPhase("idle");
 
-onClose={closeFullscreen}
+    setInput("");
 
-/>
+    setProgress(0);
 
+    setLogs([]);
 
+    setApiResult(null);
 
+    setRawData(null);
 
-<section
 
-id="demo-scanner"
+  };
 
-className="
-section-shell
-relative
-section-padding
-overflow-hidden
-"
 
->
 
 
-<div
 
-className="
-absolute
-inset-0
-bg-[radial-gradient(ellipse_at_50%_38%,rgba(20,122,174,.12),transparent_42rem)]
-pointer-events-none
-"
 
-/>
 
+  return (
 
+    <>
 
 
-<div
 
-className="
-relative
-max-w-5xl
-mx-auto
 
-"
 
->
+      <ScannerOverlay
 
+        phase={phase}
 
-<div
+        progress={progress}
 
-ref={ref}
+        target={input}
 
-className={`
+        logs={logs}
 
-text-center
+        apiResult={apiResult}
 
-mb-12
+        rawData={rawData}
 
-transition-all
+        onClose={closeFullscreen}
 
-duration-1000
+      />
 
 
-${
-isVisible
 
-?
 
-"opacity-100 translate-y-0"
 
-:
 
-"opacity-0 translate-y-8"
 
-}
+      <section
 
-`}
+        id="demo-scanner"
 
->
+        className="
+        section-shell
+        relative
+        section-padding
+        overflow-hidden
+        "
 
+      >
 
 
-<span
 
-className="hud-label"
 
->
 
-03 / FREE INTELLIGENCE SCAN
+        <div
 
-</span>
+          className="
+          absolute
+          inset-0
 
+          bg-[radial-gradient(ellipse_at_50%_38%,rgba(20,122,174,.12),transparent_42rem)]
 
+          pointer-events-none
+          "
 
+        />
 
 
-<h2
 
-className="
 
-text-balance
 
-text-4xl
 
-md:text-6xl
 
-font-semibold
+        <div
 
-tracking-[-.045em]
+          className="
+          relative
+          max-w-5xl
+          mx-auto
+          "
 
-mt-5
+        >
 
-mb-7
 
-"
 
->
 
 
-Erkennen Sie Ihre
 
 
-<span
+          <div
 
-className="cyber-gradient"
+            ref={ref}
 
->
+            className={`
 
-digitale Angriffsfläche.
+            text-center
 
-</span>
+            mb-12
 
+            transition-all
 
+            duration-1000
 
-</h2>
 
+            ${
+              isVisible
 
+              ?
 
+              "opacity-100 translate-y-0"
 
+              :
 
-<p
+              "opacity-0 translate-y-8"
 
-className="
+            }
 
-max-w-3xl
+            `}
 
-mx-auto
+          >
 
-text-gray-400
 
-text-lg
 
-leading-relaxed
 
-"
 
->
+            <span
 
+              className="hud-label"
 
-SynSight analysiert öffentlich sichtbare Informationen,
+            >
 
-digitale Spuren und mögliche Risikoindikatoren.
+              03 / FREE INTELLIGENCE SCAN
 
+            </span>
 
-Erhalten Sie in wenigen Sekunden eine erste Einschätzung
 
-Ihrer digitalen Präsenz.
 
 
-</p>
 
 
 
-</div>
+            <h2
 
+              className="
 
+              text-balance
 
+              text-4xl
 
+              md:text-6xl
 
+              font-semibold
 
-<GlassCard
+              tracking-[-.045em]
 
-hover={false}
+              mt-5
 
-className="
+              mb-7
 
-glass-strong
+              "
 
-relative
+            >
 
-overflow-hidden
 
-"
 
->
+              Erkennen Sie Ihre
 
 
-<div
 
-className="p-8"
+              <span
 
->
+                className="cyber-gradient"
 
+              >
 
+                digitale Angriffsfläche.
 
+              </span>
 
-{
 
-phase==="idle"
 
-&&
+            </h2>
 
-<>
 
 
-<div
 
-className="mb-6"
 
->
 
 
-<h3
 
-className="
+            <p
 
-text-white
+              className="
 
-text-xl
+              max-w-3xl
 
-mb-2
+              mx-auto
 
-"
+              text-gray-400
 
->
+              text-lg
 
-Kostenloser Sicherheitscheck
+              leading-relaxed
 
-</h3>
+              "
 
+            >
 
 
+              SynSight analysiert öffentlich sichtbare Informationen,
 
-<p
+              digitale Spuren und mögliche Risikoindikatoren.
 
-className="
 
-text-gray-500
 
-text-sm
+              Erhalten Sie in wenigen Sekunden eine erste Einschätzung
 
-"
+              Ihrer digitalen Präsenz.
 
->
 
-E-Mail, Benutzername oder Name eingeben und erste digitale Spuren entdecken.
 
-</p>
+            </p>
 
 
 
-</div>
 
+          </div>
 
 
 
 
 
-<div
 
-className="
 
-flex
 
-flex-col
 
-sm:flex-row
+          <GlassCard
 
-gap-4
+            hover={false}
 
-"
+            className="
 
->
+            glass-strong
 
+            relative
 
+            overflow-hidden
 
-<input
+            "
 
+          >
 
-value={input}
 
 
-onChange={
+            <div className="p-8">
 
-e=>
 
-setInput(
-e.target.value
-)
 
-}
 
 
 
-onKeyDown={
 
-e=>
+              {
 
-{
+              phase==="idle"
 
-if(
-e.key==="Enter"
-){
+              &&
 
-startScan();
+              <>
 
-}
 
-}
+                <div
 
-}
+                  className="mb-6"
 
+                >
 
 
-placeholder="
+                  <h3
 
-E-Mail, Username oder Name
+                    className="
 
-"
+                    text-white
 
+                    text-xl
 
+                    mb-2
 
+                    "
 
-className="
+                  >
 
-flex-1
+                    Kostenloser Sicherheitscheck
 
-px-5
+                  </h3>
 
-py-4
 
-rounded-lg
 
-bg-black/40
 
-border
+                  <p
 
-border-cyan-400/20
+                    className="
 
-text-white
+                    text-gray-500
 
-font-mono
+                    text-sm
 
+                    "
 
-focus:outline-none
+                  >
 
-focus:border-cyan-400
+                    E-Mail, Benutzername oder Name eingeben und erste digitale Spuren entdecken.
 
-"
+                  </p>
 
 
 
+                </div>
 
-/>
 
 
 
 
 
-<Button
 
-size="lg"
 
-onClick={startScan}
+                <div
 
-disabled={!input.trim()}
+                  className="
 
->
+                  flex
 
+                  flex-col
 
-INTELLIGENCE SCAN STARTEN
+                  sm:flex-row
 
+                  gap-4
 
-</Button>
+                  "
 
+                >
 
 
-</div>
 
 
 
-</>
+                  <input
 
 
-}
+                    value={input}
 
 
+                    onChange={
 
+                      e=>
 
+                      setInput(
+                        e.target.value
+                      )
 
+                    }
 
 
-{
 
-phase==="complete"
+                    onKeyDown={
 
-&&
+                      e=>{
 
+                        if(
+                          e.key==="Enter"
+                        ){
 
+                          startScan();
 
-<div
+                        }
 
-className="
+                      }
 
-animate-fade-in
+                    }
 
-text-center
 
-"
 
->
 
+                    placeholder="
 
-<div
+                    E-Mail, Username oder Name
 
-className="
+                    "
 
-text-cyan-400
 
-font-mono
 
-mb-6
 
-"
+                    className="
 
->
+                    flex-1
 
+                    px-5
 
-SCAN ABGESCHLOSSEN
+                    py-4
 
+                    rounded-lg
 
-</div>
+                    bg-black/40
 
+                    border
 
+                    border-cyan-400/20
 
+                    text-white
 
+                    font-mono
 
-<div
 
-className="
+                    focus:outline-none
 
-border
+                    focus:border-cyan-400
 
-border-cyan-400/20
+                    "
 
-rounded-xl
+                  />
 
-p-6
 
-bg-cyan-400/5
 
-mb-6
 
-"
 
->
 
 
+                  <Button
 
-<p
+                    size="lg"
 
-className="
+                    onClick={startScan}
 
-text-white
+                    disabled={!input.trim()}
 
-leading-relaxed
+                  >
 
-"
+                    INTELLIGENCE SCAN STARTEN
 
->
 
+                  </Button>
 
-{
 
-apiResult?.summary ??
 
-"Analyse abgeschlossen."
 
-}
+                </div>
 
 
+              </>
 
-</p>
+              }
 
 
 
-</div>
 
 
 
 
 
 
+              {
 
-<Button
+              phase==="complete"
 
-onClick={
+              &&
 
-()=>router.push("/register")
 
-}
 
->
+              <div
 
+                className="
 
-VOLLSTÄNDIGE ANALYSE AKTIVIEREN
+                animate-fade-in
 
+                text-center
 
-</Button>
+                "
 
+              >
 
 
 
 
-<Button
 
-variant="ghost"
+                <div
 
-onClick={reset}
+                  className="
 
->
+                  text-cyan-400
 
+                  font-mono
 
-Neuer Scan
+                  mb-6
 
+                  "
 
-</Button>
+                >
 
+                  SCAN ABGESCHLOSSEN
 
+                </div>
 
 
-</div>
 
 
 
-}
 
 
+                <div
 
+                  className="
 
+                  border
 
-</div>
+                  border-cyan-400/20
 
+                  rounded-xl
 
-</GlassCard>
+                  p-6
 
+                  bg-cyan-400/5
 
+                  mb-6
 
-</div>
+                  "
 
+                >
 
 
-</section>
 
 
-</>
 
-);
+                  <p
 
+                    className="
 
-}
+                    text-white
+
+                    leading-relaxed
+
+                    "
+
+                  >
+
+
+                    {
+
+                      apiResult?.summary ??
+
+                      "Analyse abgeschlossen."
+
+                    }
+
+
+
+                  </p>
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+                <Button
+
+                  onClick={
+
+                    ()=>router.push("/register")
+
+                  }
+
+                >
+
+                  VOLLSTÄNDIGE ANALYSE AKTIVIEREN
+
+
+                </Button>
+
+
+
+
+
+
+
+                <Button
+
+                  variant="ghost"
+
+                  onClick={reset}
+
+                >
+
+                  Neuer Scan
+
+
+                </Button>
+
+
+
+
+
+
+              </div>
+
+
+
+              }
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+          </GlassCard>
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+      </section>
+
+
+
+
+
+
+    </>
+
+  );
+
 
 }
