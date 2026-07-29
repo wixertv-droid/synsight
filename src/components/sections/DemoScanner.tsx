@@ -10,14 +10,14 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const scanStages = [
   "Initialisiere SynSight Intelligence Core",
+  "Verbinde mit globalen OSINT-Datenbanken",
   "Analysiere öffentliche Identitätsdaten",
-  "Suche digitale Erwähnungen",
-  "Korreliere Benutzernamen und Profile",
-  "Prüfe öffentliche Datenquellen",
-  "Analysiere technische Spuren",
-  "Bewerte mögliche Exposure-Faktoren",
-  "Berechne digitales Risikoprofil",
-  "Generiere Voranalyse"
+  "Suche nach digitalen Erwähnungen",
+  "Korreliere gefundene Metadaten",
+  "Prüfe Deep-Web Datenquellen",
+  "Analysiere technische Fußabdrücke",
+  "Bewerte Exposure-Faktoren",
+  "Finalisiere digitales Risikoprofil"
 ];
 
 export default function DemoScanner() {
@@ -37,9 +37,7 @@ export default function DemoScanner() {
   };
 
   const startScan = useCallback(async () => {
-    if (!input.trim() || phase === "scanning") {
-      return;
-    }
+    if (!input.trim() || phase === "scanning") return;
 
     setPhase("scanning");
     setProgress(0);
@@ -49,50 +47,40 @@ export default function DemoScanner() {
 
     addLog("SYN|SIGHT CORE ONLINE");
 
-    // 1. API Fetch im Hintergrund starten (NICHT awaiten!)
-    const scanPromise = fetch("/api/scan", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ query: input })
-    });
-
-    // 2. Visuellen Timer starten (exakt 10 Sekunden)
     let current = 0;
-    let scanFinished = false;
+    let lastStage = -1;
 
+    // Der intelligente Ladebalken: Er nähert sich den 99% immer langsamer an, 
+    // und wartet dann auf die echte Server-Antwort.
     const scanInterval = setInterval(() => {
-      current += 1;
-      setProgress(current);
+      // Reduziert die verbleibende Distanz zu 99% jede Sekunde um 3%
+      current = current + (99 - current) * 0.03;
+      const currentInt = Math.floor(current);
+      setProgress(currentInt);
 
-      const stageIndex = Math.floor((current / 100) * scanStages.length);
-      // Verhindern, dass undefinierte Logs hinzugefügt werden, wenn der Index springt
-      if (scanStages[stageIndex] && current % 12 === 0) { 
+      // Zeige passende Logs basierend auf dem aktuellen (asymptotischen) Fortschritt
+      const stageIndex = Math.floor((currentInt / 100) * scanStages.length);
+      if (stageIndex !== lastStage && scanStages[stageIndex]) {
         addLog(scanStages[stageIndex]);
+        lastStage = stageIndex;
       }
+    }, 1000); // Tickt jede Sekunde
 
-      if (current >= 100) {
-        clearInterval(scanInterval);
-        scanFinished = true;
-      }
-    }, 100);
-
-    // 3. Warten, bis der visuelle Scanner (10 Sekunden) fertig ist
-    await new Promise((resolve) => {
-      const wait = setInterval(() => {
-        if (scanFinished) {
-          clearInterval(wait);
-          resolve(true);
-        }
-      }, 50);
-    });
-
-    // 4. Jetzt erst auf die API-Antwort warten und verarbeiten
     try {
-      const response = await scanPromise;
+      // Wir starten die echte API-Abfrage an deinen Server und WARTEN, bis sie fertig ist
+      const response = await fetch("/api/scan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query: input })
+      });
+
       const data = await response.json();
 
+      // Sobald die echten Daten da sind: Stop den Timer und springe auf 100%!
+      clearInterval(scanInterval);
+      setProgress(100); 
       addLog("Analyse abgeschlossen");
 
       if (data.status === "success") {
@@ -126,29 +114,31 @@ export default function DemoScanner() {
           summary: "Die öffentliche Analyse konnte nicht vollständig abgeschlossen werden."
         });
       }
-
-      // Verzögerung für den Phasen-Wechsel, damit das 100% Bild kurz stehen bleibt
-      setTimeout(() => {
-        setPhase("fullscreen_result");
-      }, 800);
+      
+      // Anmerkung: Wir müssen hier kein 'setPhase("complete")' mehr aufrufen.
+      // Die ScannerHUD Komponente merkt jetzt selbst, dass Progress = 100 ist, 
+      // spielt den Röhrenfernseher-Effekt ab und ruft dann 'closeFullscreen' auf!
 
     } catch (error) {
       console.error(error);
+      clearInterval(scanInterval);
+      setProgress(100); // Auch bei Fehler sauber das HUD schließen
+      
       setApiResult({
         status: "error",
         message: "Analyse Dienst nicht erreichbar.",
         riskLevel: "Offline",
-        summary: "Der Analyse-Dienst konnte nicht erreicht werden."
+        summary: "Der Analyse-Dienst konnte nicht erreicht werden oder der Scan hat zu lange gedauert."
       });
-      setPhase("fullscreen_result");
     }
   }, [input, phase]);
 
+  // Diese Funktion wird vom ScannerHUD aufgerufen, wenn der Ausschalt-Effekt (500ms) fertig ist
   const closeFullscreen = () => {
     setPhase("closing_crt");
     setTimeout(() => {
       setPhase("complete");
-    }, 700);
+    }, 200); // Kurzer Puffer für sauberen Übergang
   };
 
   const reset = () => {
