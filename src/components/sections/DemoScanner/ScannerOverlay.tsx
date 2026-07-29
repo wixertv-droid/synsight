@@ -1,594 +1,573 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
-import BackgroundGrid from "./BackgroundGrid";
-import ScannerHUD from "./ScannerHUD";
-import type { ScannerOverlayProps } from "./types";
-
-import "./scanner.css";
+import { useEffect, useRef } from "react";
+import type { ApiResult, ScanData, ScanPhase } from "./types";
 
 
-const scanMessages = [
-  "Initialisiere SynSight Intelligence Core...",
-  "Sichere Verbindung zum Analysecluster hergestellt...",
-  "Öffentliche Datenquellen werden abgefragt...",
-  "Digitale Spuren werden korreliert...",
-  "Metadaten werden analysiert...",
-  "Benutzeridentitäten werden abgeglichen...",
-  "Öffentliche Profile werden geprüft...",
-  "Datenleck-Signaturen werden gesucht...",
-  "KI-Risikobewertung wird erstellt...",
-  "Analysebericht wird kompiliert...",
-];
+interface Props {
+  phase: ScanPhase;
+  progress: number;
+  logs: string[];
+  input: string;
+  apiResult: ApiResult | null;
+  rawData: ScanData | null;
+
+  closeFullscreen: () => void;
+}
 
 
 export default function ScannerOverlay({
   phase,
-  target,
+  progress,
+  logs,
+  input,
   apiResult,
   rawData,
-  onClose,
-}: ScannerOverlayProps) {
+  closeFullscreen,
+}: Props) {
 
-  const [progress, setProgress] = useState(0);
-  const [logs, setLogs] = useState<string[]>([]);
 
-  const terminalRef = useRef<HTMLDivElement | null>(null);
+const terminalRef = useRef<HTMLDivElement>(null);
 
 
-  useEffect(() => {
+useEffect(()=>{
 
-    if (phase !== "scanning") {
-      return;
-    }
+if(terminalRef.current){
+terminalRef.current.scrollTop =
+terminalRef.current.scrollHeight;
+}
 
+},[logs]);
 
-    let currentProgress = 0;
 
 
-    const progressInterval = setInterval(() => {
+return (
 
-      currentProgress += Math.random() * 4;
+<>
 
+<style jsx>{`
 
-      if (currentProgress > 96) {
-        currentProgress = 96;
-      }
+@keyframes scanline {
 
+0%{
+transform:translateY(-100%);
+}
 
-      setProgress(Math.floor(currentProgress));
+100%{
+transform:translateY(100vh);
+}
 
+}
 
-    }, 180);
 
+@keyframes crtOff {
 
 
-    const logInterval = setInterval(() => {
+0%{
+transform:scale(1);
+opacity:1;
+}
 
-      const message =
-        scanMessages[
-          Math.floor(Math.random() * scanMessages.length)
-        ];
 
+45%{
 
-      const time =
-        new Date().toLocaleTimeString("de-DE");
+transform:
+scale(1,.01);
 
+filter:
+brightness(5);
 
-      setLogs((previous) => [
-        ...previous,
-        `[${time}] ${message}`,
-      ].slice(-10));
+}
 
 
-    }, 800);
+70%{
 
+transform:
+scale(.01,.01);
 
+}
 
-    return () => {
 
-      clearInterval(progressInterval);
-      clearInterval(logInterval);
+100%{
 
-    };
+transform:
+scale(0);
 
+opacity:0;
 
-  }, [phase]);
+}
 
+}
 
 
+.crt-close{
 
-  useEffect(() => {
+animation:
+crtOff .65s ease forwards;
 
-    if (terminalRef.current) {
+}
 
-      terminalRef.current.scrollTop =
-        terminalRef.current.scrollHeight;
 
-    }
+.scanline{
 
-  }, [logs]);
+position:absolute;
+top:0;
+left:0;
+width:100%;
+height:20vh;
 
+background:
+linear-gradient(
+transparent,
+rgba(0,255,255,.25),
+transparent
+);
 
 
+animation:
+scanline 3s linear infinite;
 
-  return (
+}
 
-    <div
-      className={`
-        fixed
-        inset-0
-        z-[200]
-        overflow-hidden
-        bg-black
-        font-mono
-        ${phase === "closing_crt"
-          ? "crt-off"
-          : "animate-in fade-in duration-700"
-        }
-      `}
-    >
-
-
-      <BackgroundGrid />
-
-      <ScannerHUD />
-
-
-
-      {/* SCANNING PHASE */}
-
-      {phase === "scanning" && (
-
-        <div
-          className="
-          relative
-          z-20
-          h-full
-          flex
-          flex-col
-          items-center
-          justify-center
-          "
-        >
-
-
-          <div
-            className="
-            text-cyber-cyan/70
-            text-xs
-            tracking-[0.6em]
-            mb-10
-            animate-pulse
-            "
-          >
 
-            SYNSIGHT GLOBAL SCAN
 
-          </div>
+`}</style>
 
 
 
-          {/* RADAR */}
+{
+(
+phase==="scanning" ||
+phase==="fullscreen_result" ||
+phase==="closing_crt"
 
-          <div
-            className="
-            relative
-            w-80
-            h-80
-            flex
-            items-center
-            justify-center
-            "
-          >
+)
 
+&&
 
-            <div
-              className="
-              absolute
-              inset-0
-              rounded-full
-              border
-              border-cyber-cyan/20
-              animate-ping
-              "
-            />
+<div
 
+className={`
+fixed inset-0 z-[999]
+bg-black
+overflow-hidden
+font-mono
 
-            <div
-              className="
-              absolute
-              inset-5
-              rounded-full
-              border
-              border-dashed
-              border-cyber-cyan/40
-              animate-spin
-              "
-              style={{
-                animationDuration: "8s",
-              }}
-            />
+${phase==="closing_crt"
+?
+"crt-close"
+:
+""
+}
 
+`}
 
-            <div
-              className="
-              absolute
-              inset-12
-              rounded-full
-              border-t-2
-              border-cyber-cyan
-              border-transparent
-              animate-spin
-              "
-              style={{
-                animationDuration: "2s",
-              }}
-            />
+>
 
 
+<div className="absolute inset-0
 
-            <div
-              className="
-              w-40
-              h-40
-              rounded-full
-              border
-              border-cyber-cyan/50
-              bg-cyber-cyan/10
-              flex
-              items-center
-              justify-center
-              shadow-[0_0_50px_rgba(0,255,255,.35)]
-              "
-            >
+bg-[radial-gradient(circle,rgba(0,255,255,.12),transparent_60%)]
 
-              <span
-                className="
-                text-5xl
-                font-bold
-                text-cyber-cyan
-                "
-              >
+"/>
 
-                {progress}%
 
-              </span>
 
+<div className="scanline"/>
 
-            </div>
 
 
-          </div>
+<div className="
+absolute inset-8
+border
+border-cyan-400/20
+pointer-events-none
+"/>
 
 
 
+<div className="
+absolute top-10 left-10
+text-cyan-400/70
+tracking-[.5em]
+text-xs
+">
 
+SYN|SIGHT
+INTELLIGENCE
+CORE
 
-          <div
-            className="
-            mt-10
-            w-full
-            max-w-xl
-            px-6
-            "
-          >
+</div>
 
 
-            <div
-              className="
-              text-center
-              text-white
-              mb-4
-              "
-            >
 
-              TARGET:
 
-              <span className="text-cyber-cyan ml-2">
+{
+phase==="scanning"
 
-                {target}
+&&
 
-              </span>
 
-            </div>
+<div className="
+h-full
+flex
+flex-col
+items-center
+justify-center
+">
 
 
+<div className="
+text-cyan-400
+tracking-[.6em]
+text-sm
+mb-12
+animate-pulse
+">
 
-            <div
-              className="
-              h-1
-              bg-white/10
-              rounded
-              overflow-hidden
-              "
-            >
+GLOBAL DIGITAL EXPOSURE SCAN
 
-              <div
+</div>
 
-                className="
-                h-full
-                bg-cyber-cyan
-                shadow-[0_0_15px_#00ffff]
-                transition-all
-                "
 
-                style={{
-                  width: `${progress}%`,
-                }}
 
-              />
+<div className="
+relative
+w-96
+h-96
+flex
+items-center
+justify-center
+">
 
-            </div>
 
+<div className="
+absolute
+inset-0
+rounded-full
+border
+border-cyan-400/30
+animate-spin
+"/>
 
 
 
-            <div
-              ref={terminalRef}
-              className="
-              mt-8
-              h-32
-              overflow-hidden
-              bg-black/60
-              border
-              border-cyber-cyan/20
-              rounded
-              p-4
-              text-xs
-              text-cyber-cyan/70
-              "
-            >
+<div className="
+absolute
+inset-8
+rounded-full
+border
+border-dashed
+border-cyan-300/40
+animate-spin
+[animation-duration:8s]
+"/>
 
-              {logs.map((log, index) => (
 
-                <div key={index}>
-                  {log}
-                </div>
 
-              ))}
+<div className="
+w-56
+h-56
+rounded-full
+border-2
+border-cyan-400
+flex
+items-center
+justify-center
+shadow-[0_0_50px_rgba(0,255,255,.5)]
+">
 
 
-            </div>
+<span className="
+text-6xl
+font-bold
+text-white
+">
 
+{progress}%
 
-          </div>
+</span>
 
 
+</div>
 
-        </div>
 
-      )}
+</div>
 
 
 
+<div className="
+mt-10
+text-white
+uppercase
+tracking-widest
+">
 
+TARGET:
+{input}
 
+</div>
 
-      {/* RESULT PHASE */}
 
-      {phase === "fullscreen_result" && (
 
-        <div
-          className="
-          relative
-          z-20
-          h-full
-          overflow-y-auto
-          p-8
-          flex
-          items-center
-          justify-center
-          "
-        >
+<div
+ref={terminalRef}
+className="
+mt-6
+w-full
+max-w-3xl
+h-40
+bg-black/70
+border
+border-cyan-400/20
+rounded
+p-4
+text-xs
+text-cyan-300/70
+overflow-hidden
+"
+>
 
+{
 
-          <div
-            className="
-            max-w-5xl
-            w-full
-            "
-          >
+logs.map(
+(log,i)=>(
 
+<div key={i}>
+{log}
+</div>
 
+)
 
-            <div
-              className="
-              flex
-              justify-between
-              items-center
-              border-b
-              border-cyber-cyan/30
-              pb-5
-              mb-8
-              "
-            >
+)
 
+}
 
-              <div>
+</div>
 
-                <h2
-                  className="
-                  text-2xl
-                  text-cyber-cyan
-                  tracking-widest
-                  "
-                >
 
-                  SCAN COMPLETE
+</div>
 
-                </h2>
+}
 
 
-                <p
-                  className="
-                  text-white/40
-                  text-sm
-                  mt-2
-                  "
-                >
 
-                  Digital Intelligence Report
 
-                </p>
 
+{
+phase==="fullscreen_result"
 
-              </div>
+&&
 
 
+<div className="
+h-full
+overflow-y-auto
+p-10
+max-w-6xl
+mx-auto
+">
 
-              <button
 
-                onClick={onClose}
+<div className="
+flex
+justify-between
+border-b
+border-cyan-400/30
+pb-5
+mb-8
+">
 
-                className="
-                px-5
-                py-3
-                border
-                border-red-500/50
-                text-red-400
-                rounded
-                hover:bg-red-500/10
-                "
 
-              >
+<h2 className="
+text-cyan-400
+tracking-widest
+text-xl
+">
 
-                SYSTEM CLOSE
+INTELLIGENCE REPORT
 
-              </button>
+</h2>
 
 
-            </div>
 
+<button
 
+onClick={closeFullscreen}
 
+className="
+px-5
+py-3
+border
+border-red-500/40
+text-red-400
+rounded
+hover:bg-red-500/10
+"
 
+>
 
-            <div
-              className="
-              grid
-              md:grid-cols-2
-              gap-6
-              "
-            >
+SYSTEM SHUTDOWN
 
+</button>
 
 
-              <div
-                className="
-                rounded-xl
-                p-6
-                border
-                border-cyber-blue/30
-                bg-cyber-blue/10
-                "
-              >
+</div>
 
-                <div
-                  className="
-                  text-xs
-                  text-white/40
-                  "
-                >
 
-                  RISK LEVEL
 
-                </div>
 
+<div className="
+grid
+md:grid-cols-3
+gap-5
+mb-10
+">
 
-                <div
-                  className="
-                  text-3xl
-                  text-cyber-cyan
-                  font-bold
-                  mt-3
-                  "
-                >
 
-                  {apiResult?.riskLevel}
+<Card
+title="Digitale Spuren"
+value={
+String(rawData?.exposure_count ?? "Analyse")
+}
+/>
 
-                </div>
 
+<Card
+title="Gefundene Quellen"
+value={
+String(rawData?.sources_found ?? "Öffentlich")
+}
+/>
 
-                <p
-                  className="
-                  text-white
-                  mt-6
-                  leading-relaxed
-                  "
-                >
 
-                  {apiResult?.summary}
+<Card
+title="Risiko"
+value={
+apiResult?.riskLevel ??
+"Bewertung"
+}
+/>
 
-                </p>
 
+</div>
 
-              </div>
 
 
 
+<div className="
+border
+border-cyan-400/20
+bg-cyan-400/5
+rounded-xl
+p-8
+">
 
 
-              <div
-                className="
-                rounded-xl
-                p-6
-                bg-black/70
-                border
-                border-yellow-500/30
-                "
-              >
+<h3 className="
+text-cyan-300
+mb-4
+">
 
+VORLÄUFIGE SYNIGHT BEWERTUNG
 
-                <div
-                  className="
-                  text-yellow-400
-                  mb-4
-                  "
-                >
+</h3>
 
-                  DATA STREAM
 
-                </div>
 
+<p className="
+text-white
+leading-relaxed
+">
 
-                <pre
-                  className="
-                  text-xs
-                  text-yellow-300/70
-                  overflow-auto
-                  max-h-96
-                  "
-                >
+{apiResult?.summary}
 
-                  {JSON.stringify(
-                    rawData,
-                    null,
-                    2
-                  )}
 
-                </pre>
+</p>
 
 
-              </div>
 
+</div>
 
 
-            </div>
 
 
-          </div>
+<div className="
+mt-8
+text-center
+text-cyan-300
+">
 
+Weitere Sicherheitsinformationen sind nach Registrierung verfügbar.
 
-        </div>
+</div>
 
 
-      )}
+</div>
 
 
-    </div>
+}
 
-  );
+
+
+
+</div>
+
+}
+
+
+</>
+
+
+)
+
+}
+
+
+
+function Card({
+title,
+value
+}:{
+title:string;
+value:string;
+}){
+
+return (
+
+<div className="
+bg-white/5
+border
+border-white/10
+rounded-xl
+p-5
+">
+
+
+<div className="
+text-xs
+text-gray-400
+mb-2
+">
+
+{title}
+
+</div>
+
+
+<div className="
+text-xl
+text-cyan-300
+font-bold
+">
+
+{value}
+
+</div>
+
+
+</div>
+
+)
 
 }
