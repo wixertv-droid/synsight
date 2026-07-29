@@ -3,6 +3,7 @@ export type ScanPhase =
   | "booting"
   | "scanning"
   | "analysis"
+  | "fullscreen_result"
   | "complete"
   | "closing_crt";
 
