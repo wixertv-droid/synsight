@@ -15,6 +15,13 @@ interface ScannerOverlayProps {
   onClose: () => void;
 }
 
+interface ScanFinding {
+  id: string;
+  detail: string;
+  severity: string;
+  platform?: string;
+}
+
 export default function ScannerOverlay({
   phase,
   progress,
