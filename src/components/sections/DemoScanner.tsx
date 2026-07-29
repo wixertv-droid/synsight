@@ -1,435 +1,827 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
+
 import { useRouter } from "next/navigation";
 
 import Button from "@/components/ui/Button";
 import GlassCard from "@/components/ui/GlassCard";
-import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+
+import {
+  ScanPhase,
+  ApiResult,
+  ScanData,
+} from "./DemoScanner/types";
 
 import ScannerOverlay from "./DemoScanner/ScannerOverlay";
-import type { ApiResult, ScanData, ScanPhase } from "./DemoScanner/types";
 
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
-export default function DemoScanner() {
-  const router = useRouter();
 
-  const { ref, isVisible } = useScrollAnimation();
 
-  const [input, setInput] = useState("");
-  const [phase, setPhase] = useState<ScanPhase>("idle");
+const scanStages = [
 
-  const [apiResult, setApiResult] = useState<ApiResult | null>(null);
-  const [rawData, setRawData] = useState<ScanData | null>(null);
+"Initialisiere SynSight Intelligence Core",
 
+"Analysiere öffentliche Identitätsdaten",
 
-  const startScan = useCallback(async () => {
+"Suche digitale Erwähnungen",
 
-    if (!input.trim()) return;
+"Korreliere Benutzernamen und Profile",
 
-    setPhase("scanning");
-    setApiResult(null);
-    setRawData(null);
+"Prüfe öffentliche Datenquellen",
 
+"Analysiere technische Spuren",
 
-    try {
+"Bewerte mögliche Exposure-Faktoren",
 
-      const response = await fetch("/api/scan", {
-        method: "POST",
-        headers:{
-          "Content-Type":"application/json"
-        },
-        body:JSON.stringify({
-          query: input
-        })
-      });
+"Berechne digitales Risikoprofil",
 
+"Generiere Voranalyse"
 
-      const data: ScanData = await response.json();
+];
 
 
-      setRawData(data);
 
 
-      if(data.status === "success"){
+export default function DemoScanner(){
 
-        setApiResult({
-          summary:data.summary || 
-          "Keine Zusammenfassung verfügbar.",
 
-          riskLevel:data.risk_level ||
-          "Erhöhtes Risiko"
-        });
+const router = useRouter();
 
-      } else {
 
-        setApiResult({
-          summary:
-          data.message ||
-          "Analyse konnte nicht abgeschlossen werden.",
+const {
+ref,
+isVisible
 
-          riskLevel:"Fehler"
-        });
+}=useScrollAnimation();
 
-      }
 
 
-      setTimeout(()=>{
+const [input,setInput]=useState("");
 
-        setPhase("fullscreen_result");
+const [phase,setPhase]=useState<ScanPhase>("idle");
 
-      },800);
+const [progress,setProgress]=useState(0);
 
+const [logs,setLogs]=useState<string[]>([]);
 
+const [apiResult,setApiResult]=useState<ApiResult|null>(null);
 
-    } catch(error){
+const [rawData,setRawData]=useState<ScanData|null>(null);
 
-      setRawData({
-        error:"Netzwerkfehler"
-      });
 
 
-      setApiResult({
+const addLog=(text:string)=>{
 
-        summary:
-        "Analyse-Server nicht erreichbar.",
 
-        riskLevel:"Offline"
+const time =
+new Date()
+.toLocaleTimeString(
+"de-DE",
+{
+hour12:false
+}
+);
 
-      });
 
+setLogs(prev=>[
 
-      setPhase("fullscreen_result");
+...prev,
 
-    }
+`[${time}] ${text}`
 
+].slice(-12));
 
-  },[input]);
 
+};
 
 
 
-  const closeFullscreen = ()=>{
 
-    setPhase("closing_crt");
 
 
-    setTimeout(()=>{
+const startScan=useCallback(async()=>{
 
-      setPhase("complete");
 
-    },700);
+if(
+!input.trim() ||
+phase==="scanning"
+)
+return;
 
-  };
 
 
+setPhase("scanning");
 
-  const reset = ()=>{
+setProgress(0);
 
-    setPhase("idle");
-    setInput("");
-    setApiResult(null);
-    setRawData(null);
+setLogs([]);
 
-  };
+setApiResult(null);
 
+setRawData(null);
 
 
-  return (
 
-    <>
+addLog(
+"SYN|SIGHT CORE ONLINE"
+);
 
-      {
-      phase !== "idle" &&
-      phase !== "complete" &&
 
-      <ScannerOverlay
 
-        phase={phase}
+/*
+ Scan Ablauf Simulation
+*/
 
-        target={input}
+let current=0;
 
-        apiResult={apiResult}
 
-        rawData={rawData}
+const scanInterval=setInterval(()=>{
 
-        onClose={closeFullscreen}
 
-      />
+current += Math.random()*3;
 
-      }
 
+if(current>=92){
 
+current=92;
 
-      <section
-      id="demo-scanner"
-      className="section-shell relative section-padding overflow-hidden"
-      >
+}
 
 
-        <div
-        className="
-        absolute inset-0
-        bg-[radial-gradient(ellipse_at_50%_38%,rgba(20,122,174,.09),transparent_42rem)]
-        pointer-events-none
-        "
-        />
+setProgress(
+Math.floor(current)
+);
 
 
 
-        <div className="relative max-w-4xl mx-auto">
+const stageIndex =
+Math.floor(
+(current/100)
+*
+scanStages.length
+);
 
 
-          <div
-          ref={ref}
-          className={`
-          text-center mb-12 transition-all duration-1000
-          ${
-          isVisible
-          ?
-          "opacity-100 translate-y-0"
-          :
-          "opacity-0 translate-y-8"
-          }
-          `}
-          >
 
+if(scanStages[stageIndex]){
 
-            <span className="hud-label">
-              03 / Ihr Risiko-Check
-            </span>
+addLog(
+scanStages[stageIndex]
+);
 
+}
 
-            <h2
-            className="
-            text-balance text-4xl md:text-6xl
-            font-semibold
-            tracking-[-.045em]
-            leading-[1.02]
-            mt-5 mb-7
-            "
-            >
 
-              Entdecken Sie Ihre{" "}
+},700);
 
-              <span className="cyber-gradient">
-                digitale Spur.
-              </span>
 
 
-            </h2>
 
 
-          </div>
+try{
 
 
+const apiRequest = fetch(
+"/api/scan",
+{
 
+method:"POST",
 
+headers:{
+"Content-Type":
+"application/json"
+},
 
-          <GlassCard
-          hover={false}
-          className="
-          glass-strong
-          relative overflow-hidden
-          ring-1 ring-white/[0.025]
-          "
-          >
 
+body:
+JSON.stringify({
+query:input
+})
 
-            <div className="relative z-10 p-6">
+}
 
+)
+.then(
+res=>res.json()
+);
 
 
-            {
-            phase === "idle" &&
 
-            <div>
 
-              <p className="text-white font-semibold mb-2">
-                System-Check initialisieren
-              </p>
 
+/*
+ Mindestdauer damit der Kunde
+ den Scan wahrnimmt
+*/
 
-              <p className="text-gray-500 text-sm mb-6">
 
-                Geben Sie eine E-Mail,
-                einen Namen oder Benutzernamen ein.
+const delay =
+new Promise(
+resolve=>
+setTimeout(
+resolve,
+35000
+)
+);
 
-              </p>
 
 
 
 
-              <div
-              className="
-              flex flex-col sm:flex-row gap-4
-              "
-              >
+const [data]=
+await Promise.all([
+apiRequest,
+delay
+]);
 
 
-                <input
 
-                value={input}
+clearInterval(scanInterval);
 
-                onChange={
-                  e=>setInput(e.target.value)
-                }
 
-                onKeyDown={
-                  e=>{
-                    if(e.key==="Enter")
-                    startScan();
-                  }
-                }
 
+setProgress(100);
 
-                placeholder="Ziel eingeben..."
 
-                className="
-                flex-1
-                px-5 py-4
-                bg-space-black/60
-                border border-cyber-blue/20
-                rounded-lg
-                text-white
-                font-mono
-                focus:outline-none
-                focus:border-cyber-cyan
-                "
 
-                />
+addLog(
+"Analyse abgeschlossen"
+);
 
 
 
-                <Button
+setRawData(data);
 
-                size="lg"
 
-                onClick={startScan}
 
-                disabled={!input.trim()}
+if(data.status==="success"){
 
-                >
 
-                  GLOBAL SCAN STARTEN
 
-                </Button>
+setApiResult({
 
+riskLevel:
+data.risk_level ??
+"Analyse abgeschlossen",
 
-              </div>
 
+summary:
+data.summary ??
+"Keine Zusammenfassung verfügbar"
 
-            </div>
+});
 
-            }
 
 
+}
 
-            {
-            phase === "complete" &&
+else{
 
-            <div>
 
+setApiResult({
 
-              <div
-              className="
-              text-cyber-cyan
-              font-mono
-              mb-6
-              "
-              >
+riskLevel:
+"Keine vollständige Bewertung",
 
-                ANALYSE BEENDET
 
-              </div>
+summary:
+"Die öffentliche Analyse konnte nicht vollständig abgeschlossen werden."
 
+});
 
 
+}
 
-              {
-              apiResult &&
 
-              <div
-              className="
-              glass rounded-xl
-              p-6 mb-8
-              border border-cyber-blue/30
-              "
-              >
 
-                <div
-                className="
-                text-cyber-cyan
-                text-xl
-                font-bold
-                "
-                >
+setTimeout(()=>{
 
-                  {apiResult.riskLevel}
 
-                </div>
+setPhase(
+"fullscreen_result"
+);
 
 
-                <p className="text-white mt-3">
+},1200);
 
-                  {apiResult.summary}
 
-                </p>
 
 
-              </div>
 
-              }
+}
+catch(error){
 
 
+clearInterval(scanInterval);
 
-              <div className="flex gap-3">
 
 
-              <Button
-              onClick={()=>
-              router.push("/register")
-              }
-              >
+setProgress(100);
 
-                Vollständigen Schutz öffnen
 
-              </Button>
 
+addLog(
+"Verbindung zum Analysemodul fehlgeschlagen"
+);
 
-              <Button
-              variant="ghost"
-              onClick={reset}
-              >
 
-                Neuer Scan
 
-              </Button>
+setApiResult({
 
+riskLevel:
+"Offline",
 
-              </div>
 
+summary:
+"Der Analyse-Dienst ist aktuell nicht erreichbar."
 
-            </div>
+});
 
-            }
 
 
+setTimeout(()=>{
 
-            </div>
+setPhase(
+"fullscreen_result"
+);
 
 
-          </GlassCard>
+},1000);
 
 
-        </div>
 
+}
 
-      </section>
 
 
-    </>
+},[
+input,
+phase
+]);
 
-  );
+
+
+
+
+
+
+const closeFullscreen=()=>{
+
+
+setPhase(
+"closing_crt"
+);
+
+
+
+setTimeout(()=>{
+
+
+setPhase(
+"complete"
+);
+
+
+},700);
+
+
+};
+
+
+
+
+
+
+
+const reset=()=>{
+
+
+setPhase("idle");
+
+setInput("");
+
+setProgress(0);
+
+setLogs([]);
+
+setApiResult(null);
+
+setRawData(null);
+
+
+};
+
+
+
+
+
+
+
+return (
+
+<>
+
+
+<ScannerOverlay
+
+
+phase={phase}
+
+
+progress={progress}
+
+
+target={input}
+
+
+logs={logs}
+
+
+apiResult={apiResult}
+
+
+rawData={rawData}
+
+
+onClose={closeFullscreen}
+
+
+/>
+
+
+
+
+
+<section
+
+id="demo-scanner"
+
+className="
+section-shell
+relative
+section-padding
+overflow-hidden
+"
+
+>
+
+
+
+<div className="
+absolute
+inset-0
+
+bg-[radial-gradient(ellipse_at_50%_38%,rgba(20,122,174,.12),transparent_42rem)]
+
+pointer-events-none
+
+"/>
+
+
+
+
+
+<div className="
+relative
+max-w-5xl
+mx-auto
+
+">
+
+
+<div
+
+ref={ref}
+
+className={`
+text-center
+mb-12
+transition-all
+duration-1000
+
+${
+isVisible
+?
+"opacity-100 translate-y-0"
+:
+"opacity-0 translate-y-8"
+}
+
+`}
+
+>
+
+
+<span className="hud-label">
+
+03 / FREE INTELLIGENCE SCAN
+
+</span>
+
+
+
+<h2 className="
+text-balance
+text-4xl
+md:text-6xl
+font-semibold
+tracking-[-.045em]
+mt-5
+mb-7
+">
+
+Erkennen Sie Ihre
+
+<span className="
+cyber-gradient
+">
+
+digitale Angriffsfläche.
+
+</span>
+
+
+</h2>
+
+
+
+<p className="
+max-w-3xl
+mx-auto
+text-gray-400
+text-lg
+leading-relaxed
+
+">
+
+
+SynSight analysiert öffentlich sichtbare Informationen,
+digitale Spuren und mögliche Risikoindikatoren.
+
+Erhalten Sie in wenigen Sekunden eine erste Einschätzung
+Ihrer digitalen Präsenz.
+
+
+</p>
+
+
+</div>
+
+
+
+
+
+
+
+
+<GlassCard
+hover={false}
+className="
+glass-strong
+relative
+overflow-hidden
+"
+
+>
+
+
+<div className="p-8">
+
+
+
+{
+
+phase==="idle"
+
+&&
+
+
+<>
+
+
+<div className="
+mb-6
+">
+
+<h3 className="
+text-white
+text-xl
+mb-2
+">
+
+Kostenloser Sicherheitscheck
+
+</h3>
+
+
+<p className="
+text-gray-500
+text-sm
+">
+
+E-Mail, Benutzername oder Name eingeben und erste digitale Spuren entdecken.
+
+</p>
+
+
+</div>
+
+
+
+
+<div className="
+flex
+flex-col
+sm:flex-row
+gap-4
+">
+
+<input
+
+
+value={input}
+
+
+onChange={
+e=>setInput(e.target.value)
+}
+
+
+onKeyDown={
+e=>
+e.key==="Enter"
+&&
+startScan()
+}
+
+
+placeholder="
+E-Mail, Username oder Name
+"
+
+
+className="
+flex-1
+px-5
+py-4
+rounded-lg
+bg-black/40
+border
+border-cyan-400/20
+text-white
+font-mono
+
+focus:outline-none
+focus:border-cyan-400
+
+"
+
+
+/>
+
+
+
+
+<Button
+
+size="lg"
+
+onClick={startScan}
+
+disabled={!input.trim()}
+
+>
+
+INTELLIGENCE SCAN STARTEN
+
+</Button>
+
+
+</div>
+
+
+</>
+
+}
+
+
+
+
+
+
+
+{
+
+phase==="complete"
+
+&&
+
+
+<div className="
+animate-fade-in
+text-center
+">
+
+
+<div className="
+text-cyan-400
+font-mono
+mb-6
+">
+
+SCAN ABGESCHLOSSEN
+
+</div>
+
+
+
+<div className="
+border
+border-cyan-400/20
+rounded-xl
+p-6
+bg-cyan-400/5
+mb-6
+">
+
+
+<p className="
+text-white
+leading-relaxed
+">
+
+{
+
+apiResult?.summary
+
+}
+
+
+</p>
+
+
+</div>
+
+
+
+
+<Button
+
+onClick={
+()=>router.push("/register")
+}
+
+>
+
+VOLLSTÄNDIGE ANALYSE AKTIVIEREN
+
+</Button>
+
+
+
+<Button
+
+variant="ghost"
+
+onClick={reset}
+
+>
+
+Neuer Scan
+
+</Button>
+
+
+
+</div>
+
+
+}
+
+
+
+</div>
+
+
+</GlassCard>
+
+
+
+</div>
+
+
+</section>
+
+
+</>
+
+);
+
 
 }
