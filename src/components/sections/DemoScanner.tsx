@@ -29,7 +29,6 @@ export default function DemoScanner() {
   // NEU: Speichert die exakten Rohdaten vom Server, damit du sie dir ansehen kannst
   const [rawData, setRawData] = useState<Record<string, unknown> | null>(null);
   const { ref, isVisible } = useScrollAnimation();
-  
   const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   const terminalRef = useRef<HTMLDivElement>(null);
