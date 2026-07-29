@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ScannerHUD from "./ScannerHUD";
-import type { ScanPhase, ApiResult, ScanData } from "./types";
+import type { ScanPhase, ApiResult, ScanData, ScanFinding } from "./types";
 
 interface ScannerOverlayProps {
   phase: ScanPhase;
@@ -13,13 +13,6 @@ interface ScannerOverlayProps {
   apiResult: ApiResult | null;
   rawData: ScanData | null;
   onClose: () => void;
-}
-
-interface ScanFinding {
-  id: string;
-  detail: string;
-  severity: string;
-  platform?: string;
 }
 
 export default function ScannerOverlay({
@@ -48,7 +41,7 @@ export default function ScannerOverlay({
   if (phase === "idle" || phase === "complete") return null;
 
   // 1. PHASE: DAS SCANNER HUD (Der 10-Sekunden Scan)
-  if (phase === "scanning" || phase === "closing_crt") {
+  if (phase === "scanning") {
     return (
       <div className="fixed inset-0 z-50 bg-black">
         <ScannerHUD progress={progress} query={target} onClose={onClose} />
@@ -173,10 +166,10 @@ export default function ScannerOverlay({
                             </div>
                             <div className="flex-1">
                                <div className="text-cyan-300 font-bold text-sm uppercase tracking-wider drop-shadow-[0_0_5px_#22d3ee]">
-                                 {finding.platform}
+                                 {finding.title}
                                </div>
                                <div className="text-gray-400 text-xs mt-1.5 font-sans leading-relaxed">
-                                 {finding.detail}
+                                 {finding.description}
                                </div>
                             </div>
                          </div>
