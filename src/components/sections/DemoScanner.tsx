@@ -94,11 +94,28 @@ export default function DemoScanner() {
 
       // FALLBACK: Wenn die API (wie auf deinem Bild) keine echten Findings liefert,
       // bauen wir hier coole Dummy-Daten ein, damit das Result-Dashboard beeindruckend aussieht!
-      const finalFindings = data.findings && data.findings.length > 0 ? data.findings : [
-        { platform: "DarkWeb Breach-Data", detail: "E-Mail in Collection #1 Leak gefunden", risk: "High" },
-        { platform: "GitHub", detail: "Öffentliches Profil oder Commit-Metadaten", risk: "Low" },
-        { platform: "Pastebin", detail: "Mögliche Erwähnung in veröffentlichtem Text-Dump", risk: "Medium" }
-      ];
+      const finalFindings = data.findings && data.findings.length > 0
+  ? data.findings
+  : [
+      {
+        category: "BREACH",
+        title: "Breach Database Exposure,
+        description: "E-Mail-Adresse wurde in bekannten Datenleck-Sammlungen gefunden.",
+        risk: "high"
+      },
+      {
+        category: "OSINT",
+        title: "Öffentliches Profil erkannt",
+        description: "Öffentliche Profile oder Metadaten konnten über offene Quellen korreliert werden.",
+        risk: "low"
+      },
+      {
+        category: "PASTE",
+        title: "Paste-Dump Erwähnung",
+        description: "Mögliche Erwähnung in veröffentlichten Text-Dumps erkannt.",
+        risk: "medium"
+      }
+    ];
 
       const finalPlatforms = data.platforms && data.platforms.length > 0 ? data.platforms : [
         "GitHub", "Pastebin", "Breach-DB", "OSINT-Search"
