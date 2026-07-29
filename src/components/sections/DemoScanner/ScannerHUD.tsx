@@ -1,100 +1,212 @@
 "use client";
 
+import type { ScanData } from "./types";
 
-export default function ScannerHUD() {
+
+interface ScannerHUDProps {
+  progress: number;
+  target: string;
+  logs: string[];
+  scanData?: ScanData | null;
+}
+
+
+export default function ScannerHUD({
+  progress,
+  target,
+  logs,
+  scanData
+}: ScannerHUDProps) {
 
 
 return (
 
-<>
+<div className="
+relative
+w-full
+h-full
+flex
+flex-col
+items-center
+justify-center
+px-6
+font-mono
+">
 
+
+{/* HEADER */}
 
 <div className="
-absolute
-inset-6
-border
-border-cyber-cyan/20
-pointer-events-none
-"/>
-
-
-{/* Ecken */}
-
-<div className="
-absolute top-8 left-8
-w-20 h-20
-border-t-2
-border-l-2
-border-cyber-cyan/60
-"/>
-
-
-<div className="
-absolute top-8 right-8
-w-20 h-20
-border-t-2
-border-r-2
-border-cyber-cyan/60
-"/>
-
-
-<div className="
-absolute bottom-8 left-8
-w-20 h-20
-border-b-2
-border-l-2
-border-cyber-cyan/60
-"/>
-
-
-<div className="
-absolute bottom-8 right-8
-w-20 h-20
-border-b-2
-border-r-2
-border-cyber-cyan/60
-"/>
-
-
-
-{/* Header */}
-
-<div
-className="
 absolute
 top-10
-left-1/2
--translate-x-1/2
 text-center
-font-mono
-"
->
-
-
-<div
-className="
-text-cyber-cyan
-tracking-[0.6em]
-text-sm
+tracking-[0.45em]
+text-cyan-400/80
+text-xs
+uppercase
 animate-pulse
-"
->
+">
 
-SYNSIGHT
+S Y N | S I G H T
+
+<br/>
+
+GLOBAL INTELLIGENCE CORE
 
 </div>
 
 
-<div
-className="
-text-white/40
-text-xs
-tracking-[0.3em]
+
+{/* RADAR */}
+
+<div className="
+relative
+w-96
+h-96
+flex
+items-center
+justify-center
+">
+
+
+<div className="
+absolute
+inset-0
+rounded-full
+border
+border-cyan-400/20
+animate-spin
+[animation-duration:12s]
+"/>
+
+
+
+<div className="
+absolute
+inset-8
+rounded-full
+border
+border-dashed
+border-cyan-300/30
+animate-spin
+[animation-duration:8s]
+[animation-direction:reverse]
+"/>
+
+
+
+<div className="
+absolute
+inset-16
+rounded-full
+border
+border-cyan-400/40
+"/>
+
+
+
+<div className="
+absolute
+w-1/2
+h-[1px]
+bg-cyan-400/50
+left-1/2
+top-1/2
+origin-left
+animate-spin
+[animation-duration:3s]
+"/>
+
+
+
+{/* PROGRESS CORE */}
+
+<div className="
+relative
+w-56
+h-56
+rounded-full
+border-2
+border-cyan-400
+bg-black/40
+flex
+items-center
+justify-center
+shadow-[0_0_60px_rgba(0,255,255,.35)]
+">
+
+
+<div className="
+text-center
+">
+
+
+<div className="
+text-6xl
+font-bold
+text-white
+tracking-tight
+">
+
+{progress}
+
+%
+
+</div>
+
+
+<div className="
+text-[10px]
+tracking-[0.4em]
+text-cyan-400
 mt-2
-"
->
+">
 
-DIGITAL INTELLIGENCE CORE
+ANALYZING
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+{/* TARGET */}
+
+<div className="
+mt-8
+text-center
+">
+
+
+<div className="
+text-xs
+text-gray-500
+tracking-[0.4em]
+mb-2
+">
+
+TARGET IDENTIFIED
+
+</div>
+
+
+<div className="
+text-xl
+text-white
+tracking-widest
+uppercase
+">
+
+{target}
 
 </div>
 
@@ -103,47 +215,115 @@ DIGITAL INTELLIGENCE CORE
 
 
 
-{/* Linkes System Panel */}
+
+
+{/* MODULE STATUS */}
+
+<div className="
+mt-8
+grid
+grid-cols-2
+gap-x-12
+gap-y-2
+text-xs
+max-w-xl
+w-full
+">
+
+
+<Module text="Identity Resolution"/>
+
+<Module text="Public Source Mapping"/>
+
+<Module text="Username Correlation"/>
+
+<Module text="Metadata Analysis"/>
+
+<Module text="Exposure Detection"/>
+
+<Module 
+text={
+scanData
+?
+"Risk Engine Complete"
+:
+"Risk Engine Running"
+}
+/>
+
+
+</div>
+
+
+
+
+
+{/* LIVE STREAM */}
+
+<div className="
+absolute
+bottom-8
+left-8
+right-8
+max-w-5xl
+mx-auto
+">
+
+
+<div className="
+border
+border-cyan-400/20
+bg-black/60
+rounded-lg
+p-4
+h-36
+overflow-hidden
+text-xs
+text-cyan-300/70
+shadow-[inset_0_0_30px_rgba(0,255,255,.05)]
+">
+
+
+<div className="
+text-cyan-400
+border-b
+border-cyan-400/20
+pb-2
+mb-2
+tracking-widest
+">
+
+LIVE INTELLIGENCE STREAM
+
+</div>
+
+
+
+{
+
+logs.map(
+(log,index)=>(
 
 <div
+key={index}
 className="
-absolute
-left-12
-top-1/2
--translate-y-1/2
-hidden lg:block
-font-mono
-text-xs
-space-y-4
-text-cyber-cyan/70
+animate-in
+fade-in
+duration-300
 "
 >
 
+{log}
 
-<div>
-SYSTEM
-<br/>
-<span className="text-white">
-ONLINE
-</span>
 </div>
 
+)
 
-<div>
-AI ENGINE
-<br/>
-<span className="text-white">
-ACTIVE
-</span>
-</div>
+)
+
+}
 
 
-<div>
-OSINT NODE
-<br/>
-<span className="text-white">
-CONNECTED
-</span>
 </div>
 
 
@@ -151,68 +331,45 @@ CONNECTED
 
 
 
-
-{/* Rechtes Panel */}
-
-<div
-className="
-absolute
-right-12
-top-1/2
--translate-y-1/2
-hidden lg:block
-font-mono
-text-xs
-space-y-4
-text-cyber-cyan/70
-"
->
-
-
-<div>
-
-SECURE LINK
-
-<br/>
-
-<span className="text-white">
-ENCRYPTED
-</span>
-
 </div>
 
+);
 
-<div>
-
-THREAT AI
-
-<br/>
-
-<span className="text-white">
-READY
-</span>
-
-</div>
+}
 
 
-<div>
 
-NODE
 
-<br/>
+function Module({
+text
+}:{
+text:string;
+}){
 
-<span className="text-white">
-DE-01
-</span>
 
-</div>
+return (
 
+<div className="
+flex
+items-center
+gap-2
+text-cyan-300/80
+">
+
+
+<span className="
+w-2
+h-2
+rounded-full
+bg-cyan-400
+animate-pulse
+"/>
+
+
+{text}
 
 
 </div>
-
-
-</>
 
 );
 
