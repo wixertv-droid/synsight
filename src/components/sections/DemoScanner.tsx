@@ -142,22 +142,36 @@ addLog(
 
 
 
-let current = 0;
+let current=0;
 
 
-const scanInterval = setInterval(()=>{
+
+const scanInterval=setInterval(()=>{
 
 
-current += 1;
+current += Math.random()*3;
 
 
-setProgress(current);
+
+if(current>=92){
+
+current=92;
+
+}
+
+
+
+setProgress(
+Math.floor(current)
+);
 
 
 
 const stageIndex =
 Math.floor(
-(current / 100) * scanStages.length
+(current/100)
+*
+scanStages.length
 );
 
 
@@ -171,16 +185,7 @@ scanStages[stageIndex]
 }
 
 
-
-if(current >= 100){
-
-clearInterval(scanInterval);
-
-}
-
-
-
-},100);
+},700);
 
 
 
@@ -225,19 +230,24 @@ await response.json();
 
 
 
+await new Promise(
+resolve=>
+setTimeout(
+resolve,
+35000
+)
+);
+
+
+
+
 clearInterval(scanInterval);
 
 
 
 setProgress(100);
 
-addLog(
-"NEURAL CORRELATION COMPLETE"
-);
 
-addLog(
-"RISK PROFILE GENERATED"
-);
 
 addLog(
 "Analyse abgeschlossen"
