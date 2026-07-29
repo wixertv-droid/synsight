@@ -16,6 +16,10 @@ export interface ScanFinding {
 
   description: string;
 
+  platform?: string;
+
+  detail?: string;
+
   risk:
     | "low"
     | "medium"
