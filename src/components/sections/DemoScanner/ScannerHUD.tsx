@@ -29,13 +29,11 @@ export default function ScannerHUD({
   const [isShuttingDown, setIsShuttingDown] = useState(false);
   const [isBooting, setIsBooting] = useState(true);
 
-  // 1. Boot-Effekt beim Starten
   useEffect(() => {
     const timer = setTimeout(() => setIsBooting(false), 800);
     return () => clearTimeout(timer);
   }, []);
 
-  // 2. NEU: Überwacht den Fortschritt. Wenn 100% erreicht sind, wird automatisch der CRT-Effekt ausgelöst!
   useEffect(() => {
     if (progress >= 100 && !isShuttingDown) {
       triggerShutdown();
@@ -50,7 +48,6 @@ export default function ScannerHUD({
 
   const triggerShutdown = () => {
     setIsShuttingDown(true);
-    // Warte 500ms (Dauer der CRT-Animation), bevor dem System gesagt wird "Ich bin fertig"
     setTimeout(() => {
       if (onClose) onClose();
     }, 500);
@@ -59,7 +56,6 @@ export default function ScannerHUD({
   return (
     <>
       <style>{`
-        /* CRT Röhrenfernseher Boot & Shutdown */
         @keyframes crtTurnOn {
           0% { transform: scale(0, 0.002); filter: brightness(0); opacity: 0; }
           40% { transform: scale(1, 0.002); filter: brightness(10); opacity: 1; }
@@ -71,24 +67,28 @@ export default function ScannerHUD({
           100% { transform: scale(0, 0.001); filter: brightness(0); opacity: 0; }
         }
         
-        /* Flackern des Cores */
         @keyframes hologramFlicker {
           0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
           20%, 22%, 24%, 55% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(34,211,238,0.8)); }
         }
         
-        /* Die EKG Animation - jetzt breiter und flacher für unter den Ladebalken */
+        /* Angepasste EKG Animation für die 500er Breite */
         @keyframes ekgPulse {
-          0% { stroke-dashoffset: 400; opacity: 0; }
+          0% { stroke-dashoffset: 500; opacity: 0; }
           10% { opacity: 1; }
           90% { opacity: 1; }
           100% { stroke-dashoffset: 0; opacity: 0; }
         }
 
-        /* Scanline, die von oben nach unten fährt (schneller für 10s Scan) */
         @keyframes scanline {
           0% { transform: translateY(-100%); }
           100% { transform: translateY(100vh); }
+        }
+
+        /* Langsames Atmen des neuronalen Netzes im Hintergrund */
+        @keyframes neuralBreathe {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.6; }
         }
         
         .crt-boot { animation: crtTurnOn 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
@@ -103,7 +103,6 @@ export default function ScannerHUD({
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.1)_0%,rgba(2,7,13,1)_70%)]" />
         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(34,211,238,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.2)_1px,transparent_1px)] bg-[size:60px_60px]" style={{ perspective: '800px', transform: 'rotateX(60deg) scale(2) translateY(-20%)' }} />
         
-        {/* Horizontale Scan-Linie */}
         <div className="absolute inset-0 pointer-events-none z-50">
           <div className="w-full h-[2px] bg-cyan-400/40 blur-[1px] opacity-70 shadow-[0_0_30px_#22d3ee]" style={{ animation: 'scanline 2s linear infinite' }} />
         </div>
@@ -117,7 +116,6 @@ export default function ScannerHUD({
           <div className="absolute w-[75%] h-[75%] rounded-full border-[2px] border-dashed border-cyan-400/30 animate-[spin_10s_linear_infinite]" />
           <div className="absolute w-[68%] h-[68%] rounded-full border-[2px] border-dotted border-blue-400/40 animate-[spin_8s_linear_infinite_reverse]" />
 
-          {/* Radar Scan-Kegel */}
           <div className="absolute w-[60%] h-[60%] rounded-full overflow-hidden animate-[spin_1.5s_linear_infinite]">
             <div className="w-full h-full bg-[conic-gradient(from_0deg,transparent_0%,transparent_60%,rgba(34,211,238,0.1)_90%,rgba(34,211,238,0.5)_100%)]" />
           </div>
@@ -127,14 +125,11 @@ export default function ScannerHUD({
 
           <div className="absolute w-[30%] h-[30%] rounded-full border border-cyan-300 bg-cyan-900/20 animate-pulse backdrop-blur-md shadow-[0_0_40px_#22d3ee_inset]" />
 
-          {/* Der Core in der Mitte (ohne EKG) */}
           <div className="relative z-20 flex flex-col items-center justify-center w-[30%] h-[30%] rounded-full border border-cyan-200/40 bg-[#02070d]/80 shadow-[0_0_60px_rgba(34,211,238,0.5)] overflow-hidden">
             <span className="text-cyan-400 text-[10px] tracking-[0.4em] mb-1 uppercase opacity-80">SynSight Core</span>
-            
             <div className="text-white text-7xl font-black tracking-tighter drop-shadow-[0_0_15px_#22d3ee] z-10 mt-2 mb-2">
               {progress}
             </div>
-
             <span className="text-blue-400 text-[10px] tracking-[0.3em] mt-1 animate-pulse z-10">ANALYZING</span>
             
             <div className="absolute -top-3 w-[1px] h-3 bg-cyan-400" />
@@ -151,16 +146,13 @@ export default function ScannerHUD({
           {/* LEFT: TARGET INFO */}
           <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-50" />
-            
             <div className="flex items-center gap-3 mb-2">
               <div className="w-3 h-3 bg-cyan-400 rounded-sm animate-ping shadow-[0_0_10px_#22d3ee]" />
               <div className="text-cyan-500 text-xs font-bold tracking-[0.4em] uppercase font-mono">Ziel-Objekt</div>
             </div>
-            
             <div className="text-white text-2xl font-sans font-medium drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] truncate">
               {query || "Unbekannt"}
             </div>
-            
             <div className="mt-4 flex gap-2">
               <div className="h-1 w-12 bg-cyan-500 shadow-[0_0_8px_#22d3ee]" />
               <div className="h-1 w-4 bg-blue-600" />
@@ -168,35 +160,70 @@ export default function ScannerHUD({
             </div>
           </div>
 
-          {/* CENTER: SYSTEM STATUS & NEUES EKG */}
+          {/* CENTER: SYSTEM STATUS & NEUES 3D EKG MIT NEURONALEM NETZ */}
           <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-5 flex flex-col justify-center items-center shadow-[inset_0_0_20px_rgba(34,211,238,0.05)]">
-            <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400" />
-            <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-400" />
-            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-400" />
-            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-400" />
+            
+            {/* HINTERGRUND: Neuronales Netz (SVG) */}
+            <div className="absolute inset-0 pointer-events-none" style={{ animation: 'neuralBreathe 4s infinite' }}>
+              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="stroke-cyan-500/20 fill-cyan-500/20">
+                <circle cx="10%" cy="20%" r="2" />
+                <circle cx="30%" cy="80%" r="1.5" />
+                <circle cx="50%" cy="30%" r="2.5" />
+                <circle cx="70%" cy="70%" r="1" />
+                <circle cx="90%" cy="40%" r="2" />
+                <line x1="10%" y1="20%" x2="50%" y2="30%" strokeWidth="1" />
+                <line x1="10%" y1="20%" x2="30%" y2="80%" strokeWidth="0.5" />
+                <line x1="50%" y1="30%" x2="30%" y2="80%" strokeWidth="1" />
+                <line x1="50%" y1="30%" x2="70%" y2="70%" strokeWidth="0.5" />
+                <line x1="50%" y1="30%" x2="90%" y2="40%" strokeWidth="1" />
+                <line x1="70%" y1="70%" x2="90%" y2="40%" strokeWidth="0.5" />
+              </svg>
+            </div>
 
-            <div className="text-cyan-500 text-[10px] font-bold tracking-[0.4em] mb-1 uppercase font-mono">Status</div>
-            <div className="text-white text-lg font-bold tracking-widest animate-pulse drop-shadow-[0_0_8px_#fff] font-mono">
+            <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400 z-10" />
+            <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-400 z-10" />
+            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-400 z-10" />
+            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-400 z-10" />
+
+            <div className="text-cyan-500 text-[10px] font-bold tracking-[0.4em] mb-1 uppercase font-mono z-10">Status</div>
+            <div className="text-white text-lg font-bold tracking-widest animate-pulse drop-shadow-[0_0_8px_#fff] font-mono z-10">
                KI-ANALYSE AKTIV
             </div>
             
             {/* Ladebalken */}
-            <div className="w-full h-1.5 bg-[#041224] mt-3 border border-cyan-900/50 relative overflow-hidden rounded-full">
+            <div className="w-full h-1.5 bg-[#041224] mt-3 border border-cyan-900/50 relative overflow-hidden rounded-full z-10">
                <div 
                  className="absolute top-0 left-0 h-full bg-cyan-400 shadow-[0_0_15px_#22d3ee] transition-all duration-100 ease-linear"
                  style={{ width: `${progress}%` }}
                />
             </div>
 
-            {/* NEU: Die EKG-Linie direkt unter dem Ladebalken */}
-            <div className="w-full h-8 mt-1 flex justify-center opacity-70">
-              <svg width="200" height="25" viewBox="0 0 300 40" className="stroke-cyan-400 fill-none stroke-[2px] drop-shadow-[0_0_5px_#22d3ee]">
+            {/* VORDERGRUND: Volle Breite 3D EKG Linie mit Datenpunkten */}
+            <div className="w-full h-10 mt-2 flex justify-center opacity-90 z-10">
+              {/* preserveAspectRatio="none" zwingt das SVG, die volle Box-Breite auszufüllen */}
+              <svg width="100%" height="100%" viewBox="0 0 500 40" preserveAspectRatio="none" className="drop-shadow-[0_0_5px_#22d3ee]">
+                
+                {/* Layer 1: Der verschwommene 3D-Schatten im Hintergrund */}
                 <path 
-                  d="M0,20 L120,20 L130,5 L145,35 L160,10 L170,20 L300,20" 
-                  strokeDasharray="400"
-                  strokeDashoffset="400"
-                  style={{ animation: 'ekgPulse 1.2s linear infinite' }}
+                  d="M0,20 L200,20 L220,5 L250,35 L280,10 L300,20 L500,20" 
+                  className="stroke-cyan-700/60 fill-none stroke-[6px] blur-[3px]"
                 />
+                
+                {/* Layer 2: Die scharfe, helle Hauptlinie (animiert) */}
+                <path 
+                  d="M0,20 L200,20 L220,5 L250,35 L280,10 L300,20 L500,20" 
+                  className="stroke-cyan-300 fill-none stroke-[2px]"
+                  strokeDasharray="500"
+                  strokeDashoffset="500"
+                  style={{ animation: 'ekgPulse 1.5s linear infinite' }}
+                />
+                
+                {/* Layer 3: Leuchtende Datenpunkte an den Spitzen (animiert pulsierend) */}
+                <g className="animate-pulse">
+                  <circle cx="220" cy="5" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="250" cy="35" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="280" cy="10" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                </g>
               </svg>
             </div>
 
