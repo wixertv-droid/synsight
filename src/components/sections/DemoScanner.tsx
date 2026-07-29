@@ -50,1101 +50,924 @@ const scanStages = [
 export default function DemoScanner(){
 
 
-  const router = useRouter();
+const router = useRouter();
 
 
 
-  const {
-    ref,
-    isVisible
-  } = useScrollAnimation();
+const {
+  ref,
+  isVisible
+}=useScrollAnimation();
 
 
 
-  const [input,setInput] = useState("");
 
-  const [phase,setPhase] =
-    useState<ScanPhase>("idle");
+const [input,setInput]=useState("");
 
-  const [progress,setProgress] =
-    useState(0);
+const [phase,setPhase]=useState<ScanPhase>("idle");
 
-  const [logs,setLogs] =
-    useState<string[]>([]);
+const [progress,setProgress]=useState(0);
 
-  const [apiResult,setApiResult] =
-    useState<ApiResult|null>(null);
+const [logs,setLogs]=useState<string[]>([]);
 
-  const [rawData,setRawData] =
-    useState<ScanData|null>(null);
+const [apiResult,setApiResult]=useState<ApiResult|null>(null);
 
+const [rawData,setRawData]=useState<ScanData|null>(null);
 
 
 
 
-  const addLog = (text:string)=>{
 
+const addLog=(text:string)=>{
 
-    const time =
-      new Date()
-      .toLocaleTimeString(
-        "de-DE",
-        {
-          hour12:false
-        }
-      );
 
+const time =
+new Date()
+.toLocaleTimeString(
+"de-DE",
+{
+hour12:false
+}
+);
 
-    setLogs(prev=>[
 
-      ...prev,
 
-      `[${time}] ${text}`
+setLogs(prev=>[
 
-    ].slice(-12));
+...prev,
 
+`[${time}] ${text}`
 
-  };
+].slice(-12));
 
+};
 
 
 
 
 
 
-  const startScan = useCallback(async()=>{
 
+const startScan = useCallback(async()=>{
 
-    if(
-      !input.trim() ||
-      phase==="scanning"
-    ){
 
-      return;
+if(
+!input.trim()
+||
+phase==="scanning"
+){
 
-    }
+return;
 
+}
 
 
-    setPhase("scanning");
 
-    setProgress(0);
+setPhase("scanning");
 
-    setLogs([]);
+setProgress(0);
 
-    setApiResult(null);
+setLogs([]);
 
-    setRawData(null);
+setApiResult(null);
 
+setRawData(null);
 
 
-    addLog(
-      "SYN|SIGHT CORE ONLINE"
-    );
 
+addLog(
+"SYN|SIGHT CORE ONLINE"
+);
 
 
-    let current = 0;
 
 
+let current=0;
 
-    const scanInterval =
-      setInterval(()=>{
 
 
-        current += Math.random()*3;
+const scanInterval=setInterval(()=>{
 
 
+current += Math.random()*3;
 
-        if(current >= 92){
 
-          current = 92;
 
-        }
+if(current>=92){
 
+current=92;
 
+}
 
-        setProgress(
-          Math.floor(current)
-        );
 
 
+setProgress(
+Math.floor(current)
+);
 
-        const stageIndex =
-          Math.floor(
-            (current / 100)
-            *
-            scanStages.length
-          );
 
 
+const stageIndex =
+Math.floor(
+(current/100)
+*
+scanStages.length
+);
 
-        if(scanStages[stageIndex]){
 
 
-          addLog(
-            scanStages[stageIndex]
-          );
+if(scanStages[stageIndex]){
 
+addLog(
+scanStages[stageIndex]
+);
 
-        }
+}
 
 
+},700);
 
-      },700);
 
 
 
 
 
+try{
 
 
-    try{
+const response =
+await fetch(
+"/api/scan",
+{
 
+method:"POST",
 
-      const response =
-        await fetch(
-          "/api/scan",
-          {
+headers:{
 
-            method:"POST",
+"Content-Type":
+"application/json"
 
-            headers:{
+},
 
-              "Content-Type":
-              "application/json"
+body:
 
-            },
+JSON.stringify({
 
+query:input
 
-            body:
-            JSON.stringify({
+})
 
-              query:input
+}
 
-            })
+);
 
-          }
-        );
 
 
 
+const data =
+await response.json();
 
 
-      const data =
-        await response.json();
 
 
+await new Promise(
+resolve=>
+setTimeout(
+resolve,
+35000
+)
+);
 
 
 
-      await new Promise(
-        resolve =>
-          setTimeout(
-            resolve,
-            35000
-          )
-      );
 
+clearInterval(scanInterval);
 
 
 
+setProgress(100);
 
-      clearInterval(scanInterval);
 
 
+addLog(
+"Analyse abgeschlossen"
+);
 
-      setProgress(100);
 
 
 
-      addLog(
-        "Analyse abgeschlossen"
-      );
 
+if(
+data.status==="success"
+){
 
 
+const scanData:ScanData={
 
 
-      if(
-        data.status === "success"
-      ){
+query:
+data.query ??
+input,
 
 
 
-        const scanData:ScanData = {
+queryType:
+data.query_type ??
+"unknown",
 
 
-          query:
-            data.query ??
-            input,
 
+findings:
+data.findings ??
+[],
 
 
-          queryType:
-            data.query_type ??
-            "unknown",
 
+platforms:
+data.platforms ??
+[],
 
 
-          findings:
-            data.findings ??
-            [],
 
+exposureScore:
+data.exposure_score ??
+0,
 
 
-          platforms:
-            data.platforms ??
-            [],
 
+riskLevel:
+data.risk_level ??
+"Niedrig",
 
 
-          exposureScore:
-            data.exposure_score ??
-            0,
 
+summary:
+data.summary ??
+"Analyse abgeschlossen.",
 
 
-          riskLevel:
-            data.risk_level ??
-            "Niedrig",
 
+timestamp:
+new Date()
+.toISOString(),
 
 
-          summary:
-            data.summary ??
-            "Analyse abgeschlossen.",
 
+exposure_count:
+data.exposure_count,
 
 
-          timestamp:
-            new Date()
-            .toISOString()
+sources_found:
+data.sources_found
 
+};
 
-        };
 
 
+setRawData(scanData);
 
 
 
-        setRawData(scanData);
+setApiResult({
 
+status:"success",
 
+data:scanData,
 
+riskLevel:
+scanData.riskLevel,
 
+summary:
+scanData.summary,
 
-        setApiResult({
+findings:
+scanData.findings,
 
-          status:"success",
+platforms:
+scanData.platforms
 
-          data:scanData,
+});
 
-          riskLevel:
-            scanData.riskLevel,
 
-          summary:
-            scanData.summary,
+}
 
-          findings:
-            scanData.findings,
+else{
 
-          platforms:
-            scanData.platforms
 
-        });
+setApiResult({
 
+status:"error",
 
+message:
+"Analyse konnte nicht abgeschlossen werden.",
 
-      }
 
-      else{
+riskLevel:
+"Keine Bewertung",
 
 
-        setApiResult({
+summary:
+"Die öffentliche Analyse konnte nicht vollständig abgeschlossen werden."
 
-          status:"error",
+});
 
-          message:
-            "Analyse konnte nicht abgeschlossen werden.",
 
+}
 
-          riskLevel:
-            "Niedrig",
 
 
-          summary:
-            "Keine vollständige Analyse verfügbar."
 
-        });
 
+setTimeout(()=>{
 
-      }
 
+setPhase(
+"fullscreen_result"
+);
 
 
+},1200);
 
 
-      setTimeout(()=>{
 
 
-        setPhase(
-          "fullscreen_result"
-        );
 
+}
+catch(error){
 
-      },1200);
 
+clearInterval(scanInterval);
 
 
 
+console.error(error);
 
-    }
 
-    catch(error){
 
+setApiResult({
 
+status:"error",
 
-      clearInterval(scanInterval);
+message:
+"Analyse Dienst nicht erreichbar.",
 
 
+riskLevel:
+"Offline",
 
-      console.error(
-        "DemoScanner Error:",
-        error
-      );
 
+summary:
+"Der Analyse-Dienst konnte nicht erreicht werden."
 
+});
 
-      setApiResult({
 
-        status:"error",
 
-        message:
-          "Analyse Dienst nicht erreichbar.",
+setPhase(
+"fullscreen_result"
+);
 
 
-        riskLevel:
-          "Unbekannt",
 
+}
 
-        summary:
-          "Der Analyse-Dienst konnte nicht erreicht werden."
 
-      });
 
+},[
+input,
+phase
+]);
 
 
 
-      setPhase(
-        "fullscreen_result"
-      );
 
 
 
-    }
 
 
 
-  },[
-    input,
-    phase
-  ]);
+const closeFullscreen=()=>{
 
-  const closeFullscreen = () => {
 
+setPhase(
+"closing_crt"
+);
 
-    setPhase(
-      "closing_crt"
-    );
 
 
-    setTimeout(()=>{
+setTimeout(()=>{
 
 
-      setPhase(
-        "complete"
-      );
+setPhase(
+"complete"
+);
 
 
-    },700);
 
+},700);
 
-  };
 
+};
 
 
 
 
 
-  const reset = () => {
 
 
-    setPhase("idle");
 
-    setInput("");
+const reset=()=>{
 
-    setProgress(0);
 
-    setLogs([]);
+setPhase("idle");
 
-    setApiResult(null);
+setInput("");
 
-    setRawData(null);
+setProgress(0);
 
+setLogs([]);
 
-  };
+setApiResult(null);
 
+setRawData(null);
 
 
+};
 
 
 
 
-  return (
 
-    <>
 
 
 
+return (
 
+<>
 
-      <ScannerOverlay
 
-        phase={phase}
+<ScannerOverlay
 
-        progress={progress}
+phase={phase}
 
-        target={input}
+progress={progress}
 
-        logs={logs}
+target={input}
 
-        apiResult={apiResult}
+logs={logs}
 
-        rawData={rawData}
+apiResult={apiResult}
 
-        onClose={closeFullscreen}
+rawData={rawData}
 
-      />
+onClose={closeFullscreen}
 
+/>
 
 
 
 
 
+<section
 
-      <section
+id="demo-scanner"
 
-        id="demo-scanner"
+className="
+section-shell
+relative
+section-padding
+overflow-hidden
+"
 
-        className="
-        section-shell
-        relative
-        section-padding
-        overflow-hidden
-        "
+>
 
-      >
 
 
+<div
 
+className="
+absolute
+inset-0
 
+bg-[radial-gradient(ellipse_at_50%_38%,rgba(20,122,174,.12),transparent_42rem)]
 
-        <div
+pointer-events-none
 
-          className="
-          absolute
-          inset-0
+"
 
-          bg-[radial-gradient(ellipse_at_50%_38%,rgba(20,122,174,.12),transparent_42rem)]
+/>
 
-          pointer-events-none
-          "
 
-        />
 
 
 
+<div
 
+className="
+relative
+max-w-5xl
+mx-auto
 
+"
 
+>
 
-        <div
 
-          className="
-          relative
-          max-w-5xl
-          mx-auto
-          "
 
-        >
 
+<div
 
+ref={ref}
 
+className={`
 
+text-center
 
+mb-12
 
+transition-all
 
-          <div
+duration-1000
 
-            ref={ref}
 
-            className={`
+${
+isVisible
 
-            text-center
+?
 
-            mb-12
+"opacity-100 translate-y-0"
 
-            transition-all
+:
 
-            duration-1000
+"opacity-0 translate-y-8"
 
+}
 
-            ${
-              isVisible
+`}
 
-              ?
+>
 
-              "opacity-100 translate-y-0"
 
-              :
 
-              "opacity-0 translate-y-8"
+<span className="hud-label">
 
-            }
+03 / FREE INTELLIGENCE SCAN
 
-            `}
+</span>
 
-          >
 
 
 
+<h2 className="
 
+text-balance
 
-            <span
+text-4xl
 
-              className="hud-label"
+md:text-6xl
 
-            >
+font-semibold
 
-              03 / FREE INTELLIGENCE SCAN
+tracking-[-.045em]
 
-            </span>
+mt-5
 
+mb-7
 
+">
 
 
+Erkennen Sie Ihre
 
 
+<span className="cyber-gradient">
 
-            <h2
+digitale Angriffsfläche.
 
-              className="
+</span>
 
-              text-balance
 
-              text-4xl
+</h2>
 
-              md:text-6xl
 
-              font-semibold
 
-              tracking-[-.045em]
 
-              mt-5
+<p className="
 
-              mb-7
+max-w-3xl
 
-              "
+mx-auto
 
-            >
+text-gray-400
 
+text-lg
 
+leading-relaxed
 
-              Erkennen Sie Ihre
+">
 
 
+SynSight analysiert öffentlich sichtbare Informationen,
 
-              <span
+digitale Spuren und mögliche Risikoindikatoren.
 
-                className="cyber-gradient"
 
-              >
+Erhalten Sie eine erste Einschätzung Ihrer digitalen Präsenz.
 
-                digitale Angriffsfläche.
 
-              </span>
+</p>
 
 
+</div>
 
-            </h2>
 
 
 
 
 
 
+<GlassCard
 
+hover={false}
 
-            <p
+className="
+glass-strong
+relative
+overflow-hidden
+"
 
-              className="
+>
 
-              max-w-3xl
 
-              mx-auto
+<div className="p-8">
 
-              text-gray-400
 
-              text-lg
 
-              leading-relaxed
 
-              "
 
-            >
+{
 
+phase==="idle"
 
-              SynSight analysiert öffentlich sichtbare Informationen,
+&&
 
-              digitale Spuren und mögliche Risikoindikatoren.
+<>
 
 
+<h3 className="
 
-              Erhalten Sie in wenigen Sekunden eine erste Einschätzung
+text-white
 
-              Ihrer digitalen Präsenz.
+text-xl
 
+mb-2
 
+">
 
-            </p>
+Kostenloser Sicherheitscheck
 
+</h3>
 
 
 
-          </div>
+<p className="
 
+text-gray-500
 
+text-sm
 
+mb-6
 
+">
 
+E-Mail, Benutzername oder Name eingeben und erste digitale Spuren entdecken.
 
+</p>
 
 
 
-          <GlassCard
 
-            hover={false}
 
-            className="
+<div className="
 
-            glass-strong
+flex
 
-            relative
+flex-col
 
-            overflow-hidden
+sm:flex-row
 
-            "
+gap-4
 
-          >
+">
 
 
 
-            <div className="p-8">
+<input
 
 
+value={input}
 
 
+onChange={
+e=>
+setInput(e.target.value)
+}
 
 
+onKeyDown={
+e=>{
+if(e.key==="Enter"){
+startScan();
+}
+}
+}
 
-              {
 
-              phase==="idle"
+placeholder="E-Mail, Username oder Name"
 
-              &&
 
-              <>
+className="
 
+flex-1
 
-                <div
+px-5
 
-                  className="mb-6"
+py-4
 
-                >
+rounded-lg
 
+bg-black/40
 
-                  <h3
+border
 
-                    className="
+border-cyan-400/20
 
-                    text-white
+text-white
 
-                    text-xl
+font-mono
 
-                    mb-2
+focus:outline-none
 
-                    "
+focus:border-cyan-400
 
-                  >
+"
 
-                    Kostenloser Sicherheitscheck
+/>
 
-                  </h3>
 
 
 
 
-                  <p
+<Button
 
-                    className="
+size="lg"
 
-                    text-gray-500
+onClick={startScan}
 
-                    text-sm
+disabled={!input.trim()}
 
-                    "
+>
 
-                  >
+INTELLIGENCE SCAN STARTEN
 
-                    E-Mail, Benutzername oder Name eingeben und erste digitale Spuren entdecken.
+</Button>
 
-                  </p>
 
 
+</div>
 
-                </div>
 
+</>
 
+}
 
 
 
 
 
 
-                <div
 
-                  className="
+{
 
-                  flex
+phase==="complete"
 
-                  flex-col
+&&
 
-                  sm:flex-row
 
-                  gap-4
+<div className="
 
-                  "
+text-center
 
-                >
+animate-fade-in
 
+">
 
 
+<div className="
 
+text-cyan-400
 
-                  <input
+font-mono
 
+mb-6
 
-                    value={input}
+">
 
+SCAN ABGESCHLOSSEN
 
-                    onChange={
+</div>
 
-                      e=>
 
-                      setInput(
-                        e.target.value
-                      )
 
-                    }
+<div className="
 
+border
 
+border-cyan-400/20
 
-                    onKeyDown={
+rounded-xl
 
-                      e=>{
+p-6
 
-                        if(
-                          e.key==="Enter"
-                        ){
+bg-cyan-400/5
 
-                          startScan();
+mb-6
 
-                        }
+">
 
-                      }
 
-                    }
+<p className="
 
+text-white
 
+leading-relaxed
 
+">
 
-                    placeholder="
 
-                    E-Mail, Username oder Name
+{
+apiResult?.summary ??
+"Analyse abgeschlossen."
+}
 
-                    "
 
+</p>
 
 
+</div>
 
-                    className="
 
-                    flex-1
 
-                    px-5
 
-                    py-4
+<Button
 
-                    rounded-lg
+onClick={()=>router.push("/register")}
 
-                    bg-black/40
+>
 
-                    border
+VOLLSTÄNDIGE ANALYSE AKTIVIEREN
 
-                    border-cyan-400/20
+</Button>
 
-                    text-white
 
-                    font-mono
 
+<Button
 
-                    focus:outline-none
+variant="ghost"
 
-                    focus:border-cyan-400
+onClick={reset}
 
-                    "
+>
 
-                  />
+Neuer Scan
 
+</Button>
 
 
+</div>
 
 
+}
 
 
-                  <Button
 
-                    size="lg"
 
-                    onClick={startScan}
+</div>
 
-                    disabled={!input.trim()}
 
-                  >
+</GlassCard>
 
-                    INTELLIGENCE SCAN STARTEN
 
 
-                  </Button>
+</div>
 
 
+</section>
 
 
-                </div>
+</>
 
-
-              </>
-
-              }
-
-
-
-
-
-
-
-
-
-              {
-
-              phase==="complete"
-
-              &&
-
-
-
-              <div
-
-                className="
-
-                animate-fade-in
-
-                text-center
-
-                "
-
-              >
-
-
-
-
-
-                <div
-
-                  className="
-
-                  text-cyan-400
-
-                  font-mono
-
-                  mb-6
-
-                  "
-
-                >
-
-                  SCAN ABGESCHLOSSEN
-
-                </div>
-
-
-
-
-
-
-
-                <div
-
-                  className="
-
-                  border
-
-                  border-cyan-400/20
-
-                  rounded-xl
-
-                  p-6
-
-                  bg-cyan-400/5
-
-                  mb-6
-
-                  "
-
-                >
-
-
-
-
-
-                  <p
-
-                    className="
-
-                    text-white
-
-                    leading-relaxed
-
-                    "
-
-                  >
-
-
-                    {
-
-                      apiResult?.summary ??
-
-                      "Analyse abgeschlossen."
-
-                    }
-
-
-
-                  </p>
-
-
-
-
-                </div>
-
-
-
-
-
-
-
-
-                <Button
-
-                  onClick={
-
-                    ()=>router.push("/register")
-
-                  }
-
-                >
-
-                  VOLLSTÄNDIGE ANALYSE AKTIVIEREN
-
-
-                </Button>
-
-
-
-
-
-
-
-                <Button
-
-                  variant="ghost"
-
-                  onClick={reset}
-
-                >
-
-                  Neuer Scan
-
-
-                </Button>
-
-
-
-
-
-
-              </div>
-
-
-
-              }
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-          </GlassCard>
-
-
-
-
-
-
-
-        </div>
-
-
-
-
-
-      </section>
-
-
-
-
-
-
-    </>
-
-  );
+);
 
 
 }
