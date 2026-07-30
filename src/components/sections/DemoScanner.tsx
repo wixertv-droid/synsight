@@ -92,46 +92,43 @@ export default function DemoScanner() {
       const response = await scanPromise;
       const data = await response.json();
 
-      // FALLBACK: Wenn die API (wie auf deinem Bild) keine echten Findings liefert,
-      // bauen wir hier coole Dummy-Daten ein, damit das Result-Dashboard beeindruckend aussieht!
-      const finalFindings = data.findings && data.findings.length > 0
-  ? data.findings
-  : [
-      {
-        category: "BREACH",
-        title: "Breach Database Exposure",
-        description: "E-Mail-Adresse wurde in bekannten Datenleck-Sammlungen gefunden.",
-        risk: "high"
-      },
-      {
-        category: "OSINT",
-        title: "Öffentliches Profil erkannt",
-        description: "Öffentliche Spuren und Metadaten wurden in offenen Quellen gefunden.",
-        risk: "low"
-      },
-      {
-        category: "LEAK",
-        title: "Pastebin / Dump Erwähnung",
-        description: "Mögliche Erwähnung in veröffentlichten Datensätzen erkannt.",
-        risk: "medium"
-      }
-    ];
-      const finalPlatforms = data.platforms && data.platforms.length > 0 ? data.platforms : [
-        "GitHub", "Pastebin", "Breach-DB", "OSINT-Search"
-      ];
-
       if (data.status === "success") {
+        
+        // --- DAS IST DER NEUE MAPPER ---
+        // Er übersetzt die Python-Daten exakt in dein TypeScript-Format
+        const mappedFindings = (data.findings || []).map((f: any) => ({
+          category: f.category || "GENERAL",
+          title: f.title || "Unbekanntes Finding",
+          description: f.detail || f.description || "Keine Beschreibung verfügbar.",
+          platform: f.platform || "Unbekannt",
+          detail: f.detail || "",
+          // Macht aus "High" -> "high", damit TypeScript es akzeptiert
+          risk: (f.risk ? f.risk.toLowerCase() : "low") as "low" | "medium" | "high" 
+        }));
+
+        // Falls das Array wider Erwarten leer sein sollte, setzen wir einen Platzhalter
+        if (mappedFindings.length === 0) {
+            mappedFindings.push({
+                category: "OSINT",
+                title: "Keine kritischen Treffer",
+                description: "Es wurden in der Schnellanalyse keine direkten Treffer gefunden.",
+                platform: "System",
+                risk: "low"
+            });
+        }
+
         const scanData: ScanData = {
           query: data.query ?? input,
-          queryType: data.query_type ?? "unknown",
-          findings: finalFindings,
-          platforms: finalPlatforms,
-          exposureScore: data.exposure_score ?? 68, // Fallback Score
-          riskLevel: data.risk_level ?? "Erhöhtes Risiko",
+          // Macht aus "EMAIL" -> "email"
+          queryType: (data.query_type ? data.query_type.toLowerCase() : "unknown") as any,
+          findings: mappedFindings,
+          platforms: data.platforms ?? ["OSINT-Search"],
+          exposureScore: data.exposure_score ?? 0,
+          riskLevel: data.risk_level ?? "Erhöht",
           summary: data.summary ?? `Die Basis-Analyse für '${input}' wurde abgeschlossen.`,
           timestamp: new Date().toISOString(),
-          exposure_count: data.exposure_count ?? finalFindings.length,
-          sources_found: data.sources_found ?? finalPlatforms.length
+          exposure_count: mappedFindings.length,
+          sources_found: data.platforms?.length ?? 0
         };
 
         setRawData(scanData);
@@ -146,7 +143,7 @@ export default function DemoScanner() {
       } else {
         setApiResult({
           status: "error",
-          message: "Analyse konnte nicht abgeschlossen werden.",
+          message: data.message || "Analyse konnte nicht abgeschlossen werden.",
           riskLevel: "Keine Bewertung",
           summary: "Die öffentliche Analyse konnte nicht vollständig abgeschlossen werden."
         });
