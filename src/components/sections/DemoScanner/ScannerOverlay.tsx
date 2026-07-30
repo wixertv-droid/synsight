@@ -1,241 +1,260 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import ScannerHUD from "./ScannerHUD";
-import type { ScanPhase, ApiResult, ScanData, ScanFinding } from "./types";
+import Button from "@/components/ui/Button";
+import GlassCard from "@/components/ui/GlassCard";
+import { ScanPhase, ApiResult, ScanData } from "./DemoScanner/types";
+import ScannerOverlay from "./DemoScanner/ScannerOverlay";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
-interface ScannerOverlayProps {
-  phase: ScanPhase;
-  progress: number;
-  target: string;
-  logs: string[];
-  apiResult: ApiResult | null;
-  rawData: ScanData | null;
-  onClose: () => void;
-}
+const scanStages = [
+  "Initialisiere SynSight Intelligence Core",
+  "Analysiere öffentliche Identitätsdaten",
+  "Suche digitale Erwähnungen",
+  "Korreliere Benutzernamen und Profile",
+  "Prüfe öffentliche Datenquellen",
+  "Analysiere technische Spuren",
+  "Bewerte mögliche Exposure-Faktoren",
+  "Berechne digitales Risikoprofil",
+  "Generiere Voranalyse"
+];
 
-export default function ScannerOverlay({
-  phase,
-  progress,
-  target,
-  logs,
-  apiResult,
-  rawData,
-  onClose
-}: ScannerOverlayProps) {
+export default function DemoScanner() {
   const router = useRouter();
-  const [showContent, setShowContent] = useState(false);
+  const { ref, isVisible } = useScrollAnimation();
 
-  // Zögert das Einblenden des Dossiers minimal heraus, für einen weichen Übergang
-  useEffect(() => {
-    if (phase === "fullscreen_result") {
-      const timer = setTimeout(() => setShowContent(true), 150);
-      return () => clearTimeout(timer);
-    } else {
-      setShowContent(false);
+  const [input, setInput] = useState("");
+  const [phase, setPhase] = useState<ScanPhase>("idle");
+  const [progress, setProgress] = useState(0);
+  const [apiResult, setApiResult] = useState<ApiResult | null>(null);
+  const [rawData, setRawData] = useState<ScanData | null>(null);
+
+  const startScan = useCallback(async () => {
+    if (!input.trim() || phase === "scanning") return;
+
+    setPhase("scanning");
+    setProgress(0);
+    setApiResult(null);
+    setRawData(null);
+
+    const scanPromise = fetch("/api/scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: input })
+    });
+
+    let current = 0;
+    let scanFinished = false;
+
+    const scanInterval = setInterval(() => {
+      current += 1;
+      setProgress(current);
+      if (current >= 100) {
+        clearInterval(scanInterval);
+        scanFinished = true;
+      }
+    }, 100);
+
+    await new Promise((resolve) => {
+      const wait = setInterval(() => {
+        if (scanFinished) {
+          clearInterval(wait);
+          resolve(true);
+        }
+      }, 50);
+    });
+
+    try {
+      const response = await scanPromise;
+      const data = await response.json();
+
+      if (data.status === "success") {
+        const mappedFindings = (data.findings || []).map((f: { category?: string; title?: string; description?: string; detail?: string; platform?: string; risk?: string }) => ({
+          category: f.category || "GENERAL",
+          title: f.title || "Unbekanntes Finding",
+          description: f.detail || f.description || "Keine Beschreibung verfügbar.",
+          platform: f.platform || "Unbekannt",
+          detail: f.detail || "",
+          risk: (f.risk ? f.risk.toLowerCase() : "low") as "low" | "medium" | "high" 
+        }));
+
+        if (mappedFindings.length === 0) {
+            mappedFindings.push({
+                category: "OSINT",
+                title: "Keine kritischen Treffer",
+                description: "Es wurden in der Schnellanalyse keine direkten Treffer gefunden.",
+                platform: "System",
+                risk: "low"
+            });
+        }
+
+        const scanData: ScanData = {
+          query: data.query ?? input,
+          queryType: (data.query_type ? data.query_type.toLowerCase() : "unknown") as "email" | "username" | "name" | "unknown",
+          findings: mappedFindings,
+          platforms: data.platforms ?? ["OSINT-Search"],
+          exposureScore: data.exposure_score ?? 0,
+          riskLevel: data.risk_level ?? "Erhöht",
+          summary: data.summary ?? `Die Basis-Analyse für '${input}' wurde abgeschlossen.`,
+          timestamp: new Date().toISOString(),
+          exposure_count: mappedFindings.length,
+          sources_found: data.platforms?.length ?? 0
+        };
+
+        setRawData(scanData);
+        setApiResult({
+          status: "success",
+          data: scanData,
+          riskLevel: scanData.riskLevel,
+          summary: scanData.summary,
+          findings: scanData.findings,
+          platforms: scanData.platforms
+        });
+      } else {
+        setApiResult({
+          status: "error",
+          message: data.message || "Analyse konnte nicht abgeschlossen werden.",
+          riskLevel: "Keine Bewertung",
+          summary: "Die öffentliche Analyse konnte nicht vollständig abgeschlossen werden."
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      setApiResult({
+        status: "error",
+        message: "Analyse Dienst nicht erreichbar.",
+        riskLevel: "Offline",
+        summary: "Der Analyse-Dienst konnte nicht erreicht werden."
+      });
     }
-  }, [phase]);
 
-  // Wenn idle oder complete, ist das Overlay unsichtbar (Nutzer ist auf der normalen Seite)
-  if (phase === "idle" || phase === "complete") return null;
+    setTimeout(() => {
+      setPhase("fullscreen_result");
+    }, 800);
 
-  // 1. PHASE: DAS SCANNER HUD (Der 10-Sekunden Scan)
-  if (phase === "scanning") {
-    return (
-      <div className="fixed inset-0 z-50 bg-black">
-        <ScannerHUD progress={progress} query={target} onClose={onClose} />
-      </div>
-    );
-  }
+  }, [input, phase]);
 
-  // 2. PHASE: DAS DOSSIER (Ergebnisseite im Cyber-Look)
-  if (phase === "fullscreen_result") {
-    // Sicheres Auslesen der Daten (inkl. Fallbacks, falls etwas fehlt)
-    const findings = rawData?.findings || [];
-    const riskLevel = apiResult?.riskLevel || "Unbekannt";
-    const score = rawData?.exposureScore || 0;
+  const closeFullscreen = () => {
+    // Da das Overlay jetzt die Animation übernimmt, setzen wir es direkt auf complete
+    setPhase("complete");
+  };
 
-    return (
-      <div className="fixed inset-0 z-50 bg-[#02070d] font-mono text-white overflow-y-auto selection:bg-cyan-500/30">
-        
-        {/* HINTERGRUND VFX */}
-        <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.05)_0%,rgba(2,7,13,1)_80%)] pointer-events-none" />
-        <div className="fixed inset-0 opacity-10 bg-[linear-gradient(rgba(34,211,238,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.2)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" style={{ perspective: '800px', transform: 'rotateX(20deg) scale(1.2) translateY(-10%)' }} />
-        <div className="fixed inset-0 pointer-events-none z-50">
-          <div className="w-full h-[2px] bg-cyan-400/20 blur-[1px] shadow-[0_0_20px_#22d3ee]" style={{ animation: 'scanline 4s linear infinite' }} />
-        </div>
+  const reset = () => {
+    setPhase("idle");
+    setInput("");
+    setProgress(0);
+    setApiResult(null);
+    setRawData(null);
+  };
 
-        {/* HAUPTINHALT DOSSIER */}
-        <div className={`relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-12 transition-all duration-1000 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-          
-          {/* HEADER */}
-          <div className="border-b border-cyan-500/30 pb-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-            <div>
-              <div className="text-cyan-500 text-[10px] tracking-[0.4em] mb-2 uppercase animate-pulse font-bold">
-                SynSight Intelligence Network
-              </div>
-              <h1 className="text-3xl md:text-5xl font-black tracking-tight drop-shadow-[0_0_15px_rgba(34,211,238,0.4)] uppercase">
-                Digital Exposure Dossier
-              </h1>
-            </div>
-            <div className="text-left md:text-right">
-              <div className="text-cyan-700 text-[10px] tracking-widest font-bold">DOSSIER ID: {Math.random().toString(36).substring(2,10).toUpperCase()}</div>
-              <div className="text-cyan-400 text-xs mt-1 tracking-widest">{new Date().toLocaleString('de-DE')}</div>
-            </div>
-          </div>
-
-          {/* GRID LAYOUT */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* LINKE SPALTE: Ziel-Info & Score */}
-            <div className="space-y-8">
-              
-              {/* Ziel Objekt */}
-              <div className="relative border border-cyan-500/30 bg-[#041224]/80 backdrop-blur-md p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
-                <TechCorners />
-                <div className="text-cyan-500 text-[10px] uppercase tracking-[0.3em] mb-4 font-bold">Ziel-Objekt</div>
-                <div className="text-xl md:text-2xl text-white font-sans font-medium truncate drop-shadow-[0_0_8px_#fff]">
-                  {target || "Unbekannt"}
-                </div>
-                <div className="mt-6 pt-4 border-t border-cyan-500/20 flex items-center gap-3">
-                   <div className={`w-3 h-3 rounded-full animate-ping shadow-[0_0_10px_currentColor] ${riskLevel.includes('Erhöht') || riskLevel.includes('High') ? 'bg-red-500 text-red-500' : 'bg-cyan-500 text-cyan-500'}`} />
-                   <div className="text-xs uppercase tracking-widest text-gray-300">Status: {riskLevel}</div>
-                </div>
-              </div>
-
-              {/* Exposure Score (Das große Radar) */}
-              <div className="relative border border-cyan-500/30 bg-[#041224]/80 backdrop-blur-md p-6 flex flex-col items-center justify-center py-12 shadow-[0_0_30px_rgba(34,211,238,0.05)] overflow-hidden">
-                <TechCorners />
-                {/* Score Background Glow */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.1)_0%,transparent_70%)]" />
-                
-                <div className="text-cyan-500 text-[10px] uppercase tracking-[0.3em] mb-8 font-bold">Exposure Score</div>
-                
-                <div className="relative flex items-center justify-center">
-                   {/* Animierte Score-Ringe */}
-                   <div className="absolute w-36 h-36 rounded-full border-[3px] border-dashed border-cyan-500/40 animate-[spin_12s_linear_infinite]" />
-                   <div className="absolute w-28 h-28 rounded-full border-[2px] border-cyan-400/60 animate-[spin_6s_linear_infinite_reverse]" />
-                   <div className="text-6xl font-black text-white drop-shadow-[0_0_20px_#22d3ee] z-10">
-                     {score}
-                   </div>
-                </div>
-                
-                <div className="mt-8 text-cyan-600 text-[9px] tracking-[0.2em] text-center max-w-[200px] font-bold">
-                  HÖHERER WERT BEDEUTET GRÖSSERE DIGITALE ANGRIFFSFLÄCHE
-                </div>
-              </div>
-            </div>
-
-            {/* RECHTE SPALTE: Zusammenfassung & Fundstellen */}
-            <div className="lg:col-span-2 space-y-8">
-              
-              {/* Zusammenfassungs-Box (Hervorgehoben) */}
-              <div className="relative border-l-4 border-l-cyan-500 border-y border-r border-cyan-500/30 bg-cyan-900/20 p-6 backdrop-blur-md shadow-[0_0_20px_rgba(34,211,238,0.05)]">
-                <div className="text-cyan-500 text-[10px] font-bold tracking-[0.3em] uppercase mb-4">KI-Analyse Zusammenfassung</div>
-                <p className="text-gray-300 leading-relaxed font-sans text-base md:text-lg">
-                  {apiResult?.summary}
-                </p>
-              </div>
-
-              {/* Liste der Fundstellen (Findings) */}
-              <div className="relative border border-cyan-500/30 bg-[#041224]/80 backdrop-blur-md p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
-                <TechCorners />
-                <div className="flex justify-between items-center mb-6 border-b border-cyan-500/20 pb-4">
-                  <div className="text-cyan-500 text-[10px] uppercase tracking-[0.3em] font-bold">Identifizierte Datenpunkte</div>
-                  <div className="text-cyan-400 text-xs font-bold bg-cyan-950 px-3 py-1 border border-cyan-500/30">
-                    TOTAL: {findings.length}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {findings.map((finding, idx) => {
-                    // Farben je nach Risiko-Level dynamisch anpassen
-                    const risk = finding.risk?.toLowerCase() || "low";
-                    let riskColors = "text-cyan-400 border-cyan-500/50 bg-cyan-500/10";
-                    if (risk.includes("high") || risk.includes("hoch")) riskColors = "text-red-400 border-red-500/50 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.3)]";
-                    else if (risk.includes("medium") || risk.includes("mittel")) riskColors = "text-amber-400 border-amber-500/50 bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.2)]";
-
-                    return (
-                      <div key={idx} className="group relative border border-cyan-900/50 bg-[#02070d]/60 p-4 hover:bg-cyan-900/30 transition-all duration-300 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                         
-                         {/* Linke Seite: Zahl, Plattform, Detail */}
-                         <div className="flex items-start gap-4 w-full">
-                            <div className="text-cyan-800 font-black text-lg mt-0.5 border-r border-cyan-900 pr-3">
-                              0{idx + 1}
-                            </div>
-                            <div className="flex-1">
-                               <div className="text-cyan-300 font-bold text-sm uppercase tracking-wider drop-shadow-[0_0_5px_#22d3ee]">
-                                 {finding.title}
-                               </div>
-                               <div className="text-gray-400 text-xs mt-1.5 font-sans leading-relaxed">
-                                 {finding.description}
-                               </div>
-                            </div>
-                         </div>
-                         
-                         {/* Rechte Seite: Risiko-Badge */}
-                         <div className={`px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest border shrink-0 ${riskColors}`}>
-                            {finding.risk || "Info"}
-                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                
-                {/* Lade-Indikator am Ende der Liste (Simuliert den Deep-Scan im Hintergrund) */}
-                <div className="mt-8 pt-6 border-t border-cyan-500/20 flex flex-col md:flex-row items-center justify-between gap-4 opacity-70">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full border-[2px] border-cyan-900 border-t-cyan-400 animate-spin" />
-                    <div className="text-[10px] text-cyan-500 font-bold tracking-[0.2em] uppercase">Deep-Scan im Hintergrund aktiv...</div>
-                  </div>
-                  <div className="w-full md:w-32 h-1 bg-[#02070d] rounded-full overflow-hidden border border-cyan-900/50">
-                     <div className="h-full bg-cyan-500/50 w-1/3 animate-pulse" />
-                  </div>
-                </div>
-              </div>
-
-              {/* ACTION BUTTONS */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-end mt-8 pt-4">
-                 <button 
-                   onClick={onClose} 
-                   className="px-6 py-4 border border-cyan-900 text-cyan-700 hover:text-cyan-400 hover:border-cyan-500 hover:bg-cyan-500/10 transition-all text-xs uppercase tracking-[0.2em] font-bold"
-                 >
-                    System verlassen
-                 </button>
-                 <button 
-                   onClick={() => router.push('/register')} 
-                   className="px-6 py-4 bg-[#041224] border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-[#02070d] transition-all shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:shadow-[0_0_30px_rgba(34,211,238,0.8)] text-xs uppercase tracking-[0.2em] font-bold"
-                 >
-                    Vollständigen Deep-Scan anfordern
-                 </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
-        
-        <style>{`
-          @keyframes scanline {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100vh); }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  return null;
-}
-
-// Eine kleine Hilfskomponente für die coolen Ecken an den Boxen
-function TechCorners() {
   return (
     <>
-      <div className="absolute top-0 left-0 w-4 h-4 border-t-[2px] border-l-[2px] border-cyan-500/70" />
-      <div className="absolute top-0 right-0 w-4 h-4 border-t-[2px] border-r-[2px] border-cyan-500/70" />
-      <div className="absolute bottom-0 left-0 w-4 h-4 border-b-[2px] border-l-[2px] border-cyan-500/70" />
-      <div className="absolute bottom-0 right-0 w-4 h-4 border-b-[2px] border-r-[2px] border-cyan-500/70" />
+      <ScannerOverlay
+        phase={phase}
+        progress={progress}
+        target={input}
+        apiResult={apiResult}
+        rawData={rawData}
+        onClose={closeFullscreen}
+      />
+
+      <section id="demo-scanner" className="section-shell relative section-padding overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,rgba(20,122,174,.12),transparent_42rem)] pointer-events-none" />
+
+        <div className="relative max-w-5xl mx-auto">
+          
+          {/* Überschrift wird ausgeblendet, sobald der Scan fertig ist */}
+          {phase === "idle" && (
+            <div
+              ref={ref}
+              className={`text-center mb-12 transition-all duration-1000 ${
+                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+              }`}
+            >
+              <span className="hud-label">03 / FREE INTELLIGENCE SCAN</span>
+              <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] mt-5 mb-7">
+                Erkennen Sie Ihre <span className="cyber-gradient">digitale Angriffsfläche.</span>
+              </h2>
+              <p className="max-w-3xl mx-auto text-gray-400 text-lg leading-relaxed">
+                SynSight analysiert öffentlich sichtbare Informationen, digitale Spuren und mögliche Risikoindikatoren. Erhalten Sie eine erste Einschätzung Ihrer digitalen Präsenz.
+              </p>
+            </div>
+          )}
+
+          <GlassCard hover={false} className="glass-strong relative overflow-hidden">
+            <div className="p-8">
+              
+              {/* EINGABE-PHASE (Links ausgerichtet + Cyber Look) */}
+              {phase === "idle" && (
+                <div className="text-left">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-2 h-2 bg-cyan-500 shadow-[0_0_8px_#22d3ee] animate-pulse" />
+                    <h3 className="text-cyan-400 font-mono text-sm tracking-[0.2em] uppercase">Intelligence Node</h3>
+                  </div>
+                  <p className="text-gray-400 text-sm mb-8 font-sans">
+                    Ziel-Entität spezifizieren. Das System durchsucht offene Datenbanken, Leaks und Social-Graphen.
+                  </p>
+
+                  <div className="relative group">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
+                    <div className="relative flex flex-col md:flex-row items-stretch bg-[#02070d] border border-cyan-500/30 rounded-lg overflow-hidden focus-within:border-cyan-400 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                      <div className="flex items-center pl-5 pr-3 bg-cyan-950/30 border-r border-cyan-500/30">
+                        <span className="text-cyan-500 font-mono text-sm tracking-widest font-bold">&gt;_</span>
+                      </div>
+                      <input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") startScan();
+                        }}
+                        placeholder="TARGET: E-Mail, Username oder Name"
+                        className="flex-1 bg-transparent px-5 py-4 text-white font-mono text-sm placeholder:text-cyan-900 focus:outline-none"
+                      />
+                      <Button 
+                        className="md:rounded-none rounded-t-none border-l border-cyan-500/30 px-8 bg-[#041224] hover:bg-cyan-500/10 text-cyan-400 hover:text-cyan-300 transition-all font-mono tracking-widest text-xs" 
+                        onClick={startScan} 
+                        disabled={!input.trim()}
+                      >
+                        SCAN STARTEN
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ERGEBNIS-PHASE (Links ausgerichtet + Terminal Look) */}
+              {phase === "complete" && (
+                <div className="text-left animate-fade-in">
+                  <div className="flex items-center gap-3 mb-6 border-b border-cyan-500/20 pb-4">
+                    <div className="w-2 h-2 bg-cyan-500 shadow-[0_0_8px_#22d3ee]" />
+                    <h3 className="text-cyan-400 font-mono text-sm tracking-[0.2em] uppercase">Scan Protokoll beendet</h3>
+                  </div>
+
+                  <div className="bg-[#02070d] border-l-2 border-cyan-500 p-6 shadow-[inset_0_0_20px_rgba(34,211,238,0.05)] mb-8 relative">
+                    <div className="absolute top-0 right-0 p-2 opacity-20 pointer-events-none">
+                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-500"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                    </div>
+                    <p className="text-gray-300 font-mono text-sm leading-relaxed">
+                      {apiResult?.summary ?? "Analyse abgeschlossen. Es wurden keine weiteren Vektoren gemeldet."}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button onClick={() => router.push("/register")} className="flex-1 bg-[#041224] border border-cyan-400 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)] hover:bg-cyan-400 hover:text-black">
+                      VOLLSTÄNDIGE ANALYSE AKTIVIEREN
+                    </Button>
+                    <Button variant="ghost" onClick={reset} className="border border-cyan-900 text-cyan-700 hover:text-cyan-400 hover:bg-cyan-900/30 font-mono tracking-widest text-xs uppercase">
+                      Neues Ziel scannen
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </GlassCard>
+        </div>
+      </section>
     </>
-  )
+  );
 }
