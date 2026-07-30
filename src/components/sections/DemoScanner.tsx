@@ -94,9 +94,9 @@ export default function DemoScanner() {
 
       if (data.status === "success") {
         
-        // --- DAS IST DER NEUE MAPPER ---
+       // --- DAS IST DER NEUE MAPPER ---
         // Er übersetzt die Python-Daten exakt in dein TypeScript-Format
-        const mappedFindings = (data.findings || []).map((f: any) => ({
+        const mappedFindings = (data.findings || []).map((f: { category?: string; title?: string; description?: string; detail?: string; platform?: string; risk?: string }) => ({
           category: f.category || "GENERAL",
           title: f.title || "Unbekanntes Finding",
           description: f.detail || f.description || "Keine Beschreibung verfügbar.",
@@ -119,8 +119,8 @@ export default function DemoScanner() {
 
         const scanData: ScanData = {
           query: data.query ?? input,
-          // Macht aus "EMAIL" -> "email"
-          queryType: (data.query_type ? data.query_type.toLowerCase() : "unknown") as any,
+          // Sauberer Typ-Cast anstatt 'any'
+          queryType: (data.query_type ? data.query_type.toLowerCase() : "unknown") as "email" | "username" | "name" | "unknown",
           findings: mappedFindings,
           platforms: data.platforms ?? ["OSINT-Search"],
           exposureScore: data.exposure_score ?? 0,
