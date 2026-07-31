@@ -9,7 +9,7 @@ import { getDemoScanCache, setDemoScanCache } from "@/lib/demo/scan-cache";
 
 const DEMO_SCAN_API_URL =
   process.env.DEMO_SCAN_API_URL || "http://161.97.85.22:5000/api/scan";
-const DEMO_SCAN_TIMEOUT_MS = Number(process.env.DEMO_SCAN_TIMEOUT_MS || 35_000);
+const DEMO_SCAN_TIMEOUT_MS = Number(process.env.DEMO_SCAN_TIMEOUT_MS || 55_000);
 const MAX_QUERY_LENGTH = 120;
 
 const DEMO_SCAN_RATE_LIMIT = {
@@ -82,30 +82,62 @@ export async function POST(req: Request) {
         signal: controller.signal,
       });
 
+      const data = (await contaboResponse.json().catch(() => null)) as Record<
+        string,
+        unknown
+      > | null;
+
       if (!contaboResponse.ok) {
-        throw new Error(`Demo scan upstream error: ${contaboResponse.status}`);
+        const upstreamMessage =
+          typeof data?.message === "string" && data.message.trim()
+            ? data.message.trim()
+            : `Demo scan upstream error: ${contaboResponse.status}`;
+        console.error(
+          "[demo-scan] upstream failed:",
+          contaboResponse.status,
+          data
+        );
+        return NextResponse.json(
+          {
+            status: "error",
+            message: upstreamMessage,
+            risk_level: "Fehler",
+          },
+          {
+            status:
+              contaboResponse.status >= 500 ? 502 : contaboResponse.status,
+            headers: rateLimitHeaders(attempt),
+          }
+        );
       }
 
-      const data = await contaboResponse.json();
       if (data?.status === "success") {
         setDemoScanCache(query, data);
       }
 
-      return NextResponse.json(data, {
-        headers: {
-          ...rateLimitHeaders(attempt),
-          "x-demo-scan-cache": "miss",
-        },
-      });
+      return NextResponse.json(
+        data ?? { status: "error", message: "Leere Antwort" },
+        {
+          headers: {
+            ...rateLimitHeaders(attempt),
+            "x-demo-scan-cache": "miss",
+          },
+        }
+      );
     } finally {
       clearTimeout(timeout);
     }
   } catch (error) {
     console.error("[demo-scan] failed:", error);
+    const aborted =
+      error instanceof Error &&
+      (error.name === "AbortError" || /aborted/i.test(error.message));
     return NextResponse.json(
       {
         status: "error",
-        message: "Der interne Analyse-Server konnte nicht erreicht werden.",
+        message: aborted
+          ? "Die Analyse hat zu lange gedauert. Bitte erneut versuchen."
+          : "Der interne Analyse-Server konnte nicht erreicht werden.",
         risk_level: "Fehler",
       },
       { status: 500, headers: rateLimitHeaders(attempt) }

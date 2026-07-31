@@ -89,15 +89,29 @@ def http_json(
         body = urlencode(data).encode("utf-8")
         headers["Content-Type"] = "application/x-www-form-urlencoded"
     req = Request(url, data=body, headers=headers, method=method)
-    with urlopen(req, timeout=timeout) as resp:
-        raw = resp.read().decode("utf-8", errors="replace").strip()
-        if not raw:
-            return None
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            # SpiderFoot often returns a bare scan id string
-            return raw.strip().strip('"')
+    try:
+        with urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8", errors="replace").strip()
+    except HTTPError as exc:
+        err_body = exc.read().decode("utf-8", errors="replace").strip()
+        raise RuntimeError(
+            f"SpiderFoot HTTP {exc.code} on {path}: {err_body[:300] or exc.reason}"
+        ) from exc
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # SpiderFoot often returns a bare scan id string
+        return raw.strip().strip('"')
+
+
+def scantarget_for_spiderfoot(target: str, target_type: str) -> str:
+    """SpiderFoot needs quoted HUMAN_NAME / USERNAME for type detection."""
+    cleaned = target.strip().strip('"')
+    if target_type in {"NAME", "USERNAME"}:
+        return f'"{cleaned}"'
+    return cleaned
 
 
 def load_cache() -> dict[str, Any]:
@@ -134,22 +148,41 @@ def cache_set(key: str, payload: dict[str, Any]) -> None:
 
 def start_scan(target: str, target_type: str) -> str:
     scan_name = f"SynSight Demo · {target_type} · {normalize_target(target)[:40]}"
-    # usecase=passive: public sources, suitable for a short landing-page wait
+    scantarget = scantarget_for_spiderfoot(target, target_type)
+    # CherryPy requires modulelist + typelist even when empty.
+    # usecase=passive: public sources, suitable for a short landing-page wait.
     result = http_json(
         "POST",
         "/startscan",
         {
             "scanname": scan_name,
-            "scantarget": target,
+            "scantarget": scantarget,
+            "modulelist": "",
+            "typelist": "",
             "usecase": USECASE,
         },
-        timeout=30.0,
+        timeout=45.0,
     )
+    # Canonical SF response: ["SUCCESS", "<scanId>"] or ["ERROR", "<msg>"]
+    if isinstance(result, list) and len(result) >= 2:
+        status = str(result[0]).upper()
+        payload = result[1]
+        if status == "ERROR":
+            raise RuntimeError(f"SpiderFoot startscan error: {payload}")
+        if status == "SUCCESS":
+            if isinstance(payload, list) and payload:
+                return str(payload[0])
+            if payload:
+                return str(payload)
     if isinstance(result, dict):
         scan_id = result.get("id") or result.get("scanid") or result.get("scanId")
         if scan_id:
             return str(scan_id)
-    if isinstance(result, str) and result:
+        if str(result.get("status", "")).upper() == "ERROR":
+            raise RuntimeError(
+                f"SpiderFoot startscan error: {result.get('message') or result}"
+            )
+    if isinstance(result, str) and result and not result.lstrip().startswith("<"):
         return result
     raise RuntimeError(f"SpiderFoot startscan returned unexpected payload: {result!r}")
 
