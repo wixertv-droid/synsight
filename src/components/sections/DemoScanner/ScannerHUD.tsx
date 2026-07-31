@@ -18,14 +18,10 @@ const operations = [
   "DIGITAL FOOTPRINT MAPPING",
   "CORRELATION ENGINE ACTIVE",
   "RISK MODEL CALCULATING",
-  "AI ASSESSMENT GENERATING"
+  "AI ASSESSMENT GENERATING",
 ];
 
-export default function ScannerHUD({
-  progress,
-  query
-}: ScannerHUDProps) {
-  const [isShuttingDown, setIsShuttingDown] = useState(false);
+export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
   const [isBooting, setIsBooting] = useState(true);
 
   useEffect(() => {
@@ -46,18 +42,12 @@ export default function ScannerHUD({
           40% { transform: scale(1, 0.002); filter: brightness(10); opacity: 1; }
           100% { transform: scale(1, 1); filter: brightness(1); opacity: 1; }
         }
-        @keyframes crtTurnOff {
-          0% { transform: scale(1, 1.3); filter: brightness(1); }
-          60% { transform: scale(1, 0.001); filter: brightness(10); }
-          100% { transform: scale(0, 0.001); filter: brightness(0); opacity: 0; }
-        }
         
         @keyframes hologramFlicker {
           0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
           20%, 22%, 24%, 55% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(34,211,238,0.8)); }
         }
         
-        /* EKG Animation: Dash-Werte erhöht, da die Linie durch die vielen Ausschläge länger ist */
         @keyframes ekgPulse {
           0% { stroke-dashoffset: 800; opacity: 0; }
           10% { opacity: 1; }
@@ -76,26 +66,35 @@ export default function ScannerHUD({
         }
         
         .crt-boot { animation: crtTurnOn 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
-        .crt-shutdown { animation: crtTurnOff 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
       `}</style>
 
-      <div 
-        className={`relative h-full w-full overflow-hidden bg-[#02070d] flex items-center justify-center font-mono select-none ${isBooting ? 'crt-boot' : ''} ${isShuttingDown ? 'crt-shutdown' : ''}`}
+      <div
+        className={`relative h-full w-full overflow-hidden bg-[#02070d] flex items-center justify-center font-mono select-none ${isBooting ? "crt-boot" : ""}`}
       >
-        
         {/* === BACKGROUND === */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.1)_0%,rgba(2,7,13,1)_70%)]" />
-        <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(34,211,238,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.2)_1px,transparent_1px)] bg-[size:60px_60px]" style={{ perspective: '800px', transform: 'rotateX(60deg) scale(2) translateY(-20%)' }} />
-        
+        <div
+          className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(34,211,238,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.2)_1px,transparent_1px)] bg-[size:60px_60px]"
+          style={{
+            perspective: "800px",
+            transform: "rotateX(60deg) scale(2) translateY(-20%)",
+          }}
+        />
+
         <div className="absolute inset-0 pointer-events-none z-50">
-          <div className="w-full h-[2px] bg-cyan-400/40 blur-[1px] opacity-70 shadow-[0_0_30px_#22d3ee]" style={{ animation: 'scanline 2s linear infinite' }} />
+          <div
+            className="w-full h-[2px] bg-cyan-400/40 blur-[1px] opacity-70 shadow-[0_0_30px_#22d3ee]"
+            style={{ animation: "scanline 2s linear infinite" }}
+          />
         </div>
-        
+
         <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_150px_rgba(2,7,13,0.9)] z-40" />
 
         {/* === ZENTRALER SCANNER CORE === */}
-        <div className="relative z-10 flex items-center justify-center w-[800px] h-[800px]" style={{ animation: 'hologramFlicker 8s infinite' }}>
-          
+        <div
+          className="relative z-10 flex items-center justify-center w-[min(92vw,520px)] h-[min(92vw,520px)] md:w-[min(80vw,720px)] md:h-[min(80vw,720px)] mb-40 md:mb-48"
+          style={{ animation: "hologramFlicker 8s infinite" }}
+        >
           <div className="absolute w-[90%] h-[90%] rounded-full border border-cyan-500/10 shadow-[0_0_50px_rgba(34,211,238,0.05)_inset,0_0_50px_rgba(34,211,238,0.05)]" />
           <div className="absolute w-[75%] h-[75%] rounded-full border-[2px] border-dashed border-cyan-400/30 animate-[spin_10s_linear_infinite]" />
           <div className="absolute w-[68%] h-[68%] rounded-full border-[2px] border-dotted border-blue-400/40 animate-[spin_8s_linear_infinite_reverse]" />
@@ -109,32 +108,35 @@ export default function ScannerHUD({
 
           <div className="absolute w-[30%] h-[30%] rounded-full border border-cyan-300 bg-cyan-900/20 animate-pulse backdrop-blur-md shadow-[0_0_40px_#22d3ee_inset]" />
 
-          <div className="relative z-20 flex flex-col items-center justify-center w-[30%] h-[30%] rounded-full border border-cyan-200/40 bg-[#02070d]/80 shadow-[0_0_60px_rgba(34,211,238,0.5)] overflow-hidden">
-            <span className="text-cyan-400 text-[10px] tracking-[0.4em] mb-1 uppercase opacity-80">SynSight Core</span>
-            <div className="text-white text-7xl font-black tracking-tighter drop-shadow-[0_0_15px_#22d3ee] z-10 mt-2 mb-2">
+          <div className="relative z-20 flex flex-col items-center justify-center w-[42%] h-[42%] md:w-[30%] md:h-[30%] rounded-full border border-cyan-200/40 bg-[#02070d]/80 shadow-[0_0_60px_rgba(34,211,238,0.5)] overflow-hidden">
+            <span className="text-cyan-400 text-[9px] md:text-[10px] tracking-[0.4em] mb-1 uppercase opacity-80">
+              SynSight Core
+            </span>
+            <div className="text-white text-5xl md:text-7xl font-black tracking-tighter drop-shadow-[0_0_15px_#22d3ee] z-10 mt-1 mb-1">
               {progress}
             </div>
-            <span className="text-blue-400 text-[10px] tracking-[0.3em] mt-1 animate-pulse z-10">ANALYZING</span>
-            
+            <span className="text-blue-400 text-[9px] md:text-[10px] tracking-[0.3em] mt-1 animate-pulse z-10">
+              ANALYZING
+            </span>
+
             <div className="absolute -top-3 w-[1px] h-3 bg-cyan-400" />
             <div className="absolute -bottom-3 w-[1px] h-3 bg-cyan-400" />
             <div className="absolute -left-3 w-3 h-[1px] bg-cyan-400" />
             <div className="absolute -right-3 w-3 h-[1px] bg-cyan-400" />
           </div>
-
         </div>
 
         {/* === BOTTOM DASHBOARD PANELS === */}
-        <div className="absolute z-40 bottom-10 left-0 w-full px-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-          
-          {/* LEFT: TARGET INFO */}
-          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
+        <div className="absolute z-40 bottom-4 md:bottom-10 left-0 w-full px-4 md:px-12 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-8">
+          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-4 md:p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-50" />
             <div className="flex items-center gap-3 mb-2">
               <div className="w-3 h-3 bg-cyan-400 rounded-sm animate-ping shadow-[0_0_10px_#22d3ee]" />
-              <div className="text-cyan-500 text-xs font-bold tracking-[0.4em] uppercase font-mono">Ziel-Objekt</div>
+              <div className="text-cyan-500 text-xs font-bold tracking-[0.4em] uppercase font-mono">
+                Ziel-Objekt
+              </div>
             </div>
-            <div className="text-white text-2xl font-sans font-medium drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] truncate">
+            <div className="text-white text-xl md:text-2xl font-sans font-medium drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] truncate">
               {query || "Unbekannt"}
             </div>
             <div className="mt-4 flex gap-2">
@@ -144,12 +146,17 @@ export default function ScannerHUD({
             </div>
           </div>
 
-          {/* CENTER: SYSTEM STATUS & NEUES 3D EKG MIT PROZENTZAHL */}
-          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-5 flex flex-col justify-center items-center shadow-[inset_0_0_20px_rgba(34,211,238,0.05)]">
-            
-            {/* HINTERGRUND: Neuronales Netz (SVG) */}
-            <div className="absolute inset-0 pointer-events-none" style={{ animation: 'neuralBreathe 4s infinite' }}>
-              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="stroke-cyan-500/20 fill-cyan-500/20">
+          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-4 md:p-5 flex flex-col justify-center items-center shadow-[inset_0_0_20px_rgba(34,211,238,0.05)]">
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ animation: "neuralBreathe 4s infinite" }}
+            >
+              <svg
+                width="100%"
+                height="100%"
+                xmlns="http://www.w3.org/2000/svg"
+                className="stroke-cyan-500/20 fill-cyan-500/20"
+              >
                 <circle cx="10%" cy="20%" r="2" />
                 <circle cx="30%" cy="80%" r="1.5" />
                 <circle cx="50%" cy="30%" r="2.5" />
@@ -169,86 +176,88 @@ export default function ScannerHUD({
             <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-400 z-10" />
             <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-400 z-10" />
 
-            <div className="text-cyan-500 text-[10px] font-bold tracking-[0.4em] mb-1 uppercase font-mono z-10">Status</div>
-            <div className="text-white text-lg font-bold tracking-widest animate-pulse drop-shadow-[0_0_8px_#fff] font-mono z-10">
-               KI-ANALYSE AKTIV
+            <div className="text-cyan-500 text-[10px] font-bold tracking-[0.4em] mb-1 uppercase font-mono z-10">
+              Status
             </div>
-            
-            {/* Ladebalken */}
-            <div className="w-full h-1.5 bg-[#041224] mt-3 border border-cyan-900/50 relative overflow-hidden rounded-full z-10">
-               <div 
-                 className="absolute top-0 left-0 h-full bg-cyan-400 shadow-[0_0_15px_#22d3ee] transition-all duration-100 ease-linear"
-                 style={{ width: `${progress}%` }}
-               />
+            <div className="text-white text-base md:text-lg font-bold tracking-widest animate-pulse drop-shadow-[0_0_8px_#fff] font-mono z-10">
+              KI-ANALYSE AKTIV
             </div>
 
-            {/* VORDERGRUND: Volle Breite 3D EKG Linie mit MEHR Ausschlägen, tiefer gesetzt (mt-6) */}
-            <div className="w-full h-12 mt-6 flex justify-center opacity-90 z-10">
-              <svg width="100%" height="100%" viewBox="0 0 500 40" preserveAspectRatio="none" className="drop-shadow-[0_0_5px_#22d3ee]">
-                
-                {/* Layer 1: Der verschwommene 3D-Schatten */}
-                <path 
-                  d="M0,20 L120,20 L135,5 L150,35 L165,10 L180,30 L195,5 L215,35 L230,15 L245,20 L320,20 L330,10 L340,30 L350,20 L500,20" 
+            <div className="w-full h-1.5 bg-[#041224] mt-3 border border-cyan-900/50 relative overflow-hidden rounded-full z-10">
+              <div
+                className="absolute top-0 left-0 h-full bg-cyan-400 shadow-[0_0_15px_#22d3ee] transition-all duration-100 ease-linear"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+
+            <div className="w-full h-10 md:h-12 mt-4 md:mt-6 flex justify-center opacity-90 z-10">
+              <svg
+                width="100%"
+                height="100%"
+                viewBox="0 0 500 40"
+                preserveAspectRatio="none"
+                className="drop-shadow-[0_0_5px_#22d3ee]"
+              >
+                <path
+                  d="M0,20 L120,20 L135,5 L150,35 L165,10 L180,30 L195,5 L215,35 L230,15 L245,20 L320,20 L330,10 L340,30 L350,20 L500,20"
                   className="stroke-cyan-700/60 fill-none stroke-[6px] blur-[3px]"
                 />
-                
-                {/* Layer 2: Die scharfe Hauptlinie */}
-                <path 
-                  d="M0,20 L120,20 L135,5 L150,35 L165,10 L180,30 L195,5 L215,35 L230,15 L245,20 L320,20 L330,10 L340,30 L350,20 L500,20" 
+                <path
+                  d="M0,20 L120,20 L135,5 L150,35 L165,10 L180,30 L195,5 L215,35 L230,15 L245,20 L320,20 L330,10 L340,30 L350,20 L500,20"
                   className="stroke-cyan-300 fill-none stroke-[2px]"
                   strokeDasharray="800"
                   strokeDashoffset="800"
-                  style={{ animation: 'ekgPulse 1.8s linear infinite' }}
+                  style={{ animation: "ekgPulse 1.8s linear infinite" }}
                 />
-                
-                {/* Layer 3: Leuchtende Datenpunkte an JEDER Spitze */}
                 <g className="animate-pulse">
-                  <circle cx="135" cy="5" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="150" cy="35" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="165" cy="10" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="180" cy="30" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="195" cy="5" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="215" cy="35" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  
-                  {/* Der zweite, kleine Nachbeben-Ausschlag */}
-                  <circle cx="330" cy="10" r="2.5" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="340" cy="30" r="2.5" className="fill-white drop-shadow-[0_0_6px_#fff]" />
+                  <circle cx="135" cy="5" r="3" className="fill-white" />
+                  <circle cx="150" cy="35" r="3" className="fill-white" />
+                  <circle cx="165" cy="10" r="3" className="fill-white" />
+                  <circle cx="180" cy="30" r="3" className="fill-white" />
+                  <circle cx="195" cy="5" r="3" className="fill-white" />
+                  <circle cx="215" cy="35" r="3" className="fill-white" />
+                  <circle cx="330" cy="10" r="2.5" className="fill-white" />
+                  <circle cx="340" cy="30" r="2.5" className="fill-white" />
                 </g>
               </svg>
             </div>
 
-            {/* NEU: Prozentzahl unter dem EKG */}
-            <div className="mt-3 flex items-center gap-2 z-10 text-cyan-400 font-mono">
-              <span className="text-[9px] uppercase tracking-[0.3em] opacity-70">Progress</span>
-              <span className="text-xl font-bold drop-shadow-[0_0_8px_#22d3ee]">{progress}%</span>
+            <div className="mt-2 md:mt-3 flex items-center gap-2 z-10 text-cyan-400 font-mono">
+              <span className="text-[9px] uppercase tracking-[0.3em] opacity-70">
+                Progress
+              </span>
+              <span className="text-xl font-bold drop-shadow-[0_0_8px_#22d3ee]">
+                {progress}%
+              </span>
             </div>
-
           </div>
 
-          {/* RIGHT: LIVE LOGS */}
-          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
+          <div className="hidden md:block relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
             <div className="absolute top-0 right-0 w-full h-[2px] bg-gradient-to-l from-transparent via-cyan-400 to-transparent opacity-50" />
-            <div className="text-cyan-500 text-xs font-bold tracking-[0.4em] mb-4 uppercase font-mono">Live Logs</div>
-            
+            <div className="text-cyan-500 text-xs font-bold tracking-[0.4em] mb-4 uppercase font-mono">
+              Live Logs
+            </div>
+
             <div className="space-y-2 text-xs font-medium tracking-widest font-mono">
               {operations.map((item, index) => {
                 const isActive = index === activeLogIndex;
                 const isPast = index < activeLogIndex;
-                
+
                 return (
-                  <div 
-                    key={item} 
+                  <div
+                    key={item}
                     className={`flex items-center transition-all duration-300 ease-in-out ${
-                      isActive ? "text-cyan-300 drop-shadow-[0_0_8px_#22d3ee] translate-x-3 scale-105" : 
-                      isPast ? "text-cyan-800/80" : "text-slate-700"
+                      isActive
+                        ? "text-cyan-300 drop-shadow-[0_0_8px_#22d3ee] translate-x-3 scale-105"
+                        : isPast
+                          ? "text-cyan-800/80"
+                          : "text-slate-700"
                     }`}
                   >
                     <span className="w-8 opacity-60 font-bold border-r border-current mr-2">
                       0{index + 1}
                     </span>
-                    <span className="truncate">
-                      {item}
-                    </span>
+                    <span className="truncate">{item}</span>
                     {isActive && (
                       <span className="ml-auto w-2 h-4 bg-cyan-400 animate-pulse shadow-[0_0_10px_#22d3ee]" />
                     )}
@@ -257,7 +266,6 @@ export default function ScannerHUD({
               })}
             </div>
           </div>
-
         </div>
       </div>
     </>

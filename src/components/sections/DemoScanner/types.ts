@@ -7,112 +7,34 @@ export type ScanPhase =
   | "complete"
   | "closing_crt";
 
-
 export interface ScanFinding {
-
   category: string;
-
   title: string;
-
   description: string;
-
   platform?: string;
-
   detail?: string;
-
-  risk:
-    | "low"
-    | "medium"
-    | "high";
-
+  risk: "low" | "medium" | "high" | string;
 }
-
-
 
 export interface ScanData {
-
   query: string;
-
-
-  queryType:
-    | "email"
-    | "username"
-    | "name"
-    | "unknown";
-
-
-
+  queryType: "email" | "username" | "name" | "unknown" | string;
   findings: ScanFinding[];
-
-
-
   platforms: string[];
-
-
-
   exposureScore: number;
-
-
-
-  riskLevel:
-    | "Niedrig"
-    | "Erhöht"
-    | "Hoch"
-    | "Kritisch";
-
-
-
+  riskLevel: string;
   summary: string;
-
-
-
   timestamp: string;
-
-
-
-  // optionale Felder für zukünftige Analysemodule
-
   exposure_count?: number;
-
-
   sources_found?: number;
-
 }
 
-
-
 export interface ApiResult {
-
-
-  status:
-    | "success"
-    | "error";
-
-
-
+  status: "success" | "error";
   data?: ScanData;
-
-
-
   message?: string;
-
-
-
-  // Darstellung im Demo Scanner
-
   riskLevel?: string;
-
-
-
   summary?: string;
-
-
-
   findings?: ScanFinding[];
-
-
-
   platforms?: string[];
-
-
 }
