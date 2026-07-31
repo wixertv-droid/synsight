@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import type { ScanPhase, ScanData } from "./types";
+import EntityGraphCanvas from "@/components/analysis/intelligence/EntityGraphCanvas";
 
 interface ScannerHUDProps {
   phase?: ScanPhase;
@@ -21,20 +22,8 @@ const operations = [
   "AI ASSESSMENT GENERATING",
 ];
 
-function neuralNodes(count: number): Array<{ x: number; y: number }> {
-  return Array.from({ length: count }, (_, index) => {
-    const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
-    const radius = 34 + (index % 2) * 8;
-    return {
-      x: 50 + Math.cos(angle) * radius,
-      y: 50 + Math.sin(angle) * radius,
-    };
-  });
-}
-
 export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
   const [isBooting, setIsBooting] = useState(true);
-  const nodes = useMemo(() => neuralNodes(7), []);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsBooting(false), 800);
@@ -138,112 +127,40 @@ export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#03050a]/90 backdrop-blur-xl p-4 md:p-5 flex flex-col justify-center items-center">
-            {/* Neural net background — same visual language as analysis HUD */}
-            <div
-              className="absolute inset-0 pointer-events-none opacity-70"
-              aria-hidden="true"
-            >
-              <svg viewBox="0 0 100 100" className="h-full w-full">
-                <defs>
-                  <radialGradient id="scanNeuralGlow" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(114,231,255,0.28)" />
-                    <stop offset="55%" stopColor="rgba(41,182,246,0.06)" />
-                    <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-                  </radialGradient>
-                </defs>
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="46"
-                  fill="url(#scanNeuralGlow)"
-                  className="intel-cyber-pulse"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  fill="none"
-                  stroke="rgba(114,231,255,0.18)"
-                  strokeWidth="0.4"
-                  strokeDasharray="1.2 1.8"
-                  className="intel-cyber-orbit"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="30"
-                  fill="none"
-                  stroke="rgba(114,231,255,0.22)"
-                  strokeWidth="0.45"
-                />
-                {nodes.map((node, index) => {
-                  const next = nodes[(index + 1) % nodes.length];
-                  return (
-                    <g key={`link-${index}`}>
-                      <line
-                        x1={50}
-                        y1={50}
-                        x2={node.x}
-                        y2={node.y}
-                        stroke="rgba(114,231,255,0.28)"
-                        strokeWidth="0.4"
-                      />
-                      <line
-                        x1={node.x}
-                        y1={node.y}
-                        x2={next.x}
-                        y2={next.y}
-                        stroke="rgba(114,231,255,0.14)"
-                        strokeWidth="0.3"
-                        strokeDasharray="0.8 1.2"
-                      />
-                    </g>
-                  );
-                })}
-                {nodes.map((node, index) => (
-                  <circle
-                    key={`node-${index}`}
-                    cx={node.x}
-                    cy={node.y}
-                    r="1.8"
-                    fill="#72e7ff"
-                    className="intel-cyber-node"
-                    style={{ animationDelay: `${index * 0.18}s` }}
-                  />
-                ))}
-                <circle cx="50" cy="50" r="2.4" fill="#70E7FF" />
-              </svg>
-            </div>
-
+          <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#03050a]/90 backdrop-blur-xl p-3 md:p-4 flex flex-col">
             <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-cyber-cyan/50 z-10" />
             <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-cyber-cyan/50 z-10" />
             <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-cyber-cyan/50 z-10" />
             <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-cyber-cyan/50 z-10" />
 
-            <div className="relative z-10 flex w-full flex-col items-center">
-              <div className="text-cyber-cyan/70 text-[10px] font-medium tracking-[0.28em] mb-1 uppercase">
-                Status
+            <div className="relative z-10 mb-2 flex items-center justify-between gap-2">
+              <div className="text-cyber-cyan/70 text-[10px] font-medium tracking-[0.22em] uppercase">
+                Status · Entity Graph
               </div>
-              <div className="text-white text-base md:text-lg font-medium tracking-widest animate-pulse">
-                KI-ANALYSE AKTIV
+              <div className="text-white text-[11px] font-medium tracking-widest animate-pulse">
+                KI AKTIV
               </div>
+            </div>
 
-              <div className="w-full h-1.5 bg-white/[0.04] mt-3 border border-white/[0.06] relative overflow-hidden rounded-full">
-                <div
-                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyber-blue to-cyber-cyan transition-all duration-100 ease-linear"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+            {/* Same neural/entity graph as analysis recon matrix — not the circular dashboard HUD */}
+            <div className="relative z-10 overflow-hidden rounded-lg border border-white/[0.06] bg-[#05080e]">
+              <EntityGraphCanvas running height={96} nodeCount={36} />
+            </div>
 
-              <div className="mt-5 flex items-center gap-2 text-cyber-cyan font-mono">
-                <span className="text-[9px] uppercase tracking-[0.3em] opacity-70">
-                  Progress
-                </span>
-                <span className="text-xl font-semibold tabular-nums">
-                  {progress}%
-                </span>
-              </div>
+            <div className="relative z-10 mt-3 w-full h-1.5 bg-white/[0.04] border border-white/[0.06] overflow-hidden rounded-full">
+              <div
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyber-blue to-cyber-cyan transition-all duration-100 ease-linear"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+
+            <div className="relative z-10 mt-2 flex items-center justify-between text-cyber-cyan font-mono">
+              <span className="text-[9px] uppercase tracking-[0.3em] opacity-70">
+                Progress
+              </span>
+              <span className="text-lg font-semibold tabular-nums">
+                {progress}%
+              </span>
             </div>
           </div>
 
