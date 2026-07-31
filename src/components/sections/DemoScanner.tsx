@@ -47,6 +47,26 @@ function mapFindings(
   return mapped;
 }
 
+function riskTone(riskLevel?: string, score = 0) {
+  const value = `${riskLevel ?? ""}`.toLowerCase();
+  if (score >= 70 || /kritisch|critical|hoch|high/.test(value)) {
+    return {
+      chip: "border-red-400/30 bg-red-400/10 text-red-300",
+      pulse: "bg-red-400",
+    };
+  }
+  if (score >= 40 || /erhöht|mittel|medium/.test(value)) {
+    return {
+      chip: "border-amber-400/30 bg-amber-400/10 text-amber-200",
+      pulse: "bg-amber-400",
+    };
+  }
+  return {
+    chip: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
+    pulse: "bg-emerald-400",
+  };
+}
+
 export default function DemoScanner() {
   const router = useRouter();
   const { ref, isVisible } = useScrollAnimation();
@@ -172,7 +192,6 @@ export default function DemoScanner() {
   }, [input, phase]);
 
   const closeFullscreen = () => {
-    // Overlay already played the CRT animation before calling this.
     setPhase("complete");
   };
 
@@ -183,6 +202,11 @@ export default function DemoScanner() {
     setApiResult(null);
     setRawData(null);
   };
+
+  const score = rawData?.exposureScore ?? 0;
+  const tone = riskTone(apiResult?.riskLevel, score);
+  const findingCount = rawData?.findings?.length ?? 0;
+  const platformCount = rawData?.platforms?.length ?? 0;
 
   return (
     <>
@@ -228,10 +252,10 @@ export default function DemoScanner() {
             hover={false}
             className="glass-strong relative overflow-hidden"
           >
-            <div className="p-8">
+            <div className="p-6 md:p-8">
               {phase === "idle" && (
                 <>
-                  <h3 className="text-white text-xl mb-2">
+                  <h3 className="text-white text-xl mb-2 tracking-[-.02em]">
                     Kostenloser Sicherheitscheck
                   </h3>
                   <p className="text-gray-500 text-sm mb-6">
@@ -250,7 +274,7 @@ export default function DemoScanner() {
                       }}
                       placeholder="E-Mail, Username oder Name"
                       maxLength={120}
-                      className="flex-1 px-5 py-4 rounded-lg bg-black/40 border border-cyan-400/20 text-white font-mono focus:outline-none focus:border-cyan-400"
+                      className="flex-1 px-5 py-4 rounded-lg bg-black/40 border border-white/10 text-white font-mono focus:outline-none focus:border-cyber-cyan/50"
                     />
 
                     <Button
@@ -268,7 +292,10 @@ export default function DemoScanner() {
                 phase === "fullscreen_result" ||
                 phase === "closing_crt") && (
                 <div className="text-center py-10">
-                  <div className="text-cyan-400 font-mono text-sm tracking-[0.3em] animate-pulse">
+                  <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-cyber-cyan/30 bg-cyber-cyan/5">
+                    <div className="h-7 w-7 rounded-full border-2 border-transparent border-t-cyber-cyan animate-spin" />
+                  </div>
+                  <div className="font-mono text-[11px] tracking-[0.28em] text-cyber-cyan/80">
                     SCAN LÄUFT …
                   </div>
                   <p className="text-gray-500 text-sm mt-3">
@@ -278,25 +305,100 @@ export default function DemoScanner() {
               )}
 
               {phase === "complete" && (
-                <div className="text-center animate-fade-in">
-                  <div className="text-cyan-400 font-mono mb-6">
-                    SCAN ABGESCHLOSSEN
+                <div className="animate-fade-in space-y-6">
+                  <div className="flex flex-col gap-4 border-b border-white/[0.06] pb-5 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <span className="hud-label mb-3">
+                        Voranalyse abgeschlossen
+                      </span>
+                      <h3 className="text-2xl font-semibold tracking-[-.03em] text-white">
+                        Digital Exposure Briefing
+                      </h3>
+                      <p className="mt-2 font-mono text-sm text-white/55 truncate max-w-[28rem]">
+                        Ziel: {rawData?.query || input || "Unbekannt"}
+                      </p>
+                    </div>
+                    <div
+                      className={`inline-flex items-center gap-2 self-start rounded-full border px-3 py-1.5 font-mono text-[10px] tracking-[0.16em] uppercase ${tone.chip}`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${tone.pulse} shadow-[0_0_8px_currentColor]`}
+                      />
+                      {apiResult?.riskLevel || "Unbekannt"}
+                    </div>
                   </div>
 
-                  <div className="border border-cyan-400/20 rounded-xl p-6 bg-cyan-400/5 mb-6">
-                    <p className="text-white leading-relaxed">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+                      <div className="font-mono text-[9px] tracking-[0.2em] text-white/35 uppercase">
+                        Exposure Score
+                      </div>
+                      <div className="mt-2 text-3xl font-semibold tabular-nums text-cyber-cyan">
+                        {score}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+                      <div className="font-mono text-[9px] tracking-[0.2em] text-white/35 uppercase">
+                        Datenpunkte
+                      </div>
+                      <div className="mt-2 text-3xl font-semibold tabular-nums text-white">
+                        {findingCount}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+                      <div className="font-mono text-[9px] tracking-[0.2em] text-white/35 uppercase">
+                        Quellen
+                      </div>
+                      <div className="mt-2 text-3xl font-semibold tabular-nums text-white">
+                        {platformCount}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative overflow-hidden rounded-xl border border-cyber-cyan/20 bg-[linear-gradient(145deg,rgba(41,182,246,0.08),rgba(7,11,19,0.35))] p-5 md:p-6">
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyber-cyan/40 to-transparent" />
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="font-mono text-[10px] tracking-[0.22em] text-cyber-cyan/70 uppercase">
+                        KI-Zusammenfassung
+                      </div>
+                      <div className="hidden items-center gap-2 sm:flex">
+                        <span className="h-px w-8 bg-cyber-cyan/30" />
+                        <span className="font-mono text-[9px] tracking-[0.18em] text-white/30">
+                          SYN|SIGHT CORE
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-left text-base leading-relaxed text-white/80 md:text-[17px]">
                       {apiResult?.summary ?? "Analyse abgeschlossen."}
                     </p>
+                    {(rawData?.findings?.length ?? 0) > 0 && (
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {rawData!.findings.slice(0, 4).map((finding, idx) => (
+                          <span
+                            key={`${finding.title}-${idx}`}
+                            className="rounded-md border border-white/[0.08] bg-black/25 px-2.5 py-1 font-mono text-[10px] tracking-wide text-white/55"
+                          >
+                            {finding.platform || finding.title}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button onClick={() => router.push("/register")}>
-                      VOLLSTÄNDIGE ANALYSE AKTIVIEREN
-                    </Button>
-
-                    <Button variant="ghost" onClick={reset}>
-                      Neuer Scan
-                    </Button>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="max-w-md text-sm leading-relaxed text-white/40">
+                      Die Voranalyse ist abgeschlossen. Für den vollständigen
+                      Deep-Scan und priorisierte Schutzmaßnahmen Konto
+                      aktivieren.
+                    </p>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <Button onClick={() => router.push("/register")}>
+                        VOLLSTÄNDIGE ANALYSE AKTIVIEREN
+                      </Button>
+                      <Button variant="ghost" onClick={reset}>
+                        Neuer Scan
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

@@ -164,11 +164,11 @@ export default function ScannerOverlay({
             </div>
 
             <div className="lg:col-span-2 space-y-8">
-              <div className="relative border-l-4 border-l-cyan-500 border-y border-r border-cyan-500/30 bg-cyan-900/20 p-6 backdrop-blur-md shadow-[0_0_20px_rgba(34,211,238,0.05)]">
-                <div className="text-cyan-500 text-[10px] font-bold tracking-[0.3em] uppercase mb-4">
+              <div className="relative border-l-2 border-l-cyber-cyan/60 border-y border-r border-white/[0.08] bg-[linear-gradient(145deg,rgba(41,182,246,0.1),rgba(7,11,19,0.45))] p-6 backdrop-blur-md">
+                <div className="text-cyber-cyan/70 text-[10px] font-medium tracking-[0.28em] uppercase mb-4">
                   KI-Analyse Zusammenfassung
                 </div>
-                <p className="text-gray-300 leading-relaxed font-sans text-base md:text-lg">
+                <p className="text-white/80 leading-relaxed font-sans text-base md:text-lg">
                   {apiResult?.summary ||
                     apiResult?.message ||
                     "Keine Zusammenfassung verfügbar."}
