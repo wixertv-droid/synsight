@@ -116,7 +116,8 @@ export default function DemoScanner() {
         clearInterval(scanInterval);
         scanFinished = true;
       }
-    }, 100);
+      // ~16s visual progress — aligned with Contabo SpiderFoot poll window
+    }, 160);
 
     await new Promise((resolve) => {
       const wait = setInterval(() => {
@@ -149,7 +150,7 @@ export default function DemoScanner() {
           riskLevel: data.risk_level ?? "Erhöht",
           summary:
             data.summary ??
-            `Die Basis-Analyse für '${input}' wurde abgeschlossen.`,
+            `Öffentliche SpiderFoot-Analyse für '${input}' abgeschlossen.`,
           timestamp: new Date().toISOString(),
           exposure_count: mappedFindings.length,
           sources_found: data.platforms?.length ?? 0,
@@ -180,7 +181,7 @@ export default function DemoScanner() {
         status: "error",
         message: "Analyse Dienst nicht erreichbar.",
         riskLevel: "Offline",
-        summary: "Der Analyse-Dienst konnte nicht erreicht werden.",
+        summary: "Der SpiderFoot-Analyse-Dienst konnte nicht erreicht werden.",
       });
     }
 

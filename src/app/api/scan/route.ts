@@ -9,7 +9,7 @@ import { getDemoScanCache, setDemoScanCache } from "@/lib/demo/scan-cache";
 
 const DEMO_SCAN_API_URL =
   process.env.DEMO_SCAN_API_URL || "http://161.97.85.22:5000/api/scan";
-const DEMO_SCAN_TIMEOUT_MS = Number(process.env.DEMO_SCAN_TIMEOUT_MS || 25_000);
+const DEMO_SCAN_TIMEOUT_MS = Number(process.env.DEMO_SCAN_TIMEOUT_MS || 35_000);
 const MAX_QUERY_LENGTH = 120;
 
 const DEMO_SCAN_RATE_LIMIT = {
