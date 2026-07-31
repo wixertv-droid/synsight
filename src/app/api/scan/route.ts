@@ -5,6 +5,7 @@ import {
   recordRateLimitAttempt,
 } from "@/lib/security/rate-limit";
 import { getClientIp, validateMutationOrigin } from "@/lib/security/request";
+import { getDemoScanCache, setDemoScanCache } from "@/lib/demo/scan-cache";
 
 const DEMO_SCAN_API_URL =
   process.env.DEMO_SCAN_API_URL || "http://161.97.85.22:5000/api/scan";
@@ -60,6 +61,16 @@ export async function POST(req: Request) {
       );
     }
 
+    const cached = getDemoScanCache(query);
+    if (cached) {
+      return NextResponse.json(cached, {
+        headers: {
+          ...rateLimitHeaders(attempt),
+          "x-demo-scan-cache": "hit",
+        },
+      });
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEMO_SCAN_TIMEOUT_MS);
 
@@ -76,8 +87,15 @@ export async function POST(req: Request) {
       }
 
       const data = await contaboResponse.json();
+      if (data?.status === "success") {
+        setDemoScanCache(query, data);
+      }
+
       return NextResponse.json(data, {
-        headers: rateLimitHeaders(attempt),
+        headers: {
+          ...rateLimitHeaders(attempt),
+          "x-demo-scan-cache": "miss",
+        },
       });
     } finally {
       clearTimeout(timeout);

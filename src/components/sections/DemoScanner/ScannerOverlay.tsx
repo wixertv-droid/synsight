@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ScannerHUD from "./ScannerHUD";
 import type { ScanPhase, ApiResult, ScanData } from "./types";
@@ -14,6 +14,15 @@ interface ScannerOverlayProps {
   onClose: () => void;
 }
 
+function dossierIdFromTarget(target: string): string {
+  const seed = target.trim().toLowerCase() || "unknown";
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(36).toUpperCase().padStart(8, "0").slice(0, 8);
+}
+
 export default function ScannerOverlay({
   phase,
   progress,
@@ -25,9 +34,7 @@ export default function ScannerOverlay({
   const router = useRouter();
   const [showContent, setShowContent] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [dossierId] = useState(() =>
-    Math.random().toString(36).substring(2, 10).toUpperCase()
-  );
+  const dossierId = useMemo(() => dossierIdFromTarget(target), [target]);
   const [dossierTime] = useState(() => new Date().toLocaleString("de-DE"));
 
   useEffect(() => {
