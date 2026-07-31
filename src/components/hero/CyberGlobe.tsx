@@ -248,8 +248,8 @@ export default function CyberGlobe() {
     controls.autoRotate = false;
     controls.enableRotate = false;
 
-    /** Radians per frame tick (~30fps) for own-axis Earth spin. */
-    const AXIS_SPIN_PER_TICK = 0.0042;
+    /** Radians per frame tick (~30fps). Negative Y = continents drift right. */
+    const AXIS_SPIN_PER_TICK = -0.0042;
 
     let width = 0;
     let height = 0;
@@ -257,11 +257,16 @@ export default function CyberGlobe() {
     let active = true;
     let lastFrame = 0;
 
+    const rightOffsetForWidth = (w: number) =>
+      w >= 1100 ? 118 : w >= 900 ? 96 : w >= 640 ? 42 : 0;
+
     const pinGlobeToRight = () => {
-      globeGroup.position.set(width >= 900 ? 68 : width >= 640 ? 22 : 0, 0, 0);
-      // Keep OrbitControls target on the globe so framing cannot drift.
-      controls.target.copy(globeGroup.position);
-      camera.position.set(globeGroup.position.x, 0, width < 640 ? 390 : 330);
+      // Camera stays centered; globe is shifted on +X so it sits on the right.
+      // (Pinning the camera to the globe X previously centered it again.)
+      const offsetX = rightOffsetForWidth(width);
+      globeGroup.position.set(offsetX, 0, 0);
+      camera.position.set(0, 8, width < 640 ? 390 : 330);
+      controls.target.set(offsetX * 0.35, 0, 0);
       controls.update();
     };
 
@@ -271,7 +276,7 @@ export default function CyberGlobe() {
       renderer.setSize(width, height, false);
       camera.aspect = width / Math.max(1, height);
       camera.updateProjectionMatrix();
-      const globeScale = width >= 900 ? 0.62 : width >= 640 ? 0.68 : 0.74;
+      const globeScale = width >= 900 ? 0.58 : width >= 640 ? 0.64 : 0.74;
       globeGroup.scale.setScalar(globeScale);
       pinGlobeToRight();
     };
@@ -385,16 +390,15 @@ export default function CyberGlobe() {
       if (!active) return;
       if (time - lastFrame >= 32 || reducedMotion) {
         // Re-assert right-side anchor every frame so nothing can drift.
-        globeGroup.position.x = width >= 900 ? 68 : width >= 640 ? 22 : 0;
-        globeGroup.position.y = 0;
-        globeGroup.position.z = 0;
-        controls.target.copy(globeGroup.position);
-        camera.position.set(globeGroup.position.x, 0, width < 640 ? 390 : 330);
+        const offsetX = rightOffsetForWidth(width);
+        globeGroup.position.set(offsetX, 0, 0);
+        camera.position.set(0, 8, width < 640 ? 390 : 330);
+        controls.target.set(offsetX * 0.35, 0, 0);
 
         if (!reducedMotion) {
-          // Spin Earth around its own Y axis only (no orbital camera motion).
+          // Spin Earth around its own Y axis only (negative = toward the right).
           globe.rotation.y += AXIS_SPIN_PER_TICK;
-          haloParticles.rotation.y += 0.0007;
+          haloParticles.rotation.y -= 0.0007;
           haloParticles.rotation.x += 0.00015;
           globeGroup.children
             .filter((child) => child.type === "Mesh" && child !== innerAura)
