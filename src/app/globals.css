@@ -547,6 +547,28 @@ body::before {
   animation: hero-scan 9s linear infinite;
 }
 
+.hero-code-column {
+  animation-name: hero-code-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 18%,
+    black 78%,
+    transparent 100%
+  );
+}
+
+@keyframes hero-code-fall {
+  from {
+    transform: translate3d(0, -45%, 0);
+  }
+  to {
+    transform: translate3d(0, 5%, 0);
+  }
+}
+
 .telemetry-marquee {
   animation: telemetry-slide 32s linear infinite;
   will-change: transform;

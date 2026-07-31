@@ -61,9 +61,10 @@ export default function ScannerOverlay({
     if (isClosing) return;
     setIsClosing(true);
     setShowContent(false);
+    // Match CRT collapse duration (~1.7s) so the tube effect can finish.
     setTimeout(() => {
       onClose();
-    }, 550);
+    }, 1750);
   };
 
   if (phase === "fullscreen_result" || phase === "closing_crt") {
@@ -272,12 +273,34 @@ export default function ScannerOverlay({
             100% { transform: translateY(100vh); }
           }
           @keyframes crtTurnOff {
-            0% { transform: scale(1, 1); filter: brightness(1); }
-            60% { transform: scale(1, 0.001); filter: brightness(10); }
-            100% { transform: scale(0, 0.001); filter: brightness(0); opacity: 0; }
+            0% {
+              transform: scaleY(1) scaleX(1);
+              filter: brightness(1);
+              opacity: 1;
+            }
+            55% {
+              transform: scaleY(0.002) scaleX(1);
+              filter: brightness(2.4);
+              opacity: 1;
+            }
+            78% {
+              transform: scaleY(0.002) scaleX(0.02);
+              filter: brightness(3);
+              opacity: 1;
+            }
+            92% {
+              transform: scaleY(0.002) scaleX(0.002);
+              filter: brightness(4);
+              opacity: 0.85;
+            }
+            100% {
+              transform: scaleY(0.002) scaleX(0.002);
+              filter: brightness(1);
+              opacity: 0;
+            }
           }
           .animate-crt-off {
-            animation: crtTurnOff 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            animation: crtTurnOff 1.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
           }
         `}</style>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { ScanPhase, ScanData } from "./types";
 
 interface ScannerHUDProps {
@@ -21,12 +21,20 @@ const operations = [
   "AI ASSESSMENT GENERATING",
 ];
 
-/** Flat baseline with intermittent QRS spikes — reads as a live ECG strip. */
-const EKG_WAVE =
-  "M0,30 H70 L78,30 L82,18 L86,42 L90,8 L94,30 H160 L168,30 L172,22 L176,38 L180,12 L184,30 H250 L258,30 L262,16 L266,44 L270,6 L274,30 H340 L348,30 L352,20 L356,40 L360,10 L364,30 H430 L438,30 L442,24 L446,36 L450,14 L454,30 H520 L528,30 L532,18 L536,42 L540,8 L544,30 H600";
+function neuralNodes(count: number): Array<{ x: number; y: number }> {
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
+    const radius = 34 + (index % 2) * 8;
+    return {
+      x: 50 + Math.cos(angle) * radius,
+      y: 50 + Math.sin(angle) * radius,
+    };
+  });
+}
 
 export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
   const [isBooting, setIsBooting] = useState(true);
+  const nodes = useMemo(() => neuralNodes(7), []);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsBooting(false), 800);
@@ -52,31 +60,12 @@ export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
           20%, 22%, 24%, 55% { opacity: 0.78; }
         }
 
-        @keyframes ekgScroll {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-
         @keyframes scanline {
           0% { transform: translateY(-100%); }
           100% { transform: translateY(100vh); }
         }
 
-        @keyframes neuralBreathe {
-          0%, 100% { opacity: 0.25; }
-          50% { opacity: 0.5; }
-        }
-
         .crt-boot { animation: crtTurnOn 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
-
-        .ekg-stage {
-          transform: perspective(520px) rotateX(28deg) scaleY(1.08);
-          transform-origin: center center;
-        }
-
-        .ekg-scroll {
-          animation: ekgScroll 4.8s linear infinite;
-        }
       `}</style>
 
       <div
@@ -150,23 +139,80 @@ export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
           </div>
 
           <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#03050a]/90 backdrop-blur-xl p-4 md:p-5 flex flex-col justify-center items-center">
+            {/* Neural net background — same visual language as analysis HUD */}
             <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ animation: "neuralBreathe 4s infinite" }}
+              className="absolute inset-0 pointer-events-none opacity-70"
+              aria-hidden="true"
             >
-              <svg
-                width="100%"
-                height="100%"
-                xmlns="http://www.w3.org/2000/svg"
-                className="stroke-cyber-cyan/20 fill-cyber-cyan/20"
-              >
-                <circle cx="10%" cy="20%" r="2" />
-                <circle cx="30%" cy="80%" r="1.5" />
-                <circle cx="50%" cy="30%" r="2.5" />
-                <circle cx="70%" cy="70%" r="1" />
-                <circle cx="90%" cy="40%" r="2" />
-                <line x1="10%" y1="20%" x2="50%" y2="30%" strokeWidth="1" />
-                <line x1="50%" y1="30%" x2="90%" y2="40%" strokeWidth="1" />
+              <svg viewBox="0 0 100 100" className="h-full w-full">
+                <defs>
+                  <radialGradient id="scanNeuralGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="rgba(114,231,255,0.28)" />
+                    <stop offset="55%" stopColor="rgba(41,182,246,0.06)" />
+                    <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+                  </radialGradient>
+                </defs>
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="46"
+                  fill="url(#scanNeuralGlow)"
+                  className="intel-cyber-pulse"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  fill="none"
+                  stroke="rgba(114,231,255,0.18)"
+                  strokeWidth="0.4"
+                  strokeDasharray="1.2 1.8"
+                  className="intel-cyber-orbit"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="30"
+                  fill="none"
+                  stroke="rgba(114,231,255,0.22)"
+                  strokeWidth="0.45"
+                />
+                {nodes.map((node, index) => {
+                  const next = nodes[(index + 1) % nodes.length];
+                  return (
+                    <g key={`link-${index}`}>
+                      <line
+                        x1={50}
+                        y1={50}
+                        x2={node.x}
+                        y2={node.y}
+                        stroke="rgba(114,231,255,0.28)"
+                        strokeWidth="0.4"
+                      />
+                      <line
+                        x1={node.x}
+                        y1={node.y}
+                        x2={next.x}
+                        y2={next.y}
+                        stroke="rgba(114,231,255,0.14)"
+                        strokeWidth="0.3"
+                        strokeDasharray="0.8 1.2"
+                      />
+                    </g>
+                  );
+                })}
+                {nodes.map((node, index) => (
+                  <circle
+                    key={`node-${index}`}
+                    cx={node.x}
+                    cy={node.y}
+                    r="1.8"
+                    fill="#72e7ff"
+                    className="intel-cyber-node"
+                    style={{ animationDelay: `${index * 0.18}s` }}
+                  />
+                ))}
+                <circle cx="50" cy="50" r="2.4" fill="#70E7FF" />
               </svg>
             </div>
 
@@ -175,97 +221,29 @@ export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
             <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-cyber-cyan/50 z-10" />
             <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-cyber-cyan/50 z-10" />
 
-            <div className="text-cyber-cyan/70 text-[10px] font-medium tracking-[0.28em] mb-1 uppercase z-10">
-              Status
-            </div>
-            <div className="text-white text-base md:text-lg font-medium tracking-widest animate-pulse z-10">
-              KI-ANALYSE AKTIV
-            </div>
+            <div className="relative z-10 flex w-full flex-col items-center">
+              <div className="text-cyber-cyan/70 text-[10px] font-medium tracking-[0.28em] mb-1 uppercase">
+                Status
+              </div>
+              <div className="text-white text-base md:text-lg font-medium tracking-widest animate-pulse">
+                KI-ANALYSE AKTIV
+              </div>
 
-            <div className="w-full h-1.5 bg-white/[0.04] mt-3 border border-white/[0.06] relative overflow-hidden rounded-full z-10">
-              <div
-                className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyber-blue to-cyber-cyan transition-all duration-100 ease-linear"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+              <div className="w-full h-1.5 bg-white/[0.04] mt-3 border border-white/[0.06] relative overflow-hidden rounded-full">
+                <div
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyber-blue to-cyber-cyan transition-all duration-100 ease-linear"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
 
-            {/* Natural ECG: flat baseline + spikes scrolling in from the right */}
-            <div className="ekg-stage relative w-full h-14 mt-5 overflow-hidden z-10">
-              <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-cyber-cyan/20" />
-              <svg
-                width="100%"
-                height="100%"
-                viewBox="0 0 600 60"
-                preserveAspectRatio="none"
-                className="absolute inset-0"
-              >
-                <defs>
-                  <linearGradient id="ekgGlow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="rgba(112,231,255,0.55)" />
-                    <stop offset="100%" stopColor="rgba(41,182,246,0.05)" />
-                  </linearGradient>
-                  <filter
-                    id="ekgDepth"
-                    x="-20%"
-                    y="-40%"
-                    width="140%"
-                    height="180%"
-                  >
-                    <feGaussianBlur
-                      in="SourceGraphic"
-                      stdDeviation="1.4"
-                      result="blur"
-                    />
-                    <feOffset dx="0" dy="3" in="blur" result="shadow" />
-                    <feMerge>
-                      <feMergeNode in="shadow" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-
-                <g className="ekg-scroll" filter="url(#ekgDepth)">
-                  {[0, 600].map((offset) => (
-                    <g key={offset} transform={`translate(${offset}, 0)`}>
-                      <path
-                        d={EKG_WAVE}
-                        fill="none"
-                        stroke="rgba(41,182,246,0.28)"
-                        strokeWidth="5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d={EKG_WAVE}
-                        fill="none"
-                        stroke="url(#ekgGlow)"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d={EKG_WAVE}
-                        fill="none"
-                        stroke="rgba(255,255,255,0.85)"
-                        strokeWidth="1"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </g>
-                  ))}
-                </g>
-              </svg>
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#03050a] to-transparent" />
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-[#03050a] to-transparent" />
-            </div>
-
-            <div className="mt-2 flex items-center gap-2 z-10 text-cyber-cyan font-mono">
-              <span className="text-[9px] uppercase tracking-[0.3em] opacity-70">
-                Progress
-              </span>
-              <span className="text-xl font-semibold tabular-nums">
-                {progress}%
-              </span>
+              <div className="mt-5 flex items-center gap-2 text-cyber-cyan font-mono">
+                <span className="text-[9px] uppercase tracking-[0.3em] opacity-70">
+                  Progress
+                </span>
+                <span className="text-xl font-semibold tabular-nums">
+                  {progress}%
+                </span>
+              </div>
             </div>
           </div>
 

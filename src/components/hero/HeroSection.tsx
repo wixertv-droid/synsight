@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import Button from "@/components/ui/Button";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import HeroCodeRain from "@/components/hero/HeroCodeRain";
 
 /**
  * three-globe touches `window` during module evaluation and must never
@@ -56,6 +57,7 @@ export default function HeroSection() {
     >
       <div ref={visualRef} className="absolute inset-0 will-change-transform">
         <CyberGlobe />
+        <HeroCodeRain />
       </div>
 
       <div className="hero-atmosphere absolute inset-0 pointer-events-none" />
