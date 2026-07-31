@@ -126,8 +126,9 @@ export default function CyberGlobe() {
         .ringLat("lat")
         .ringLng("lng")
         .ringAltitude(0.013)
-        .ringColor(() => (t: number) =>
-          `rgba(${t > 0.55 ? "255,138,92" : "112,231,255"},${1 - t})`
+        .ringColor(
+          () => (t: number) =>
+            `rgba(${t > 0.55 ? "255,138,92" : "112,231,255"},${1 - t})`
         )
         .ringMaxRadius(5.4)
         .ringPropagationSpeed(reducedMotion ? 0 : 1.8)
@@ -242,9 +243,13 @@ export default function CyberGlobe() {
     controls.dampingFactor = 0.045;
     controls.enablePan = false;
     controls.enableZoom = false;
-    controls.autoRotate = !reducedMotion;
-    controls.autoRotateSpeed = 0.52;
-    controls.rotateSpeed = 0.42;
+    // Camera auto-orbit around world origin made the right-offset globe
+    // drift across the hero. Keep the framing fixed and spin the globe mesh.
+    controls.autoRotate = false;
+    controls.enableRotate = false;
+
+    /** Radians per frame tick (~30fps) for own-axis Earth spin. */
+    const AXIS_SPIN_PER_TICK = 0.0042;
 
     let width = 0;
     let height = 0;
@@ -252,16 +257,23 @@ export default function CyberGlobe() {
     let active = true;
     let lastFrame = 0;
 
+    const pinGlobeToRight = () => {
+      globeGroup.position.set(width >= 900 ? 68 : width >= 640 ? 22 : 0, 0, 0);
+      // Keep OrbitControls target on the globe so framing cannot drift.
+      controls.target.copy(globeGroup.position);
+      camera.position.set(globeGroup.position.x, 0, width < 640 ? 390 : 330);
+      controls.update();
+    };
+
     const resize = () => {
       width = root.clientWidth;
       height = root.clientHeight;
       renderer.setSize(width, height, false);
       camera.aspect = width / Math.max(1, height);
       camera.updateProjectionMatrix();
-      globeGroup.position.x = width >= 900 ? 68 : width >= 640 ? 22 : 0;
       const globeScale = width >= 900 ? 0.62 : width >= 640 ? 0.68 : 0.74;
       globeGroup.scale.setScalar(globeScale);
-      camera.position.z = width < 640 ? 390 : 330;
+      pinGlobeToRight();
     };
 
     const updateConnectors = (time: number) => {
@@ -286,8 +298,7 @@ export default function CyberGlobe() {
               ? (0.94 - localPhase) / 0.16
               : 1;
 
-        const availableNodes =
-          index === 1 ? safeScanLocations : safeNodes;
+        const availableNodes = index === 1 ? safeScanLocations : safeNodes;
         if (availableNodes.length === 0) {
           connector.style.opacity = "0";
           panel.style.opacity = "0";
@@ -373,14 +384,26 @@ export default function CyberGlobe() {
     const render = (time: number) => {
       if (!active) return;
       if (time - lastFrame >= 32 || reducedMotion) {
+        // Re-assert right-side anchor every frame so nothing can drift.
+        globeGroup.position.x = width >= 900 ? 68 : width >= 640 ? 22 : 0;
+        globeGroup.position.y = 0;
+        globeGroup.position.z = 0;
+        controls.target.copy(globeGroup.position);
+        camera.position.set(globeGroup.position.x, 0, width < 640 ? 390 : 330);
+
+        if (!reducedMotion) {
+          // Spin Earth around its own Y axis only (no orbital camera motion).
+          globe.rotation.y += AXIS_SPIN_PER_TICK;
+          haloParticles.rotation.y += 0.0007;
+          haloParticles.rotation.x += 0.00015;
+          globeGroup.children
+            .filter((child) => child.type === "Mesh" && child !== innerAura)
+            .forEach((ring, index) => {
+              ring.rotation.z += 0.0003 + index * 0.00008;
+            });
+        }
+
         controls.update();
-        haloParticles.rotation.y += reducedMotion ? 0 : 0.0007;
-        haloParticles.rotation.x += reducedMotion ? 0 : 0.00015;
-        globeGroup.children
-          .filter((child) => child.type === "Mesh" && child !== innerAura)
-          .forEach((ring, index) => {
-            ring.rotation.z += reducedMotion ? 0 : 0.0003 + index * 0.00008;
-          });
         scene.updateMatrixWorld();
         updateConnectors(time);
         renderer.render(scene, camera);
@@ -459,10 +482,7 @@ export default function CyberGlobe() {
 
   return (
     <div ref={rootRef} className="absolute inset-0 overflow-hidden">
-      <div
-        ref={canvasRef}
-        className="absolute inset-0 cursor-grab active:cursor-grabbing"
-      />
+      <div ref={canvasRef} className="absolute inset-0 pointer-events-none" />
       <GlobeHud
         setPanelRef={setPanelRef}
         setConnectorRef={setConnectorRef}
