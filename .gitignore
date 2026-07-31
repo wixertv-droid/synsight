@@ -42,3 +42,4 @@ next-env.d.ts
 
 # private media (never public)
 /storage/
+__pycache__/

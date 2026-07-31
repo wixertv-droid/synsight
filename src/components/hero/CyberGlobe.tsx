@@ -33,13 +33,19 @@ type WorldTopology = Topology<{
   countries: GeometryCollection;
 }>;
 
-export default function CyberGlobe() {
+export default function CyberGlobe({
+  variant = "hero",
+}: {
+  /** `hero` = right-offset + HUD; `centered` = full-frame boot/login globe */
+  variant?: "hero" | "centered";
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef<(HTMLDivElement | null)[]>([]);
   const connectorRefs = useRef<(SVGLineElement | null)[]>([]);
   const locationTitleRef = useRef<HTMLParagraphElement>(null);
   const locationDetailRef = useRef<HTMLSpanElement>(null);
+  const showHud = variant === "hero";
 
   useEffect(() => {
     const root = rootRef.current;
@@ -126,8 +132,9 @@ export default function CyberGlobe() {
         .ringLat("lat")
         .ringLng("lng")
         .ringAltitude(0.013)
-        .ringColor(() => (t: number) =>
-          `rgba(${t > 0.55 ? "255,138,92" : "112,231,255"},${1 - t})`
+        .ringColor(
+          () => (t: number) =>
+            `rgba(${t > 0.55 ? "255,138,92" : "112,231,255"},${1 - t})`
         )
         .ringMaxRadius(5.4)
         .ringPropagationSpeed(reducedMotion ? 0 : 1.8)
@@ -242,9 +249,13 @@ export default function CyberGlobe() {
     controls.dampingFactor = 0.045;
     controls.enablePan = false;
     controls.enableZoom = false;
-    controls.autoRotate = !reducedMotion;
-    controls.autoRotateSpeed = 0.52;
-    controls.rotateSpeed = 0.42;
+    // Camera auto-orbit around world origin made the right-offset globe
+    // drift across the hero. Keep the framing fixed and spin the globe mesh.
+    controls.autoRotate = false;
+    controls.enableRotate = false;
+
+    /** Radians per frame tick (~30fps). Negative Y = continents drift right. */
+    const AXIS_SPIN_PER_TICK = -0.0042;
 
     let width = 0;
     let height = 0;
@@ -252,19 +263,48 @@ export default function CyberGlobe() {
     let active = true;
     let lastFrame = 0;
 
+    const rightOffsetForWidth = (w: number) => {
+      if (variant === "centered") return 0;
+      return w >= 1100 ? 118 : w >= 900 ? 96 : w >= 640 ? 42 : 0;
+    };
+
+    const pinGlobeToRight = () => {
+      const offsetX = rightOffsetForWidth(width);
+      globeGroup.position.set(offsetX, 0, 0);
+      if (variant === "centered") {
+        camera.position.set(0, 12, width < 640 ? 360 : 300);
+        controls.target.set(0, 0, 0);
+      } else {
+        camera.position.set(0, 8, width < 640 ? 390 : 330);
+        controls.target.set(offsetX * 0.35, 0, 0);
+      }
+      controls.update();
+    };
+
     const resize = () => {
       width = root.clientWidth;
       height = root.clientHeight;
       renderer.setSize(width, height, false);
       camera.aspect = width / Math.max(1, height);
       camera.updateProjectionMatrix();
-      globeGroup.position.x = width >= 900 ? 68 : width >= 640 ? 22 : 0;
-      const globeScale = width >= 900 ? 0.62 : width >= 640 ? 0.68 : 0.74;
+      const globeScale =
+        variant === "centered"
+          ? width >= 900
+            ? 0.72
+            : width >= 640
+              ? 0.78
+              : 0.82
+          : width >= 900
+            ? 0.58
+            : width >= 640
+              ? 0.64
+              : 0.74;
       globeGroup.scale.setScalar(globeScale);
-      camera.position.z = width < 640 ? 390 : 330;
+      pinGlobeToRight();
     };
 
     const updateConnectors = (time: number) => {
+      if (!showHud) return;
       const rootRect = root.getBoundingClientRect();
       [0, 1, 2, 3].forEach((index) => {
         const panel = panelRefs.current[index];
@@ -286,8 +326,7 @@ export default function CyberGlobe() {
               ? (0.94 - localPhase) / 0.16
               : 1;
 
-        const availableNodes =
-          index === 1 ? safeScanLocations : safeNodes;
+        const availableNodes = index === 1 ? safeScanLocations : safeNodes;
         if (availableNodes.length === 0) {
           connector.style.opacity = "0";
           panel.style.opacity = "0";
@@ -373,14 +412,22 @@ export default function CyberGlobe() {
     const render = (time: number) => {
       if (!active) return;
       if (time - lastFrame >= 32 || reducedMotion) {
+        // Re-assert framing every frame so nothing can drift.
+        pinGlobeToRight();
+
+        if (!reducedMotion) {
+          // Spin Earth around its own Y axis only (negative = toward the right).
+          globe.rotation.y += AXIS_SPIN_PER_TICK;
+          haloParticles.rotation.y -= 0.0007;
+          haloParticles.rotation.x += 0.00015;
+          globeGroup.children
+            .filter((child) => child.type === "Mesh" && child !== innerAura)
+            .forEach((ring, index) => {
+              ring.rotation.z += 0.0003 + index * 0.00008;
+            });
+        }
+
         controls.update();
-        haloParticles.rotation.y += reducedMotion ? 0 : 0.0007;
-        haloParticles.rotation.x += reducedMotion ? 0 : 0.00015;
-        globeGroup.children
-          .filter((child) => child.type === "Mesh" && child !== innerAura)
-          .forEach((ring, index) => {
-            ring.rotation.z += reducedMotion ? 0 : 0.0003 + index * 0.00008;
-          });
         scene.updateMatrixWorld();
         updateConnectors(time);
         renderer.render(scene, camera);
@@ -448,7 +495,7 @@ export default function CyberGlobe() {
         canvasHost.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [variant, showHud]);
 
   const setPanelRef = (index: number) => (node: HTMLDivElement | null) => {
     panelRefs.current[index] = node;
@@ -459,16 +506,15 @@ export default function CyberGlobe() {
 
   return (
     <div ref={rootRef} className="absolute inset-0 overflow-hidden">
-      <div
-        ref={canvasRef}
-        className="absolute inset-0 cursor-grab active:cursor-grabbing"
-      />
-      <GlobeHud
-        setPanelRef={setPanelRef}
-        setConnectorRef={setConnectorRef}
-        locationTitleRef={locationTitleRef}
-        locationDetailRef={locationDetailRef}
-      />
+      <div ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+      {showHud ? (
+        <GlobeHud
+          setPanelRef={setPanelRef}
+          setConnectorRef={setConnectorRef}
+          locationTitleRef={locationTitleRef}
+          locationDetailRef={locationDetailRef}
+        />
+      ) : null}
     </div>
   );
 }

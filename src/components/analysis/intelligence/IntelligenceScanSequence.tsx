@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { IntelligenceScanStep } from "@/lib/analysis/types";
 import MissionProgressBar from "@/components/analysis/intelligence/MissionProgressBar";
+import EntityGraphCanvas from "@/components/analysis/intelligence/EntityGraphCanvas";
 
 const TERMINAL_LINES = [
   "Building Identity Fingerprint…",
@@ -62,10 +63,6 @@ export default function IntelligenceScanSequence({
   const [signals, setSignals] = useState(0);
   const [deduped, setDeduped] = useState(0);
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const nodesRef = useRef<
-    Array<{ x: number; y: number; vx: number; vy: number; r: number }>
-  >([]);
   const terminalIndexRef = useRef(0);
 
   useEffect(() => {
@@ -76,7 +73,6 @@ export default function IntelligenceScanSequence({
       setSignals(0);
       setDeduped(0);
       setTerminalLines([]);
-      nodesRef.current = [];
       terminalIndexRef.current = 0;
       return;
     }
@@ -126,114 +122,6 @@ export default function IntelligenceScanSequence({
     }
     return undefined;
   }, [apiReady, elapsed, minDurationMs, onComplete, running, safeSteps]);
-
-  useEffect(() => {
-    if (!running) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let frame = 0;
-    let raf = 0;
-
-    const resize = () => {
-      const parent = canvas.parentElement;
-      const w = parent?.clientWidth ?? 640;
-      const h = 240;
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      canvas.style.width = `${w}px`;
-      canvas.style.height = `${h}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // Deutlich mehr Knoten für die Recon-Matrix
-      if (nodesRef.current.length === 0) {
-        nodesRef.current = Array.from({ length: 64 }, () => ({
-          x: Math.random() * w,
-          y: Math.random() * h,
-          // doppelte Animationsgeschwindigkeit
-          vx: (Math.random() - 0.5) * 1.2,
-          vy: (Math.random() - 0.5) * 1.2,
-          r: 1.4 + Math.random() * 2.4,
-        }));
-      }
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    const draw = () => {
-      frame += 1;
-      const w = canvas.clientWidth;
-      const h = canvas.clientHeight;
-      ctx.clearRect(0, 0, w, h);
-
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.06)";
-      ctx.lineWidth = 1;
-      for (let x = 0; x < w; x += 24) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-      for (let y = 0; y < h; y += 24) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-
-      const nodes = nodesRef.current;
-      for (const node of nodes) {
-        node.x += node.vx;
-        node.y += node.vy;
-        if (node.x < 0 || node.x > w) node.vx *= -1;
-        if (node.y < 0 || node.y > h) node.vy *= -1;
-      }
-
-      // Edges: größere Reichweite + schnellere Sweep-Wahrnehmung
-      for (let i = 0; i < nodes.length; i += 1) {
-        for (let j = i + 1; j < nodes.length; j += 1) {
-          const a = nodes[i];
-          const b = nodes[j];
-          const dx = a.x - b.x;
-          const dy = a.y - b.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist < 110) {
-            ctx.strokeStyle = `rgba(56, 189, 248, ${0.22 * (1 - dist / 110)})`;
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.stroke();
-          }
-        }
-      }
-
-      for (const node of nodes) {
-        ctx.fillStyle = "rgba(125, 211, 252, 0.9)";
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Sweep doppelt so schnell
-      const sweepX = ((frame * 4) % (w + 80)) - 40;
-      const grad = ctx.createLinearGradient(sweepX - 40, 0, sweepX + 40, 0);
-      grad.addColorStop(0, "rgba(56,189,248,0)");
-      grad.addColorStop(0.5, "rgba(56,189,248,0.14)");
-      grad.addColorStop(1, "rgba(56,189,248,0)");
-      ctx.fillStyle = grad;
-      ctx.fillRect(sweepX - 40, 0, 80, h);
-
-      raf = window.requestAnimationFrame(draw);
-    };
-    raf = window.requestAnimationFrame(draw);
-
-    return () => {
-      window.cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-    };
-  }, [running]);
 
   const targetMs = Math.max(
     minDurationMs,
@@ -311,7 +199,7 @@ export default function IntelligenceScanSequence({
             ENTITY GRAPH · DATA POINTS
           </p>
           <div className="overflow-hidden rounded-lg border border-white/[0.06] bg-[#05080e]">
-            <canvas ref={canvasRef} className="block w-full" />
+            <EntityGraphCanvas running={running} height={240} nodeCount={64} />
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">

@@ -90,15 +90,17 @@ export default function WhatSynSightRecognizes() {
       className="section-shell relative section-padding overflow-hidden"
     >
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-cyber-blue/[0.045] rounded-full blur-[140px] pointer-events-none" />
-      <div className="telemetry-marquee absolute top-14 left-0 flex w-[200%] gap-12 overflow-hidden whitespace-nowrap font-mono text-[9px] tracking-[.22em] text-white/[0.08]">
-        {[0, 1].map((group) => (
-          <span key={group}>
-            SIGNALE VERBINDEN&nbsp;&nbsp;•&nbsp;&nbsp;IDENTITÄT
-            ZUORDNEN&nbsp;&nbsp;•&nbsp;&nbsp;RISIKEN
-            VERSTEHEN&nbsp;&nbsp;•&nbsp;&nbsp;SCHUTZ
-            PRIORISIEREN&nbsp;&nbsp;•&nbsp;&nbsp;
-          </span>
-        ))}
+      <div className="pointer-events-none absolute top-14 left-0 right-0 overflow-hidden">
+        <div className="telemetry-marquee flex w-max whitespace-nowrap font-mono text-[10px] tracking-[0.28em] text-cyber-cyan/45">
+          {[0, 1, 2].map((group) => (
+            <span key={group} className="inline-block pr-16">
+              SIGNALE VERBINDEN&nbsp;&nbsp;•&nbsp;&nbsp;IDENTITÄT
+              ZUORDNEN&nbsp;&nbsp;•&nbsp;&nbsp;RISIKEN
+              VERSTEHEN&nbsp;&nbsp;•&nbsp;&nbsp;SCHUTZ
+              PRIORISIEREN&nbsp;&nbsp;•&nbsp;&nbsp;
+            </span>
+          ))}
+        </div>
       </div>
 
       <div className="relative max-w-7xl mx-auto">

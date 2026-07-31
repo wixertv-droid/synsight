@@ -58,16 +58,16 @@ export default function HeroSection() {
         <CyberGlobe />
       </div>
 
-      <div className="hero-atmosphere absolute inset-0 pointer-events-none" />
-      <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-20 [mask-image:linear-gradient(to_bottom,black,transparent_82%)] pointer-events-none" />
-      <div className="hero-scanline absolute inset-x-0 top-0 h-28 pointer-events-none" />
+      <div className="hero-atmosphere absolute inset-0 pointer-events-none z-[1]" />
+      <div className="absolute inset-0 z-[1] bg-grid-pattern bg-grid opacity-20 [mask-image:linear-gradient(to_bottom,black,transparent_82%)] pointer-events-none" />
+      <div className="hero-scanline absolute inset-x-0 top-0 z-[1] h-28 pointer-events-none" />
 
       {/* Precision frame */}
-      <div className="pointer-events-none absolute inset-x-6 top-24 bottom-16 hidden border-x border-white/[0.045] md:block lg:inset-x-12">
+      <div className="pointer-events-none absolute inset-x-6 top-24 bottom-16 z-[3] hidden border-x border-white/[0.045] md:block lg:inset-x-12">
         <span className="absolute -left-px top-0 h-8 w-px bg-cyber-cyan/40" />
         <span className="absolute -right-px bottom-0 h-8 w-px bg-cyber-cyan/30" />
       </div>
-      <div className="absolute top-24 left-6 right-6 hidden items-center justify-between font-mono text-[9px] tracking-[.18em] text-white/25 md:flex lg:left-12 lg:right-12">
+      <div className="absolute top-24 left-6 right-6 z-[3] hidden items-center justify-between font-mono text-[9px] tracking-[.18em] text-white/25 md:flex lg:left-12 lg:right-12">
         <span>48.1372° N / 11.5756° E</span>
         <span className="flex items-center gap-2">
           <i className="h-1.5 w-1.5 rounded-full bg-cyan-300/70 shadow-[0_0_10px_rgba(112,231,255,.5)]" />
@@ -76,7 +76,7 @@ export default function HeroSection() {
       </div>
 
       {/* Holographic readouts around the globe */}
-      <div className="float-module glass hardware-panel absolute right-[7%] top-[23%] hidden w-48 rounded-xl p-4 lg:block">
+      <div className="float-module glass hardware-panel absolute right-[7%] top-[23%] z-[3] hidden w-48 rounded-xl p-4 lg:block">
         <div className="flex items-center justify-between font-mono text-[9px] tracking-widest text-white/35">
           <span>IDENTITÄTSFLÄCHE</span>
           <span className="text-cyber-cyan/70">AKTIV</span>
@@ -119,7 +119,7 @@ export default function HeroSection() {
       </div>
 
       <div
-        className="float-module glass hardware-panel absolute bottom-[23%] right-[23%] hidden w-40 rounded-xl p-3 xl:block"
+        className="float-module glass hardware-panel absolute bottom-[23%] right-[23%] z-[3] hidden w-40 rounded-xl p-3 xl:block"
         style={{ animationDelay: "-3s" }}
       >
         <div className="flex items-center gap-2">

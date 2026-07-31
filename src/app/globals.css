@@ -218,12 +218,15 @@ body::before {
     transform: translateX(-50%);
     background: linear-gradient(
       90deg,
-      transparent,
-      var(--hairline) 20%,
-      rgba(112, 231, 255, 0.18) 50%,
-      var(--hairline) 80%,
-      transparent
+      transparent 0%,
+      transparent 18%,
+      var(--hairline) 38%,
+      rgba(112, 231, 255, 0.14) 50%,
+      var(--hairline) 62%,
+      transparent 82%,
+      transparent 100%
     );
+    pointer-events: none;
   }
 
   .hud-label {
@@ -544,8 +547,64 @@ body::before {
   animation: hero-scan 9s linear infinite;
 }
 
+.hero-code-column {
+  animation-name: hero-code-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 18%,
+    black 78%,
+    transparent 100%
+  );
+}
+
+@keyframes hero-code-fall {
+  from {
+    transform: translate3d(0, -45%, 0);
+  }
+  to {
+    transform: translate3d(0, 5%, 0);
+  }
+}
+
+.scan-code-rain {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 12%,
+    black 70%,
+    transparent 100%
+  );
+}
+
+.scan-code-track {
+  animation: scan-code-scroll 42s linear infinite;
+  will-change: transform;
+}
+
+@keyframes scan-code-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -50%, 0);
+  }
+}
+
 .telemetry-marquee {
-  animation: telemetry-slide 24s linear infinite;
+  animation: telemetry-slide 32s linear infinite;
+  will-change: transform;
+}
+
+@keyframes telemetry-slide {
+  from {
+    transform: translate3d(100vw, 0, 0);
+  }
+  to {
+    transform: translate3d(-100%, 0, 0);
+  }
 }
 
 .float-module {
@@ -571,15 +630,6 @@ body::before {
   100% {
     transform: translateY(110vh);
     opacity: 0;
-  }
-}
-
-@keyframes telemetry-slide {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
   }
 }
 

@@ -85,7 +85,7 @@ export default function TrustSection() {
       id="trust"
       className="section-shell relative section-padding overflow-hidden"
     >
-      <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyber-blue/20 to-transparent" />
+      <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyber-blue/15 to-transparent pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto">
         <div

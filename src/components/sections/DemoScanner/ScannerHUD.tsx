@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import type { ScanPhase, ScanData } from "./types";
+import EntityGraphCanvas from "@/components/analysis/intelligence/EntityGraphCanvas";
+import ScanCodeRain from "./ScanCodeRain";
 
 interface ScannerHUDProps {
   phase?: ScanPhase;
@@ -18,14 +20,10 @@ const operations = [
   "DIGITAL FOOTPRINT MAPPING",
   "CORRELATION ENGINE ACTIVE",
   "RISK MODEL CALCULATING",
-  "AI ASSESSMENT GENERATING"
+  "AI ASSESSMENT GENERATING",
 ];
 
-export default function ScannerHUD({
-  progress,
-  query
-}: ScannerHUDProps) {
-  const [isShuttingDown, setIsShuttingDown] = useState(false);
+export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
   const [isBooting, setIsBooting] = useState(true);
 
   useEffect(() => {
@@ -46,23 +44,10 @@ export default function ScannerHUD({
           40% { transform: scale(1, 0.002); filter: brightness(10); opacity: 1; }
           100% { transform: scale(1, 1); filter: brightness(1); opacity: 1; }
         }
-        @keyframes crtTurnOff {
-          0% { transform: scale(1, 1.3); filter: brightness(1); }
-          60% { transform: scale(1, 0.001); filter: brightness(10); }
-          100% { transform: scale(0, 0.001); filter: brightness(0); opacity: 0; }
-        }
-        
+
         @keyframes hologramFlicker {
           0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
-          20%, 22%, 24%, 55% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(34,211,238,0.8)); }
-        }
-        
-        /* EKG Animation: Dash-Werte erhöht, da die Linie durch die vielen Ausschläge länger ist */
-        @keyframes ekgPulse {
-          0% { stroke-dashoffset: 800; opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { stroke-dashoffset: 0; opacity: 0; }
+          20%, 22%, 24%, 55% { opacity: 0.78; }
         }
 
         @keyframes scanline {
@@ -70,194 +55,151 @@ export default function ScannerHUD({
           100% { transform: translateY(100vh); }
         }
 
-        @keyframes neuralBreathe {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.6; }
-        }
-        
         .crt-boot { animation: crtTurnOn 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
-        .crt-shutdown { animation: crtTurnOff 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
       `}</style>
 
-      <div 
-        className={`relative h-full w-full overflow-hidden bg-[#02070d] flex items-center justify-center font-mono select-none ${isBooting ? 'crt-boot' : ''} ${isShuttingDown ? 'crt-shutdown' : ''}`}
+      <div
+        className={`relative h-full w-full overflow-hidden bg-[#03050a] flex items-center justify-center font-mono select-none ${isBooting ? "crt-boot" : ""}`}
       >
-        
-        {/* === BACKGROUND === */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.1)_0%,rgba(2,7,13,1)_70%)]" />
-        <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(34,211,238,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.2)_1px,transparent_1px)] bg-[size:60px_60px]" style={{ perspective: '800px', transform: 'rotateX(60deg) scale(2) translateY(-20%)' }} />
-        
-        <div className="absolute inset-0 pointer-events-none z-50">
-          <div className="w-full h-[2px] bg-cyan-400/40 blur-[1px] opacity-70 shadow-[0_0_30px_#22d3ee]" style={{ animation: 'scanline 2s linear infinite' }} />
-        </div>
-        
-        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_150px_rgba(2,7,13,0.9)] z-40" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(41,182,246,0.1)_0%,rgba(3,5,10,1)_72%)]" />
+        <ScanCodeRain />
+        <div
+          className="absolute inset-0 z-[2] opacity-[0.05] bg-[linear-gradient(rgba(112,231,255,0.22)_1px,transparent_1px),linear-gradient(90deg,rgba(112,231,255,0.22)_1px,transparent_1px)] bg-[size:60px_60px]"
+          style={{
+            perspective: "800px",
+            transform: "rotateX(60deg) scale(2) translateY(-20%)",
+          }}
+        />
 
-        {/* === ZENTRALER SCANNER CORE === */}
-        <div className="relative z-10 flex items-center justify-center w-[800px] h-[800px]" style={{ animation: 'hologramFlicker 8s infinite' }}>
-          
-          <div className="absolute w-[90%] h-[90%] rounded-full border border-cyan-500/10 shadow-[0_0_50px_rgba(34,211,238,0.05)_inset,0_0_50px_rgba(34,211,238,0.05)]" />
-          <div className="absolute w-[75%] h-[75%] rounded-full border-[2px] border-dashed border-cyan-400/30 animate-[spin_10s_linear_infinite]" />
-          <div className="absolute w-[68%] h-[68%] rounded-full border-[2px] border-dotted border-blue-400/40 animate-[spin_8s_linear_infinite_reverse]" />
+        <div className="absolute inset-0 pointer-events-none z-50">
+          <div
+            className="w-full h-px bg-cyber-cyan/25 blur-[0.5px]"
+            style={{ animation: "scanline 3.2s linear infinite" }}
+          />
+        </div>
+
+        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_150px_rgba(3,5,10,0.92)] z-40" />
+
+        <div
+          className="relative z-10 flex items-center justify-center w-[min(92vw,520px)] h-[min(92vw,520px)] md:w-[min(80vw,720px)] md:h-[min(80vw,720px)] mb-40 md:mb-48"
+          style={{ animation: "hologramFlicker 8s infinite" }}
+        >
+          <div className="absolute w-[90%] h-[90%] rounded-full border border-cyber-cyan/10" />
+          <div className="absolute w-[75%] h-[75%] rounded-full border border-dashed border-cyber-cyan/25 animate-[spin_10s_linear_infinite]" />
+          <div className="absolute w-[68%] h-[68%] rounded-full border border-dotted border-cyber-blue/35 animate-[spin_8s_linear_infinite_reverse]" />
 
           <div className="absolute w-[60%] h-[60%] rounded-full overflow-hidden animate-[spin_1.5s_linear_infinite]">
-            <div className="w-full h-full bg-[conic-gradient(from_0deg,transparent_0%,transparent_60%,rgba(34,211,238,0.1)_90%,rgba(34,211,238,0.5)_100%)]" />
+            <div className="w-full h-full bg-[conic-gradient(from_0deg,transparent_0%,transparent_60%,rgba(41,182,246,0.1)_90%,rgba(112,231,255,0.45)_100%)]" />
           </div>
 
-          <div className="absolute w-[50%] h-[50%] rounded-full border-[6px] border-transparent border-t-cyan-500 border-b-cyan-500 animate-[spin_4s_linear_infinite] opacity-60 drop-shadow-[0_0_15px_#22d3ee]" />
-          <div className="absolute w-[45%] h-[45%] rounded-full border-[3px] border-transparent border-l-blue-400 border-r-blue-400 animate-[spin_2s_linear_infinite_reverse] drop-shadow-[0_0_10px_#60a5fa]" />
+          <div className="absolute w-[50%] h-[50%] rounded-full border-[5px] border-transparent border-t-cyber-cyan border-b-cyber-cyan animate-[spin_4s_linear_infinite] opacity-55" />
+          <div className="absolute w-[45%] h-[45%] rounded-full border-[3px] border-transparent border-l-cyber-blue border-r-cyber-blue animate-[spin_2s_linear_infinite_reverse]" />
 
-          <div className="absolute w-[30%] h-[30%] rounded-full border border-cyan-300 bg-cyan-900/20 animate-pulse backdrop-blur-md shadow-[0_0_40px_#22d3ee_inset]" />
+          <div className="absolute w-[30%] h-[30%] rounded-full border border-cyber-cyan/40 bg-cyber-blue/10 animate-pulse backdrop-blur-md" />
 
-          <div className="relative z-20 flex flex-col items-center justify-center w-[30%] h-[30%] rounded-full border border-cyan-200/40 bg-[#02070d]/80 shadow-[0_0_60px_rgba(34,211,238,0.5)] overflow-hidden">
-            <span className="text-cyan-400 text-[10px] tracking-[0.4em] mb-1 uppercase opacity-80">SynSight Core</span>
-            <div className="text-white text-7xl font-black tracking-tighter drop-shadow-[0_0_15px_#22d3ee] z-10 mt-2 mb-2">
+          <div className="relative z-20 flex flex-col items-center justify-center w-[42%] h-[42%] md:w-[30%] md:h-[30%] rounded-full border border-cyber-cyan/30 bg-[#03050a]/85 shadow-[0_0_50px_rgba(41,182,246,0.25)] overflow-hidden">
+            <span className="text-cyber-cyan/80 text-[9px] md:text-[10px] tracking-[0.4em] mb-1 uppercase">
+              SynSight Core
+            </span>
+            <div className="text-white text-5xl md:text-7xl font-semibold tracking-tighter z-10 mt-1 mb-1 tabular-nums">
               {progress}
             </div>
-            <span className="text-blue-400 text-[10px] tracking-[0.3em] mt-1 animate-pulse z-10">ANALYZING</span>
-            
-            <div className="absolute -top-3 w-[1px] h-3 bg-cyan-400" />
-            <div className="absolute -bottom-3 w-[1px] h-3 bg-cyan-400" />
-            <div className="absolute -left-3 w-3 h-[1px] bg-cyan-400" />
-            <div className="absolute -right-3 w-3 h-[1px] bg-cyan-400" />
+            <span className="text-cyber-blue text-[9px] md:text-[10px] tracking-[0.3em] mt-1 animate-pulse z-10">
+              ANALYZING
+            </span>
           </div>
-
         </div>
 
-        {/* === BOTTOM DASHBOARD PANELS === */}
-        <div className="absolute z-40 bottom-10 left-0 w-full px-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-          
-          {/* LEFT: TARGET INFO */}
-          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
-            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-50" />
+        <div className="absolute z-40 bottom-4 md:bottom-10 left-0 w-full px-4 md:px-12 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-8">
+          <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#03050a]/90 backdrop-blur-xl p-4 md:p-6">
+            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyber-cyan/40 to-transparent" />
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-3 h-3 bg-cyan-400 rounded-sm animate-ping shadow-[0_0_10px_#22d3ee]" />
-              <div className="text-cyan-500 text-xs font-bold tracking-[0.4em] uppercase font-mono">Ziel-Objekt</div>
+              <div className="w-2 h-2 bg-cyber-cyan rounded-sm animate-ping" />
+              <div className="text-cyber-cyan/70 text-[10px] font-medium tracking-[0.28em] uppercase">
+                Ziel-Objekt
+              </div>
             </div>
-            <div className="text-white text-2xl font-sans font-medium drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] truncate">
+            <div className="text-white text-xl md:text-2xl font-sans font-medium truncate">
               {query || "Unbekannt"}
             </div>
             <div className="mt-4 flex gap-2">
-              <div className="h-1 w-12 bg-cyan-500 shadow-[0_0_8px_#22d3ee]" />
-              <div className="h-1 w-4 bg-blue-600" />
-              <div className="h-1 w-2 bg-blue-800" />
+              <div className="h-1 w-12 bg-cyber-cyan/80" />
+              <div className="h-1 w-4 bg-cyber-blue/70" />
+              <div className="h-1 w-2 bg-cyber-blue/40" />
             </div>
           </div>
 
-          {/* CENTER: SYSTEM STATUS & NEUES 3D EKG MIT PROZENTZAHL */}
-          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-5 flex flex-col justify-center items-center shadow-[inset_0_0_20px_rgba(34,211,238,0.05)]">
-            
-            {/* HINTERGRUND: Neuronales Netz (SVG) */}
-            <div className="absolute inset-0 pointer-events-none" style={{ animation: 'neuralBreathe 4s infinite' }}>
-              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="stroke-cyan-500/20 fill-cyan-500/20">
-                <circle cx="10%" cy="20%" r="2" />
-                <circle cx="30%" cy="80%" r="1.5" />
-                <circle cx="50%" cy="30%" r="2.5" />
-                <circle cx="70%" cy="70%" r="1" />
-                <circle cx="90%" cy="40%" r="2" />
-                <line x1="10%" y1="20%" x2="50%" y2="30%" strokeWidth="1" />
-                <line x1="10%" y1="20%" x2="30%" y2="80%" strokeWidth="0.5" />
-                <line x1="50%" y1="30%" x2="30%" y2="80%" strokeWidth="1" />
-                <line x1="50%" y1="30%" x2="70%" y2="70%" strokeWidth="0.5" />
-                <line x1="50%" y1="30%" x2="90%" y2="40%" strokeWidth="1" />
-                <line x1="70%" y1="70%" x2="90%" y2="40%" strokeWidth="0.5" />
-              </svg>
+          <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#03050a]/90 backdrop-blur-xl p-3 md:p-4 flex flex-col">
+            <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-cyber-cyan/50 z-10" />
+            <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-cyber-cyan/50 z-10" />
+            <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-cyber-cyan/50 z-10" />
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-cyber-cyan/50 z-10" />
+
+            <div className="relative z-10 mb-2 flex items-center justify-between gap-2">
+              <div className="text-cyber-cyan/70 text-[10px] font-medium tracking-[0.22em] uppercase">
+                Status · Entity Graph
+              </div>
+              <div className="text-white text-[11px] font-medium tracking-widest animate-pulse">
+                KI AKTIV
+              </div>
             </div>
 
-            <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400 z-10" />
-            <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-400 z-10" />
-            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-400 z-10" />
-            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-400 z-10" />
-
-            <div className="text-cyan-500 text-[10px] font-bold tracking-[0.4em] mb-1 uppercase font-mono z-10">Status</div>
-            <div className="text-white text-lg font-bold tracking-widest animate-pulse drop-shadow-[0_0_8px_#fff] font-mono z-10">
-               KI-ANALYSE AKTIV
-            </div>
-            
-            {/* Ladebalken */}
-            <div className="w-full h-1.5 bg-[#041224] mt-3 border border-cyan-900/50 relative overflow-hidden rounded-full z-10">
-               <div 
-                 className="absolute top-0 left-0 h-full bg-cyan-400 shadow-[0_0_15px_#22d3ee] transition-all duration-100 ease-linear"
-                 style={{ width: `${progress}%` }}
-               />
+            {/* Same neural/entity graph as analysis recon matrix — not the circular dashboard HUD */}
+            <div className="relative z-10 overflow-hidden rounded-lg border border-white/[0.06] bg-[#05080e]">
+              <EntityGraphCanvas running height={96} nodeCount={36} />
             </div>
 
-            {/* VORDERGRUND: Volle Breite 3D EKG Linie mit MEHR Ausschlägen, tiefer gesetzt (mt-6) */}
-            <div className="w-full h-12 mt-6 flex justify-center opacity-90 z-10">
-              <svg width="100%" height="100%" viewBox="0 0 500 40" preserveAspectRatio="none" className="drop-shadow-[0_0_5px_#22d3ee]">
-                
-                {/* Layer 1: Der verschwommene 3D-Schatten */}
-                <path 
-                  d="M0,20 L120,20 L135,5 L150,35 L165,10 L180,30 L195,5 L215,35 L230,15 L245,20 L320,20 L330,10 L340,30 L350,20 L500,20" 
-                  className="stroke-cyan-700/60 fill-none stroke-[6px] blur-[3px]"
-                />
-                
-                {/* Layer 2: Die scharfe Hauptlinie */}
-                <path 
-                  d="M0,20 L120,20 L135,5 L150,35 L165,10 L180,30 L195,5 L215,35 L230,15 L245,20 L320,20 L330,10 L340,30 L350,20 L500,20" 
-                  className="stroke-cyan-300 fill-none stroke-[2px]"
-                  strokeDasharray="800"
-                  strokeDashoffset="800"
-                  style={{ animation: 'ekgPulse 1.8s linear infinite' }}
-                />
-                
-                {/* Layer 3: Leuchtende Datenpunkte an JEDER Spitze */}
-                <g className="animate-pulse">
-                  <circle cx="135" cy="5" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="150" cy="35" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="165" cy="10" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="180" cy="30" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="195" cy="5" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="215" cy="35" r="3" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  
-                  {/* Der zweite, kleine Nachbeben-Ausschlag */}
-                  <circle cx="330" cy="10" r="2.5" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                  <circle cx="340" cy="30" r="2.5" className="fill-white drop-shadow-[0_0_6px_#fff]" />
-                </g>
-              </svg>
+            <div className="relative z-10 mt-3 w-full h-1.5 bg-white/[0.04] border border-white/[0.06] overflow-hidden rounded-full">
+              <div
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyber-blue to-cyber-cyan transition-all duration-100 ease-linear"
+                style={{ width: `${progress}%` }}
+              />
             </div>
 
-            {/* NEU: Prozentzahl unter dem EKG */}
-            <div className="mt-3 flex items-center gap-2 z-10 text-cyan-400 font-mono">
-              <span className="text-[9px] uppercase tracking-[0.3em] opacity-70">Progress</span>
-              <span className="text-xl font-bold drop-shadow-[0_0_8px_#22d3ee]">{progress}%</span>
+            <div className="relative z-10 mt-2 flex items-center justify-between text-cyber-cyan font-mono">
+              <span className="text-[9px] uppercase tracking-[0.3em] opacity-70">
+                Progress
+              </span>
+              <span className="text-lg font-semibold tabular-nums">
+                {progress}%
+              </span>
             </div>
-
           </div>
 
-          {/* RIGHT: LIVE LOGS */}
-          <div className="relative overflow-hidden border border-cyan-500/30 bg-[#02070d]/90 backdrop-blur-xl p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
-            <div className="absolute top-0 right-0 w-full h-[2px] bg-gradient-to-l from-transparent via-cyan-400 to-transparent opacity-50" />
-            <div className="text-cyan-500 text-xs font-bold tracking-[0.4em] mb-4 uppercase font-mono">Live Logs</div>
-            
-            <div className="space-y-2 text-xs font-medium tracking-widest font-mono">
+          <div className="hidden md:block relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#03050a]/90 backdrop-blur-xl p-6">
+            <div className="absolute top-0 right-0 w-full h-px bg-gradient-to-l from-transparent via-cyber-cyan/40 to-transparent" />
+            <div className="text-cyber-cyan/70 text-[10px] font-medium tracking-[0.28em] mb-4 uppercase">
+              Live Logs
+            </div>
+
+            <div className="space-y-2 text-xs font-medium tracking-widest">
               {operations.map((item, index) => {
                 const isActive = index === activeLogIndex;
                 const isPast = index < activeLogIndex;
-                
+
                 return (
-                  <div 
-                    key={item} 
+                  <div
+                    key={item}
                     className={`flex items-center transition-all duration-300 ease-in-out ${
-                      isActive ? "text-cyan-300 drop-shadow-[0_0_8px_#22d3ee] translate-x-3 scale-105" : 
-                      isPast ? "text-cyan-800/80" : "text-slate-700"
+                      isActive
+                        ? "text-cyber-cyan translate-x-2"
+                        : isPast
+                          ? "text-cyber-cyan/35"
+                          : "text-white/20"
                     }`}
                   >
                     <span className="w-8 opacity-60 font-bold border-r border-current mr-2">
                       0{index + 1}
                     </span>
-                    <span className="truncate">
-                      {item}
-                    </span>
+                    <span className="truncate">{item}</span>
                     {isActive && (
-                      <span className="ml-auto w-2 h-4 bg-cyan-400 animate-pulse shadow-[0_0_10px_#22d3ee]" />
+                      <span className="ml-auto w-1.5 h-3 bg-cyber-cyan animate-pulse" />
                     )}
                   </div>
                 );
               })}
             </div>
           </div>
-
         </div>
       </div>
     </>
