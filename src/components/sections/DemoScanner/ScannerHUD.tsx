@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { ScanPhase, ScanData } from "./types";
 import EntityGraphCanvas from "@/components/analysis/intelligence/EntityGraphCanvas";
+import ScanCodeRain from "./ScanCodeRain";
 
 interface ScannerHUDProps {
   phase?: ScanPhase;
@@ -61,8 +62,9 @@ export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
         className={`relative h-full w-full overflow-hidden bg-[#03050a] flex items-center justify-center font-mono select-none ${isBooting ? "crt-boot" : ""}`}
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(41,182,246,0.1)_0%,rgba(3,5,10,1)_72%)]" />
+        <ScanCodeRain />
         <div
-          className="absolute inset-0 opacity-[0.07] bg-[linear-gradient(rgba(112,231,255,0.22)_1px,transparent_1px),linear-gradient(90deg,rgba(112,231,255,0.22)_1px,transparent_1px)] bg-[size:60px_60px]"
+          className="absolute inset-0 z-[2] opacity-[0.05] bg-[linear-gradient(rgba(112,231,255,0.22)_1px,transparent_1px),linear-gradient(90deg,rgba(112,231,255,0.22)_1px,transparent_1px)] bg-[size:60px_60px]"
           style={{
             perspective: "800px",
             transform: "rotateX(60deg) scale(2) translateY(-20%)",

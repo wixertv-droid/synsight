@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import Button from "@/components/ui/Button";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import HeroCodeRain from "@/components/hero/HeroCodeRain";
 
 /**
  * three-globe touches `window` during module evaluation and must never
@@ -60,7 +59,6 @@ export default function HeroSection() {
       </div>
 
       <div className="hero-atmosphere absolute inset-0 pointer-events-none z-[1]" />
-      <HeroCodeRain />
       <div className="absolute inset-0 z-[1] bg-grid-pattern bg-grid opacity-20 [mask-image:linear-gradient(to_bottom,black,transparent_82%)] pointer-events-none" />
       <div className="hero-scanline absolute inset-x-0 top-0 z-[1] h-28 pointer-events-none" />
 

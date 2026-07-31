@@ -33,13 +33,19 @@ type WorldTopology = Topology<{
   countries: GeometryCollection;
 }>;
 
-export default function CyberGlobe() {
+export default function CyberGlobe({
+  variant = "hero",
+}: {
+  /** `hero` = right-offset + HUD; `centered` = full-frame boot/login globe */
+  variant?: "hero" | "centered";
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef<(HTMLDivElement | null)[]>([]);
   const connectorRefs = useRef<(SVGLineElement | null)[]>([]);
   const locationTitleRef = useRef<HTMLParagraphElement>(null);
   const locationDetailRef = useRef<HTMLSpanElement>(null);
+  const showHud = variant === "hero";
 
   useEffect(() => {
     const root = rootRef.current;
@@ -257,16 +263,21 @@ export default function CyberGlobe() {
     let active = true;
     let lastFrame = 0;
 
-    const rightOffsetForWidth = (w: number) =>
-      w >= 1100 ? 118 : w >= 900 ? 96 : w >= 640 ? 42 : 0;
+    const rightOffsetForWidth = (w: number) => {
+      if (variant === "centered") return 0;
+      return w >= 1100 ? 118 : w >= 900 ? 96 : w >= 640 ? 42 : 0;
+    };
 
     const pinGlobeToRight = () => {
-      // Camera stays centered; globe is shifted on +X so it sits on the right.
-      // (Pinning the camera to the globe X previously centered it again.)
       const offsetX = rightOffsetForWidth(width);
       globeGroup.position.set(offsetX, 0, 0);
-      camera.position.set(0, 8, width < 640 ? 390 : 330);
-      controls.target.set(offsetX * 0.35, 0, 0);
+      if (variant === "centered") {
+        camera.position.set(0, 12, width < 640 ? 360 : 300);
+        controls.target.set(0, 0, 0);
+      } else {
+        camera.position.set(0, 8, width < 640 ? 390 : 330);
+        controls.target.set(offsetX * 0.35, 0, 0);
+      }
       controls.update();
     };
 
@@ -276,12 +287,24 @@ export default function CyberGlobe() {
       renderer.setSize(width, height, false);
       camera.aspect = width / Math.max(1, height);
       camera.updateProjectionMatrix();
-      const globeScale = width >= 900 ? 0.58 : width >= 640 ? 0.64 : 0.74;
+      const globeScale =
+        variant === "centered"
+          ? width >= 900
+            ? 0.72
+            : width >= 640
+              ? 0.78
+              : 0.82
+          : width >= 900
+            ? 0.58
+            : width >= 640
+              ? 0.64
+              : 0.74;
       globeGroup.scale.setScalar(globeScale);
       pinGlobeToRight();
     };
 
     const updateConnectors = (time: number) => {
+      if (!showHud) return;
       const rootRect = root.getBoundingClientRect();
       [0, 1, 2, 3].forEach((index) => {
         const panel = panelRefs.current[index];
@@ -389,11 +412,8 @@ export default function CyberGlobe() {
     const render = (time: number) => {
       if (!active) return;
       if (time - lastFrame >= 32 || reducedMotion) {
-        // Re-assert right-side anchor every frame so nothing can drift.
-        const offsetX = rightOffsetForWidth(width);
-        globeGroup.position.set(offsetX, 0, 0);
-        camera.position.set(0, 8, width < 640 ? 390 : 330);
-        controls.target.set(offsetX * 0.35, 0, 0);
+        // Re-assert framing every frame so nothing can drift.
+        pinGlobeToRight();
 
         if (!reducedMotion) {
           // Spin Earth around its own Y axis only (negative = toward the right).
@@ -475,7 +495,7 @@ export default function CyberGlobe() {
         canvasHost.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [variant, showHud]);
 
   const setPanelRef = (index: number) => (node: HTMLDivElement | null) => {
     panelRefs.current[index] = node;
@@ -487,12 +507,14 @@ export default function CyberGlobe() {
   return (
     <div ref={rootRef} className="absolute inset-0 overflow-hidden">
       <div ref={canvasRef} className="absolute inset-0 pointer-events-none" />
-      <GlobeHud
-        setPanelRef={setPanelRef}
-        setConnectorRef={setConnectorRef}
-        locationTitleRef={locationTitleRef}
-        locationDetailRef={locationDetailRef}
-      />
+      {showHud ? (
+        <GlobeHud
+          setPanelRef={setPanelRef}
+          setConnectorRef={setConnectorRef}
+          locationTitleRef={locationTitleRef}
+          locationDetailRef={locationDetailRef}
+        />
+      ) : null}
     </div>
   );
 }

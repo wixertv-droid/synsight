@@ -569,6 +569,30 @@ body::before {
   }
 }
 
+.scan-code-rain {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 12%,
+    black 70%,
+    transparent 100%
+  );
+}
+
+.scan-code-track {
+  animation: scan-code-scroll 42s linear infinite;
+  will-change: transform;
+}
+
+@keyframes scan-code-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -50%, 0);
+  }
+}
+
 .telemetry-marquee {
   animation: telemetry-slide 32s linear infinite;
   will-change: transform;
