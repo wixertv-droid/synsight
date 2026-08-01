@@ -573,6 +573,10 @@ def health():
             sf_ok = True
         except Exception:
             sf_ok = False
+    key = (API_KEY or "").strip()
+    key_hint = (
+        f"{key[:2]}…{key[-2:]} (len={len(key)})" if len(key) >= 4 else f"(len={len(key)})"
+    )
     return jsonify(
         {
             "ok": True,
@@ -588,6 +592,8 @@ def health():
                 "spiderfoot",
             ],
             "mode": "sequential-module",
+            "api_key_len": len(key),
+            "api_key_hint": key_hint,
         }
     )
 

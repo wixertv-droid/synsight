@@ -355,10 +355,10 @@ export default function AdminApiCredentialsView() {
                       placeholder={
                         row.configured
                           ? row.provider === "demo_scan"
-                            ? "Neuer Key ohne „Bearer “ (optional)"
+                            ? "Contabo API_KEY neu setzen (ohne Bearer )"
                             : "Neuer API-Schlüssel (optional)"
                           : row.provider === "demo_scan"
-                            ? "API_KEY von Contabo (ohne Bearer )"
+                            ? "z.B. demoscanner23061980!!"
                             : "API-Schlüssel"
                       }
                       className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/80 outline-none focus:border-cyber-cyan/35"

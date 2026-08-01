@@ -201,6 +201,7 @@ export async function testDemoScanConnection(input: {
   // Optional health — older Contabo api.py has no /api/health (404 is OK).
   const healthUrl = healthUrlFromScanUrl(url);
   let healthDetail = "Health übersprungen";
+  let contaboKeyHint = "";
   try {
     const healthRes = await fetch(healthUrl, {
       method: "GET",
@@ -222,11 +223,19 @@ export async function testDemoScanConnection(input: {
         typeof healthBody?.api_version === "string"
           ? `version=${healthBody.api_version}`
           : "version=?";
+      if (typeof healthBody?.api_key_hint === "string") {
+        contaboKeyHint = healthBody.api_key_hint;
+      }
       healthDetail = `Health OK · ${sf} · ${ver}`;
     }
   } catch {
     healthDetail = "Health nicht erreichbar (Auth-Probe folgt)";
   }
+
+  const adminKeyHint =
+    apiKey.length >= 4
+      ? `${apiKey.slice(0, 2)}…${apiKey.slice(-2)} (len=${apiKey.length})`
+      : `(len=${apiKey.length})`;
 
   // Auth probe: empty body → 400 if key OK, 401 if key wrong (fast, no scan).
   try {
@@ -252,10 +261,11 @@ export async function testDemoScanConnection(input: {
         message: "API-Key abgelehnt (401 Unauthorized).",
         detail:
           `${healthDetail} · Quelle=${source}. ` +
-          "Contabo API_KEY stimmt nicht mit dem Admin-Key überein. " +
-          "Auf Contabo: Prozess neu starten mit " +
-          "API_KEY='…' in einfachen Anführungszeichen (Bash expandiert !!). " +
-          "Nur den Key speichern, ohne Präfix „Bearer “.",
+          `Admin-Key ${adminKeyHint}` +
+          (contaboKeyHint ? ` · Contabo-Key ${contaboKeyHint}` : "") +
+          ". Keys müssen exakt gleich sein (ohne „Bearer “). " +
+          "Im Admin-Feld den Contabo-Key neu eintragen → Speichern → API TESTEN. " +
+          "Aktueller Contabo-Default: demoscanner23061980!!",
         latencyMs,
       };
     }
