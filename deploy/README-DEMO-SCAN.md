@@ -62,3 +62,20 @@ Optionaler Env-Fallback (nur wenn Admin-Eintrag fehlt): `DEMO_SCAN_API_URL` / `D
 Browser: Ctrl+Shift+R.
 
 **Nicht** auf SynSight `curl 127.0.0.1:5000` testen — die Deep-API liegt nur auf Contabo.
+
+### Nginx (SynSight-Host) — sonst 504 HTML statt JSON
+
+Wenn der Browser `504 Gateway Time-out` + HTML zeigt, ist der Reverse-Proxy zu kurz:
+
+```nginx
+location /api/scan {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_connect_timeout 60s;
+}
+```
+
+Dann `nginx -t && systemctl reload nginx`.
+
+Tipp fürs Landing: zuerst nur **E-Mail** oder **Username** testen — alle 5 Felder gleichzeitig sprengen auch Contabo-Timeouts.

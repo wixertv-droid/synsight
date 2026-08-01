@@ -50,13 +50,15 @@ API_KEY = os.environ.get("API_KEY", "demoscanner23061980!!")
 SPIDERFOOT_URL = os.environ.get("SPIDERFOOT_URL", "http://127.0.0.1:5001").rstrip(
     "/"
 )
-SCAN_WAIT_SECONDS = int(os.environ.get("DEMO_SCAN_WAIT_SECONDS", "22"))
-POLL_INTERVAL = float(os.environ.get("DEMO_SCAN_POLL_INTERVAL", "1.5"))
-HOLEHE_TIMEOUT = int(os.environ.get("HOLEHE_TIMEOUT", "90"))
-MAIGRET_TIMEOUT = int(os.environ.get("MAIGRET_TIMEOUT", "120"))
-PHONE_TIMEOUT = int(os.environ.get("PHONEINFOGA_TIMEOUT", "60"))
-HARVEST_TIMEOUT = int(os.environ.get("HARVESTER_TIMEOUT", "90"))
-PHOTON_TIMEOUT = int(os.environ.get("PHOTON_TIMEOUT", "90"))
+# Keep landing-page scans under typical nginx proxy timeouts.
+SCAN_WAIT_SECONDS = int(os.environ.get("DEMO_SCAN_WAIT_SECONDS", "12"))
+POLL_INTERVAL = float(os.environ.get("DEMO_SCAN_POLL_INTERVAL", "1.2"))
+HOLEHE_TIMEOUT = int(os.environ.get("HOLEHE_TIMEOUT", "35"))
+MAIGRET_TIMEOUT = int(os.environ.get("MAIGRET_TIMEOUT", "40"))
+PHONE_TIMEOUT = int(os.environ.get("PHONEINFOGA_TIMEOUT", "25"))
+HARVEST_TIMEOUT = int(os.environ.get("HARVESTER_TIMEOUT", "35"))
+PHOTON_TIMEOUT = int(os.environ.get("PHOTON_TIMEOUT", "35"))
+OVERALL_DEADLINE_SECONDS = int(os.environ.get("DEMO_SCAN_OVERALL_SECONDS", "95"))
 RESULT_PATH = Path(os.environ.get("RESULT_PATH", "/tmp/synsight_results"))
 RESULT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -416,25 +418,57 @@ def scan():
 
     scan_id = str(uuid.uuid4())
     findings: list[dict] = []
+    deadline = time.time() + OVERALL_DEADLINE_SECONDS
+    partial = False
+
+    def within_budget() -> bool:
+        return time.time() < deadline - 2
 
     if email := targets.get("email"):
-        findings += run_holehe(email)
-        findings += run_spiderfoot(email)
+        if within_budget():
+            findings += run_holehe(email)
+        else:
+            partial = True
+        if within_budget():
+            findings += run_spiderfoot(email)
+        else:
+            partial = True
     if username := targets.get("username") or targets.get("name"):
-        findings += run_maigret(username)
-        if "email" not in targets:  # avoid double SF when email already ran
-            findings += run_spiderfoot(username)
+        if within_budget():
+            findings += run_maigret(username)
+        else:
+            partial = True
+        if "email" not in targets:
+            if within_budget():
+                findings += run_spiderfoot(username)
+            else:
+                partial = True
     if phone := targets.get("phone"):
-        findings += run_phoneinfoga(phone)
+        if within_budget():
+            findings += run_phoneinfoga(phone)
+        else:
+            partial = True
         if not any(k in targets for k in ("email", "username", "name")):
-            findings += run_spiderfoot(phone)
+            if within_budget():
+                findings += run_spiderfoot(phone)
+            else:
+                partial = True
     if domain := targets.get("domain"):
-        findings += run_theharvester(domain)
+        if within_budget():
+            findings += run_theharvester(domain)
+        else:
+            partial = True
         if not any(k in targets for k in ("email", "username", "name", "phone")):
-            findings += run_spiderfoot(domain)
+            if within_budget():
+                findings += run_spiderfoot(domain)
+            else:
+                partial = True
     if url := targets.get("url"):
-        findings += run_photon(url)
-        if len(targets) == 1:
+        if within_budget():
+            findings += run_photon(url)
+        else:
+            partial = True
+        if len(targets) == 1 and within_budget():
             findings += run_spiderfoot(url)
 
     result = {
@@ -445,8 +479,9 @@ def scan():
         "timestamp": utc_now(),
         "total_findings": len(findings),
         "findings": findings,
+        "partial": partial,
         "source": "contabo-deep",
-        "api_version": "contabo-deep-2",
+        "api_version": "contabo-deep-3",
     }
 
     try:

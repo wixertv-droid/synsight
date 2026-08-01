@@ -128,42 +128,68 @@ export default function DemoScanner() {
     });
 
     const startedAt = Date.now();
-    // Visual progress waits for API (Contabo tools can take 1–3 min).
+    // Visual progress waits for API (~2 min budget under nginx).
     const progressTimer = setInterval(() => {
       if (!aliveRef.current) {
         clearInterval(progressTimer);
         return;
       }
       const elapsed = Date.now() - startedAt;
-      const visual = Math.min(92, Math.floor((elapsed / 90_000) * 92));
+      const visual = Math.min(92, Math.floor((elapsed / 100_000) * 92));
       setProgress(visual);
     }, 120);
 
     try {
       const response = await scanPromise;
-      const data = await response.json();
+      const rawText = await response.text();
       if (!aliveRef.current) return;
 
       clearInterval(progressTimer);
       setProgress(100);
 
-      if (data.status === "success") {
+      let data: Record<string, unknown> | null = null;
+      try {
+        data = rawText
+          ? (JSON.parse(rawText) as Record<string, unknown>)
+          : null;
+      } catch {
+        data = null;
+      }
+
+      if (!data) {
+        const gatewayHint =
+          response.status === 504 || response.status === 502
+            ? "Gateway-Timeout — Contabo braucht zu lange (viele Felder/Module). Nur E-Mail oder Username testen, oder nginx proxy_read_timeout für /api/scan auf 300s setzen."
+            : `Ungültige Server-Antwort (HTTP ${response.status}).`;
+        setApiResult({
+          status: "error",
+          message: gatewayHint,
+          riskLevel: "Keine Bewertung",
+          summary: gatewayHint,
+        });
+      } else if (data.status === "success") {
         const modules = (data.modules || []) as ScanModule[];
         const scanData: ScanData = {
-          query: data.query ?? Object.values(queries).join(" · "),
-          queries: data.queries ?? queries,
+          query:
+            (typeof data.query === "string" && data.query) ||
+            Object.values(queries).join(" · "),
+          queries: (data.queries as ScanQueries) ?? queries,
           queryType: String(data.query_type || "mixed"),
-          findings: data.findings || [],
+          findings: (data.findings as ScanData["findings"]) || [],
           modules,
-          platforms: data.platforms ?? ["OSINT"],
+          platforms: (data.platforms as string[]) ?? ["OSINT"],
           exposureScore: Number(data.exposure_score ?? 0) || 0,
-          riskLevel: data.risk_level ?? "Erhöht",
+          riskLevel: String(data.risk_level ?? "Erhöht"),
           summary:
-            data.summary ??
+            (typeof data.summary === "string" && data.summary) ||
             `Multi-Modul-Analyse für „${Object.values(queries).join(" · ")}“ abgeschlossen.`,
-          timestamp: data.timestamp || new Date().toISOString(),
-          exposure_count: (data.findings || []).length,
-          sources_found: modules.length || data.platforms?.length || 0,
+          timestamp:
+            (typeof data.timestamp === "string" && data.timestamp) ||
+            new Date().toISOString(),
+          exposure_count: Array.isArray(data.findings)
+            ? data.findings.length
+            : 0,
+          sources_found: modules.length || 0,
         };
 
         setRawData(scanData);
@@ -177,12 +203,14 @@ export default function DemoScanner() {
           platforms: scanData.platforms,
         });
       } else {
+        const message =
+          (typeof data.message === "string" && data.message) ||
+          "Analyse konnte nicht abgeschlossen werden.";
         setApiResult({
           status: "error",
-          message: data.message || "Analyse konnte nicht abgeschlossen werden.",
+          message,
           riskLevel: "Keine Bewertung",
-          summary:
-            "Die öffentliche Analyse konnte nicht vollständig abgeschlossen werden.",
+          summary: message,
         });
       }
     } catch (error) {

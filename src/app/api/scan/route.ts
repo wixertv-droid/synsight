@@ -9,9 +9,15 @@ import { getDemoScanCache, setDemoScanCache } from "@/lib/demo/scan-cache";
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
 import { resolveDemoScanCredentials } from "@/lib/demo/demo-scan-credentials";
 
-/** Contabo tools can take minutes (holehe/maigret). */
+/**
+ * Stay under typical nginx proxy_read_timeout (60–120s) so the client
+ * gets JSON instead of an HTML 504 page. Override via env if nginx is raised.
+ */
 const DEMO_SCAN_TIMEOUT_MS = Number(
-  process.env.DEMO_SCAN_TIMEOUT_MS || 320_000
+  process.env.DEMO_SCAN_TIMEOUT_MS || 110_000
+);
+const DEMO_SCAN_PER_FIELD_MS = Number(
+  process.env.DEMO_SCAN_PER_FIELD_MS || 50_000
 );
 const MAX_FIELD_LENGTH = 160;
 
@@ -22,7 +28,8 @@ const DEMO_SCAN_RATE_LIMIT = {
   blockMs: 30 * 60_000,
 };
 
-const FIELD_KEYS = [
+/** Prefer faster / higher-signal Contabo modules first. */
+const FIELD_PRIORITY = [
   "email",
   "username",
   "phone",
@@ -44,12 +51,11 @@ function extractQueries(
   const out: Record<string, string> = {};
   if (!body) return out;
 
-  for (const key of FIELD_KEYS) {
+  for (const key of FIELD_PRIORITY) {
     const value = cleanField(body[key]);
     if (value) out[key] = value;
   }
 
-  // Legacy single-query support
   const legacy = cleanField(body.query);
   if (legacy && Object.keys(out).length === 0) {
     if (legacy.includes("@")) out.email = legacy;
@@ -76,6 +82,7 @@ function authHeaders(apiKey: string): Record<string, string> {
   };
   if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`;
+    headers["X-API-Key"] = apiKey;
   }
   return headers;
 }
@@ -83,10 +90,13 @@ function authHeaders(apiKey: string): Record<string, string> {
 async function parseContaboResponse(
   contaboResponse: Response
 ): Promise<Record<string, unknown>> {
-  const data = (await contaboResponse.json().catch(() => null)) as Record<
-    string,
-    unknown
-  > | null;
+  const text = await contaboResponse.text();
+  let data: Record<string, unknown> | null = null;
+  try {
+    data = text ? (JSON.parse(text) as Record<string, unknown>) : null;
+  } catch {
+    data = null;
+  }
 
   if (!contaboResponse.ok) {
     const upstreamMessage =
@@ -94,14 +104,16 @@ async function parseContaboResponse(
         ? data.message.trim()
         : typeof data?.error === "string"
           ? data.error
-          : `Demo scan upstream error: ${contaboResponse.status}`;
+          : text.trim().startsWith("<")
+            ? `Contabo/Proxy HTML-Fehler HTTP ${contaboResponse.status} (Timeout?).`
+            : `Demo scan upstream error: ${contaboResponse.status}`;
     const err = new Error(upstreamMessage) as Error & { status?: number };
     err.status = contaboResponse.status;
     throw err;
   }
 
   if (!data) {
-    throw new Error("Leere Antwort vom Analyse-Server.");
+    throw new Error("Leere oder ungültige Antwort vom Analyse-Server.");
   }
 
   return data;
@@ -122,32 +134,94 @@ async function callContaboScan(
   return parseContaboResponse(contaboResponse);
 }
 
+function orderedQueries(queries: Record<string, string>): string[] {
+  const ordered: string[] = [];
+  for (const key of FIELD_PRIORITY) {
+    if (queries[key]) ordered.push(queries[key]);
+  }
+  for (const value of Object.values(queries)) {
+    if (!ordered.includes(value)) ordered.push(value);
+  }
+  return ordered;
+}
+
 async function fetchUpstreamPayloads(
   scanUrl: string,
   apiKey: string,
   queries: Record<string, string>,
-  signal: AbortSignal
-): Promise<Array<Record<string, unknown>>> {
-  // Prefer single multi-field call (contabo-deep-2). Fall back to legacy
-  // one-query-per-request API when Contabo still expects `{ query }`.
+  parentSignal: AbortSignal
+): Promise<{ payloads: Array<Record<string, unknown>>; partial: boolean }> {
+  // Prefer single multi-field call (contabo-deep-2).
   try {
-    const multi = await callContaboScan(scanUrl, apiKey, queries, signal);
-    return [multi];
+    const multi = await callContaboScan(scanUrl, apiKey, queries, parentSignal);
+    return { payloads: [multi], partial: false };
   } catch (error) {
     const status =
       error instanceof Error && "status" in error
         ? Number((error as Error & { status?: number }).status)
         : 0;
     const message = error instanceof Error ? error.message : "";
-    const legacyShape =
-      status === 400 || /missing query|unauthorized/i.test(message);
+    const legacyShape = status === 400 || /missing query/i.test(message);
     if (!legacyShape) throw error;
   }
 
-  const values = Object.values(queries);
-  return Promise.all(
-    values.map((query) => callContaboScan(scanUrl, apiKey, { query }, signal))
-  );
+  // Legacy Contabo api.py: one {query} per call.
+  // Sequential (not parallel) — parallel 5× maigret/holehe blows nginx timeouts.
+  const payloads: Array<Record<string, unknown>> = [];
+  const values = orderedQueries(queries);
+  const started = Date.now();
+  let abortedEarly = false;
+
+  for (const query of values) {
+    if (parentSignal.aborted) {
+      abortedEarly = true;
+      break;
+    }
+    const elapsed = Date.now() - started;
+    const left = DEMO_SCAN_TIMEOUT_MS - elapsed;
+    if (left < 4_000) {
+      abortedEarly = true;
+      break;
+    }
+
+    const fieldMs = Math.min(DEMO_SCAN_PER_FIELD_MS, left);
+    const fieldController = new AbortController();
+    const timer = setTimeout(() => fieldController.abort(), fieldMs);
+    const onParentAbort = () => fieldController.abort();
+    parentSignal.addEventListener("abort", onParentAbort);
+
+    try {
+      const payload = await callContaboScan(
+        scanUrl,
+        apiKey,
+        { query },
+        fieldController.signal
+      );
+      payloads.push(payload);
+    } catch (error) {
+      console.error(
+        "[demo-scan] field failed:",
+        query,
+        error instanceof Error ? error.message : error
+      );
+    } finally {
+      clearTimeout(timer);
+      parentSignal.removeEventListener("abort", onParentAbort);
+    }
+  }
+
+  if (payloads.length === 0) {
+    throw new Error(
+      "Kein Contabo-Modul hat rechtzeitig geantwortet. " +
+        "Tipp: nur 1–2 Felder scannen, Contabo-Timeouts senken, oder auf SynSight " +
+        "nginx proxy_read_timeout für /api/scan auf 300s setzen."
+    );
+  }
+
+  return {
+    payloads,
+    partial: abortedEarly || payloads.length < values.length,
+  };
 }
 
 export async function POST(req: Request) {
@@ -217,19 +291,23 @@ export async function POST(req: Request) {
     const timeout = setTimeout(() => controller.abort(), DEMO_SCAN_TIMEOUT_MS);
 
     try {
-      const payloads = await fetchUpstreamPayloads(
+      const { payloads, partial } = await fetchUpstreamPayloads(
         creds.url,
         creds.apiKey,
         queries,
         controller.signal
       );
       const normalized = normalizeUpstreamPayload({ payloads, queries });
+      if (partial) {
+        normalized.summary = `${normalized.summary} (Teil-Ergebnis — Zeitbudget erreicht; weitere Module ggf. weggelassen.)`;
+      }
       setDemoScanCache(cacheKey, normalized);
 
       return NextResponse.json(normalized, {
         headers: {
           ...rateLimitHeaders(attempt),
           "x-demo-scan-cache": "miss",
+          "x-demo-scan-partial": partial ? "1" : "0",
         },
       });
     } finally {
@@ -244,7 +322,7 @@ export async function POST(req: Request) {
       error instanceof Error && error.message && !aborted
         ? error.message
         : aborted
-          ? "Die Analyse hat zu lange gedauert. Bitte erneut versuchen."
+          ? "Die Analyse hat zu lange gedauert (Proxy-/Contabo-Timeout). Bitte nur E-Mail oder Username testen, oder nginx proxy_read_timeout erhöhen."
           : "Der interne Analyse-Server konnte nicht erreicht werden.";
 
     return NextResponse.json(

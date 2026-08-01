@@ -62,7 +62,8 @@ module.exports = {
         DEMO_SCAN_API_URL:
           merged.DEMO_SCAN_API_URL || "http://161.97.85.22:5000/api/scan",
         DEMO_SCAN_API_KEY: merged.DEMO_SCAN_API_KEY || "",
-        DEMO_SCAN_TIMEOUT_MS: merged.DEMO_SCAN_TIMEOUT_MS || "320000",
+        DEMO_SCAN_TIMEOUT_MS: merged.DEMO_SCAN_TIMEOUT_MS || "110000",
+        DEMO_SCAN_PER_FIELD_MS: merged.DEMO_SCAN_PER_FIELD_MS || "50000",
       },
     },
   ],
