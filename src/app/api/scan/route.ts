@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     const query = cleanQuery(body?.query);
     const moduleRaw =
       typeof body?.module === "string" ? body.module.trim() : "";
-    const module = moduleRaw === "SpiderFoot" ? "spiderfoot" : moduleRaw;
+    const scanModule = moduleRaw === "SpiderFoot" ? "spiderfoot" : moduleRaw;
 
     if (!query) {
       return NextResponse.json(
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
         { status: 400, headers: rateLimitHeaders(attempt) }
       );
     }
-    if (!module || !ALLOWED_MODULES.has(module)) {
+    if (!scanModule || !ALLOWED_MODULES.has(scanModule)) {
       return NextResponse.json(
         {
           status: "error",
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
       const contaboResponse = await fetch(creds.url, {
         method: "POST",
         headers: authHeaders(creds.apiKey),
-        body: JSON.stringify({ query, module }),
+        body: JSON.stringify({ query, module: scanModule }),
         signal: controller.signal,
       });
 
@@ -180,7 +180,7 @@ export async function POST(req: Request) {
                 (typeof data?.message === "string" && data.message) ||
                 `Contabo HTTP ${legacy.status}`,
               risk_level: "Fehler",
-              module,
+              module: scanModule,
             },
             {
               status: legacy.status >= 500 ? 502 : legacy.status,
@@ -199,7 +199,7 @@ export async function POST(req: Request) {
                 ? `Proxy/Timeout HTML HTTP ${contaboResponse.status}`
                 : `Contabo HTTP ${contaboResponse.status}`),
             risk_level: "Fehler",
-            module,
+            module: scanModule,
           },
           {
             status:
@@ -211,13 +211,13 @@ export async function POST(req: Request) {
 
       const normalized = normalizeUpstreamPayload({
         payloads: [data],
-        queries: { [module]: query },
+        queries: { [scanModule]: query },
       });
 
       return NextResponse.json(
         {
           ...normalized,
-          module,
+          module: scanModule,
           query,
           step: true,
         },
