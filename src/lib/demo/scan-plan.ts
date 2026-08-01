@@ -1,4 +1,5 @@
 import type { ScanQueries } from "@/components/sections/DemoScanner/types";
+import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
 
 export type DemoModuleId =
   | "holehe"
@@ -67,7 +68,8 @@ export const MODULE_META: Record<
  * Sequential plan — one Contabo module call per step (avoids nginx timeout).
  * Order: specialist tools first, then SpiderFoot on the strongest targets.
  */
-export function buildScanPlan(queries: ScanQueries): ScanStep[] {
+export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
+  const queries = normalizeScanQueries(rawQueries);
   const steps: ScanStep[] = [];
 
   if (queries.email) {

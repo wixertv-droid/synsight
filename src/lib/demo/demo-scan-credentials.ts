@@ -226,7 +226,12 @@ export async function testDemoScanConnection(input: {
       if (typeof healthBody?.api_key_hint === "string") {
         contaboKeyHint = healthBody.api_key_hint;
       }
-      healthDetail = `Health OK · ${sf} · ${ver}`;
+      const missing = Array.isArray(healthBody?.tools_missing)
+        ? (healthBody.tools_missing as string[]).join(",")
+        : "";
+      healthDetail =
+        `Health OK · ${sf} · ${ver}` +
+        (missing ? ` · tools_missing=${missing}` : "");
     }
   } catch {
     healthDetail = "Health nicht erreichbar (Auth-Probe folgt)";

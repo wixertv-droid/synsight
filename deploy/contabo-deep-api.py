@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import time
 import uuid
@@ -37,7 +38,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 from flask import Flask, jsonify, request
@@ -46,7 +47,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-API_KEY = os.environ.get("API_KEY", "demoscanner23061980!!")
+API_KEY = os.environ.get("API_KEY", "synsight-demo-key")
 SPIDERFOOT_URL = os.environ.get("SPIDERFOOT_URL", "http://127.0.0.1:5001").rstrip(
     "/"
 )
@@ -63,10 +64,79 @@ OVERALL_DEADLINE_SECONDS = int(os.environ.get("DEMO_SCAN_OVERALL_SECONDS", "70")
 RESULT_PATH = Path(os.environ.get("RESULT_PATH", "/tmp/synsight_results"))
 RESULT_PATH.mkdir(parents=True, exist_ok=True)
 
+# Extra search roots (Docker / manual installs)
+EXTRA_BIN_DIRS = [
+    p
+    for p in os.environ.get(
+        "TOOL_PATH",
+        "/usr/local/bin:/usr/bin:/root/.local/bin:/opt/bin:/app:/home/spiderfoot",
+    ).split(":")
+    if p
+]
 THEHARVESTER_BIN = os.environ.get(
     "THEHARVESTER_BIN", "/app/theHarvester/theHarvester.py"
 )
 PHOTON_BIN = os.environ.get("PHOTON_BIN", "/app/photon/photon.py")
+
+
+def resolve_bin(name: str, env_key: str = "", script_fallback: str = "") -> list[str] | None:
+    """Return argv prefix to run a tool, or None if missing."""
+    if env_key and os.environ.get(env_key):
+        path = os.environ[env_key].strip()
+        if Path(path).exists():
+            return ["python3", path] if path.endswith(".py") else [path]
+
+    found = shutil.which(name)
+    if found:
+        return [found]
+
+    for directory in EXTRA_BIN_DIRS:
+        candidate = Path(directory) / name
+        if candidate.exists() and os.access(candidate, os.X_OK):
+            return [str(candidate)]
+        py = Path(directory) / f"{name}.py"
+        if py.exists():
+            return ["python3", str(py)]
+
+    if script_fallback and Path(script_fallback).exists():
+        return ["python3", script_fallback]
+
+    # python -m <module>
+    try:
+        probe = subprocess.run(
+            ["python3", "-c", f"import {name}"],
+            capture_output=True,
+            timeout=5,
+        )
+        if probe.returncode == 0:
+            return ["python3", "-m", name]
+    except Exception:
+        pass
+
+    return None
+
+
+def tool_status() -> dict[str, str]:
+    mapping = {
+        "holehe": resolve_bin("holehe", "HOLEHE_BIN"),
+        "maigret": resolve_bin("maigret", "MAIGRET_BIN"),
+        "phoneinfoga": resolve_bin("phoneinfoga", "PHONEINFOGA_BIN"),
+        "theHarvester": resolve_bin(
+            "theHarvester", "THEHARVESTER_BIN", THEHARVESTER_BIN
+        )
+        or resolve_bin("theharvester", "", THEHARVESTER_BIN),
+        "photon": resolve_bin("photon", "PHOTON_BIN", PHOTON_BIN),
+        "spiderfoot": "http:" + SPIDERFOOT_URL,
+    }
+    out: dict[str, str] = {}
+    for key, value in mapping.items():
+        if key == "spiderfoot":
+            out[key] = SPIDERFOOT_URL
+        elif value:
+            out[key] = " ".join(value)
+        else:
+            out[key] = "MISSING"
+    return out
 
 
 def utc_now() -> str:
@@ -126,11 +196,59 @@ def http_json(
 # -------------------------
 
 
+def missing_tool(source: str, name: str) -> list[dict]:
+    return [
+        {
+            "source": source,
+            "error": (
+                f"{name} nicht gefunden (PATH). Contabo: "
+                f"which {name} || pip3 install {name} — "
+                f"oder {name.upper()}_BIN=/pfad setzen und api.py neu starten."
+            ),
+        }
+    ]
+
+
+def hostname_only(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return raw
+    if "://" not in raw:
+        raw = "https://" + raw
+    try:
+        host = urlparse(raw).hostname or value
+    except Exception:
+        host = re.sub(r"^https?://", "", value).split("/")[0]
+    return host.replace("www.", "").strip().strip("/")
+
+
+def prepare_spiderfoot_target(target: str) -> str:
+    """Make target recognizable for SpiderFoot targetTypeFromString."""
+    t = (target or "").strip().strip('"')
+    if not t:
+        return t
+    if "@" in t:
+        return t.lower()
+    if t.startswith("+") or re.match(r"^\d[\d\s()-]{6,}$", t):
+        return re.sub(r"[\s()-]", "", t)
+    if t.startswith("http://") or t.startswith("https://") or "/" in t:
+        return hostname_only(t)
+    # username / handle → quoted for USERNAME recognition
+    if re.match(r"^[A-Za-z0-9._-]{2,64}$", t) and "." not in t:
+        return f'"{t}"'
+    if " " in t:
+        return f'"{t}"'
+    return t.lower()
+
+
 def run_holehe(email: str) -> list[dict]:
     findings: list[dict] = []
+    bin_cmd = resolve_bin("holehe", "HOLEHE_BIN")
+    if not bin_cmd:
+        return missing_tool("holehe", "holehe")
     try:
         result = subprocess.run(
-            ["holehe", email, "--only-used"],
+            [*bin_cmd, email, "--only-used"],
             capture_output=True,
             text=True,
             timeout=HOLEHE_TIMEOUT,
@@ -150,6 +268,9 @@ def run_holehe(email: str) -> list[dict]:
                         "confidence": 80,
                     }
                 )
+        if not findings and result.returncode != 0:
+            err = (result.stderr or result.stdout or "holehe exit non-zero")[:300]
+            findings.append({"source": "holehe", "error": err})
     except Exception as exc:  # noqa: BLE001
         findings.append({"source": "holehe", "error": str(exc)})
     return findings
@@ -157,9 +278,12 @@ def run_holehe(email: str) -> list[dict]:
 
 def run_maigret(username: str) -> list[dict]:
     findings: list[dict] = []
+    bin_cmd = resolve_bin("maigret", "MAIGRET_BIN")
+    if not bin_cmd:
+        return missing_tool("maigret", "maigret")
     try:
         result = subprocess.run(
-            ["maigret", username, "--timeout", "15", "--no-color"],
+            [*bin_cmd, username, "--timeout", "15", "--no-color"],
             capture_output=True,
             text=True,
             timeout=MAIGRET_TIMEOUT,
@@ -179,6 +303,9 @@ def run_maigret(username: str) -> list[dict]:
                         "confidence": 75,
                     }
                 )
+        if not findings and result.returncode != 0:
+            err = (result.stderr or result.stdout or "maigret exit non-zero")[:300]
+            findings.append({"source": "maigret", "error": err})
     except Exception as exc:  # noqa: BLE001
         findings.append({"source": "maigret", "error": str(exc)})
     return findings[:40]
@@ -186,9 +313,12 @@ def run_maigret(username: str) -> list[dict]:
 
 def run_phoneinfoga(number: str) -> list[dict]:
     findings: list[dict] = []
+    bin_cmd = resolve_bin("phoneinfoga", "PHONEINFOGA_BIN")
+    if not bin_cmd:
+        return missing_tool("phoneinfoga", "phoneinfoga")
     try:
         result = subprocess.run(
-            ["phoneinfoga", "scan", "-n", number],
+            [*bin_cmd, "scan", "-n", number],
             capture_output=True,
             text=True,
             timeout=PHONE_TIMEOUT,
@@ -206,6 +336,9 @@ def run_phoneinfoga(number: str) -> list[dict]:
                     "confidence": 60,
                 }
             )
+        elif result.returncode != 0:
+            err = (result.stderr or "phoneinfoga exit non-zero")[:300]
+            findings.append({"source": "phoneinfoga", "error": err})
     except Exception as exc:  # noqa: BLE001
         findings.append({"source": "phoneinfoga", "error": str(exc)})
     return findings
@@ -213,20 +346,23 @@ def run_phoneinfoga(number: str) -> list[dict]:
 
 def run_theharvester(domain: str) -> list[dict]:
     findings: list[dict] = []
+    domain = hostname_only(domain)
     outfile = f"/tmp/{uuid.uuid4()}.json"
+    bin_cmd = resolve_bin("theHarvester", "THEHARVESTER_BIN", THEHARVESTER_BIN)
+    if not bin_cmd:
+        bin_cmd = resolve_bin("theharvester", "", THEHARVESTER_BIN)
+    if not bin_cmd:
+        return missing_tool("theHarvester", "theHarvester")
     try:
-        cmd = ["theHarvester", "-d", domain, "-b", "bing,duckduckgo", "-f", outfile]
-        if Path(THEHARVESTER_BIN).exists():
-            cmd = [
-                "python3",
-                THEHARVESTER_BIN,
-                "-d",
-                domain,
-                "-b",
-                "bing,duckduckgo",
-                "-f",
-                outfile,
-            ]
+        cmd = [
+            *bin_cmd,
+            "-d",
+            domain,
+            "-b",
+            "bing,duckduckgo",
+            "-f",
+            outfile,
+        ]
         subprocess.run(cmd, timeout=HARVEST_TIMEOUT, capture_output=True)
         if Path(outfile).exists():
             data = json.loads(Path(outfile).read_text("utf-8"))
@@ -245,6 +381,13 @@ def run_theharvester(domain: str) -> list[dict]:
                     "confidence": 85,
                 }
             )
+        else:
+            findings.append(
+                {
+                    "source": "theHarvester",
+                    "error": f"Keine Ausgabedatei für Domain {domain}",
+                }
+            )
     except Exception as exc:  # noqa: BLE001
         findings.append({"source": "theHarvester", "error": str(exc)})
     return findings
@@ -252,12 +395,17 @@ def run_theharvester(domain: str) -> list[dict]:
 
 def run_photon(url: str) -> list[dict]:
     findings: list[dict] = []
+    if not url.startswith("http"):
+        url = "https://" + url
+    bin_cmd = resolve_bin("photon", "PHOTON_BIN", PHOTON_BIN)
+    if not bin_cmd:
+        return missing_tool("photon", "photon")
     try:
-        cmd = ["photon", "-u", url, "-l", "2", "--keys"]
-        if Path(PHOTON_BIN).exists():
-            cmd = ["python3", PHOTON_BIN, "-u", url, "-l", "2", "--keys"]
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=PHOTON_TIMEOUT
+            [*bin_cmd, "-u", url, "-l", "2", "--keys"],
+            capture_output=True,
+            text=True,
+            timeout=PHOTON_TIMEOUT,
         )
         output = (result.stdout or "").strip()
         findings.append(
@@ -277,16 +425,15 @@ def run_photon(url: str) -> list[dict]:
 
 
 def start_spiderfoot(target: str) -> str:
+    scantarget = prepare_spiderfoot_target(target)
+    # usecase=all is most compatible across SpiderFoot builds
     form = {
-        "scanname": f"SynSight Deep {target[:48]}",
-        "scantarget": target,
+        "scanname": f"SynSight Deep {scantarget[:48]}",
+        "scantarget": scantarget,
         "modulelist": "",
         "typelist": "",
-        "usecase": "passive",
+        "usecase": os.environ.get("DEMO_SCAN_USECASE", "all"),
     }
-    # HUMAN_NAME / USERNAME need quotes for SF type detection
-    if " " in target and "@" not in target and not target.startswith("http"):
-        form["scantarget"] = f'"{target.strip()}"'
     result = http_json("POST", "/startscan", form, timeout=45.0)
     if isinstance(result, list) and len(result) >= 2:
         if str(result[0]).upper() == "ERROR":
@@ -577,12 +724,14 @@ def health():
     key_hint = (
         f"{key[:2]}…{key[-2:]} (len={len(key)})" if len(key) >= 4 else f"(len={len(key)})"
     )
+    tools = tool_status()
+    missing = [name for name, path in tools.items() if path == "MISSING"]
     return jsonify(
         {
             "ok": True,
             "spiderfoot": sf_ok,
             "spiderfoot_url": SPIDERFOOT_URL,
-            "api_version": "contabo-deep-4",
+            "api_version": "contabo-deep-5",
             "modules": [
                 "holehe",
                 "maigret",
@@ -594,6 +743,8 @@ def health():
             "mode": "sequential-module",
             "api_key_len": len(key),
             "api_key_hint": key_hint,
+            "tools": tools,
+            "tools_missing": missing,
         }
     )
 

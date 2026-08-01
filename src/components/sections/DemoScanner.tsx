@@ -21,6 +21,7 @@ import {
   MODULE_META,
 } from "@/lib/demo/scan-plan";
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
+import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
 
 type FieldKey = keyof ScanQueries;
 
@@ -58,16 +59,16 @@ const FIELDS: Array<{
   {
     key: "domain",
     label: "Domain",
-    placeholder: "beispiel.de",
-    help: "Öffentliche E-Mails & Hosts zur Domain.",
+    placeholder: "beispiel.de  (ohne https://)",
+    help: "Nur Hostname, z. B. synsight.de — nicht die volle URL.",
     modules: "theHarvester → SpiderFoot",
   },
   {
     key: "url",
     label: "URL",
-    placeholder: "https://…",
+    placeholder: "https://synsight.de/…",
     type: "url",
-    help: "Seiten-Crawl, Keys und sichtbare Spuren.",
+    help: "Vollständige Seiten-URL für Web-Crawl (Photon).",
     modules: "Photon",
   },
 ];
@@ -98,7 +99,7 @@ function filledQueries(fields: ScanQueries): ScanQueries {
     const value = fields[key]?.trim();
     if (value) out[key] = value;
   }
-  return out;
+  return normalizeScanQueries(out);
 }
 
 async function runModuleStep(
