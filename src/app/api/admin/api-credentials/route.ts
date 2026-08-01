@@ -70,6 +70,7 @@ export async function PUT(request: Request) {
       secret: parsed.data.secret,
       engineId: parsed.data.engineId,
       accountEmail: parsed.data.accountEmail,
+      apiUrl: parsed.data.apiUrl,
     });
     const credentials = await listAdminApiCredentials(access.user);
     return NextResponse.json(apiSuccess({ result, credentials }));
@@ -82,6 +83,7 @@ export async function PUT(request: Request) {
       secret: parsed.data.secret,
       engineId: parsed.data.engineId,
       accountEmail: parsed.data.accountEmail,
+      apiUrl: parsed.data.apiUrl,
       isActive: parsed.data.isActive,
     });
 
@@ -98,6 +100,15 @@ export async function PUT(request: Request) {
         apiError(
           "VALIDATION_ERROR",
           "DeHashed Account-E-Mail ist erforderlich."
+        ),
+        { status: 400 }
+      );
+    }
+    if (error instanceof Error && error.message === "API_URL_REQUIRED") {
+      return NextResponse.json(
+        apiError(
+          "VALIDATION_ERROR",
+          "Contabo DemoScanner API-URL ist erforderlich."
         ),
         { status: 400 }
       );

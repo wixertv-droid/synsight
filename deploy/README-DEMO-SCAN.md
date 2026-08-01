@@ -46,14 +46,17 @@ git fetch origin
 git checkout cursor/demoscanner-multimodule-7c12
 git pull origin cursor/demoscanner-multimodule-7c12
 
-# in .env.production:
-# DEMO_SCAN_API_URL=http://161.97.85.22:5000/api/scan
-# DEMO_SCAN_API_KEY=demoscanner23061980!!
-# DEMO_SCAN_TIMEOUT_MS=320000
-
 npm run build
 pm2 restart synsight --update-env
 ```
+
+Dann im Admin: **Website → APIs & Integrationen → Contabo DemoScanner**
+
+- API-URL: `http://161.97.85.22:5000/api/scan`
+- Bearer-Key: dein Contabo `API_KEY`
+- Speichern → **API TESTEN** (Health + Auth-Probe, kein voller Scan)
+
+Optionaler Env-Fallback (nur wenn Admin-Eintrag fehlt): `DEMO_SCAN_API_URL` / `DEMO_SCAN_API_KEY`.
 
 Browser: Ctrl+Shift+R.
 

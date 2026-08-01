@@ -246,7 +246,7 @@ function mysqlDateTimeNow(): string {
 }
 
 export async function markApiCredentialSuccess(
-  provider: ApiProvider
+  provider: string
 ): Promise<void> {
   const db = getDatabase();
   if (!db) return;
@@ -265,7 +265,7 @@ export async function markApiCredentialSuccess(
 }
 
 export async function markApiCredentialError(
-  provider: ApiProvider,
+  provider: string,
   message: string
 ): Promise<void> {
   const db = getDatabase();
@@ -301,6 +301,7 @@ export async function testApiCredentialConnection(input: {
   secret?: string | null;
   engineId?: string | null;
   accountEmail?: string | null;
+  apiUrl?: string | null;
 }): Promise<ApiCredentialTestResult> {
   const started = Date.now();
   const provider = input.provider;
@@ -422,12 +423,21 @@ export async function testApiCredentialConnection(input: {
     });
   }
 
+  if (provider === "demo_scan") {
+    const { testDemoScanConnection } =
+      await import("@/lib/demo/demo-scan-credentials");
+    return testDemoScanConnection({
+      secret: input.secret,
+      apiUrl: input.apiUrl,
+    });
+  }
+
   return {
     provider,
     ok: false,
     message: "Live-Test für diesen Anbieter ist noch nicht freigeschaltet.",
     detail:
-      "Gemini und DeHashed.com können hier getestet werden. Suchanbieter (SerpAPI) unter Website → APIs & Integrationen.",
+      "Gemini, DeHashed.com und Contabo DemoScanner können hier getestet werden. Suchanbieter (SerpAPI) unter Website → APIs & Integrationen.",
     latencyMs: Date.now() - started,
   };
 }

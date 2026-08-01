@@ -7,16 +7,12 @@ import {
 import { getClientIp, validateMutationOrigin } from "@/lib/security/request";
 import { getDemoScanCache, setDemoScanCache } from "@/lib/demo/scan-cache";
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
+import { resolveDemoScanCredentials } from "@/lib/demo/demo-scan-credentials";
 
-const DEMO_SCAN_API_URL =
-  process.env.DEMO_SCAN_API_URL || "http://161.97.85.22:5000/api/scan";
 /** Contabo tools can take minutes (holehe/maigret). */
 const DEMO_SCAN_TIMEOUT_MS = Number(
   process.env.DEMO_SCAN_TIMEOUT_MS || 320_000
 );
-/** Contabo Bearer key — override in .env.production */
-const DEMO_SCAN_API_KEY =
-  process.env.DEMO_SCAN_API_KEY || "demoscanner23061980!!";
 const MAX_FIELD_LENGTH = 160;
 
 const DEMO_SCAN_RATE_LIMIT = {
@@ -74,12 +70,12 @@ function cacheKeyForQueries(queries: Record<string, string>): string {
     .join("|");
 }
 
-function authHeaders(): Record<string, string> {
+function authHeaders(apiKey: string): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (DEMO_SCAN_API_KEY) {
-    headers.Authorization = `Bearer ${DEMO_SCAN_API_KEY}`;
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
   }
   return headers;
 }
@@ -112,12 +108,14 @@ async function parseContaboResponse(
 }
 
 async function callContaboScan(
+  scanUrl: string,
+  apiKey: string,
   body: Record<string, string>,
   signal: AbortSignal
 ): Promise<Record<string, unknown>> {
-  const contaboResponse = await fetch(DEMO_SCAN_API_URL, {
+  const contaboResponse = await fetch(scanUrl, {
     method: "POST",
-    headers: authHeaders(),
+    headers: authHeaders(apiKey),
     body: JSON.stringify(body),
     signal,
   });
@@ -125,13 +123,15 @@ async function callContaboScan(
 }
 
 async function fetchUpstreamPayloads(
+  scanUrl: string,
+  apiKey: string,
   queries: Record<string, string>,
   signal: AbortSignal
 ): Promise<Array<Record<string, unknown>>> {
   // Prefer single multi-field call (contabo-deep-2). Fall back to legacy
   // one-query-per-request API when Contabo still expects `{ query }`.
   try {
-    const multi = await callContaboScan(queries, signal);
+    const multi = await callContaboScan(scanUrl, apiKey, queries, signal);
     return [multi];
   } catch (error) {
     const status =
@@ -145,7 +145,9 @@ async function fetchUpstreamPayloads(
   }
 
   const values = Object.values(queries);
-  return Promise.all(values.map((query) => callContaboScan({ query }, signal)));
+  return Promise.all(
+    values.map((query) => callContaboScan(scanUrl, apiKey, { query }, signal))
+  );
 }
 
 export async function POST(req: Request) {
@@ -198,11 +200,29 @@ export async function POST(req: Request) {
       });
     }
 
+    const creds = await resolveDemoScanCredentials();
+    if (!creds?.url) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message:
+            "DemoScanner ist nicht konfiguriert. Bitte unter Admin → Website → APIs Contabo DemoScanner hinterlegen.",
+          risk_level: "Fehler",
+        },
+        { status: 503, headers: rateLimitHeaders(attempt) }
+      );
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEMO_SCAN_TIMEOUT_MS);
 
     try {
-      const payloads = await fetchUpstreamPayloads(queries, controller.signal);
+      const payloads = await fetchUpstreamPayloads(
+        creds.url,
+        creds.apiKey,
+        queries,
+        controller.signal
+      );
       const normalized = normalizeUpstreamPayload({ payloads, queries });
       setDemoScanCache(cacheKey, normalized);
 

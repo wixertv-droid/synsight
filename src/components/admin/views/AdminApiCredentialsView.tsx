@@ -8,7 +8,14 @@ type Draft = {
   label: string;
   secret: string;
   accountEmail: string;
+  apiUrl: string;
 };
+
+function providerTitle(provider: string): string {
+  if (provider === "dehashed") return "DEHASHED.COM";
+  if (provider === "demo_scan") return "CONTABO DEMOSCANNER";
+  return provider.toUpperCase();
+}
 
 export default function AdminApiCredentialsView() {
   const [rows, setRows] = useState<ApiCredentialSummary[]>([]);
@@ -31,6 +38,11 @@ export default function AdminApiCredentialsView() {
             label: row.label,
             secret: "",
             accountEmail: row.accountEmail ?? "",
+            apiUrl:
+              row.apiUrl ??
+              (row.provider === "demo_scan"
+                ? "http://161.97.85.22:5000/api/scan"
+                : ""),
           };
         }
         setDrafts(next);
@@ -54,6 +66,11 @@ export default function AdminApiCredentialsView() {
       setMessage("Bitte DeHashed Account-E-Mail eintragen.");
       return;
     }
+    if (provider === "demo_scan" && !draft.apiUrl.trim()) {
+      setMessageTone("err");
+      setMessage("Bitte Contabo DemoScanner API-URL eintragen.");
+      return;
+    }
     setBusyProvider(provider);
     setMessage(null);
     try {
@@ -69,6 +86,10 @@ export default function AdminApiCredentialsView() {
             provider === "dehashed"
               ? draft.accountEmail.trim() || undefined
               : undefined,
+          apiUrl:
+            provider === "demo_scan"
+              ? draft.apiUrl.trim() || undefined
+              : undefined,
           isActive: true,
         }),
       });
@@ -80,9 +101,11 @@ export default function AdminApiCredentialsView() {
       }
       setMessageTone("ok");
       setMessage(
-        provider === "dehashed"
-          ? "DeHashed Account-E-Mail und API-Key gespeichert."
-          : "API-Schlüssel gespeichert."
+        provider === "demo_scan"
+          ? "Contabo DemoScanner URL und API-Key gespeichert."
+          : provider === "dehashed"
+            ? "DeHashed Account-E-Mail und API-Key gespeichert."
+            : "API-Schlüssel gespeichert."
       );
       await load();
     } finally {
@@ -118,6 +141,11 @@ export default function AdminApiCredentialsView() {
       setMessage("Bitte zuerst einen API-Schlüssel speichern.");
       return;
     }
+    if (provider === "demo_scan" && !draft?.apiUrl.trim() && !row?.apiUrl) {
+      setMessageTone("err");
+      setMessage("Bitte zuerst die Contabo API-URL eintragen.");
+      return;
+    }
     setBusyProvider(provider);
     setMessage(null);
     try {
@@ -131,6 +159,10 @@ export default function AdminApiCredentialsView() {
           accountEmail:
             provider === "dehashed"
               ? draft?.accountEmail.trim() || undefined
+              : undefined,
+          apiUrl:
+            provider === "demo_scan"
+              ? draft?.apiUrl.trim() || undefined
               : undefined,
         }),
       });
@@ -169,8 +201,9 @@ export default function AdminApiCredentialsView() {
             KI & OSINT-Dienste
           </h2>
           <p className="mt-2 text-sm text-white/45">
-            Optionale API-Schlüssel für Zusammenfassungen und Leak-Suchen.
-            Suchanfragen laufen über den Suchanbieter oben (SerpAPI).
+            Optionale API-Schlüssel für Zusammenfassungen, Leak-Suchen und den
+            öffentlichen DemoScanner (Contabo). Suchanfragen laufen über den
+            Suchanbieter oben (SerpAPI).
           </p>
         </div>
 
@@ -194,8 +227,13 @@ export default function AdminApiCredentialsView() {
                 label: row.label,
                 secret: "",
                 accountEmail: row.accountEmail ?? "",
+                apiUrl: row.apiUrl ?? "",
               };
               const busy = busyProvider === row.provider;
+              const canTest =
+                row.provider === "gemini" ||
+                row.provider === "dehashed" ||
+                row.provider === "demo_scan";
               return (
                 <li
                   key={row.provider}
@@ -203,9 +241,7 @@ export default function AdminApiCredentialsView() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-mono text-[9px] tracking-[.12em] text-cyber-cyan/55">
-                      {row.provider === "dehashed"
-                        ? "DEHASHED.COM"
-                        : row.provider.toUpperCase()}
+                      {providerTitle(row.provider)}
                     </p>
                     {row.configured ? (
                       <button
@@ -226,9 +262,21 @@ export default function AdminApiCredentialsView() {
                     {row.configured
                       ? row.provider === "dehashed" && row.accountEmail
                         ? `Konfiguriert · ${row.accountEmail}`
-                        : "Konfiguriert"
+                        : row.provider === "demo_scan" && row.apiUrl
+                          ? `Konfiguriert · ${row.apiUrl}`
+                          : "Konfiguriert"
                       : "Noch nicht konfiguriert"}
                   </p>
+                  {row.lastSuccessAt || row.lastErrorAt ? (
+                    <p className="mt-1 font-mono text-[10px] text-white/30">
+                      {row.lastSuccessAt
+                        ? `Letzter OK: ${new Date(row.lastSuccessAt).toLocaleString("de-DE")}`
+                        : null}
+                      {row.lastErrorAt
+                        ? ` · Letzter Fehler: ${row.lastErrorMessage || "unbekannt"}`
+                        : null}
+                    </p>
+                  ) : null}
                   <form
                     className="mt-3 space-y-2"
                     onSubmit={(event) => {
@@ -271,6 +319,25 @@ export default function AdminApiCredentialsView() {
                         className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/80 outline-none focus:border-cyber-cyan/35"
                       />
                     ) : null}
+                    {row.provider === "demo_scan" ? (
+                      <input
+                        name={`url-${row.provider}`}
+                        type="url"
+                        autoComplete="off"
+                        value={draft.apiUrl}
+                        onChange={(event) =>
+                          setDrafts((current) => ({
+                            ...current,
+                            [row.provider]: {
+                              ...draft,
+                              apiUrl: event.target.value,
+                            },
+                          }))
+                        }
+                        placeholder="http://161.97.85.22:5000/api/scan"
+                        className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/80 outline-none focus:border-cyber-cyan/35"
+                      />
+                    ) : null}
                     <input
                       name={`secret-${row.provider}`}
                       type="password"
@@ -287,8 +354,12 @@ export default function AdminApiCredentialsView() {
                       }
                       placeholder={
                         row.configured
-                          ? "Neuer API-Schlüssel (optional)"
-                          : "API-Schlüssel"
+                          ? row.provider === "demo_scan"
+                            ? "Neuer Bearer-Key (optional)"
+                            : "Neuer API-Schlüssel (optional)"
+                          : row.provider === "demo_scan"
+                            ? "Bearer API-Key"
+                            : "API-Schlüssel"
                       }
                       className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/80 outline-none focus:border-cyber-cyan/35"
                     />
@@ -300,14 +371,16 @@ export default function AdminApiCredentialsView() {
                           (!draft.secret.trim() && !row.configured) ||
                           (row.provider === "dehashed" &&
                             !draft.accountEmail.trim() &&
-                            !row.accountEmail)
+                            !row.accountEmail) ||
+                          (row.provider === "demo_scan" &&
+                            !draft.apiUrl.trim() &&
+                            !row.apiUrl)
                         }
                         className="rounded-lg border border-cyber-cyan/30 px-3 py-1.5 text-xs text-cyber-cyan disabled:opacity-40"
                       >
                         {busy ? "Bitte warten…" : "Speichern"}
                       </button>
-                      {row.provider === "gemini" ||
-                      row.provider === "dehashed" ? (
+                      {canTest ? (
                         <button
                           type="button"
                           disabled={

@@ -35,6 +35,15 @@ export const adminPlatformSettingsSchema = z.object({
   supportResponseText: z.string().trim().min(2).max(500).optional(),
 });
 
+const optionalApiUrl = z
+  .string()
+  .trim()
+  .url()
+  .max(500)
+  .regex(/^https?:\/\//i, "API-URL muss mit http:// oder https:// beginnen.")
+  .optional()
+  .nullable();
+
 export const adminApiCredentialSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("upsert"),
@@ -50,6 +59,7 @@ export const adminApiCredentialSchema = z.discriminatedUnion("action", [
       .optional()
       .nullable(),
     accountEmail: z.string().trim().email().max(254).optional().nullable(),
+    apiUrl: optionalApiUrl,
     isActive: z.boolean().default(true),
   }),
   z.object({
@@ -70,5 +80,6 @@ export const adminApiCredentialSchema = z.discriminatedUnion("action", [
       .optional()
       .nullable(),
     accountEmail: z.string().trim().email().max(254).optional().nullable(),
+    apiUrl: optionalApiUrl,
   }),
 ]);

@@ -10,6 +10,7 @@ export const ADMIN_API_PROVIDERS = [
   "gemini",
   "openai",
   "dehashed",
+  "demo_scan",
   "virustotal",
   "hunter_io",
   "opencorporates",
@@ -56,10 +57,18 @@ export interface ApiCredentialSummary {
   engineId: string | null;
   /** DeHashed account email (Admin-Referenz), stored in config_json */
   accountEmail: string | null;
+  /** Contabo DemoScanner scan endpoint URL, stored in config_json.url */
+  apiUrl: string | null;
   lastSuccessAt: string | null;
   lastErrorAt: string | null;
   lastErrorMessage: string | null;
   decryptOk: boolean | null;
+}
+
+function providerDisplayLabel(provider: AdminApiProvider): string {
+  if (provider === "dehashed") return "DeHashed.com";
+  if (provider === "demo_scan") return "Contabo DemoScanner";
+  return provider.replace(/_/g, " ");
 }
 
 function assertAdmin(actor: AuthenticatedUser): void {
@@ -288,6 +297,25 @@ function readAccountEmail(configJson: unknown): string | null {
   return typeof email === "string" && email.includes("@") ? email.trim() : null;
 }
 
+function readApiUrl(configJson: unknown): string | null {
+  let value: unknown = configJson;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const url =
+    (value as { url?: unknown; apiUrl?: unknown; scanUrl?: unknown }).url ??
+    (value as { apiUrl?: unknown }).apiUrl ??
+    (value as { scanUrl?: unknown }).scanUrl;
+  return typeof url === "string" && /^https?:\/\//i.test(url.trim())
+    ? url.trim().replace(/\/+$/, "")
+    : null;
+}
+
 function asConfigObject(configJson: unknown): Record<string, unknown> {
   if (!configJson) return {};
   if (typeof configJson === "string") {
@@ -321,14 +349,12 @@ export async function listAdminApiCredentials(
     if (!row) {
       return {
         provider,
-        label:
-          provider === "dehashed"
-            ? "DeHashed.com"
-            : provider.replace(/_/g, " "),
+        label: providerDisplayLabel(provider),
         isActive: false,
         configured: false,
         engineId: null,
         accountEmail: null,
+        apiUrl: null,
         lastSuccessAt: null,
         lastErrorAt: null,
         lastErrorMessage: null,
@@ -351,6 +377,7 @@ export async function listAdminApiCredentials(
       configured: true,
       engineId: readEngineId(row.configJson),
       accountEmail: readAccountEmail(row.configJson),
+      apiUrl: readApiUrl(row.configJson),
       lastSuccessAt: row.lastSuccessAt,
       lastErrorAt: row.lastErrorAt,
       lastErrorMessage: row.lastErrorMessage,
@@ -367,6 +394,7 @@ export async function upsertAdminApiCredential(
     secret?: string | null;
     engineId?: string | null;
     accountEmail?: string | null;
+    apiUrl?: string | null;
     isActive: boolean;
   }
 ): Promise<ApiCredentialSummary> {
@@ -400,8 +428,14 @@ export async function upsertAdminApiCredential(
   const accountEmail =
     incomingEmail || readAccountEmail(current?.configJson) || null;
 
+  const incomingApiUrl = input.apiUrl?.trim().replace(/\/+$/, "") || "";
+  const apiUrl = incomingApiUrl || readApiUrl(current?.configJson) || null;
+
   if (input.provider === "dehashed" && !accountEmail) {
     throw new Error("ACCOUNT_EMAIL_REQUIRED");
+  }
+  if (input.provider === "demo_scan" && !apiUrl) {
+    throw new Error("API_URL_REQUIRED");
   }
 
   const configJson: Record<string, unknown> = {
@@ -409,6 +443,7 @@ export async function upsertAdminApiCredential(
   };
   if (engineId) configJson.engineId = engineId;
   if (accountEmail) configJson.email = accountEmail;
+  if (apiUrl) configJson.url = apiUrl;
 
   if (db) {
     await db
@@ -439,6 +474,7 @@ export async function upsertAdminApiCredential(
     configured: true,
     engineId,
     accountEmail,
+    apiUrl,
     lastSuccessAt: null,
     lastErrorAt: null,
     lastErrorMessage: null,
@@ -477,6 +513,7 @@ export async function setAdminApiCredentialActive(
     configured: true,
     engineId: readEngineId(row.configJson),
     accountEmail: readAccountEmail(row.configJson),
+    apiUrl: readApiUrl(row.configJson),
     lastSuccessAt: row.lastSuccessAt,
     lastErrorAt: row.lastErrorAt,
     lastErrorMessage: row.lastErrorMessage,
