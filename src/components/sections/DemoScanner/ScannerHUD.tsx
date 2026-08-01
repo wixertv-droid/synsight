@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { ScanPhase, ScanData } from "./types";
+import type { ScanPhase, ScanData, ScanQueries } from "./types";
 import EntityGraphCanvas from "@/components/analysis/intelligence/EntityGraphCanvas";
 import ScanCodeRain from "./ScanCodeRain";
 
@@ -9,21 +9,26 @@ interface ScannerHUDProps {
   phase?: ScanPhase;
   progress: number;
   query: string;
+  queries?: ScanQueries;
   data?: ScanData;
   onClose?: () => void;
 }
 
 const operations = [
-  "IDENTITY MATRIX INITIALIZED",
-  "PUBLIC INTELLIGENCE CHANNELS ONLINE",
-  "ENTITY RESOLUTION RUNNING",
-  "DIGITAL FOOTPRINT MAPPING",
-  "CORRELATION ENGINE ACTIVE",
-  "RISK MODEL CALCULATING",
-  "AI ASSESSMENT GENERATING",
+  "HOLEHE EMAIL ACCOUNT SWEEP",
+  "MAIGRET USERNAME OSINT",
+  "PHONEINFOGA NUMBER INTEL",
+  "THEHARVESTER DOMAIN HARVEST",
+  "PHOTON WEB FOOTPRINT",
+  "SPIDERFOOT DEEP CORRELATION",
+  "MODULAR RISK BRIEFING",
 ];
 
-export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
+export default function ScannerHUD({
+  progress,
+  query,
+  queries,
+}: ScannerHUDProps) {
   const [isBooting, setIsBooting] = useState(true);
 
   useEffect(() => {
@@ -119,14 +124,27 @@ export default function ScannerHUD({ progress, query }: ScannerHUDProps) {
                 Ziel-Objekt
               </div>
             </div>
-            <div className="text-white text-xl md:text-2xl font-sans font-medium truncate">
+            <div className="text-white text-lg md:text-xl font-sans font-medium truncate">
               {query || "Unbekannt"}
             </div>
-            <div className="mt-4 flex gap-2">
-              <div className="h-1 w-12 bg-cyber-cyan/80" />
-              <div className="h-1 w-4 bg-cyber-blue/70" />
-              <div className="h-1 w-2 bg-cyber-blue/40" />
-            </div>
+            {queries && Object.keys(queries).length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {Object.keys(queries).map((key) => (
+                  <span
+                    key={key}
+                    className="rounded border border-cyber-cyan/25 bg-cyber-cyan/5 px-1.5 py-0.5 text-[9px] tracking-[0.14em] uppercase text-cyber-cyan/70"
+                  >
+                    {key}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 flex gap-2">
+                <div className="h-1 w-12 bg-cyber-cyan/80" />
+                <div className="h-1 w-4 bg-cyber-blue/70" />
+                <div className="h-1 w-2 bg-cyber-blue/40" />
+              </div>
+            )}
           </div>
 
           <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#03050a]/90 backdrop-blur-xl p-3 md:p-4 flex flex-col">

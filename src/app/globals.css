@@ -580,7 +580,7 @@ body::before {
 }
 
 .scan-code-track {
-  animation: scan-code-scroll 42s linear infinite;
+  animation: scan-code-scroll 14s linear infinite;
   will-change: transform;
 }
 

@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ScannerHUD from "./ScannerHUD";
-import type { ScanPhase, ApiResult, ScanData } from "./types";
+import type { ScanPhase, ApiResult, ScanData, ScanQueries } from "./types";
 
 interface ScannerOverlayProps {
   phase: ScanPhase;
   progress: number;
   target: string;
+  queries?: ScanQueries;
   apiResult: ApiResult | null;
   rawData: ScanData | null;
   onClose: () => void;
@@ -23,10 +24,22 @@ function dossierIdFromTarget(target: string): string {
   return hash.toString(36).toUpperCase().padStart(8, "0").slice(0, 8);
 }
 
+function riskColorsFor(riskRaw?: string) {
+  const risk = riskRaw?.toLowerCase() || "low";
+  if (risk.includes("high") || risk.includes("hoch")) {
+    return "text-red-400 border-red-500/50 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.3)]";
+  }
+  if (risk.includes("medium") || risk.includes("mittel")) {
+    return "text-amber-400 border-amber-500/50 bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.2)]";
+  }
+  return "text-cyan-400 border-cyan-500/50 bg-cyan-500/10";
+}
+
 export default function ScannerOverlay({
   phase,
   progress,
   target,
+  queries,
   apiResult,
   rawData,
   onClose,
@@ -59,7 +72,7 @@ export default function ScannerOverlay({
   if (phase === "scanning") {
     return (
       <div className="fixed inset-0 z-50 bg-black">
-        <ScannerHUD progress={progress} query={target} />
+        <ScannerHUD progress={progress} query={target} queries={queries} />
       </div>
     );
   }
@@ -68,18 +81,31 @@ export default function ScannerOverlay({
     if (isClosing) return;
     setIsClosing(true);
     setShowContent(false);
-    // Match CRT collapse duration (~1.7s) so the tube effect can finish.
     setTimeout(() => {
       onClose();
     }, 1750);
   };
 
   if (phase === "fullscreen_result" || phase === "closing_crt") {
-    const findings = rawData?.findings || [];
+    const modules = rawData?.modules?.length
+      ? rawData.modules
+      : [
+          {
+            id: "flat",
+            label: "Ergebnisse",
+            status: "ok" as const,
+            findings: rawData?.findings || [],
+            count: rawData?.findings?.length || 0,
+            summary: "Zusammengefasste Treffer",
+          },
+        ];
     const riskLevel = apiResult?.riskLevel || "Unbekannt";
     const score = rawData?.exposureScore || 0;
     const elevated =
       /erhöht|kritisch|hoch|high|critical/i.test(riskLevel) || score >= 60;
+    const queryEntries = Object.entries(
+      rawData?.queries || queries || {}
+    ).filter(([, v]) => Boolean(v));
 
     return (
       <div
@@ -133,11 +159,26 @@ export default function ScannerOverlay({
               <div className="relative border border-cyan-500/30 bg-[#041224]/80 backdrop-blur-md p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
                 <TechCorners />
                 <div className="text-cyan-500 text-[10px] uppercase tracking-[0.3em] mb-4 font-bold">
-                  Ziel-Objekt
+                  Ziel-Objekte
                 </div>
-                <div className="text-xl md:text-2xl text-white font-sans font-medium truncate drop-shadow-[0_0_8px_#fff]">
-                  {target || "Unbekannt"}
-                </div>
+                {queryEntries.length > 0 ? (
+                  <div className="space-y-2">
+                    {queryEntries.map(([key, value]) => (
+                      <div key={key} className="min-w-0">
+                        <div className="text-[9px] tracking-[0.2em] text-cyan-700 uppercase">
+                          {key}
+                        </div>
+                        <div className="text-sm md:text-base text-white font-sans truncate">
+                          {value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xl md:text-2xl text-white font-sans font-medium truncate">
+                    {target || "Unbekannt"}
+                  </div>
+                )}
                 <div className="mt-6 pt-4 border-t border-cyan-500/20 flex items-center gap-3">
                   <div
                     className={`w-3 h-3 rounded-full animate-ping shadow-[0_0_10px_currentColor] ${
@@ -166,7 +207,8 @@ export default function ScannerOverlay({
                   </div>
                 </div>
                 <div className="mt-8 text-cyan-600 text-[9px] tracking-[0.2em] text-center max-w-[200px] font-bold">
-                  HÖHERER WERT BEDEUTET GRÖSSERE DIGITALE ANGRIFFSFLÄCHE
+                  MODULE: {modules.length} · TREFFER:{" "}
+                  {rawData?.findings?.length || 0}
                 </div>
               </div>
             </div>
@@ -183,80 +225,77 @@ export default function ScannerOverlay({
                 </p>
               </div>
 
-              <div className="relative border border-cyan-500/30 bg-[#041224]/80 backdrop-blur-md p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
-                <TechCorners />
-                <div className="flex justify-between items-center mb-6 border-b border-cyan-500/20 pb-4 gap-3">
-                  <div className="text-cyan-500 text-[10px] uppercase tracking-[0.3em] font-bold">
-                    Identifizierte Datenpunkte
-                  </div>
-                  <div className="text-cyan-400 text-xs font-bold bg-cyan-950 px-3 py-1 border border-cyan-500/30">
-                    TOTAL: {findings.length}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {findings.map((finding, idx) => {
-                    const risk = finding.risk?.toLowerCase() || "low";
-                    let riskColors =
-                      "text-cyan-400 border-cyan-500/50 bg-cyan-500/10";
-                    if (risk.includes("high") || risk.includes("hoch")) {
-                      riskColors =
-                        "text-red-400 border-red-500/50 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.3)]";
-                    } else if (
-                      risk.includes("medium") ||
-                      risk.includes("mittel")
-                    ) {
-                      riskColors =
-                        "text-amber-400 border-amber-500/50 bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.2)]";
-                    }
-
-                    return (
-                      <div
-                        key={`${finding.title}-${idx}`}
-                        className="group relative border border-cyan-900/50 bg-[#02070d]/60 p-4 hover:bg-cyan-900/30 transition-all duration-300 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-                      >
-                        <div className="flex items-start gap-4 w-full min-w-0">
-                          <div className="text-cyan-800 font-black text-lg mt-0.5 border-r border-cyan-900 pr-3 shrink-0">
-                            {String(idx + 1).padStart(2, "0")}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-cyan-300 font-bold text-sm uppercase tracking-wider drop-shadow-[0_0_5px_#22d3ee]">
-                              {finding.title}
-                            </div>
-                            {finding.platform ? (
-                              <div className="text-cyan-700 text-[10px] mt-1 uppercase tracking-widest">
-                                {finding.platform}
-                              </div>
-                            ) : null}
-                            <div className="text-gray-400 text-xs mt-1.5 font-sans leading-relaxed">
-                              {finding.description || finding.detail}
-                            </div>
-                          </div>
-                        </div>
-                        <div
-                          className={`px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest border shrink-0 ${riskColors}`}
-                        >
-                          {finding.risk || "Info"}
-                        </div>
+              {modules.map((mod) => (
+                <div
+                  key={mod.id}
+                  className="relative border border-cyan-500/30 bg-[#041224]/80 backdrop-blur-md p-6 shadow-[0_0_30px_rgba(34,211,238,0.05)]"
+                >
+                  <TechCorners />
+                  <div className="flex justify-between items-center mb-6 border-b border-cyan-500/20 pb-4 gap-3">
+                    <div>
+                      <div className="text-cyan-500 text-[10px] uppercase tracking-[0.3em] font-bold">
+                        Modul · {mod.label}
                       </div>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-8 pt-6 border-t border-cyan-500/20 flex flex-col md:flex-row items-center justify-between gap-4 opacity-70">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full border-[2px] border-cyan-900 border-t-cyan-400 animate-spin" />
-                    <div className="text-[10px] text-cyan-500 font-bold tracking-[0.2em] uppercase">
-                      Deep-Scan im Hintergrund aktiv...
+                      <div className="text-[11px] text-cyan-800 mt-1 tracking-wide">
+                        {mod.summary}
+                      </div>
+                    </div>
+                    <div className="text-cyan-400 text-xs font-bold bg-cyan-950 px-3 py-1 border border-cyan-500/30 shrink-0">
+                      {mod.status === "started"
+                        ? "STARTED"
+                        : mod.status === "error"
+                          ? "ERROR"
+                          : `TOTAL: ${mod.count}`}
                     </div>
                   </div>
-                  <div className="w-full md:w-32 h-1 bg-[#02070d] rounded-full overflow-hidden border border-cyan-900/50">
-                    <div className="h-full bg-cyan-500/50 w-1/3 animate-pulse" />
+
+                  <div className="space-y-3">
+                    {mod.findings.length === 0 ? (
+                      <div className="text-sm text-gray-500 font-sans">
+                        Keine Treffer in diesem Modul.
+                      </div>
+                    ) : (
+                      mod.findings.map((finding, idx) => (
+                        <div
+                          key={`${mod.id}-${finding.title}-${idx}`}
+                          className="group relative border border-cyan-900/50 bg-[#02070d]/60 p-4 hover:bg-cyan-900/30 transition-all duration-300 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                        >
+                          <div className="flex items-start gap-4 w-full min-w-0">
+                            <div className="text-cyan-800 font-black text-lg mt-0.5 border-r border-cyan-900 pr-3 shrink-0">
+                              {String(idx + 1).padStart(2, "0")}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-cyan-300 font-bold text-sm uppercase tracking-wider drop-shadow-[0_0_5px_#22d3ee]">
+                                {finding.title}
+                              </div>
+                              {finding.platform ? (
+                                <div className="text-cyan-700 text-[10px] mt-1 uppercase tracking-widest">
+                                  {finding.platform}
+                                </div>
+                              ) : null}
+                              <div className="text-gray-400 text-xs mt-1.5 font-sans leading-relaxed break-words">
+                                {finding.description || finding.detail}
+                              </div>
+                              {finding.url ? (
+                                <div className="text-cyan-600/80 text-[10px] mt-1 truncate">
+                                  {finding.url}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div
+                            className={`px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest border shrink-0 ${riskColorsFor(finding.risk)}`}
+                          >
+                            {finding.risk || "Info"}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
-              </div>
+              ))}
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-end mt-8 pt-4 pb-8">
+              <div className="flex flex-col sm:flex-row gap-4 justify-end mt-4 pt-4 pb-8">
                 <button
                   onClick={handleClose}
                   className="px-6 py-4 border border-cyan-900 text-cyan-700 hover:text-cyan-400 hover:border-cyan-500 hover:bg-cyan-500/10 transition-all text-xs uppercase tracking-[0.2em] font-bold"

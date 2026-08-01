@@ -59,6 +59,10 @@ module.exports = {
         CSRF_STRICT: merged.CSRF_STRICT || "true",
         COOKIE_SECURE: merged.COOKIE_SECURE || "true",
         ALLOW_DEV_AUTH: "false",
+        DEMO_SCAN_API_URL:
+          merged.DEMO_SCAN_API_URL || "http://161.97.85.22:5000/api/scan",
+        DEMO_SCAN_API_KEY: merged.DEMO_SCAN_API_KEY || "",
+        DEMO_SCAN_TIMEOUT_MS: merged.DEMO_SCAN_TIMEOUT_MS || "320000",
       },
     },
   ],
