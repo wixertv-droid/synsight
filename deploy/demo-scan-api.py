@@ -146,21 +146,24 @@ def cache_set(key: str, payload: dict[str, Any]) -> None:
     save_cache(cache)
 
 
+def startscan_form(target: str, target_type: str) -> dict[str, str]:
+    """Form body for SpiderFoot /startscan (CherryPy requires all keys)."""
+    return {
+        "scanname": f"SynSight Demo · {target_type} · {normalize_target(target)[:40]}",
+        "scantarget": scantarget_for_spiderfoot(target, target_type),
+        # Empty strings are required — omitting them → CherryPy HTTP 404.
+        "modulelist": "",
+        "typelist": "",
+        "usecase": USECASE,
+    }
+
+
 def start_scan(target: str, target_type: str) -> str:
-    scan_name = f"SynSight Demo · {target_type} · {normalize_target(target)[:40]}"
-    scantarget = scantarget_for_spiderfoot(target, target_type)
-    # CherryPy requires modulelist + typelist even when empty.
-    # usecase=passive: public sources, suitable for a short landing-page wait.
+    # usecase=passive: public sources only, suitable for a short landing-page wait.
     result = http_json(
         "POST",
         "/startscan",
-        {
-            "scanname": scan_name,
-            "scantarget": scantarget,
-            "modulelist": "",
-            "typelist": "",
-            "usecase": USECASE,
-        },
+        startscan_form(target, target_type),
         timeout=45.0,
     )
     # Canonical SF response: ["SUCCESS", "<scanId>"] or ["ERROR", "<msg>"]
@@ -441,25 +444,62 @@ def scan_target():
 @app.route("/api/health", methods=["GET"])
 def health():
     sf_ok = False
+    sf_detail = "unreachable"
     try:
         http_json("GET", "/ping", timeout=3.0)
         sf_ok = True
+        sf_detail = "ping"
     except Exception:
         try:
             # some builds have no /ping — try scanlist
             http_json("GET", "/scanlist", timeout=3.0)
             sf_ok = True
-        except Exception:
-            sf_ok = False
+            sf_detail = "scanlist"
+        except Exception as exc:
+            sf_detail = str(exc)[:200]
     return jsonify(
         {
             "ok": True,
             "spiderfoot": sf_ok,
+            "spiderfoot_detail": sf_detail,
             "spiderfoot_url": SPIDERFOOT_URL,
             "usecase": USECASE,
             "wait_seconds": SCAN_WAIT_SECONDS,
+            "api_version": "demo-scan-sf-real-2",
+            "sources": ["spiderfoot"],
         }
     )
+
+
+@app.route("/api/debug/sf", methods=["POST"])
+def debug_sf():
+    """Probe SpiderFoot /startscan without waiting for results (Contabo only)."""
+    data = request.json or {}
+    target = (data.get("query") or "test@example.com").strip()
+    target_type = detect_target_type(target)
+    form = startscan_form(target, target_type)
+    try:
+        result = http_json("POST", "/startscan", form, timeout=45.0)
+        return jsonify(
+            {
+                "ok": True,
+                "form": form,
+                "spiderfoot_url": SPIDERFOOT_URL,
+                "raw": result,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "form": form,
+                    "spiderfoot_url": SPIDERFOOT_URL,
+                    "error": str(exc),
+                }
+            ),
+            502,
+        )
 
 
 if __name__ == "__main__":
