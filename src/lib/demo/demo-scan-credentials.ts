@@ -18,6 +18,14 @@ export interface DemoScanCredentials {
   source: "database" | "env" | "draft";
 }
 
+/** Strip accidental "Bearer " prefix / whitespace from admin-entered keys. */
+export function normalizeDemoScanApiKey(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^bearer\s+/i, "")
+    .trim();
+}
+
 function parseConfig(configJson: unknown): Record<string, unknown> {
   if (!configJson) return {};
   if (typeof configJson === "string") {
@@ -80,7 +88,9 @@ export async function resolveDemoScanCredentials(): Promise<DemoScanCredentials 
   const row = await loadDemoScanRow();
   if (row?.isActive) {
     try {
-      const apiKey = decryptSecret(row.encryptedSecret).trim();
+      const apiKey = normalizeDemoScanApiKey(
+        decryptSecret(row.encryptedSecret)
+      );
       const url =
         readDemoScanApiUrl(row.configJson) ||
         process.env.DEMO_SCAN_API_URL?.trim() ||
@@ -94,7 +104,9 @@ export async function resolveDemoScanCredentials(): Promise<DemoScanCredentials 
   }
 
   const envUrl = process.env.DEMO_SCAN_API_URL?.trim();
-  const envKey = process.env.DEMO_SCAN_API_KEY?.trim();
+  const envKey = normalizeDemoScanApiKey(
+    process.env.DEMO_SCAN_API_KEY?.trim() || ""
+  );
   if (envUrl || envKey) {
     return {
       url: envUrl || DEFAULT_SCAN_URL,
@@ -115,7 +127,7 @@ export async function testDemoScanConnection(input: {
   apiUrl?: string | null;
 }): Promise<ApiCredentialTestResult> {
   const started = Date.now();
-  let apiKey = input.secret?.trim() || "";
+  let apiKey = normalizeDemoScanApiKey(input.secret || "");
   let url = input.apiUrl?.trim() || "";
   let source: DemoScanCredentials["source"] = "draft";
 
@@ -133,7 +145,7 @@ export async function testDemoScanConnection(input: {
       }
       if (!apiKey) {
         try {
-          apiKey = decryptSecret(row.encryptedSecret).trim();
+          apiKey = normalizeDemoScanApiKey(decryptSecret(row.encryptedSecret));
           source = "database";
         } catch (error) {
           return {
@@ -157,10 +169,14 @@ export async function testDemoScanConnection(input: {
   if (!url) {
     url = process.env.DEMO_SCAN_API_URL?.trim() || DEFAULT_SCAN_URL;
     if (!apiKey) {
-      apiKey = process.env.DEMO_SCAN_API_KEY?.trim() || "";
+      apiKey = normalizeDemoScanApiKey(
+        process.env.DEMO_SCAN_API_KEY?.trim() || ""
+      );
       if (apiKey) source = "env";
     }
   }
+
+  apiKey = normalizeDemoScanApiKey(apiKey);
 
   if (!apiKey) {
     return {
@@ -182,9 +198,9 @@ export async function testDemoScanConnection(input: {
     };
   }
 
+  // Optional health — older Contabo api.py has no /api/health (404 is OK).
   const healthUrl = healthUrlFromScanUrl(url);
-  let healthDetail = "";
-
+  let healthDetail = "Health übersprungen";
   try {
     const healthRes = await fetch(healthUrl, {
       method: "GET",
@@ -195,7 +211,9 @@ export async function testDemoScanConnection(input: {
       string,
       unknown
     > | null;
-    if (!healthRes.ok) {
+    if (healthRes.status === 404) {
+      healthDetail = "kein /api/health (ok für ältere api.py)";
+    } else if (!healthRes.ok) {
       healthDetail = `Health HTTP ${healthRes.status}`;
     } else {
       const sf =
@@ -206,16 +224,8 @@ export async function testDemoScanConnection(input: {
           : "version=?";
       healthDetail = `Health OK · ${sf} · ${ver}`;
     }
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Netzwerkfehler";
-    await markApiCredentialError(DEMO_SCAN_PROVIDER, msg);
-    return {
-      provider: DEMO_SCAN_PROVIDER,
-      ok: false,
-      message: "Contabo Health nicht erreichbar.",
-      detail: `${healthUrl} — ${msg}`,
-      latencyMs: Date.now() - started,
-    };
+  } catch {
+    healthDetail = "Health nicht erreichbar (Auth-Probe folgt)";
   }
 
   // Auth probe: empty body → 400 if key OK, 401 if key wrong (fast, no scan).
@@ -225,6 +235,7 @@ export async function testDemoScanConnection(input: {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
+        "X-API-Key": apiKey,
       },
       body: JSON.stringify({}),
       cache: "no-store",
@@ -239,7 +250,12 @@ export async function testDemoScanConnection(input: {
         provider: DEMO_SCAN_PROVIDER,
         ok: false,
         message: "API-Key abgelehnt (401 Unauthorized).",
-        detail: `${healthDetail} · Quelle=${source}`,
+        detail:
+          `${healthDetail} · Quelle=${source}. ` +
+          "Contabo API_KEY stimmt nicht mit dem Admin-Key überein. " +
+          "Auf Contabo: Prozess neu starten mit " +
+          "API_KEY='…' in einfachen Anführungszeichen (Bash expandiert !!). " +
+          "Nur den Key speichern, ohne Präfix „Bearer “.",
         latencyMs,
       };
     }

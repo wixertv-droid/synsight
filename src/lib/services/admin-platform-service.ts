@@ -410,7 +410,11 @@ export async function upsertAdminApiCredential(
         .limit(1)
     : [];
   const current = existing[0];
-  const secret = input.secret?.trim();
+  let secret = input.secret?.trim() || "";
+  // Contabo DemoScanner: store raw key only (SynSight adds "Bearer ").
+  if (input.provider === "demo_scan" && secret) {
+    secret = secret.replace(/^bearer\s+/i, "").trim();
+  }
   if (!secret && !current) {
     throw new Error("SECRET_REQUIRED");
   }

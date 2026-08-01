@@ -71,7 +71,22 @@ def utc_now() -> str:
 
 
 def check_auth(req) -> bool:
-    return req.headers.get("Authorization", "") == f"Bearer {API_KEY}"
+    """Accept Authorization: Bearer <key> or X-API-Key: <key>."""
+    expected = (API_KEY or "").strip()
+    if not expected:
+        return False
+    auth = (req.headers.get("Authorization") or "").strip()
+    if auth.lower().startswith("bearer "):
+        token = auth[7:].strip()
+        if token == expected:
+            return True
+    xkey = (req.headers.get("X-API-Key") or "").strip()
+    if xkey == expected:
+        return True
+    # Also accept raw Authorization equal to the key (no Bearer prefix).
+    if auth == expected:
+        return True
+    return False
 
 
 def http_json(
@@ -475,4 +490,15 @@ def health():
 
 
 if __name__ == "__main__":
+    masked = (API_KEY[:3] + "…" + API_KEY[-2:]) if len(API_KEY) > 6 else "(short)"
+    print(
+        f"[synsight-deep] listening :5000 · SF={SPIDERFOOT_URL} · API_KEY={masked}",
+        flush=True,
+    )
+    if "!" in API_KEY:
+        print(
+            "[synsight-deep] HINT: start with API_KEY='…' (single quotes). "
+            "Bash expands !! in double quotes / unquoted.",
+            flush=True,
+        )
     app.run(host="0.0.0.0", port=5000)

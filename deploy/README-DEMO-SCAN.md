@@ -17,21 +17,22 @@ Empfohlen (Multi-Field + echte SpiderFoot-Events):
 # Auf Contabo als root:
 curl -fsSL https://raw.githubusercontent.com/wixertv-droid/synsight/cursor/demoscanner-multimodule-7c12/deploy/contabo-deep-api.py -o /opt/api.py
 
+# !! in Bash = History — IMMER einfache Anführungszeichen:
 export API_KEY='demoscanner23061980!!'
-# Docker-Host → SpiderFoot, sonst 127.0.0.1:
-export SPIDERFOOT_URL='http://172.17.0.1:5001'
+export SPIDERFOOT_URL='http://172.17.0.1:5001'   # oder http://127.0.0.1:5001
 
 pkill -f '/opt/api.py' || true
 nohup env API_KEY="$API_KEY" SPIDERFOOT_URL="$SPIDERFOOT_URL" \
   python3 /opt/api.py >/var/log/synsight-demo-scan.log 2>&1 &
 
-curl -s http://127.0.0.1:5000/api/health
-# erwartet: api_version contabo-deep-2, spiderfoot:true
-
-curl -s -m 180 -X POST http://127.0.0.1:5000/api/scan \
+# Auth-Check (erwartet 400 missing query, NICHT 401):
+curl -s -X POST http://127.0.0.1:5000/api/scan \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $API_KEY" \
-  -d '{"email":"rene.eule@yahoo.de"}'
+  -H "Authorization: Bearer ${API_KEY}" \
+  -d '{}'
+
+# Laufenden Key prüfen:
+tr '\0' '\n' < /proc/$(pgrep -nf '/opt/api.py')/environ | grep '^API_KEY='
 ```
 
 Wenn du bei deiner **eigenen** `api.py` bleibst: SynSight ruft sie mit `Authorization: Bearer …` und `{query}` pro Feld auf (Fallback).
