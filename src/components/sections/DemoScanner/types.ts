@@ -1,3 +1,5 @@
+import type { ModuleStepState } from "@/lib/demo/scan-plan";
+
 export type ScanPhase =
   | "idle"
   | "booting"
@@ -62,3 +64,5 @@ export interface ApiResult {
   modules?: ScanModule[];
   platforms?: string[];
 }
+
+export type { ModuleStepState };

@@ -10,9 +10,17 @@ import {
   ScanData,
   ScanQueries,
   ScanModule,
+  ScanFinding,
+  ModuleStepState,
 } from "./DemoScanner/types";
 import ScannerOverlay from "./DemoScanner/ScannerOverlay";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import {
+  buildScanPlan,
+  initialModuleStates,
+  MODULE_META,
+} from "@/lib/demo/scan-plan";
+import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
 
 type FieldKey = keyof ScanQueries;
 
@@ -21,34 +29,46 @@ const FIELDS: Array<{
   label: string;
   placeholder: string;
   type?: string;
+  help: string;
+  modules: string;
 }> = [
   {
     key: "email",
     label: "E-Mail",
     placeholder: "name@domain.de",
     type: "email",
+    help: "Beste Quelle für Account-Leaks und Korrelation.",
+    modules: "Holehe → SpiderFoot",
   },
   {
     key: "username",
     label: "Username",
     placeholder: "alias / handle",
+    help: "Social-/Foren-Profile und Alias-Cluster.",
+    modules: "Maigret → SpiderFoot",
   },
   {
     key: "phone",
     label: "Telefon",
     placeholder: "+49 …",
     type: "tel",
+    help: "Carrier-/Länder-Hinweise zur Nummer.",
+    modules: "PhoneInfoga",
   },
   {
     key: "domain",
     label: "Domain",
     placeholder: "beispiel.de",
+    help: "Öffentliche E-Mails & Hosts zur Domain.",
+    modules: "theHarvester → SpiderFoot",
   },
   {
     key: "url",
     label: "URL",
     placeholder: "https://…",
     type: "url",
+    help: "Seiten-Crawl, Keys und sichtbare Spuren.",
+    modules: "Photon",
   },
 ];
 
@@ -81,6 +101,48 @@ function filledQueries(fields: ScanQueries): ScanQueries {
   return out;
 }
 
+async function runModuleStep(
+  query: string,
+  module: string
+): Promise<{
+  ok: boolean;
+  findings: ScanFinding[];
+  message?: string;
+}> {
+  const response = await fetch("/api/scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, module }),
+  });
+  const text = await response.text();
+  let data: Record<string, unknown> | null = null;
+  try {
+    data = text ? (JSON.parse(text) as Record<string, unknown>) : null;
+  } catch {
+    data = null;
+  }
+
+  if (!data || data.status !== "success") {
+    return {
+      ok: false,
+      findings: [],
+      message:
+        (typeof data?.message === "string" && data.message) ||
+        (typeof data?.error === "string" && data.error) ||
+        `HTTP ${response.status}`,
+    };
+  }
+
+  return {
+    ok: true,
+    findings: (data.findings as ScanFinding[]) || [],
+    message:
+      typeof data.summary === "string"
+        ? data.summary
+        : `${(data.findings as unknown[])?.length ?? 0} Treffer`,
+  };
+}
+
 export default function DemoScanner() {
   const router = useRouter();
   const { ref, isVisible } = useScrollAnimation();
@@ -97,9 +159,15 @@ export default function DemoScanner() {
   const [progress, setProgress] = useState(0);
   const [apiResult, setApiResult] = useState<ApiResult | null>(null);
   const [rawData, setRawData] = useState<ScanData | null>(null);
+  const [moduleSteps, setModuleSteps] = useState<ModuleStepState[]>([]);
+  const [activeStepLabel, setActiveStepLabel] = useState("");
 
   const activeQueries = useMemo(() => filledQueries(fields), [fields]);
   const activeCount = Object.keys(activeQueries).length;
+  const plannedSteps = useMemo(
+    () => buildScanPlan(activeQueries),
+    [activeQueries]
+  );
   const targetLabel = useMemo(
     () => Object.values(activeQueries).join(" · ") || "Unbekannt",
     [activeQueries]
@@ -114,121 +182,182 @@ export default function DemoScanner() {
 
   const startScan = useCallback(async () => {
     const queries = filledQueries(fields);
-    if (Object.keys(queries).length === 0 || phase === "scanning") return;
+    const plan = buildScanPlan(queries);
+    if (plan.length === 0 || phase === "scanning") return;
 
     setPhase("scanning");
     setProgress(0);
     setApiResult(null);
     setRawData(null);
 
-    const scanPromise = fetch("/api/scan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(queries),
-    });
+    const states = initialModuleStates(plan);
+    setModuleSteps(states);
+    setActiveStepLabel(plan[0]?.label || "");
 
-    const startedAt = Date.now();
-    // Visual progress waits for API (~2 min budget under nginx).
-    const progressTimer = setInterval(() => {
+    const allFindings: ScanFinding[] = [];
+    let tickTimers: ReturnType<typeof setInterval>[] = [];
+
+    const clearTicks = () => {
+      for (const t of tickTimers) clearInterval(t);
+      tickTimers = [];
+    };
+
+    for (let i = 0; i < plan.length; i += 1) {
       if (!aliveRef.current) {
-        clearInterval(progressTimer);
+        clearTicks();
         return;
       }
-      const elapsed = Date.now() - startedAt;
-      const visual = Math.min(92, Math.floor((elapsed / 100_000) * 92));
-      setProgress(visual);
-    }, 120);
 
-    try {
-      const response = await scanPromise;
-      const rawText = await response.text();
-      if (!aliveRef.current) return;
+      const step = plan[i];
+      setActiveStepLabel(`${step.label} · ${step.hint}`);
+      setModuleSteps((prev) =>
+        prev.map((s) =>
+          s.id === step.id
+            ? { ...s, status: "running", progress: 8, message: "Starte…" }
+            : s
+        )
+      );
 
-      clearInterval(progressTimer);
-      setProgress(100);
+      // Soft progress while Contabo works (real completion jumps to 100)
+      const tick = setInterval(() => {
+        if (!aliveRef.current) return;
+        setModuleSteps((prev) =>
+          prev.map((s) =>
+            s.id === step.id && s.status === "running"
+              ? {
+                  ...s,
+                  progress: Math.min(88, s.progress + 2 + Math.random() * 3),
+                }
+              : s
+          )
+        );
+      }, 400);
+      tickTimers.push(tick);
 
-      let data: Record<string, unknown> | null = null;
       try {
-        data = rawText
-          ? (JSON.parse(rawText) as Record<string, unknown>)
-          : null;
-      } catch {
-        data = null;
+        const result = await runModuleStep(step.query, step.module);
+        clearInterval(tick);
+        tickTimers = tickTimers.filter((t) => t !== tick);
+
+        if (!aliveRef.current) return;
+
+        if (result.ok) {
+          allFindings.push(...result.findings);
+          setModuleSteps((prev) =>
+            prev.map((s) =>
+              s.id === step.id
+                ? {
+                    ...s,
+                    status: "done",
+                    progress: 100,
+                    findingCount: result.findings.length,
+                    message: `${result.findings.length} Signal(e)`,
+                  }
+                : s
+            )
+          );
+        } else {
+          setModuleSteps((prev) =>
+            prev.map((s) =>
+              s.id === step.id
+                ? {
+                    ...s,
+                    status: "error",
+                    progress: 100,
+                    findingCount: 0,
+                    message: result.message || "Fehler",
+                  }
+                : s
+            )
+          );
+        }
+      } catch (error) {
+        clearInterval(tick);
+        tickTimers = tickTimers.filter((t) => t !== tick);
+        if (!aliveRef.current) return;
+        setModuleSteps((prev) =>
+          prev.map((s) =>
+            s.id === step.id
+              ? {
+                  ...s,
+                  status: "error",
+                  progress: 100,
+                  message:
+                    error instanceof Error ? error.message : "Netzwerkfehler",
+                }
+              : s
+          )
+        );
       }
 
-      if (!data) {
-        const gatewayHint =
-          response.status === 504 || response.status === 502
-            ? "Gateway-Timeout — Contabo braucht zu lange (viele Felder/Module). Nur E-Mail oder Username testen, oder nginx proxy_read_timeout für /api/scan auf 300s setzen."
-            : `Ungültige Server-Antwort (HTTP ${response.status}).`;
-        setApiResult({
-          status: "error",
-          message: gatewayHint,
-          riskLevel: "Keine Bewertung",
-          summary: gatewayHint,
-        });
-      } else if (data.status === "success") {
-        const modules = (data.modules || []) as ScanModule[];
-        const scanData: ScanData = {
-          query:
-            (typeof data.query === "string" && data.query) ||
-            Object.values(queries).join(" · "),
-          queries: (data.queries as ScanQueries) ?? queries,
-          queryType: String(data.query_type || "mixed"),
-          findings: (data.findings as ScanData["findings"]) || [],
-          modules,
-          platforms: (data.platforms as string[]) ?? ["OSINT"],
-          exposureScore: Number(data.exposure_score ?? 0) || 0,
-          riskLevel: String(data.risk_level ?? "Erhöht"),
-          summary:
-            (typeof data.summary === "string" && data.summary) ||
-            `Multi-Modul-Analyse für „${Object.values(queries).join(" · ")}“ abgeschlossen.`,
-          timestamp:
-            (typeof data.timestamp === "string" && data.timestamp) ||
-            new Date().toISOString(),
-          exposure_count: Array.isArray(data.findings)
-            ? data.findings.length
-            : 0,
-          sources_found: modules.length || 0,
-        };
-
-        setRawData(scanData);
-        setApiResult({
-          status: "success",
-          data: scanData,
-          riskLevel: scanData.riskLevel,
-          summary: scanData.summary,
-          findings: scanData.findings,
-          modules: scanData.modules,
-          platforms: scanData.platforms,
-        });
-      } else {
-        const message =
-          (typeof data.message === "string" && data.message) ||
-          "Analyse konnte nicht abgeschlossen werden.";
-        setApiResult({
-          status: "error",
-          message,
-          riskLevel: "Keine Bewertung",
-          summary: message,
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      clearInterval(progressTimer);
-      if (!aliveRef.current) return;
-      setApiResult({
-        status: "error",
-        message: "Analyse Dienst nicht erreichbar.",
-        riskLevel: "Offline",
-        summary: "Der Analyse-Dienst konnte nicht erreicht werden.",
-      });
+      setProgress(Math.round(((i + 1) / plan.length) * 100));
     }
 
+    clearTicks();
     if (!aliveRef.current) return;
+
+    const normalized = normalizeUpstreamPayload({
+      payloads: [
+        {
+          status: "success",
+          findings: allFindings,
+          scan_id: `seq-${Date.now()}`,
+        },
+      ],
+      queries: queries as Record<string, string>,
+    });
+
+    const modules = (normalized.modules || []) as ScanModule[];
+    // Ensure every planned module appears in summary even if empty
+    for (const step of plan) {
+      const id = step.module === "spiderfoot" ? "SpiderFoot" : step.module;
+      if (!modules.some((m) => m.id === id || m.id === step.module)) {
+        modules.push({
+          id: step.module,
+          label: MODULE_META[step.module].label,
+          status: "empty",
+          findings: [],
+          count: 0,
+          summary: "Keine Treffer in diesem Modul",
+        });
+      }
+    }
+
+    const scanData: ScanData = {
+      query: normalized.query,
+      queries,
+      queryType: String(normalized.queryType || "mixed"),
+      findings: normalized.findings,
+      modules,
+      platforms: normalized.platforms,
+      exposureScore: normalized.exposure_score,
+      riskLevel: normalized.risk_level,
+      summary: normalized.summary,
+      timestamp: normalized.timestamp,
+      exposure_count: normalized.findings.length,
+      sources_found: modules.length,
+    };
+
+    setRawData(scanData);
+    setApiResult({
+      status: allFindings.length > 0 || plan.length > 0 ? "success" : "error",
+      data: scanData,
+      riskLevel: scanData.riskLevel,
+      summary: scanData.summary,
+      findings: scanData.findings,
+      modules: scanData.modules,
+      platforms: scanData.platforms,
+      message:
+        allFindings.length === 0
+          ? "Module durchgelaufen — keine öffentlichen Treffer."
+          : undefined,
+    });
+    setProgress(100);
+    setActiveStepLabel("Abgeschlossen");
+
     setTimeout(() => {
       if (aliveRef.current) setPhase("fullscreen_result");
-    }, 600);
+    }, 700);
   }, [fields, phase]);
 
   const closeFullscreen = () => {
@@ -241,6 +370,8 @@ export default function DemoScanner() {
     setProgress(0);
     setApiResult(null);
     setRawData(null);
+    setModuleSteps([]);
+    setActiveStepLabel("");
   };
 
   const score = rawData?.exposureScore ?? 0;
@@ -255,6 +386,8 @@ export default function DemoScanner() {
         progress={progress}
         target={targetLabel}
         queries={activeQueries}
+        moduleSteps={moduleSteps}
+        activeStepLabel={activeStepLabel}
         apiResult={apiResult}
         rawData={rawData}
         onClose={closeFullscreen}
@@ -283,9 +416,9 @@ export default function DemoScanner() {
             </h2>
 
             <p className="max-w-3xl mx-auto text-gray-400 text-lg leading-relaxed">
-              Multi-Modul-Voranalyse über Holehe, Maigret, PhoneInfoga,
-              theHarvester, Photon und SpiderFoot. Nur ausgefüllte Felder werden
-              gescannt.
+              Module laufen nacheinander: Holehe, Maigret, PhoneInfoga,
+              theHarvester, Photon und SpiderFoot. Je mehr Felder, desto
+              vollständiger — ohne Parallel-Timeout.
             </p>
           </div>
 
@@ -299,22 +432,28 @@ export default function DemoScanner() {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
                     <div>
                       <h3 className="text-white text-xl tracking-[-.02em]">
-                        Kostenloser Sicherheitscheck
+                        Kostenloser Multi-Modul-Check
                       </h3>
                       <p className="text-gray-500 text-sm mt-1">
-                        Felder optional — leere Eingaben werden ignoriert.
+                        Felder optional. Leere Eingaben werden übersprungen.
+                        Pipeline: {plannedSteps.length} Schritt(e) geplant.
                       </p>
                     </div>
                     <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-cyber-cyan/60">
-                      {activeCount} Ziel(e) aktiv
+                      {activeCount} Ziel(e) · {plannedSteps.length} Module
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-6">
                     {FIELDS.map((field) => (
                       <label key={field.key} className="block text-left">
-                        <span className="mb-1.5 block font-mono text-[10px] tracking-[0.2em] uppercase text-white/40">
-                          {field.label}
+                        <span className="mb-1.5 flex items-center justify-between gap-2">
+                          <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-white/40">
+                            {field.label}
+                          </span>
+                          <span className="font-mono text-[9px] tracking-[0.12em] text-cyber-cyan/45">
+                            {field.modules}
+                          </span>
                         </span>
                         <input
                           value={fields[field.key] || ""}
@@ -332,21 +471,42 @@ export default function DemoScanner() {
                           maxLength={160}
                           className="w-full px-4 py-3.5 rounded-lg bg-black/40 border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-cyber-cyan/50"
                         />
+                        <span className="mt-1.5 block text-[11px] leading-snug text-white/35">
+                          {field.help}
+                        </span>
                       </label>
                     ))}
                   </div>
 
+                  {plannedSteps.length > 0 ? (
+                    <div className="mb-5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+                      <div className="font-mono text-[9px] tracking-[0.18em] text-white/35 uppercase mb-1.5">
+                        Geplante Reihenfolge
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {plannedSteps.map((step, idx) => (
+                          <span
+                            key={step.id}
+                            className="rounded border border-cyber-cyan/20 bg-cyber-cyan/5 px-2 py-0.5 font-mono text-[10px] text-cyber-cyan/80"
+                          >
+                            {idx + 1}. {step.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
                     <p className="text-xs text-white/35 max-w-md leading-relaxed">
-                      Contabo Deep-Scan · echte Modul-Ergebnisse · kein
-                      Simulieren der Trefferlisten.
+                      Für maximale Tiefe: E-Mail + Username + Domain. Module
+                      werden strikt nacheinander auf Contabo ausgeführt.
                     </p>
                     <Button
                       size="lg"
                       onClick={startScan}
                       disabled={activeCount === 0}
                     >
-                      INTELLIGENCE SCAN STARTEN
+                      SEQUENZ-SCAN STARTEN
                     </Button>
                   </div>
                 </>
@@ -360,10 +520,11 @@ export default function DemoScanner() {
                     <div className="h-7 w-7 rounded-full border-2 border-transparent border-t-cyber-cyan animate-spin" />
                   </div>
                   <div className="font-mono text-[11px] tracking-[0.28em] text-cyber-cyan/80">
-                    MULTI-MODUL SCAN LÄUFT …
+                    MODULE LAUFEN SEQUENZIELL …
                   </div>
                   <p className="text-gray-500 text-sm mt-3">
-                    Module können je nach Ziel 1–3 Minuten benötigen.
+                    {activeStepLabel ||
+                      "Bitte warten — Vollbild-Analyse aktiv."}
                   </p>
                 </div>
               )}
@@ -423,32 +584,26 @@ export default function DemoScanner() {
                     <div className="font-mono text-[10px] tracking-[0.22em] text-cyber-cyan/70 uppercase">
                       Modul-Zusammenfassung
                     </div>
-                    {modules.length === 0 ? (
-                      <p className="text-sm text-white/50">
-                        {apiResult?.summary || "Keine Moduldaten."}
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {modules.map((mod) => (
-                          <div
-                            key={mod.id}
-                            className="rounded-xl border border-white/[0.07] bg-[linear-gradient(145deg,rgba(41,182,246,0.06),rgba(7,11,19,0.35))] p-4"
-                          >
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <div className="font-mono text-[11px] tracking-[0.14em] text-white/80 uppercase">
-                                {mod.label}
-                              </div>
-                              <div className="font-mono text-[10px] text-cyber-cyan/70">
-                                {mod.count}
-                              </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {modules.map((mod) => (
+                        <div
+                          key={mod.id}
+                          className="rounded-xl border border-white/[0.07] bg-[linear-gradient(145deg,rgba(41,182,246,0.06),rgba(7,11,19,0.35))] p-4"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="font-mono text-[11px] tracking-[0.14em] text-white/80 uppercase">
+                              {mod.label}
                             </div>
-                            <p className="text-sm text-white/55 leading-relaxed">
-                              {mod.summary}
-                            </p>
+                            <div className="font-mono text-[10px] text-cyber-cyan/70">
+                              {mod.count}
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                          <p className="text-sm text-white/55 leading-relaxed">
+                            {mod.summary}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="relative overflow-hidden rounded-xl border border-cyber-cyan/20 bg-[linear-gradient(145deg,rgba(41,182,246,0.08),rgba(7,11,19,0.35))] p-5 md:p-6">
@@ -463,9 +618,8 @@ export default function DemoScanner() {
 
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="max-w-md text-sm leading-relaxed text-white/40">
-                      Die Voranalyse ist abgeschlossen. Für den vollständigen
-                      Deep-Scan und priorisierte Schutzmaßnahmen Konto
-                      aktivieren.
+                      Die sequenzielle Voranalyse ist abgeschlossen. Für den
+                      vollständigen Deep-Scan Konto aktivieren.
                     </p>
                     <div className="flex flex-col gap-3 sm:flex-row">
                       <Button onClick={() => router.push("/register")}>

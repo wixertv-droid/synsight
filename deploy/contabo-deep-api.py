@@ -51,14 +51,15 @@ SPIDERFOOT_URL = os.environ.get("SPIDERFOOT_URL", "http://127.0.0.1:5001").rstri
     "/"
 )
 # Keep landing-page scans under typical nginx proxy timeouts.
-SCAN_WAIT_SECONDS = int(os.environ.get("DEMO_SCAN_WAIT_SECONDS", "12"))
+# Per-module HTTP calls stay short; SynSight runs modules sequentially.
+SCAN_WAIT_SECONDS = int(os.environ.get("DEMO_SCAN_WAIT_SECONDS", "18"))
 POLL_INTERVAL = float(os.environ.get("DEMO_SCAN_POLL_INTERVAL", "1.2"))
-HOLEHE_TIMEOUT = int(os.environ.get("HOLEHE_TIMEOUT", "35"))
-MAIGRET_TIMEOUT = int(os.environ.get("MAIGRET_TIMEOUT", "40"))
-PHONE_TIMEOUT = int(os.environ.get("PHONEINFOGA_TIMEOUT", "25"))
-HARVEST_TIMEOUT = int(os.environ.get("HARVESTER_TIMEOUT", "35"))
-PHOTON_TIMEOUT = int(os.environ.get("PHOTON_TIMEOUT", "35"))
-OVERALL_DEADLINE_SECONDS = int(os.environ.get("DEMO_SCAN_OVERALL_SECONDS", "95"))
+HOLEHE_TIMEOUT = int(os.environ.get("HOLEHE_TIMEOUT", "50"))
+MAIGRET_TIMEOUT = int(os.environ.get("MAIGRET_TIMEOUT", "55"))
+PHONE_TIMEOUT = int(os.environ.get("PHONEINFOGA_TIMEOUT", "35"))
+HARVEST_TIMEOUT = int(os.environ.get("HARVESTER_TIMEOUT", "45"))
+PHOTON_TIMEOUT = int(os.environ.get("PHOTON_TIMEOUT", "45"))
+OVERALL_DEADLINE_SECONDS = int(os.environ.get("DEMO_SCAN_OVERALL_SECONDS", "70"))
 RESULT_PATH = Path(os.environ.get("RESULT_PATH", "/tmp/synsight_results"))
 RESULT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -406,6 +407,38 @@ def collect_targets(data: dict) -> dict[str, str]:
     return out
 
 
+def normalize_module(raw: str) -> str:
+    key = (raw or "").strip().lower().replace("_", "").replace("-", "")
+    aliases = {
+        "holehe": "holehe",
+        "maigret": "maigret",
+        "phoneinfoga": "phoneinfoga",
+        "phone": "phoneinfoga",
+        "theharvester": "theHarvester",
+        "harvester": "theHarvester",
+        "photon": "photon",
+        "spiderfoot": "spiderfoot",
+        "sf": "spiderfoot",
+    }
+    return aliases.get(key, "")
+
+
+def run_single_module(module: str, query: str) -> list[dict]:
+    if module == "holehe":
+        return run_holehe(query)
+    if module == "maigret":
+        return run_maigret(query)
+    if module == "phoneinfoga":
+        return run_phoneinfoga(query)
+    if module == "theHarvester":
+        return run_theharvester(query)
+    if module == "photon":
+        return run_photon(query)
+    if module == "spiderfoot":
+        return run_spiderfoot(query)
+    return [{"source": module or "unknown", "error": f"Unknown module: {module}"}]
+
+
 @app.route("/api/scan", methods=["POST"])
 def scan():
     if not check_auth(request):
@@ -413,9 +446,43 @@ def scan():
 
     data = request.get_json(silent=True) or {}
     targets = collect_targets(data)
+    module = normalize_module(str(data.get("module") or ""))
+
+    # Single-module mode (preferred by SynSight sequential UI)
+    if module:
+        query = str(data.get("query") or "").strip()
+        if not query and targets:
+            query = next(iter(targets.values()))
+        if not query:
+            return jsonify({"status": "error", "error": "missing query"}), 400
+
+        scan_id = str(uuid.uuid4())
+        findings = run_single_module(module, query)
+        result = {
+            "status": "success",
+            "scan_id": scan_id,
+            "target": query,
+            "module": module,
+            "queries": targets or detect_legacy_query(query),
+            "timestamp": utc_now(),
+            "total_findings": len(findings),
+            "findings": findings,
+            "partial": False,
+            "source": "contabo-deep",
+            "api_version": "contabo-deep-4",
+        }
+        try:
+            (RESULT_PATH / f"{scan_id}.json").write_text(
+                json.dumps(result, indent=2), encoding="utf-8"
+            )
+        except Exception:
+            pass
+        return jsonify(result)
+
     if not targets:
         return jsonify({"status": "error", "error": "missing query"}), 400
 
+    # Legacy full scan (all matching modules in one request — may be slow)
     scan_id = str(uuid.uuid4())
     findings: list[dict] = []
     deadline = time.time() + OVERALL_DEADLINE_SECONDS
@@ -481,7 +548,7 @@ def scan():
         "findings": findings,
         "partial": partial,
         "source": "contabo-deep",
-        "api_version": "contabo-deep-3",
+        "api_version": "contabo-deep-4",
     }
 
     try:
@@ -511,15 +578,16 @@ def health():
             "ok": True,
             "spiderfoot": sf_ok,
             "spiderfoot_url": SPIDERFOOT_URL,
-            "api_version": "contabo-deep-2",
+            "api_version": "contabo-deep-4",
             "modules": [
                 "holehe",
                 "maigret",
                 "phoneinfoga",
                 "theHarvester",
                 "photon",
-                "SpiderFoot",
+                "spiderfoot",
             ],
+            "mode": "sequential-module",
         }
     )
 

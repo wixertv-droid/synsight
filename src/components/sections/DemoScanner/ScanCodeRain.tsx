@@ -1,24 +1,18 @@
 "use client";
 
-/**
- * Long scrolling cyber-code stream for the DemoScanner analysis HUD.
- * Full-bleed background atmosphere — long lines, not short blocks.
- */
 const STREAM_LINES = [
+  "PIPELINE.sequential · holehe → maigret → phoneinfoga → harvester → photon → spiderfoot",
   "HOLEHE.scan email --only-used · account.matrix · emit[+]",
-  "MAIGRET.username --sites · profile.url · confidence=0.75",
+  "MAIGRET.username · profile.url · confidence=0.75 · sites.sweep",
   "PHONEINFOGA.scan -n +49… · carrier|geo|line_type",
-  "THEHARVESTER -d domain -b all · emails[] hosts[]",
-  "PHOTON -u https://… -l 3 --keys · crawl.depth",
-  "SPIDERFOOT.startscan · modules=email,accounts,breach,dns · usecase=all",
-  "MODULE.QUEUE parallel · filled_fields_only · empty=skip",
-  "AUTH.bearer · contabo.deep · /api/scan · timeout=320s",
-  "FINDING.group by source · holehe|maigret|phoneinfoga|harvester|photon|sf",
-  "CORR.engine · exposure_score · risk_level · modular.brief",
-  "SYN|SIGHT.CORE packet.inspect · timeline.merge · dossier.render",
-  "scanstatus · RUNNING→FINISHED · result_count · cache.write",
-  "ENTITY.resolve · alias_cluster · contact_hit · graph+=",
-  "PHASE · multi-module OSINT · STATUS=RUNNING · real.results.only",
+  "THEHARVESTER -d domain · emails[] hosts[] · sources=public",
+  "PHOTON -u https://… -l 2 --keys · crawl.depth",
+  "SPIDERFOOT.startscan · usecase=passive · poll.events · stor_db",
+  "STEP.timeout=75s · nginx.safe · no.parallel.burst",
+  "AUTH.bearer · contabo.deep · module=one · /api/scan",
+  "FINDING.group by source · modular.brief · exposure_score",
+  "SYN|SIGHT.CORE · arc.gauge · progress.per.module · dossier.render",
+  "PHASE · sequential OSINT · STATUS=RUNNING · real.results.only",
 ];
 
 export default function ScanCodeRain() {

@@ -3,13 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ScannerHUD from "./ScannerHUD";
-import type { ScanPhase, ApiResult, ScanData, ScanQueries } from "./types";
+import type {
+  ScanPhase,
+  ApiResult,
+  ScanData,
+  ScanQueries,
+  ModuleStepState,
+} from "./types";
 
 interface ScannerOverlayProps {
   phase: ScanPhase;
   progress: number;
   target: string;
   queries?: ScanQueries;
+  moduleSteps?: ModuleStepState[];
+  activeStepLabel?: string;
   apiResult: ApiResult | null;
   rawData: ScanData | null;
   onClose: () => void;
@@ -40,6 +48,8 @@ export default function ScannerOverlay({
   progress,
   target,
   queries,
+  moduleSteps,
+  activeStepLabel,
   apiResult,
   rawData,
   onClose,
@@ -72,7 +82,13 @@ export default function ScannerOverlay({
   if (phase === "scanning") {
     return (
       <div className="fixed inset-0 z-50 bg-black">
-        <ScannerHUD progress={progress} query={target} queries={queries} />
+        <ScannerHUD
+          progress={progress}
+          query={target}
+          queries={queries}
+          moduleSteps={moduleSteps}
+          activeStepLabel={activeStepLabel}
+        />
       </div>
     );
   }
