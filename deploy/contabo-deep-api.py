@@ -311,36 +311,28 @@ def run_maigret(username: str) -> list[dict]:
     return findings[:40]
 
 
-def run_phoneinfoga(number: str) -> list[dict]:
-    findings: list[dict] = []
-    bin_cmd = resolve_bin("phoneinfoga", "PHONEINFOGA_BIN")
-    if not bin_cmd:
-        return missing_tool("phoneinfoga", "phoneinfoga")
+import phonenumbers
+
+def run_phoneinfoga(number):
+    findings = []
     try:
-        result = subprocess.run(
-            [*bin_cmd, "scan", "-n", number],
-            capture_output=True,
-            text=True,
-            timeout=PHONE_TIMEOUT,
-        )
-        output = (result.stdout or "").strip()
-        if output:
-            findings.append(
-                {
-                    "source": "phoneinfoga",
-                    "category": "PHONE",
-                    "title": "Telefon-Analyse",
-                    "description": output[:500],
-                    "raw": output[:2000],
-                    "risk": "medium",
-                    "confidence": 60,
-                }
-            )
-        elif result.returncode != 0:
-            err = (result.stderr or "phoneinfoga exit non-zero")[:300]
-            findings.append({"source": "phoneinfoga", "error": err})
-    except Exception as exc:  # noqa: BLE001
-        findings.append({"source": "phoneinfoga", "error": str(exc)})
+        # 1. Erst sauber mit der Bibliothek validieren
+        parsed = phonenumbers.parse(number, None)
+        is_valid = phonenumbers.is_valid_number(parsed)
+        
+        # 2. Dann den Scan laufen lassen
+        result = subprocess.run(["phoneinfoga", "scan", "-n", number], capture_output=True, text=True, timeout=120)
+        
+        findings.append({
+            "source": "phoneinfoga",
+            "category": "PHONE",
+            "status": "valid" if is_valid else "invalid",
+            "country": phonenumbers.region_code_for_number(parsed) if is_valid else "unknown",
+            "raw_output": result.stdout[:500], # Nur die ersten 500 Zeichen
+            "confidence": 90 if is_valid else 10
+        })
+    except Exception as e:
+        findings.append({"source": "phoneinfoga", "error": str(e)})
     return findings
 
 
