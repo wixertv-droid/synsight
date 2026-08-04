@@ -23,8 +23,6 @@ import {
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
 import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
 
-type FieldKey = keyof ScanQueries;
-
 const COUNTRY_CODES = [
   { code: "+49", label: "DE (+49)" },
   { code: "+43", label: "AT (+43)" },
@@ -69,7 +67,7 @@ function filledQueries(fields: ScanQueries, countryCode: string, phoneNumber: st
 
   const rawPhone = phoneNumber.trim();
   if (rawPhone) {
-    // Führende 0 entfernen, falls der Nutzer sie trotz Hinweises eingetippt hat
+    // Führende 0 automatisch entfernen (z.B. aus 0151 wird 151, damit +49151 entsteht)
     const cleanNumber = rawPhone.startsWith("0") ? rawPhone.substring(1) : rawPhone;
     out.phone = `${countryCode}${cleanNumber.replace(/[^\d]/g, "")}`;
   }
@@ -132,7 +130,6 @@ export default function DemoScanner() {
     url: "",
   });
   
-  // Standardmäßig auf +49, wird gleich per IP-Check verfeinert
   const [selectedCountryCode, setSelectedCountryCode] = useState("+49");
   const [phoneNumberInput, setPhoneNumberInput] = useState("");
 
@@ -143,20 +140,27 @@ export default function DemoScanner() {
   const [moduleSteps, setModuleSteps] = useState<ModuleStepState[]>([]);
   const [activeStepLabel, setActiveStepLabel] = useState("");
 
-  // IP-Erkennung beim Laden der Komponente, um DE/AT/CH Vorwahl automatisch zu setzen
+  // IP-Standort Erkennung für automatisches Vorwahl-Dropdown
   useEffect(() => {
+    let isMounted = true;
     fetch("https://ipapi.co/json/")
       .then((res) => res.json())
       .then((data) => {
-        if (data && data.country_code) {
-          if (data.country_code === "AT") setSelectedCountryCode("+43");
-          else if (data.country_code === "CH") setSelectedCountryCode("+41");
-          else if (data.country_code === "DE") setSelectedCountryCode("+49");
+        if (!isMounted || !data) return;
+        if (data.country_code === "AT") {
+          setSelectedCountryCode("+43");
+        } else if (data.country_code === "CH") {
+          setSelectedCountryCode("+41");
+        } else if (data.country_code === "DE") {
+          setSelectedCountryCode("+49");
         }
       })
       .catch(() => {
-        // Fallback bleibt +49
+        // Fallback bleibt stabil auf +49
       });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const activeQueries = useMemo(() => filledQueries(fields, selectedCountryCode, phoneNumberInput), [fields, selectedCountryCode, phoneNumberInput]);
@@ -179,7 +183,6 @@ export default function DemoScanner() {
 
   const handlePhoneChange = (value: string) => {
     let cleaned = value.replace(/[^\d]/g, "");
-    // Wenn der Nutzer mit 0 beginnt, automatisch abschneiden für saubere Weiterleitung mit Vorwahl
     if (cleaned.startsWith("0")) {
       cleaned = cleaned.substring(1);
     }
@@ -504,7 +507,7 @@ export default function DemoScanner() {
                       </span>
                     </label>
 
-                    {/* Telefonnummer Feld mit Ländervorwahl-Dropdown */}
+                    {/* Telefonnummer Feld mit fixem Dropdown & IP-Erkennung */}
                     <label className="block text-left group">
                       <span className="mb-2 block font-mono text-[11px] tracking-[0.15em] uppercase text-white/60 group-focus-within:text-cyber-cyan transition-colors">
                         Telefonnummer
@@ -514,7 +517,7 @@ export default function DemoScanner() {
                           value={selectedCountryCode}
                           onChange={(e) => setSelectedCountryCode(e.target.value)}
                           aria-label="Ländervorwahl"
-                          className="bg-transparent text-white/80 font-mono text-xs px-2.5 py-4 border-r border-white/10 focus:outline-none cursor-pointer hover:text-white"
+                          className="bg-black/80 text-white font-mono text-xs px-3 py-4 border-r border-white/10 focus:outline-none cursor-pointer hover:bg-black"
                         >
                           {COUNTRY_CODES.map((c) => (
                             <option key={c.code} value={c.code} className="bg-gray-900 text-white">
@@ -670,7 +673,7 @@ export default function DemoScanner() {
                           Deep-Web & Full-Scale Analyse freischalten
                         </div>
                         <p className="text-left text-sm leading-relaxed text-gray-300">
-                          Wir haben soeben nur the Oberfläche angekratzt. Hacker nutzen weitaus tiefere Datenbanken, 
+                          Wir haben soeben nur die Oberfläche angekratzt. Hacker nutzen weitaus tiefere Datenbanken, 
                           Darknet-Leaks und KI-Korrelationen, um Profile vollständig zu übernehmen. 
                           Registrieren Sie sich jetzt, um den vollständigen Bericht einzusehen und 
                           herauszufinden, was wirklich über Sie im Netz zirkuliert.
