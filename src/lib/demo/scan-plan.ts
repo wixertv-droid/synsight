@@ -57,7 +57,7 @@ export const MODULE_META: Record<
 };
 
 /**
- * High-Speed Pipeline: Reduziert auf die schnellsten Top-Tools für maximale Performance unter 8 Sekunden.
+ * Parallel-Pipeline: Jeder Datentyp wird zielgerichtet über seinen Spezialisten abgefragt.
  */
 export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
   const queries = normalizeScanQueries(rawQueries);
@@ -68,7 +68,7 @@ export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
       id: "holehe-email",
       module: "holehe",
       label: "Holehe",
-      hint: "E-Mail Leaks & Plattform-Check",
+      hint: "E-Mail Leaks & Plattformen",
       query: queries.email,
       field: "email",
     });
@@ -79,7 +79,7 @@ export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
       id: "maigret-username",
       module: "maigret",
       label: "Maigret",
-      hint: "High-Speed Social Profile Scan",
+      hint: "Social Media Deep Scan",
       query: queries.username,
       field: "username",
     });
@@ -87,7 +87,7 @@ export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
       id: "sherlock-username",
       module: "sherlock",
       label: "Sherlock",
-      hint: "Cross-Platform Handle Abgleich",
+      hint: "Handle Cross-Check",
       query: queries.username,
       field: "username",
     });
@@ -98,7 +98,7 @@ export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
       id: "phoneinfoga-phone",
       module: "phoneinfoga",
       label: "PhoneInfoga",
-      hint: "Carrier & Nummern-Validierung",
+      hint: "Carrier- & Standortprüfung",
       query: queries.phone,
       field: "phone",
     });
