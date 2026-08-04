@@ -43,7 +43,7 @@ const FIELDS: Array<{
     key: "username",
     label: "Benutzername / Alias",
     placeholder: "z.B. shadow_99",
-    help: "Durchsucht Hunderte Foren & Social-Media-Plattformen.",
+    help: "Durchsucht Foren & Social-Media-Plattformen.",
   },
   {
     key: "phone",
@@ -74,11 +74,18 @@ function riskTone(riskLevel?: string, score = 0) {
   };
 }
 
+// Intelligenter Filter, der auch Validierungen (wie das @ bei E-Mails) durchführt
 function filledQueries(fields: ScanQueries): ScanQueries {
   const out: ScanQueries = {};
   for (const { key } of FIELDS) {
-    const value = fields[key]?.trim();
-    if (value) out[key] = value;
+    let value = fields[key]?.trim();
+    if (value) {
+      // E-Mail muss ein @ enthalten, sonst wird sie noch nicht als gültig gezählt
+      if (key === "email" && !value.includes("@")) {
+        continue;
+      }
+      out[key] = value;
+    }
   }
   return normalizeScanQueries(out);
 }
@@ -130,7 +137,6 @@ export default function DemoScanner() {
   const { ref, isVisible } = useScrollAnimation();
   const aliveRef = useRef(true);
 
-  // Hinweis: domain und url bleiben im State für Type-Kompatibilität, werden aber im UI ignoriert.
   const [fields, setFields] = useState<ScanQueries>({
     email: "",
     username: "",
@@ -162,6 +168,23 @@ export default function DemoScanner() {
       aliveRef.current = false;
     };
   }, []);
+
+  const handleInputChange = (key: FieldKey, value: string) => {
+    let formattedValue = value;
+
+    // Telefonnummern-Intelligenz: 0 zu +49 umwandeln und nur Nummern/Plus/Leerzeichen erlauben
+    if (key === "phone") {
+      if (formattedValue.startsWith("0")) {
+        formattedValue = "+49" + formattedValue.substring(1);
+      }
+      formattedValue = formattedValue.replace(/[^\d\s+]/g, "");
+    }
+
+    setFields((prev) => ({
+      ...prev,
+      [key]: formattedValue,
+    }));
+  };
 
   const startScan = useCallback(async () => {
     const queries = filledQueries(fields);
@@ -389,7 +412,7 @@ export default function DemoScanner() {
                 : "opacity-0 translate-y-8"
             }`}
           >
-            <span className="hud-label">03 / LIVE OSINT DEMO</span>
+            <span className="hud-label">03 / LIVE OSINT SCAN</span>
 
             <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] mt-5 mb-7">
               Ist Ihre Identität bereits{" "}
@@ -397,9 +420,9 @@ export default function DemoScanner() {
             </h2>
 
             <p className="max-w-3xl mx-auto text-gray-400 text-lg leading-relaxed">
-              Hacker benötigen oft nur ein einziges Puzzleteil, um ein digitales Profil zu knacken. 
-              Unser kostenloser Vorab-Scan durchkämmt öffentliche Netzwerke nach Ihren Spuren. 
-              Geben Sie Daten ein, die Sie überprüfen möchten.
+              Hacker benötigen oft nur ein einziges Puzzleteil, um ein digitales Profil zu übernehmen. 
+              Unser Scanner durchkämmt öffentliche Netzwerke nach Ihren Spuren. 
+              Geben Sie die Daten ein, die Sie überprüfen möchten.
             </p>
           </div>
 
@@ -413,7 +436,7 @@ export default function DemoScanner() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/5">
                     <div>
                       <h3 className="text-white text-xl font-medium tracking-tight mb-2">
-                        Starten Sie Ihre kostenlose Voranalyse
+                        Starten Sie Ihre Voranalyse
                       </h3>
                       <p className="text-sm text-gray-400">
                         Sie können ein, zwei oder alle drei Felder ausfüllen. Je mehr Datenpunkte Sie angeben, 
@@ -441,14 +464,9 @@ export default function DemoScanner() {
                         </span>
                         <input
                           value={fields[field.key] || ""}
-                          onChange={(e) =>
-                            setFields((prev) => ({
-                              ...prev,
-                              [field.key]: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => handleInputChange(field.key, e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") startScan();
+                            if (e.key === "Enter" && activeCount > 0) startScan();
                           }}
                           type={field.type || "text"}
                           placeholder={field.placeholder}
@@ -471,8 +489,8 @@ export default function DemoScanner() {
                         <span className="text-xs font-semibold tracking-wider text-amber-400 uppercase">Wichtiger Hinweis zur Tiefe</span>
                       </div>
                       <p className="text-[13px] text-gray-400 leading-relaxed">
-                        Dieses Demo-Tool kratzt nur an der Oberfläche (Clearnet). Es zeigt Ihnen eine erste Einschätzung Ihrer digitalen Angriffsfläche. 
-                        Um tiefgreifende Leaks, Darkweb-Erwähnungen und unzensierte Details zu sehen, benötigen Sie im Anschluss ein kostenloses Konto.
+                        Dieser Scanner wertet im ersten Schritt Clearnet-Quellen aus. 
+                        Um tiefgreifende Leaks, Darkweb-Erwähnungen und unzensierte Details zu sehen, benötigen Sie im Anschluss ein Konto.
                       </p>
                     </div>
                     
@@ -483,7 +501,7 @@ export default function DemoScanner() {
                       className="shrink-0 relative overflow-hidden"
                     >
                       <span className="relative z-10 font-bold tracking-wider">
-                        VORAB-SCAN STARTEN
+                        SCAN STARTEN
                       </span>
                     </Button>
                   </div>
@@ -594,7 +612,7 @@ export default function DemoScanner() {
                         <p className="text-left text-sm leading-relaxed text-gray-300">
                           Wir haben soeben nur die Oberfläche angekratzt. Hacker nutzen weitaus tiefere Datenbanken, 
                           Darknet-Leaks und KI-Korrelationen, um Profile vollständig zu übernehmen. 
-                          Registrieren Sie sich jetzt kostenlos, um den vollständigen, unzensierten Bericht einzusehen und 
+                          Registrieren Sie sich jetzt, um den vollständigen Bericht einzusehen und 
                           herauszufinden, was wirklich über Sie im Netz zirkuliert.
                         </p>
                       </div>
@@ -609,7 +627,7 @@ export default function DemoScanner() {
                       onClick={reset}
                       className="text-xs font-mono tracking-widest text-white/30 hover:text-white/60 transition-colors uppercase border-b border-transparent hover:border-white/30 pb-0.5"
                     >
-                      Neuen Vorab-Scan starten
+                      Neuen Scan starten
                     </button>
                   </div>
                 </div>
