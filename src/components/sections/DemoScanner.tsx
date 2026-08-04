@@ -31,45 +31,26 @@ const FIELDS: Array<{
   placeholder: string;
   type?: string;
   help: string;
-  modules: string;
 }> = [
   {
     key: "email",
-    label: "E-Mail",
+    label: "E-Mail Adresse",
     placeholder: "name@domain.de",
     type: "email",
-    help: "Beste Quelle für Account-Leaks und Korrelation.",
-    modules: "Holehe → SpiderFoot",
+    help: "Prüft auf Daten-Leaks und verknüpfte Accounts.",
   },
   {
     key: "username",
-    label: "Username",
-    placeholder: "alias / handle",
-    help: "Social-/Foren-Profile und Alias-Cluster.",
-    modules: "Maigret → SpiderFoot",
+    label: "Benutzername / Alias",
+    placeholder: "z.B. shadow_99",
+    help: "Durchsucht Hunderte Foren & Social-Media-Plattformen.",
   },
   {
     key: "phone",
-    label: "Telefon",
-    placeholder: "+49 …",
+    label: "Telefonnummer",
+    placeholder: "+49 151 ...",
     type: "tel",
-    help: "Carrier-/Länder-Hinweise zur Nummer.",
-    modules: "PhoneInfoga",
-  },
-  {
-    key: "domain",
-    label: "Domain",
-    placeholder: "beispiel.de  (ohne https://)",
-    help: "Nur Hostname, z. B. synsight.de — nicht die volle URL.",
-    modules: "theHarvester → SpiderFoot",
-  },
-  {
-    key: "url",
-    label: "URL",
-    placeholder: "https://synsight.de/…",
-    type: "url",
-    help: "Vollständige Seiten-URL für Web-Crawl (Photon).",
-    modules: "Photon",
+    help: "Überprüft Provider-, Messenger- & Standortdaten.",
   },
 ];
 
@@ -149,6 +130,7 @@ export default function DemoScanner() {
   const { ref, isVisible } = useScrollAnimation();
   const aliveRef = useRef(true);
 
+  // Hinweis: domain und url bleiben im State für Type-Kompatibilität, werden aber im UI ignoriert.
   const [fields, setFields] = useState<ScanQueries>({
     email: "",
     username: "",
@@ -219,7 +201,6 @@ export default function DemoScanner() {
         )
       );
 
-      // Soft progress while Contabo works (real completion jumps to 100)
       const tick = setInterval(() => {
         if (!aliveRef.current) return;
         setModuleSteps((prev) =>
@@ -309,7 +290,6 @@ export default function DemoScanner() {
     });
 
     const modules = (normalized.modules || []) as ScanModule[];
-    // Ensure every planned module appears in summary even if empty
     for (const step of plan) {
       const id = step.module === "spiderfoot" ? "SpiderFoot" : step.module;
       if (!modules.some((m) => m.id === id || m.id === step.module)) {
@@ -409,52 +389,55 @@ export default function DemoScanner() {
                 : "opacity-0 translate-y-8"
             }`}
           >
-            <span className="hud-label">03 / FREE INTELLIGENCE SCAN</span>
+            <span className="hud-label">03 / LIVE OSINT DEMO</span>
 
             <h2 className="text-balance text-4xl md:text-6xl font-semibold tracking-[-.045em] mt-5 mb-7">
-              Erkennen Sie Ihre{" "}
-              <span className="cyber-gradient">digitale Angriffsfläche.</span>
+              Ist Ihre Identität bereits{" "}
+              <span className="cyber-gradient">kompromittiert?</span>
             </h2>
 
             <p className="max-w-3xl mx-auto text-gray-400 text-lg leading-relaxed">
-              Module laufen nacheinander: Holehe, Maigret, PhoneInfoga,
-              theHarvester, Photon und SpiderFoot. Je mehr Felder, desto
-              vollständiger — ohne Parallel-Timeout.
+              Hacker benötigen oft nur ein einziges Puzzleteil, um ein digitales Profil zu knacken. 
+              Unser kostenloser Vorab-Scan durchkämmt öffentliche Netzwerke nach Ihren Spuren. 
+              Geben Sie Daten ein, die Sie überprüfen möchten.
             </p>
           </div>
 
           <GlassCard
             hover={false}
-            className="glass-strong relative overflow-hidden"
+            className="glass-strong relative overflow-hidden shadow-2xl shadow-cyber-cyan/10"
           >
             <div className="p-6 md:p-8">
               {phase === "idle" && (
                 <>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/5">
                     <div>
-                      <h3 className="text-white text-xl tracking-[-.02em]">
-                        Kostenloser Multi-Modul-Check
+                      <h3 className="text-white text-xl font-medium tracking-tight mb-2">
+                        Starten Sie Ihre kostenlose Voranalyse
                       </h3>
-                      <p className="text-gray-500 text-sm mt-1">
-                        Felder optional. Leere Eingaben werden übersprungen.
-                        Pipeline: {plannedSteps.length} Schritt(e) geplant.
+                      <p className="text-sm text-gray-400">
+                        Sie können ein, zwei oder alle drei Felder ausfüllen. Je mehr Datenpunkte Sie angeben, 
+                        desto präziser können unsere KI-Module verborgene Zusammenhänge herstellen.
                       </p>
                     </div>
-                    <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-cyber-cyan/60">
-                      {activeCount} Ziel(e) · {plannedSteps.length} Module
-                    </div>
+                    {activeCount > 0 && (
+                      <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-cyber-cyan/10 border border-cyber-cyan/20 rounded-full">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyber-cyan opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyber-cyan"></span>
+                        </span>
+                        <span className="font-mono text-xs text-cyber-cyan tracking-wider uppercase">
+                          {activeCount} Ziel{activeCount > 1 ? "e" : ""} bereit
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     {FIELDS.map((field) => (
-                      <label key={field.key} className="block text-left">
-                        <span className="mb-1.5 flex items-center justify-between gap-2">
-                          <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-white/40">
-                            {field.label}
-                          </span>
-                          <span className="font-mono text-[9px] tracking-[0.12em] text-cyber-cyan/45">
-                            {field.modules}
-                          </span>
+                      <label key={field.key} className="block text-left group">
+                        <span className="mb-2 block font-mono text-[11px] tracking-[0.15em] uppercase text-white/60 group-focus-within:text-cyber-cyan transition-colors">
+                          {field.label}
                         </span>
                         <input
                           value={fields[field.key] || ""}
@@ -470,44 +453,38 @@ export default function DemoScanner() {
                           type={field.type || "text"}
                           placeholder={field.placeholder}
                           maxLength={160}
-                          className="w-full px-4 py-3.5 rounded-lg bg-black/40 border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-cyber-cyan/50"
+                          className="w-full px-4 py-4 rounded-lg bg-black/50 border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-cyber-cyan/60 focus:bg-cyber-cyan/5 transition-all shadow-inner placeholder:text-white/20"
                         />
-                        <span className="mt-1.5 block text-[11px] leading-snug text-white/35">
+                        <span className="mt-2.5 block text-[11px] leading-snug text-gray-500">
                           {field.help}
                         </span>
                       </label>
                     ))}
                   </div>
 
-                  {plannedSteps.length > 0 ? (
-                    <div className="mb-5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
-                      <div className="font-mono text-[9px] tracking-[0.18em] text-white/35 uppercase mb-1.5">
-                        Geplante Reihenfolge
+                  <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between bg-black/30 p-5 rounded-xl border border-white/5">
+                    <div className="max-w-xl">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span className="text-xs font-semibold tracking-wider text-amber-400 uppercase">Wichtiger Hinweis zur Tiefe</span>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {plannedSteps.map((step, idx) => (
-                          <span
-                            key={step.id}
-                            className="rounded border border-cyber-cyan/20 bg-cyber-cyan/5 px-2 py-0.5 font-mono text-[10px] text-cyber-cyan/80"
-                          >
-                            {idx + 1}. {step.label}
-                          </span>
-                        ))}
-                      </div>
+                      <p className="text-[13px] text-gray-400 leading-relaxed">
+                        Dieses Demo-Tool kratzt nur an der Oberfläche (Clearnet). Es zeigt Ihnen eine erste Einschätzung Ihrer digitalen Angriffsfläche. 
+                        Um tiefgreifende Leaks, Darkweb-Erwähnungen und unzensierte Details zu sehen, benötigen Sie im Anschluss ein kostenloses Konto.
+                      </p>
                     </div>
-                  ) : null}
-
-                  <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-                    <p className="text-xs text-white/35 max-w-md leading-relaxed">
-                      Für maximale Tiefe: E-Mail + Username + Domain. Module
-                      werden strikt nacheinander auf Contabo ausgeführt.
-                    </p>
+                    
                     <Button
                       size="lg"
                       onClick={startScan}
                       disabled={activeCount === 0}
+                      className="shrink-0 relative overflow-hidden"
                     >
-                      SEQUENZ-SCAN STARTEN
+                      <span className="relative z-10 font-bold tracking-wider">
+                        VORAB-SCAN STARTEN
+                      </span>
                     </Button>
                   </div>
                 </>
@@ -516,16 +493,16 @@ export default function DemoScanner() {
               {(phase === "scanning" ||
                 phase === "fullscreen_result" ||
                 phase === "closing_crt") && (
-                <div className="text-center py-10">
-                  <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-cyber-cyan/30 bg-cyber-cyan/5">
-                    <div className="h-7 w-7 rounded-full border-2 border-transparent border-t-cyber-cyan animate-spin" />
+                <div className="text-center py-16">
+                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-cyber-cyan/30 bg-cyber-cyan/5 shadow-[0_0_30px_rgba(41,182,246,0.15)]">
+                    <div className="h-8 w-8 rounded-full border-2 border-transparent border-t-cyber-cyan animate-spin" />
                   </div>
-                  <div className="font-mono text-[11px] tracking-[0.28em] text-cyber-cyan/80">
-                    MODULE LAUFEN SEQUENZIELL …
+                  <div className="font-mono text-sm tracking-[0.28em] text-cyber-cyan/80 mb-4 font-bold">
+                    ANALYSE WIRD DURCHGEFÜHRT ...
                   </div>
-                  <p className="text-gray-500 text-sm mt-3">
+                  <p className="text-gray-400 text-sm max-w-sm mx-auto">
                     {activeStepLabel ||
-                      "Bitte warten — Vollbild-Analyse aktiv."}
+                      "Bitte warten Sie, während unsere Module das Netz nach Ihren Datenpunkten scannen."}
                   </p>
                 </div>
               )}
@@ -565,7 +542,7 @@ export default function DemoScanner() {
                     </div>
                     <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
                       <div className="font-mono text-[9px] tracking-[0.2em] text-white/35 uppercase">
-                        Datenpunkte
+                        Öffentliche Datenpunkte
                       </div>
                       <div className="mt-2 text-3xl font-semibold tabular-nums text-white">
                         {findingCount}
@@ -573,7 +550,7 @@ export default function DemoScanner() {
                     </div>
                     <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
                       <div className="font-mono text-[9px] tracking-[0.2em] text-white/35 uppercase">
-                        Module
+                        Aktive Module
                       </div>
                       <div className="mt-2 text-3xl font-semibold tabular-nums text-white">
                         {modules.length}
@@ -583,7 +560,7 @@ export default function DemoScanner() {
 
                   <div className="space-y-3">
                     <div className="font-mono text-[10px] tracking-[0.22em] text-cyber-cyan/70 uppercase">
-                      Modul-Zusammenfassung
+                      Modul-Zusammenfassung (Clearnet)
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {modules.map((mod) => (
@@ -596,7 +573,7 @@ export default function DemoScanner() {
                               {mod.label}
                             </div>
                             <div className="font-mono text-[10px] text-cyber-cyan/70">
-                              {mod.count}
+                              {mod.count} Treffer
                             </div>
                           </div>
                           <p className="text-sm text-white/55 leading-relaxed">
@@ -607,29 +584,33 @@ export default function DemoScanner() {
                     </div>
                   </div>
 
-                  <div className="relative overflow-hidden rounded-xl border border-cyber-cyan/20 bg-[linear-gradient(145deg,rgba(41,182,246,0.08),rgba(7,11,19,0.35))] p-5 md:p-6">
+                  <div className="relative overflow-hidden rounded-xl border border-cyber-cyan/20 bg-[linear-gradient(145deg,rgba(41,182,246,0.08),rgba(7,11,19,0.35))] p-5 md:p-6 mt-6">
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyber-cyan/40 to-transparent" />
-                    <div className="mb-3 font-mono text-[10px] tracking-[0.22em] text-cyber-cyan/70 uppercase">
-                      Gesamt-Briefing
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="max-w-2xl">
+                        <div className="mb-3 font-mono text-[11px] tracking-[0.22em] font-bold text-cyber-cyan uppercase">
+                          Deep-Web & Full-Scale Analyse freischalten
+                        </div>
+                        <p className="text-left text-sm leading-relaxed text-gray-300">
+                          Wir haben soeben nur die Oberfläche angekratzt. Hacker nutzen weitaus tiefere Datenbanken, 
+                          Darknet-Leaks und KI-Korrelationen, um Profile vollständig zu übernehmen. 
+                          Registrieren Sie sich jetzt kostenlos, um den vollständigen, unzensierten Bericht einzusehen und 
+                          herauszufinden, was wirklich über Sie im Netz zirkuliert.
+                        </p>
+                      </div>
+                      <Button onClick={() => router.push("/register")} className="shrink-0 whitespace-nowrap shadow-[0_0_20px_rgba(41,182,246,0.3)]">
+                        VOLLSTÄNDIGEN BERICHT FREISCHALTEN
+                      </Button>
                     </div>
-                    <p className="text-left text-base leading-relaxed text-white/80 md:text-[17px]">
-                      {apiResult?.summary ?? "Analyse abgeschlossen."}
-                    </p>
                   </div>
 
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="max-w-md text-sm leading-relaxed text-white/40">
-                      Die sequenzielle Voranalyse ist abgeschlossen. Für den
-                      vollständigen Deep-Scan Konto aktivieren.
-                    </p>
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <Button onClick={() => router.push("/register")}>
-                        VOLLSTÄNDIGE ANALYSE AKTIVIEREN
-                      </Button>
-                      <Button variant="ghost" onClick={reset}>
-                        Neuer Scan
-                      </Button>
-                    </div>
+                  <div className="pt-4 text-center">
+                    <button 
+                      onClick={reset}
+                      className="text-xs font-mono tracking-widest text-white/30 hover:text-white/60 transition-colors uppercase border-b border-transparent hover:border-white/30 pb-0.5"
+                    >
+                      Neuen Vorab-Scan starten
+                    </button>
                   </div>
                 </div>
               )}
