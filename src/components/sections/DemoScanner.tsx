@@ -25,33 +25,13 @@ import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
 
 type FieldKey = keyof ScanQueries;
 
-const FIELDS: Array<{
-  key: FieldKey;
-  label: string;
-  placeholder: string;
-  type?: string;
-  help: string;
-}> = [
-  {
-    key: "email",
-    label: "E-Mail Adresse",
-    placeholder: "name@domain.de",
-    type: "email",
-    help: "Prüft auf Daten-Leaks und verknüpfte Accounts.",
-  },
-  {
-    key: "username",
-    label: "Benutzername / Alias",
-    placeholder: "z.B. shadow_99",
-    help: "Durchsucht Foren & Social-Media-Plattformen.",
-  },
-  {
-    key: "phone",
-    label: "Telefonnummer",
-    placeholder: "+49 151 ...",
-    type: "tel",
-    help: "Überprüft Provider-, Messenger- & Standortdaten.",
-  },
+const COUNTRY_CODES = [
+  { code: "+49", label: "DE (+49)" },
+  { code: "+43", label: "AT (+43)" },
+  { code: "+41", label: "CH (+41)" },
+  { code: "+44", label: "UK (+44)" },
+  { code: "+1", label: "US (+1)" },
+  { code: "+33", label: "FR (+33)" },
 ];
 
 function riskTone(riskLevel?: string, score = 0) {
@@ -74,19 +54,26 @@ function riskTone(riskLevel?: string, score = 0) {
   };
 }
 
-// Intelligenter Filter, der auch Validierungen (wie das @ bei E-Mails) durchführt
-function filledQueries(fields: ScanQueries): ScanQueries {
+function filledQueries(fields: ScanQueries, countryCode: string, phoneNumber: string): ScanQueries {
   const out: ScanQueries = {};
-  for (const { key } of FIELDS) {
-    let value = fields[key]?.trim();
-    if (value) {
-      // E-Mail muss ein @ enthalten, sonst wird sie noch nicht als gültig gezählt
-      if (key === "email" && !value.includes("@")) {
-        continue;
-      }
-      out[key] = value;
-    }
+  
+  const email = fields.email?.trim();
+  if (email && email.includes("@")) {
+    out.email = email;
   }
+
+  const username = fields.username?.trim();
+  if (username) {
+    out.username = username;
+  }
+
+  const rawPhone = phoneNumber.trim();
+  if (rawPhone) {
+    // Führende 0 entfernen, falls der Nutzer sie trotz Hinweises eingetippt hat
+    const cleanNumber = rawPhone.startsWith("0") ? rawPhone.substring(1) : rawPhone;
+    out.phone = `${countryCode}${cleanNumber.replace(/[^\d]/g, "")}`;
+  }
+
   return normalizeScanQueries(out);
 }
 
@@ -144,6 +131,11 @@ export default function DemoScanner() {
     domain: "",
     url: "",
   });
+  
+  // Standardmäßig auf +49, wird gleich per IP-Check verfeinert
+  const [selectedCountryCode, setSelectedCountryCode] = useState("+49");
+  const [phoneNumberInput, setPhoneNumberInput] = useState("");
+
   const [phase, setPhase] = useState<ScanPhase>("idle");
   const [progress, setProgress] = useState(0);
   const [apiResult, setApiResult] = useState<ApiResult | null>(null);
@@ -151,7 +143,23 @@ export default function DemoScanner() {
   const [moduleSteps, setModuleSteps] = useState<ModuleStepState[]>([]);
   const [activeStepLabel, setActiveStepLabel] = useState("");
 
-  const activeQueries = useMemo(() => filledQueries(fields), [fields]);
+  // IP-Erkennung beim Laden der Komponente, um DE/AT/CH Vorwahl automatisch zu setzen
+  useEffect(() => {
+    fetch("https://ipapi.co/json/")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.country_code) {
+          if (data.country_code === "AT") setSelectedCountryCode("+43");
+          else if (data.country_code === "CH") setSelectedCountryCode("+41");
+          else if (data.country_code === "DE") setSelectedCountryCode("+49");
+        }
+      })
+      .catch(() => {
+        // Fallback bleibt +49
+      });
+  }, []);
+
+  const activeQueries = useMemo(() => filledQueries(fields, selectedCountryCode, phoneNumberInput), [fields, selectedCountryCode, phoneNumberInput]);
   const activeCount = Object.keys(activeQueries).length;
   const plannedSteps = useMemo(
     () => buildScanPlan(activeQueries),
@@ -169,25 +177,17 @@ export default function DemoScanner() {
     };
   }, []);
 
-  const handleInputChange = (key: FieldKey, value: string) => {
-    let formattedValue = value;
-
-    // Telefonnummern-Intelligenz: 0 zu +49 umwandeln und nur Nummern/Plus/Leerzeichen erlauben
-    if (key === "phone") {
-      if (formattedValue.startsWith("0")) {
-        formattedValue = "+49" + formattedValue.substring(1);
-      }
-      formattedValue = formattedValue.replace(/[^\d\s+]/g, "");
+  const handlePhoneChange = (value: string) => {
+    let cleaned = value.replace(/[^\d]/g, "");
+    // Wenn der Nutzer mit 0 beginnt, automatisch abschneiden für saubere Weiterleitung mit Vorwahl
+    if (cleaned.startsWith("0")) {
+      cleaned = cleaned.substring(1);
     }
-
-    setFields((prev) => ({
-      ...prev,
-      [key]: formattedValue,
-    }));
+    setPhoneNumberInput(cleaned);
   };
 
   const startScan = useCallback(async () => {
-    const queries = filledQueries(fields);
+    const queries = filledQueries(fields, selectedCountryCode, phoneNumberInput);
     const plan = buildScanPlan(queries);
     if (plan.length === 0 || phase === "scanning") return;
 
@@ -362,7 +362,7 @@ export default function DemoScanner() {
     setTimeout(() => {
       if (aliveRef.current) setPhase("fullscreen_result");
     }, 700);
-  }, [fields, phase]);
+  }, [fields, selectedCountryCode, phoneNumberInput, phase]);
 
   const closeFullscreen = () => {
     setPhase("complete");
@@ -371,6 +371,7 @@ export default function DemoScanner() {
   const reset = () => {
     setPhase("idle");
     setFields({ email: "", username: "", phone: "", domain: "", url: "" });
+    setPhoneNumberInput("");
     setProgress(0);
     setApiResult(null);
     setRawData(null);
@@ -457,27 +458,86 @@ export default function DemoScanner() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    {FIELDS.map((field) => (
-                      <label key={field.key} className="block text-left group">
-                        <span className="mb-2 block font-mono text-[11px] tracking-[0.15em] uppercase text-white/60 group-focus-within:text-cyber-cyan transition-colors">
-                          {field.label}
-                        </span>
+                    {/* E-Mail Feld */}
+                    <label className="block text-left group">
+                      <span className="mb-2 block font-mono text-[11px] tracking-[0.15em] uppercase text-white/60 group-focus-within:text-cyber-cyan transition-colors">
+                        E-Mail Adresse
+                      </span>
+                      <input
+                        value={fields.email || ""}
+                        onChange={(e) =>
+                          setFields((prev) => ({ ...prev, email: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && activeCount > 0) startScan();
+                        }}
+                        type="email"
+                        placeholder="name@domain.de"
+                        maxLength={160}
+                        className="w-full px-4 py-4 rounded-lg bg-black/50 border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-cyber-cyan/60 focus:bg-cyber-cyan/5 transition-all shadow-inner placeholder:text-white/20"
+                      />
+                      <span className="mt-2.5 block text-[11px] leading-snug text-gray-500">
+                        Prüft auf Daten-Leaks und verknüpfte Accounts.
+                      </span>
+                    </label>
+
+                    {/* Username Feld */}
+                    <label className="block text-left group">
+                      <span className="mb-2 block font-mono text-[11px] tracking-[0.15em] uppercase text-white/60 group-focus-within:text-cyber-cyan transition-colors">
+                        Benutzername / Alias
+                      </span>
+                      <input
+                        value={fields.username || ""}
+                        onChange={(e) =>
+                          setFields((prev) => ({ ...prev, username: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && activeCount > 0) startScan();
+                        }}
+                        type="text"
+                        placeholder="z.B. shadow_99"
+                        maxLength={160}
+                        className="w-full px-4 py-4 rounded-lg bg-black/50 border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-cyber-cyan/60 focus:bg-cyber-cyan/5 transition-all shadow-inner placeholder:text-white/20"
+                      />
+                      <span className="mt-2.5 block text-[11px] leading-snug text-gray-500">
+                        Durchsucht Foren & Social-Media-Plattformen.
+                      </span>
+                    </label>
+
+                    {/* Telefonnummer Feld mit Ländervorwahl-Dropdown */}
+                    <label className="block text-left group">
+                      <span className="mb-2 block font-mono text-[11px] tracking-[0.15em] uppercase text-white/60 group-focus-within:text-cyber-cyan transition-colors">
+                        Telefonnummer
+                      </span>
+                      <div className="flex rounded-lg bg-black/50 border border-white/10 focus-within:border-cyber-cyan/60 focus-within:bg-cyber-cyan/5 transition-all shadow-inner overflow-hidden">
+                        <select
+                          value={selectedCountryCode}
+                          onChange={(e) => setSelectedCountryCode(e.target.value)}
+                          aria-label="Ländervorwahl"
+                          className="bg-transparent text-white/80 font-mono text-xs px-2.5 py-4 border-r border-white/10 focus:outline-none cursor-pointer hover:text-white"
+                        >
+                          {COUNTRY_CODES.map((c) => (
+                            <option key={c.code} value={c.code} className="bg-gray-900 text-white">
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
                         <input
-                          value={fields[field.key] || ""}
-                          onChange={(e) => handleInputChange(field.key, e.target.value)}
+                          value={phoneNumberInput}
+                          onChange={(e) => handlePhoneChange(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" && activeCount > 0) startScan();
                           }}
-                          type={field.type || "text"}
-                          placeholder={field.placeholder}
-                          maxLength={160}
-                          className="w-full px-4 py-4 rounded-lg bg-black/50 border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-cyber-cyan/60 focus:bg-cyber-cyan/5 transition-all shadow-inner placeholder:text-white/20"
+                          type="tel"
+                          placeholder="1512345678"
+                          maxLength={30}
+                          className="w-full px-3 py-4 bg-transparent text-white font-mono text-sm focus:outline-none placeholder:text-white/20"
                         />
-                        <span className="mt-2.5 block text-[11px] leading-snug text-gray-500">
-                          {field.help}
-                        </span>
-                      </label>
-                    ))}
+                      </div>
+                      <span className="mt-2.5 block text-[11px] leading-snug text-gray-500">
+                        Überprüft Provider-, Messenger- & Standortdaten.
+                      </span>
+                    </label>
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between bg-black/30 p-5 rounded-xl border border-white/5">
@@ -610,7 +670,7 @@ export default function DemoScanner() {
                           Deep-Web & Full-Scale Analyse freischalten
                         </div>
                         <p className="text-left text-sm leading-relaxed text-gray-300">
-                          Wir haben soeben nur die Oberfläche angekratzt. Hacker nutzen weitaus tiefere Datenbanken, 
+                          Wir haben soeben nur the Oberfläche angekratzt. Hacker nutzen weitaus tiefere Datenbanken, 
                           Darknet-Leaks und KI-Korrelationen, um Profile vollständig zu übernehmen. 
                           Registrieren Sie sich jetzt, um den vollständigen Bericht einzusehen und 
                           herauszufinden, was wirklich über Sie im Netz zirkuliert.
