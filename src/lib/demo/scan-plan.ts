@@ -4,13 +4,15 @@ import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
 export type DemoModuleId =
   | "holehe"
   | "maigret"
-  | "phoneinfoga"
-  | "theHarvester"
-  | "photon"
-  | "spiderfoot";
+  | "sherlock"
+  | "phoneinfoga";
 
 export type ModuleStepStatus =
-  "pending" | "running" | "done" | "error" | "skipped";
+  | "pending"
+  | "running"
+  | "done"
+  | "error"
+  | "skipped";
 
 export interface ScanStep {
   id: string;
@@ -42,31 +44,20 @@ export const MODULE_META: Record<
     short: "Username OSINT",
     color: "#29b6f6",
   },
+  sherlock: {
+    label: "Sherlock",
+    short: "Social Search",
+    color: "#00d4ff",
+  },
   phoneinfoga: {
     label: "PhoneInfoga",
     short: "Telefon Intel",
-    color: "#5ce1ff",
-  },
-  theHarvester: {
-    label: "theHarvester",
-    short: "Domain Harvest",
-    color: "#00d4ff",
-  },
-  photon: {
-    label: "Photon",
-    short: "Web Crawl",
-    color: "#a7f3ff",
-  },
-  spiderfoot: {
-    label: "SpiderFoot",
-    short: "Deep OSINT",
-    color: "#22d3ee",
+    color: "#38bdf8",
   },
 };
 
 /**
- * Sequential plan — one Contabo module call per step (avoids nginx timeout).
- * Order: specialist tools first, then SpiderFoot on the strongest targets.
+ * High-Speed Pipeline: Reduziert auf die schnellsten Top-Tools für maximale Performance unter 8 Sekunden.
  */
 export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
   const queries = normalizeScanQueries(rawQueries);
@@ -77,101 +68,39 @@ export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
       id: "holehe-email",
       module: "holehe",
       label: "Holehe",
-      hint: "Account-Nachweise zur E-Mail",
+      hint: "E-Mail Leaks & Plattform-Check",
       query: queries.email,
       field: "email",
     });
   }
+
   if (queries.username) {
     steps.push({
       id: "maigret-username",
       module: "maigret",
       label: "Maigret",
-      hint: "Öffentliche Profile zum Username",
+      hint: "High-Speed Social Profile Scan",
+      query: queries.username,
+      field: "username",
+    });
+    steps.push({
+      id: "sherlock-username",
+      module: "sherlock",
+      label: "Sherlock",
+      hint: "Cross-Platform Handle Abgleich",
       query: queries.username,
       field: "username",
     });
   }
+
   if (queries.phone) {
     steps.push({
       id: "phoneinfoga-phone",
       module: "phoneinfoga",
       label: "PhoneInfoga",
-      hint: "Telefon-/Carrier-Hinweise",
+      hint: "Carrier & Nummern-Validierung",
       query: queries.phone,
       field: "phone",
-    });
-  }
-  if (queries.domain) {
-    steps.push({
-      id: "harvester-domain",
-      module: "theHarvester",
-      label: "theHarvester",
-      hint: "E-Mails & Hosts zur Domain",
-      query: queries.domain,
-      field: "domain",
-    });
-  }
-  if (queries.url) {
-    steps.push({
-      id: "photon-url",
-      module: "photon",
-      label: "Photon",
-      hint: "Web-Crawl & Keys",
-      query: queries.url,
-      field: "url",
-    });
-  }
-
-  // SpiderFoot last — deepest correlation, one call per strong target
-  if (queries.email) {
-    steps.push({
-      id: "sf-email",
-      module: "spiderfoot",
-      label: "SpiderFoot",
-      hint: `Deep OSINT · ${queries.email}`,
-      query: queries.email,
-      field: "email",
-    });
-  }
-  if (queries.domain) {
-    steps.push({
-      id: "sf-domain",
-      module: "spiderfoot",
-      label: "SpiderFoot",
-      hint: `Deep OSINT · ${queries.domain}`,
-      query: queries.domain,
-      field: "domain",
-    });
-  }
-  if (queries.username && !queries.email) {
-    steps.push({
-      id: "sf-username",
-      module: "spiderfoot",
-      label: "SpiderFoot",
-      hint: `Deep OSINT · ${queries.username}`,
-      query: queries.username,
-      field: "username",
-    });
-  }
-  if (queries.phone && !queries.email && !queries.username && !queries.domain) {
-    steps.push({
-      id: "sf-phone",
-      module: "spiderfoot",
-      label: "SpiderFoot",
-      hint: `Deep OSINT · ${queries.phone}`,
-      query: queries.phone,
-      field: "phone",
-    });
-  }
-  if (queries.url && Object.keys(queries).length === 1) {
-    steps.push({
-      id: "sf-url",
-      module: "spiderfoot",
-      label: "SpiderFoot",
-      hint: `Deep OSINT · ${queries.url}`,
-      query: queries.url,
-      field: "url",
     });
   }
 
