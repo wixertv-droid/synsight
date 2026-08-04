@@ -5,7 +5,8 @@ export type DemoModuleId =
   | "holehe"
   | "maigret"
   | "sherlock"
-  | "phoneinfoga";
+  | "phoneinfoga"
+  | "spiderfoot";
 
 export type ModuleStepStatus =
   | "pending"
@@ -54,10 +55,15 @@ export const MODULE_META: Record<
     short: "Telefon Intel",
     color: "#38bdf8",
   },
+  spiderfoot: {
+    label: "SpiderFoot",
+    short: "Deep Korrelation",
+    color: "#22d3ee",
+  },
 };
 
 /**
- * Parallel-Pipeline: Jeder Datentyp wird zielgerichtet über seinen Spezialisten abgefragt.
+ * Komplette Pipeline inkl. SpiderFoot als Deep-Korrelation.
  */
 export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
   const queries = normalizeScanQueries(rawQueries);
@@ -101,6 +107,19 @@ export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
       hint: "Carrier- & Standortprüfung",
       query: queries.phone,
       field: "phone",
+    });
+  }
+
+  // SpiderFoot am Ende als Deep-Korrelation (nutzt die E-Mail oder den Username)
+  const sfTarget = queries.email || queries.username || queries.phone;
+  if (sfTarget) {
+    steps.push({
+      id: "spiderfoot-deep",
+      module: "spiderfoot",
+      label: "SpiderFoot",
+      hint: "Deep OSINT Korrelation",
+      query: sfTarget,
+      field: queries.email ? "email" : queries.username ? "username" : "phone",
     });
   }
 
