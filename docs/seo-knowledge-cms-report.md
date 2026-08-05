@@ -85,15 +85,23 @@ Bestehende Tabellen wurden **nicht** geändert.
 - [ ] Live-MariaDB-Migration auf VPS (nach Deploy: `npm run db:migrate`)
 - [ ] Manueller Admin-Klickpfad auf Produktion
 
-## Deploy
+## Deploy (VPS `/opt/synsight`)
 
 ```bash
-cd /var/www/synsight
-git fetch origin && git checkout cursor/admin-seo-knowledge-cms-7c12
+cd /opt/synsight
+git fetch origin
+git checkout cursor/admin-seo-knowledge-cms-7c12
+git pull origin cursor/admin-seo-knowledge-cms-7c12
 npm ci
-npm run db:migrate
-npm run build
-pm2 restart synsight
+
+DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run db:migrate
+DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run db:ensure-catalog
+DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run db:status
+DATABASE_URL='mysql://synsight:Shorty2306@localhost:3306/synsight' npm run build
+
+pm2 delete synsight 2>/dev/null || true
+pm2 start ecosystem.config.cjs --update-env
+pm2 save
 ```
 
 Contabo Deep-API: **kein** Update nötig.
