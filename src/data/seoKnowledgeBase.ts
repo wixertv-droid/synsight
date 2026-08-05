@@ -1,0 +1,6286 @@
+/**
+ * SynSight SEO Knowledge Base
+ * Zentrale Wissensdatenbank für Landingpage-Generator & interne Verlinkung.
+ * Jedes Objekt = eine zukünftige indexierbare Landingpage.
+ *
+ * Generiert/gepflegt als Content-Strategie – noch keine automatischen Routen.
+ */
+
+export type SeoCategory =
+  | "OSINT"
+  | "Datenschutz"
+  | "Datenlecks"
+  | "Cybersecurity"
+  | "Social Media"
+  | "Reverse Image"
+  | "Google"
+  | "Benutzernamen"
+  | "Telefon"
+  | "Email"
+  | "Identität"
+  | "Sicherheit";
+
+export type SeoSearchIntent =
+  "informational" | "commercial" | "transactional" | "navigational";
+
+export type SeoPriority = "hoch" | "mittel" | "niedrig";
+
+export type SeoTargetModule =
+  | "email"
+  | "username"
+  | "phone"
+  | "google"
+  | "social"
+  | "reverse-image"
+  | "face-scan"
+  | "digital-leak"
+  | "dashboard";
+
+export type SeoRiskLevel = "niedrig" | "mittel" | "hoch" | "kritisch";
+
+export type SeoDifficulty = "einsteiger" | "fortgeschritten" | "experte";
+
+export type SeoKnowledgeSection = {
+  heading: string;
+  content: string;
+};
+
+export type SeoKnowledgeFaq = {
+  question: string;
+  answer: string;
+};
+
+export type SeoKnowledgePage = {
+  slug: string;
+  title: string;
+  metaDescription: string;
+  keywords: string[];
+  category: SeoCategory;
+  difficulty: SeoDifficulty;
+  searchIntent: SeoSearchIntent;
+  targetModule: SeoTargetModule;
+  estimatedSearchVolume: number;
+  seoPriority: SeoPriority;
+  heroTitle: string;
+  heroSubtitle: string;
+  intro: string;
+  sections: SeoKnowledgeSection[];
+  faq: SeoKnowledgeFaq[];
+  relatedPages: string[];
+  internalLinks: string[];
+  callToAction: string;
+  riskLevel: SeoRiskLevel;
+  lastUpdated: string;
+};
+
+export const seoKnowledgeBase: SeoKnowledgePage[] = [
+  {
+    slug: "digitaler-fussabdruck",
+    title: "Digitaler Fußabdruck: was online über Sie steht",
+    metaDescription:
+      "Ihren digitalen Fußabdruck verstehen und bewerten. SynSight zeigt öffentliche Spuren – und wie Sie Risiken gezielt reduzieren. Jetzt prüfen.",
+    keywords: ["digitaler Fußabdruck", "Online Spuren", "digitale Identität"],
+    category: "Identität",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 5400,
+    seoPriority: "hoch",
+    heroTitle: "Ihr digitaler Fußabdruck – klar und verständlich",
+    heroSubtitle:
+      "Öffentliche Spuren, Profile und Leak-Hinweise in einem Lagebild.",
+    intro:
+      "Öffentliche Spuren, Profile und Leak-Hinweise in einem Lagebild. Diese Seite bereitet die spätere Landingpage zu „Digitaler Fußabdruck: Was online über Sie steht“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Identität: Einordnung",
+        content:
+          "Unter „Identität“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Öffentliche Spuren, Profile und Leak-Hinweise in einem Lagebild.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: was-weiss-das-internet-ueber-mich, digitalen-fussabdruck-loeschen, online-reputation-pruefen. Call-to-Action: Digitalen Fußabdruck jetzt prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Digitaler Fußabdruck“ konkret?",
+        answer:
+          "Öffentliche Spuren, Profile und Leak-Hinweise in einem Lagebild. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Digitalen Fußabdruck jetzt prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "was-weiss-das-internet-ueber-mich",
+      "digitalen-fussabdruck-loeschen",
+      "online-reputation-pruefen",
+    ],
+    internalLinks: ["/digital-footprint", "/analysen", "/osint-analyse"],
+    callToAction: "Digitalen Fußabdruck jetzt prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "was-weiss-das-internet-ueber-mich",
+    title: "Was weiß das Internet über mich wirklich? – Ratgeber",
+    metaDescription:
+      "Finden Sie heraus, was öffentlich über Sie im Netz steht. SynSight bündelt Suchtreffer, Profile und Leak-Hinweise. Orientierung starten. Jetzt bei SynSight.",
+    keywords: ["was weiß das Internet über mich", "meine Daten im Netz"],
+    category: "Identität",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "google",
+    estimatedSearchVolume: 8900,
+    seoPriority: "hoch",
+    heroTitle: "Was das Internet wirklich über Sie weiß",
+    heroSubtitle: "Ohne Panik – mit Prioritäten und klaren nächsten Schritten.",
+    intro:
+      "Ohne Panik – mit Prioritäten und klaren nächsten Schritten. Diese Seite bereitet die spätere Landingpage zu „Was weiß das Internet über mich? Klartext“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "Identität: Einordnung",
+        content:
+          "Unter „Identität“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Ohne Panik – mit Prioritäten und klaren nächsten Schritten.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: digitaler-fussabdruck, eigene-daten-im-internet-finden, google-analyse-synsight. Call-to-Action: Öffentliche Spuren prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Was weiß das Internet über mich? Klartext“ konkret?",
+        answer:
+          "Ohne Panik – mit Prioritäten und klaren nächsten Schritten. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Öffentliche Spuren prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "digitaler-fussabdruck",
+      "eigene-daten-im-internet-finden",
+      "google-analyse-synsight",
+    ],
+    internalLinks: ["/google-analyse", "/personensuche", "/#demo-scanner"],
+    callToAction: "Öffentliche Spuren prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "digitalen-fussabdruck-loeschen",
+    title: "Digitalen Fußabdruck löschen: was wirklich geht",
+    metaDescription:
+      "Digitalen Fußabdruck reduzieren statt Mythos „alles löschen“. SynSight zeigt Treffer und priorisiert Maßnahmen. Lagebild holen. Jetzt bei SynSight prüfen.",
+    keywords: ["digitalen Fußabdruck löschen", "Online Spuren entfernen"],
+    category: "Datenschutz",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 3600,
+    seoPriority: "hoch",
+    heroTitle: "Löschen, was geht – absichern, was bleibt",
+    heroSubtitle: "Realistische Strategie statt falscher Versprechen.",
+    intro:
+      "Realistische Strategie statt falscher Versprechen. Diese Seite bereitet die spätere Landingpage zu „Digitalen Fußabdruck löschen: Was wirklich geht“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Realistische Strategie statt falscher Versprechen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: persoenliche-daten-entfernen, recht-auf-vergessenwerden, suchmaschinen-loeschen. Call-to-Action: Zuerst Sichtbarkeit messen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Digitalen Fußabdruck löschen“ konkret?",
+        answer:
+          "Realistische Strategie statt falscher Versprechen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Zuerst Sichtbarkeit messen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "persoenliche-daten-entfernen",
+      "recht-auf-vergessenwerden",
+      "suchmaschinen-loeschen",
+    ],
+    internalLinks: ["/digital-footprint", "/datenschutz", "/hilfe"],
+    callToAction: "Zuerst Sichtbarkeit messen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "eigene-daten-im-internet-finden",
+    title: "Eigene Daten im Internet finden: Anleitung – Ratgeber",
+    metaDescription:
+      "Eigene Daten im Internet systematisch finden: Profile, Suchtreffer, Leaks. SynSight strukturiert die Suche. Jetzt Voranalyse starten. Jetzt bei SynSight prüfen.",
+    keywords: [
+      "eigene Daten finden",
+      "Selbstrecherche Internet",
+      "OSINT selbst",
+    ],
+    category: "OSINT",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "google",
+    estimatedSearchVolume: 4200,
+    seoPriority: "hoch",
+    heroTitle: "Eigene Daten finden – strukturiert statt chaotisch",
+    heroSubtitle: "Von der ersten Suche bis zum priorisierten Lagebild.",
+    intro:
+      "Von der ersten Suche bis zum priorisierten Lagebild. Diese Seite bereitet die spätere Landingpage zu „Eigene Daten im Internet finden – Anleitung“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Von der ersten Suche bis zum priorisierten Lagebild.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: was-weiss-das-internet-ueber-mich, osint-fuer-anfaenger, personensuche-im-internet. Call-to-Action: Selbstrecherche mit SynSight starten.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Eigene Daten im Internet finden – Anleitung“ konkret?",
+        answer:
+          "Von der ersten Suche bis zum priorisierten Lagebild. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Selbstrecherche mit SynSight starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "was-weiss-das-internet-ueber-mich",
+      "osint-fuer-anfaenger",
+      "personensuche-im-internet",
+    ],
+    internalLinks: ["/google-analyse", "/osint-analyse", "/analysen"],
+    callToAction: "Selbstrecherche mit SynSight starten",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "online-reputation-pruefen",
+    title: "Online-Reputation prüfen – so gehen Sie vor – Ratgeber",
+    metaDescription:
+      "Online-Reputation prüfen und Schwachstellen erkennen. SynSight zeigt öffentliche Treffer zu Name und Marke. Jetzt checken. Jetzt bei SynSight prüfen.",
+    keywords: ["Online Reputation", "Reputation prüfen", "Ruf im Internet"],
+    category: "Identität",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "google",
+    estimatedSearchVolume: 3100,
+    seoPriority: "hoch",
+    heroTitle: "Reputation prüfen, bevor andere es tun",
+    heroSubtitle: "Öffentliche Treffer zu Name, Marke und Profilen einordnen.",
+    intro:
+      "Öffentliche Treffer zu Name, Marke und Profilen einordnen. Diese Seite bereitet die spätere Landingpage zu „Online-Reputation prüfen: So gehen Sie vor“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "Identität: Einordnung",
+        content:
+          "Unter „Identität“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Öffentliche Treffer zu Name, Marke und Profilen einordnen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: google-analyse-synsight, social-media-fussabdruck, fake-profile. Call-to-Action: Reputationsscan starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Online-Reputation prüfen“ konkret?",
+        answer:
+          "Öffentliche Treffer zu Name, Marke und Profilen einordnen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Reputationsscan starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "google-analyse-synsight",
+      "social-media-fussabdruck",
+      "fake-profile",
+    ],
+    internalLinks: ["/google-analyse", "/social-media-analyse", "/analysen"],
+    callToAction: "Reputationsscan starten",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "persoenliche-daten-entfernen",
+    title: "Persönliche Daten im Netz entfernen: Guide – Ratgeber",
+    metaDescription:
+      "Persönliche Daten im Netz entfernen oder absichern. SynSight hilft, Fundstellen zu priorisieren. Maßnahmenplan anfordern. Jetzt bei SynSight prüfen.",
+    keywords: ["persönliche Daten entfernen", "Daten löschen Internet"],
+    category: "Datenschutz",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 4800,
+    seoPriority: "hoch",
+    heroTitle: "Persönliche Daten gezielt entfernen",
+    heroSubtitle: "Fundstellen erkennen, dann Plattform für Plattform handeln.",
+    intro:
+      "Fundstellen erkennen, dann Plattform für Plattform handeln. Diese Seite bereitet die spätere Landingpage zu „Persönliche Daten entfernen: Praxis-Guide“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Fundstellen erkennen, dann Plattform für Plattform handeln.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: digitalen-fussabdruck-loeschen, telefonbuch-eintrag-entfernen, dsgvo. Call-to-Action: Fundstellen zuerst sichtbar machen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Persönliche Daten entfernen“ konkret?",
+        answer:
+          "Fundstellen erkennen, dann Plattform für Plattform handeln. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Fundstellen zuerst sichtbar machen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "digitalen-fussabdruck-loeschen",
+      "telefonbuch-eintrag-entfernen",
+      "dsgvo",
+    ],
+    internalLinks: ["/digital-footprint", "/datenschutz", "/hilfe"],
+    callToAction: "Fundstellen zuerst sichtbar machen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "osint-erklaerung",
+    title: "OSINT einfach erklärt: offene Quellen nutzen – Ratgeber",
+    metaDescription:
+      "OSINT einfach erklärt: Was Open Source Intelligence darf – und was nicht. SynSight als geführte Plattform entdecken. Jetzt bei SynSight prüfen.",
+    keywords: ["OSINT Erklärung", "Was ist OSINT", "Open Source Intelligence"],
+    category: "OSINT",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 6700,
+    seoPriority: "hoch",
+    heroTitle: "OSINT – ohne Mythos, ohne Hacking",
+    heroSubtitle: "Öffentliche Quellen auswerten, Grenzen respektieren.",
+    intro:
+      "Öffentliche Quellen auswerten, Grenzen respektieren. Diese Seite bereitet die spätere Landingpage zu „OSINT Erklärung: Offene Quellen verständlich“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Definition ohne Buzzword",
+        content:
+          "OSINT ist die Auswertung öffentlich zugänglicher Informationen. Kein Einbruch in Systeme, keine privaten Postfächer.",
+      },
+      {
+        heading: "Typische Quellen",
+        content:
+          "Suchmaschinen, Social Profiles, Unternehmensseiten, öffentliche Registerhinweise und – wo lizenziert – Leak-Signale.",
+      },
+      {
+        heading: "SynSight-Ansatz",
+        content:
+          "Geführte Module, Scoring und Transparenz zu Grenzen – statt reiner Tool-Ausgabe.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „OSINT Erklärung“ konkret?",
+        answer:
+          "Öffentliche Quellen auswerten, Grenzen respektieren. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "OSINT-Module ansehen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "open-source-intelligence",
+      "osint-legal",
+      "osint-fuer-anfaenger",
+    ],
+    internalLinks: ["/osint-analyse", "/analysen", "/hilfe"],
+    callToAction: "OSINT-Module ansehen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "personensuche-im-internet",
+    title: "Personensuche im Internet – legal & sinnvoll – Ratgeber",
+    metaDescription:
+      "Personensuche im Internet mit öffentlichen Quellen. SynSight bündelt Signale transparent. Personensuche starten. Jetzt bei SynSight prüfen. Analyse bei.",
+    keywords: [
+      "Personensuche Internet",
+      "Personen finden online",
+      "People Search",
+    ],
+    category: "OSINT",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "google",
+    estimatedSearchVolume: 12000,
+    seoPriority: "hoch",
+    heroTitle: "Personensuche – transparent und datenschutzbewusst",
+    heroSubtitle:
+      "Keine Meldeämter, keine illegalen Broker – öffentliche Signale.",
+    intro:
+      "Keine Meldeämter, keine illegalen Broker – öffentliche Signale. Diese Seite bereitet die spätere Landingpage zu „Personensuche im Internet: Legal & sinnvoll“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Keine Meldeämter, keine illegalen Broker – öffentliche Signale.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: informationen-ueber-personen-finden, osint-erklaerung, google-analyse-synsight. Call-to-Action: Personensuche öffnen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Personensuche im Internet“ konkret?",
+        answer:
+          "Keine Meldeämter, keine illegalen Broker – öffentliche Signale. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Personensuche öffnen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "informationen-ueber-personen-finden",
+      "osint-erklaerung",
+      "google-analyse-synsight",
+    ],
+    internalLinks: ["/personensuche", "/google-analyse", "/#demo-scanner"],
+    callToAction: "Personensuche öffnen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "open-source-intelligence",
+    title: "Open Source Intelligence: Methoden & Grenzen – Ratgeber",
+    metaDescription:
+      "Open Source Intelligence (OSINT) im Überblick: Methoden, Ethik und SynSight-Praxis. Jetzt Modulüberblick lesen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Open Source Intelligence", "OSINT Methoden"],
+    category: "OSINT",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 2900,
+    seoPriority: "hoch",
+    heroTitle: "Open Source Intelligence in der Praxis",
+    heroSubtitle: "Quellen, Methoden und klare rote Linien.",
+    intro:
+      "Quellen, Methoden und klare rote Linien. Diese Seite bereitet die spätere Landingpage zu „Open Source Intelligence: Methoden & Grenzen“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Quellen, Methoden und klare rote Linien.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: osint-erklaerung, oeffentliche-quellen-durchsuchen, osint-tools-deutschland. Call-to-Action: OSINT bei SynSight nutzen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Open Source Intelligence“ konkret?",
+        answer:
+          "Quellen, Methoden und klare rote Linien. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "OSINT bei SynSight nutzen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "osint-erklaerung",
+      "oeffentliche-quellen-durchsuchen",
+      "osint-tools-deutschland",
+    ],
+    internalLinks: ["/osint-analyse", "/analysen", "/hilfe"],
+    callToAction: "OSINT bei SynSight nutzen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "wurde-meine-email-gehackt",
+    title: "Wurde meine E-Mail gehackt? So prüfen Sie das",
+    metaDescription:
+      "Wurde meine E-Mail gehackt? Leak-Hinweise prüfen und Sofortmaßnahmen starten. SynSight Digital Leak nutzen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: [
+      "E-Mail gehackt",
+      "Account gehackt prüfen",
+      "Mail kompromittiert",
+    ],
+    category: "Email",
+    difficulty: "einsteiger",
+    searchIntent: "transactional",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 14000,
+    seoPriority: "hoch",
+    heroTitle: "E-Mail gehackt? Zuerst Fakten, dann Handeln",
+    heroSubtitle: "Leak-Hinweise prüfen, Passwort & MFA absichern.",
+    intro:
+      "Leak-Hinweise prüfen, Passwort & MFA absichern. Diese Seite bereitet die spätere Landingpage zu „Wurde meine E-Mail gehackt? So prüfen Sie es“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Erst prüfen, dann reagieren",
+        content:
+          "Nicht jeder verdächtige Login ist ein Hack – und nicht jeder Leak bedeutet Klartext-Passwörter. SynSight hilft, Leak-Hinweise von Gerüchten zu trennen.",
+      },
+      {
+        heading: "Sofortmaßnahmen",
+        content:
+          "Passwort ändern (überall, wo es wiederverwendet wurde), MFA aktivieren, verdächtige Weiterleitungen und App-Passwörter prüfen, Sessions beenden.",
+      },
+      {
+        heading: "Weiter mit SynSight",
+        content:
+          "Digital Leak → E-Mail-Check → optional Google-Analyse, um öffentliche Querbezüge zu sehen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Wurde meine E-Mail gehackt? So prüfen Sie es“ konkret?",
+        answer:
+          "Leak-Hinweise prüfen, Passwort & MFA absichern. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "E-Mail auf Leaks prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "datenleck-pruefen",
+      "passwort-geleakt",
+      "email-in-datenbank-geleakt",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/email-check", "/google-analyse"],
+    callToAction: "E-Mail auf Leaks prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "datenleck-pruefen",
+    title: "Datenleck prüfen: schnell, klar, ohne Panik – Ratgeber",
+    metaDescription:
+      "Datenleck prüfen und Exposition einschätzen. SynSight zeigt Hinweise und nächste Schritte. Jetzt Leak-Check. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Datenleck prüfen", "Breach Check", "Leak Check"],
+    category: "Datenlecks",
+    difficulty: "einsteiger",
+    searchIntent: "transactional",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 9600,
+    seoPriority: "hoch",
+    heroTitle: "Datenleck prüfen – ohne Panikmache",
+    heroSubtitle: "Treffer einordnen und Sofortmaßnahmen priorisieren.",
+    intro:
+      "Treffer einordnen und Sofortmaßnahmen priorisieren. Diese Seite bereitet die spätere Landingpage zu „Datenleck prüfen: Schnell & verständlich“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Was ein Treffer bedeutet",
+        content:
+          "Ein Leak-Treffer zeigt Exposition, nicht automatisch aktuellen Account-Diebstahl. Die Schwere hängt von Quelle, Datum und enthaltenen Feldern ab.",
+      },
+      {
+        heading: "Priorisieren",
+        content:
+          "Zuerst Finanz-, Mail- und Cloud-Konten, dann Social Logins. SynSight markiert kritische Muster.",
+      },
+      {
+        heading: "Dauerhaft denken",
+        content:
+          "Einmal prüfen reicht selten. Monitoring fängt neue Breaches früher ab.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Datenleck prüfen“ konkret?",
+        answer:
+          "Treffer einordnen und Sofortmaßnahmen priorisieren. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Leak-Check starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "wurde-meine-email-gehackt",
+      "hibp-erklaerung",
+      "breach-monitoring",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/email-check", "/analysen"],
+    callToAction: "Leak-Check starten",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "passwort-geleakt",
+    title: "Passwort geleakt? Das sollten Sie sofort tun – Ratgeber",
+    metaDescription:
+      "Passwort geleakt? Sofortmaßnahmen und Wiederverwendungs-Check. SynSight hilft bei der Einordnung. Jetzt handeln. Jetzt bei SynSight prüfen. Analyse bei.",
+    keywords: ["Passwort geleakt", "Passwort Leak", "Credentials leaked"],
+    category: "Datenlecks",
+    difficulty: "einsteiger",
+    searchIntent: "transactional",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 7200,
+    seoPriority: "hoch",
+    heroTitle: "Passwort geleakt – so reagieren Sie richtig",
+    heroSubtitle: "Ändern, MFA, Wiederverwendung stoppen.",
+    intro:
+      "Ändern, MFA, Wiederverwendung stoppen. Diese Seite bereitet die spätere Landingpage zu „Passwort geleakt? Das sollten Sie sofort tun“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Datenlecks: Einordnung",
+        content:
+          "Unter „Datenlecks“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (transactional) und reale Risiken (kritisch) bündelt. Ändern, MFA, Wiederverwendung stoppen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: geleakte-passwoerter-aendern, passwortmanager, account-kompromittiert. Call-to-Action: Leak-Status prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Passwort geleakt? Das sollten Sie sofort tun“ konkret?",
+        answer:
+          "Ändern, MFA, Wiederverwendung stoppen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Leak-Status prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "geleakte-passwoerter-aendern",
+      "passwortmanager",
+      "account-kompromittiert",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/email-check", "/register"],
+    callToAction: "Leak-Status prüfen",
+    riskLevel: "kritisch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "hibp-erklaerung",
+    title: "HIBP erklärt: Have I Been Pwned verstehen – Ratgeber",
+    metaDescription:
+      "Have I Been Pwned (HIBP) erklärt – und wie SynSight Leak-Checks ergänzt. Unterschied verstehen und prüfen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Have I Been Pwned", "HIBP", "HIBP Erklärung"],
+    category: "Datenlecks",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 4500,
+    seoPriority: "hoch",
+    heroTitle: "HIBP verstehen – und sinnvoll ergänzen",
+    heroSubtitle:
+      "Was der Dienst zeigt, und was SynSight zusätzlich einordnet.",
+    intro:
+      "Was der Dienst zeigt, und was SynSight zusätzlich einordnet. Diese Seite bereitet die spätere Landingpage zu „HIBP Erklärung: Have I Been Pwned verstehen“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Datenlecks: Einordnung",
+        content:
+          "Unter „Datenlecks“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Was der Dienst zeigt, und was SynSight zusätzlich einordnet.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: datenleck-pruefen, wurde-meine-email-gehackt, breach-monitoring. Call-to-Action: Leak-Check bei SynSight.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „HIBP Erklärung“ konkret?",
+        answer:
+          "Was der Dienst zeigt, und was SynSight zusätzlich einordnet. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Leak-Check bei SynSight – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "datenleck-pruefen",
+      "wurde-meine-email-gehackt",
+      "breach-monitoring",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/email-check", "/hilfe"],
+    callToAction: "Leak-Check bei SynSight",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "credential-stuffing",
+    title: "Credential Stuffing: Angriff klar erklärt – Ratgeber",
+    metaDescription:
+      "Credential Stuffing verständlich: Warum geleakte Logins gefährlich sind. SynSight Leak-Check nutzen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: [
+      "Credential Stuffing",
+      "Login Stuffing",
+      "Passwort Wiederverwendung",
+    ],
+    category: "Cybersecurity",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 1500,
+    seoPriority: "mittel",
+    heroTitle: "Credential Stuffing stoppen",
+    heroSubtitle: "Ein Leak, viele Dienste – so entsteht der Dominoeffekt.",
+    intro:
+      "Ein Leak, viele Dienste – so entsteht der Dominoeffekt. Diese Seite bereitet die spätere Landingpage zu „Credential Stuffing: Angriff erklärt“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (hoch) bündelt. Ein Leak, viele Dienste – so entsteht der Dominoeffekt.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: passwort-geleakt, passwortmanager, sichere-passwoerter. Call-to-Action: Passwort-Wiederverwendung prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Credential Stuffing“ konkret?",
+        answer:
+          "Ein Leak, viele Dienste – so entsteht der Dominoeffekt. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Passwort-Wiederverwendung prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "passwort-geleakt",
+      "passwortmanager",
+      "sichere-passwoerter",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/email-check", "/hilfe"],
+    callToAction: "Passwort-Wiederverwendung prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "email-check-synsight",
+    title: "E-Mail-Check mit SynSight: so funktioniert’s – Ratgeber",
+    metaDescription:
+      "E-Mail-Check bei SynSight: öffentliche Account- und Leak-Signale. Demo nutzen und Ergebnis einordnen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["E-Mail Check", "E-Mail OSINT", "Email Analyse"],
+    category: "Email",
+    difficulty: "einsteiger",
+    searchIntent: "navigational",
+    targetModule: "email",
+    estimatedSearchVolume: 1600,
+    seoPriority: "hoch",
+    heroTitle: "E-Mail-Check – Modul erklärt",
+    heroSubtitle: "Welche Signale SynSight liefert – und welche nicht.",
+    intro:
+      "Welche Signale SynSight liefert – und welche nicht. Diese Seite bereitet die spätere Landingpage zu „E-Mail-Check mit SynSight: So funktioniert’s“ vor und verknüpft sie mit SynSight-Modulen (email).",
+    sections: [
+      {
+        heading: "Email: Einordnung",
+        content:
+          "Unter „Email“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (navigational) und reale Risiken (mittel) bündelt. Welche Signale SynSight liefert – und welche nicht.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: email) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: wurde-meine-email-gehackt, datenleck-pruefen, google-analyse-synsight. Call-to-Action: E-Mail im Demo-Scan prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „E-Mail-Check mit SynSight“ konkret?",
+        answer:
+          "Welche Signale SynSight liefert – und welche nicht. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "E-Mail im Demo-Scan prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "wurde-meine-email-gehackt",
+      "datenleck-pruefen",
+      "google-analyse-synsight",
+    ],
+    internalLinks: ["/email-check", "/datenleck-pruefen", "/#demo-scanner"],
+    callToAction: "E-Mail im Demo-Scan prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "benutzername-suchen",
+    title: "Benutzername suchen: Profile im Netz finden – Ratgeber",
+    metaDescription:
+      "Benutzername suchen und öffentliche Profile finden. SynSight Username-Analyse nutzen. Jetzt Alias prüfen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Benutzername suchen", "Username suchen", "Alias suchen"],
+    category: "Benutzernamen",
+    difficulty: "einsteiger",
+    searchIntent: "transactional",
+    targetModule: "username",
+    estimatedSearchVolume: 6500,
+    seoPriority: "hoch",
+    heroTitle: "Benutzername suchen – plattformübergreifend",
+    heroSubtitle: "Öffentliche Profile zu einem Alias kartieren.",
+    intro:
+      "Öffentliche Profile zu einem Alias kartieren. Diese Seite bereitet die spätere Landingpage zu „Benutzername suchen: Profile im Netz finden“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Warum Usernames verräterisch sind",
+        content:
+          "Denselben Handle auf vielen Plattformen zu nutzen, erleichtert Korrelation – für Sie und für Angreifer.",
+      },
+      {
+        heading: "Öffentliche Nachweise",
+        content:
+          "SynSight sucht nach öffentlichen Profilen und Signalen. Private oder gelöschte Konten bleiben oft unsichtbar.",
+      },
+      {
+        heading: "Nächste Module",
+        content:
+          "Username → Social Media → Digital Footprint, optional Reverse Image bei Profilfotos.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Benutzername suchen“ konkret?",
+        answer:
+          "Öffentliche Profile zu einem Alias kartieren. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Username jetzt prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "username-osint",
+      "gamername-finden",
+      "username-analyse-synsight",
+    ],
+    internalLinks: [
+      "/username-suche",
+      "/social-media-analyse",
+      "/#demo-scanner",
+    ],
+    callToAction: "Username jetzt prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "username-analyse-synsight",
+    title: "Username-Analyse bei SynSight im Überblick – Ratgeber",
+    metaDescription:
+      "Username-Analyse in SynSight: Module, Ergebnisse, Grenzen. Navigieren Sie direkt zum Check. Jetzt öffnen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Username Analyse", "SynSight Username"],
+    category: "Benutzernamen",
+    difficulty: "einsteiger",
+    searchIntent: "navigational",
+    targetModule: "username",
+    estimatedSearchVolume: 800,
+    seoPriority: "hoch",
+    heroTitle: "Das Username-Modul von SynSight",
+    heroSubtitle: "Was Sie sehen – und wie Sie weiterverfolgen.",
+    intro:
+      "Was Sie sehen – und wie Sie weiterverfolgen. Diese Seite bereitet die spätere Landingpage zu „Username-Analyse bei SynSight erklärt“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Benutzernamen: Einordnung",
+        content:
+          "Unter „Benutzernamen“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (navigational) und reale Risiken (niedrig) bündelt. Was Sie sehen – und wie Sie weiterverfolgen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: benutzername-suchen, username-osint, social-media-analyse-synsight. Call-to-Action: Zur Username-Analyse.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Username-Analyse bei SynSight erklärt“ konkret?",
+        answer:
+          "Was Sie sehen – und wie Sie weiterverfolgen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Zur Username-Analyse – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "benutzername-suchen",
+      "username-osint",
+      "social-media-analyse-synsight",
+    ],
+    internalLinks: ["/username-suche", "/analysen", "/#demo-scanner"],
+    callToAction: "Zur Username-Analyse",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "telefonnummer-im-internet",
+    title: "Telefonnummer im Internet: was ist auffindbar?",
+    metaDescription:
+      "Telefonnummer im Internet gefunden? Öffentliche Spuren einordnen. SynSight Telefon-Check nutzen. Nummer prüfen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Telefonnummer Internet", "Handy Nummer online"],
+    category: "Telefon",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "phone",
+    estimatedSearchVolume: 5400,
+    seoPriority: "hoch",
+    heroTitle: "Was das Netz über Ihre Nummer weiß",
+    heroSubtitle: "Öffentliche Metadaten und Leak-Hinweise – verständlich.",
+    intro:
+      "Öffentliche Metadaten und Leak-Hinweise – verständlich. Diese Seite bereitet die spätere Landingpage zu „Telefonnummer im Internet: Was ist auffindbar?“ vor und verknüpft sie mit SynSight-Modulen (phone).",
+    sections: [
+      {
+        heading: "Was öffentlich sein kann",
+        content:
+          "Format, Region/Carrier-Hinweise, Branchenbücher, Leak-Korrelation. Keine Gesprächsinhalte.",
+      },
+      {
+        heading: "Risiken",
+        content:
+          "Spam, Smishing, SIM-Swap-Social-Engineering – besonders wenn die Nummer zusätzlich geleakt ist.",
+      },
+      {
+        heading: "SynSight Telefon-Check",
+        content:
+          "Metadaten und OSINT-Hinweise einordnen, danach Leak- und E-Mail-Module verknüpfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Telefonnummer im Internet“ konkret?",
+        answer:
+          "Öffentliche Metadaten und Leak-Hinweise – verständlich. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Telefonnummer prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "telefonnummer-oeffentlich",
+      "telefonnummer-datenleck",
+      "telefon-check-synsight",
+    ],
+    internalLinks: ["/telefon-check", "/datenleck-pruefen", "/#demo-scanner"],
+    callToAction: "Telefonnummer prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "wem-gehoert-diese-nummer",
+    title: "Wem gehört diese Nummer? Realistische Antworten",
+    metaDescription:
+      "Wem gehört diese Nummer? Öffentliche Hinweise statt falscher Versprechen. SynSight Telefon-Intel. Prüfen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: [
+      "wem gehört diese Nummer",
+      "Nummer nachschlagen",
+      "Rückwärtssuche Telefon",
+    ],
+    category: "Telefon",
+    difficulty: "einsteiger",
+    searchIntent: "transactional",
+    targetModule: "phone",
+    estimatedSearchVolume: 11000,
+    seoPriority: "hoch",
+    heroTitle: "Nummer rückwärts suchen – ohne Märchen",
+    heroSubtitle: "Carrier- und OSINT-Hinweise, keine geheimen Register.",
+    intro:
+      "Carrier- und OSINT-Hinweise, keine geheimen Register. Diese Seite bereitet die spätere Landingpage zu „Wem gehört diese Nummer? Realistische Antworten“ vor und verknüpft sie mit SynSight-Modulen (phone).",
+    sections: [
+      {
+        heading: "Telefon: Einordnung",
+        content:
+          "Unter „Telefon“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (transactional) und reale Risiken (mittel) bündelt. Carrier- und OSINT-Hinweise, keine geheimen Register.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: phone) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: telefonnummer-im-internet, handy-nummer-osint, spam-anrufe-herkunft. Call-to-Action: Nummer analysieren.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Wem gehört diese Nummer? Realistische Antworten“ konkret?",
+        answer:
+          "Carrier- und OSINT-Hinweise, keine geheimen Register. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Nummer analysieren – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "telefonnummer-im-internet",
+      "handy-nummer-osint",
+      "spam-anrufe-herkunft",
+    ],
+    internalLinks: ["/telefon-check", "/osint-analyse", "/hilfe"],
+    callToAction: "Nummer analysieren",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "telefon-check-synsight",
+    title: "Telefon-Check bei SynSight: Modul im Überblick",
+    metaDescription:
+      "Telefon-Check in SynSight: Carrier-Hinweise und OSINT-Signale. Navigieren Sie zum Modul. Nummer checken. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Telefon Check", "SynSight Telefon", "PhoneInfoga"],
+    category: "Telefon",
+    difficulty: "einsteiger",
+    searchIntent: "navigational",
+    targetModule: "phone",
+    estimatedSearchVolume: 600,
+    seoPriority: "hoch",
+    heroTitle: "Das Telefon-Modul erklärt",
+    heroSubtitle: "Ergebnisse lesen und richtig einordnen.",
+    intro:
+      "Ergebnisse lesen und richtig einordnen. Diese Seite bereitet die spätere Landingpage zu „Telefon-Check bei SynSight: Modul-Guide“ vor und verknüpft sie mit SynSight-Modulen (phone).",
+    sections: [
+      {
+        heading: "Telefon: Einordnung",
+        content:
+          "Unter „Telefon“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (navigational) und reale Risiken (niedrig) bündelt. Ergebnisse lesen und richtig einordnen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: phone) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: telefonnummer-im-internet, handy-nummer-osint, wem-gehoert-diese-nummer. Call-to-Action: Zum Telefon-Check.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Telefon-Check bei SynSight“ konkret?",
+        answer:
+          "Ergebnisse lesen und richtig einordnen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Zum Telefon-Check – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "telefonnummer-im-internet",
+      "handy-nummer-osint",
+      "wem-gehoert-diese-nummer",
+    ],
+    internalLinks: ["/telefon-check", "/analysen", "/#demo-scanner"],
+    callToAction: "Zum Telefon-Check",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "social-media-suche",
+    title: "Social-Media-Suche: Profile systematisch finden",
+    metaDescription:
+      "Social-Media-Suche über Plattformen hinweg. SynSight korreliert öffentliche Profile. Social-Check starten. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Social Media Suche", "Profil finden Social"],
+    category: "Social Media",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "social",
+    estimatedSearchVolume: 3900,
+    seoPriority: "hoch",
+    heroTitle: "Social Profile finden – mit System",
+    heroSubtitle: "Handles, Namen und öffentliche Querbezüge.",
+    intro:
+      "Handles, Namen und öffentliche Querbezüge. Diese Seite bereitet die spätere Landingpage zu „Social-Media-Suche: Profile systematisch finden“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Handles, Namen und öffentliche Querbezüge.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: facebook-profil-finden, instagram-bilder-finden, social-media-analyse-synsight. Call-to-Action: Social-Suche starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Social-Media-Suche“ konkret?",
+        answer:
+          "Handles, Namen und öffentliche Querbezüge. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Social-Suche starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "facebook-profil-finden",
+      "instagram-bilder-finden",
+      "social-media-analyse-synsight",
+    ],
+    internalLinks: ["/social-media-analyse", "/username-suche", "/analysen"],
+    callToAction: "Social-Suche starten",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "social-media-analyse-synsight",
+    title: "Social-Media-Analyse mit SynSight im Überblick",
+    metaDescription:
+      "Social-Media-Analyse in SynSight: Module und Auswertung. Direkt zur Analyse navigieren. Jetzt öffnen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Social Media Analyse", "SynSight Social"],
+    category: "Social Media",
+    difficulty: "einsteiger",
+    searchIntent: "navigational",
+    targetModule: "social",
+    estimatedSearchVolume: 900,
+    seoPriority: "hoch",
+    heroTitle: "Social-Media-Analyse – Modulüberblick",
+    heroSubtitle: "Ergebnisse lesen und mit Username/Bild verknüpfen.",
+    intro:
+      "Ergebnisse lesen und mit Username/Bild verknüpfen. Diese Seite bereitet die spätere Landingpage zu „Social-Media-Analyse mit SynSight“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (navigational) und reale Risiken (niedrig) bündelt. Ergebnisse lesen und mit Username/Bild verknüpfen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: social-media-suche, username-analyse-synsight, reverse-image-synsight. Call-to-Action: Zur Social-Analyse.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Social-Media-Analyse mit SynSight“ konkret?",
+        answer:
+          "Ergebnisse lesen und mit Username/Bild verknüpfen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Zur Social-Analyse – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "social-media-suche",
+      "username-analyse-synsight",
+      "reverse-image-synsight",
+    ],
+    internalLinks: ["/social-media-analyse", "/analysen", "/username-suche"],
+    callToAction: "Zur Social-Analyse",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "bilder-von-mir-im-internet",
+    title: "Bilder von mir im Internet finden und prüfen – Ratgeber",
+    metaDescription:
+      "Bilder von mir im Internet finden und Missbrauch erkennen. SynSight Reverse Image. Foto prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Bilder von mir", "mein Foto im Internet", "Profilfoto Suche"],
+    category: "Reverse Image",
+    difficulty: "einsteiger",
+    searchIntent: "transactional",
+    targetModule: "reverse-image",
+    estimatedSearchVolume: 4700,
+    seoPriority: "hoch",
+    heroTitle: "Wo tauchen Ihre Bilder auf?",
+    heroSubtitle: "Öffentliche Treffer und mögliche Wiederverwendung.",
+    intro:
+      "Öffentliche Treffer und mögliche Wiederverwendung. Diese Seite bereitet die spätere Landingpage zu „Bilder von mir im Internet finden“ vor und verknüpft sie mit SynSight-Modulen (reverse-image).",
+    sections: [
+      {
+        heading: "Reverse Image: Einordnung",
+        content:
+          "Unter „Reverse Image“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (transactional) und reale Risiken (mittel) bündelt. Öffentliche Treffer und mögliche Wiederverwendung.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: reverse-image) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: profilfoto-missbrauch, gesicht-im-internet-finden, face-scan-synsight. Call-to-Action: Eigene Bilder suchen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Bilder von mir im Internet finden“ konkret?",
+        answer:
+          "Öffentliche Treffer und mögliche Wiederverwendung. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Eigene Bilder suchen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "profilfoto-missbrauch",
+      "gesicht-im-internet-finden",
+      "face-scan-synsight",
+    ],
+    internalLinks: [
+      "/reverse-image-search",
+      "/social-media-analyse",
+      "/register",
+    ],
+    callToAction: "Eigene Bilder suchen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "gesicht-im-internet-finden",
+    title: "Gesicht im Internet finden: Chancen und Ethik",
+    metaDescription:
+      "Gesicht im Internet finden – ethisch und rechtlich einordnen. SynSight Face-/Bildanalyse. Jetzt bei SynSight prüfen. Analyse bei SynSight. Jetzt bei SynSight.",
+    keywords: [
+      "Gesicht suchen Internet",
+      "Face Search",
+      "Gesichtserkennung OSINT",
+    ],
+    category: "Reverse Image",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "face-scan",
+    estimatedSearchVolume: 3100,
+    seoPriority: "hoch",
+    heroTitle: "Gesichtssuche – mit klaren Grenzen",
+    heroSubtitle: "Technik, Ethik und sinnvolle Einsatzszenarien.",
+    intro:
+      "Technik, Ethik und sinnvolle Einsatzszenarien. Diese Seite bereitet die spätere Landingpage zu „Gesicht im Internet finden: Chancen & Ethik“ vor und verknüpft sie mit SynSight-Modulen (face-scan).",
+    sections: [
+      {
+        heading: "Reverse Image: Einordnung",
+        content:
+          "Unter „Reverse Image“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (hoch) bündelt. Technik, Ethik und sinnvolle Einsatzszenarien.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: face-scan) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: face-scan-synsight, deepfake-bilder-erkennen, bilder-von-mir-im-internet. Call-to-Action: Bildanalyse mit Konto.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Gesicht im Internet finden“ konkret?",
+        answer:
+          "Technik, Ethik und sinnvolle Einsatzszenarien. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Ist Face Scan immer nötig?",
+        answer:
+          "Nein. Oft reicht Reverse Image Search. Face Scan ist für spezifische Szenarien und unterliegt klaren Grenzen.",
+      },
+    ],
+    relatedPages: [
+      "face-scan-synsight",
+      "deepfake-bilder-erkennen",
+      "bilder-von-mir-im-internet",
+    ],
+    internalLinks: ["/reverse-image-search", "/register", "/datenschutz"],
+    callToAction: "Bildanalyse mit Konto",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "reverse-image-search-erklaerung",
+    title: "Reverse Image Search: Erklärung für Einsteiger",
+    metaDescription:
+      "Reverse Image Search erklärt: So finden Sie Bildquellen. SynSight Modul nutzen. Jetzt ausprobieren. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: [
+      "Reverse Image Search",
+      "Bildrückwärtssuche",
+      "Reverse Image Erklärung",
+    ],
+    category: "Reverse Image",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "reverse-image",
+    estimatedSearchVolume: 5200,
+    seoPriority: "hoch",
+    heroTitle: "Reverse Image Search – kurz erklärt",
+    heroSubtitle: "Bild hochladen, Quellen finden, Treffer bewerten.",
+    intro:
+      "Bild hochladen, Quellen finden, Treffer bewerten. Diese Seite bereitet die spätere Landingpage zu „Reverse Image Search Erklärung für Einsteiger“ vor und verknüpft sie mit SynSight-Modulen (reverse-image).",
+    sections: [
+      {
+        heading: "So funktioniert Reverse Image",
+        content:
+          "Ein Referenzbild wird mit öffentlichen Bildindizes abgeglichen. Treffer liefern Seitenkontexte und Ähnlichkeiten.",
+      },
+      {
+        heading: "Gute Referenzen",
+        content:
+          "Klare Profilfotos funktionieren besser als stark veränderte oder sehr kleine Bilder.",
+      },
+      {
+        heading: "Datenschutz",
+        content:
+          "Uploads dienen der Analyse; Details stehen in der Datenschutzerklärung.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Reverse Image Search Erklärung für Einsteiger“ konkret?",
+        answer:
+          "Bild hochladen, Quellen finden, Treffer bewerten. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Reverse Image starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "bildersuche",
+      "bild-rueckwaertssuche",
+      "reverse-image-synsight",
+    ],
+    internalLinks: ["/reverse-image-search", "/analysen", "/register"],
+    callToAction: "Reverse Image starten",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "online-sicherheit",
+    title: "Online-Sicherheit: Grundlagen die wirklich helfen",
+    metaDescription:
+      "Online-Sicherheit praxisnah: Passwörter, MFA, Exposition. SynSight verbindet Analyse und Schutz. Starten. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Online Sicherheit", "Internet Sicherheit privat"],
+    category: "Sicherheit",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 6100,
+    seoPriority: "hoch",
+    heroTitle: "Online-Sicherheit ohne Überforderung",
+    heroSubtitle: "Wenige Hebel, große Wirkung.",
+    intro:
+      "Wenige Hebel, große Wirkung. Diese Seite bereitet die spätere Landingpage zu „Online-Sicherheit: Grundlagen die wirklich helfen“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Sicherheit: Einordnung",
+        content:
+          "Unter „Sicherheit“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Wenige Hebel, große Wirkung.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: passwortmanager, zwei-faktor-authentifizierung, phishing-erkennen. Call-to-Action: Sicherheitslage prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Online-Sicherheit“ konkret?",
+        answer:
+          "Wenige Hebel, große Wirkung. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Sicherheitslage prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "passwortmanager",
+      "zwei-faktor-authentifizierung",
+      "phishing-erkennen",
+    ],
+    internalLinks: ["/analysen", "/hilfe", "/datenleck-pruefen"],
+    callToAction: "Sicherheitslage prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "identitaet-schuetzen",
+    title: "Digitale Identität schützen im Alltag 2026 – Ratgeber",
+    metaDescription:
+      "Digitale Identität schützen: Sichtbarkeit, Leaks, Fake-Profile. SynSight als Frühwarnsystem. Schützen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: [
+      "Identität schützen",
+      "Identitätssicherheit",
+      "Identity Protection",
+    ],
+    category: "Identität",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 3400,
+    seoPriority: "hoch",
+    heroTitle: "Identität schützen – proaktiv statt reagierend",
+    heroSubtitle: "Früher erkennen, gezielter absichern.",
+    intro:
+      "Früher erkennen, gezielter absichern. Diese Seite bereitet die spätere Landingpage zu „Identität schützen im digitalen Alltag“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Identität: Einordnung",
+        content:
+          "Unter „Identität“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Früher erkennen, gezielter absichern.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: identitaetsdiebstahl, digitaler-fussabdruck, ki-risikoanalyse. Call-to-Action: Identitätsrisiken prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Identität schützen im digitalen Alltag“ konkret?",
+        answer:
+          "Früher erkennen, gezielter absichern. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Identitätsrisiken prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "identitaetsdiebstahl",
+      "digitaler-fussabdruck",
+      "ki-risikoanalyse",
+    ],
+    internalLinks: ["/digital-footprint", "/datenleck-pruefen", "/register"],
+    callToAction: "Identitätsrisiken prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "phishing-erkennen",
+    title: "Phishing erkennen: typische Tricks in 2026 – Ratgeber",
+    metaDescription:
+      "Phishing erkennen und vermeiden. SynSight erklärt typische Köder rund um Leaks & Nummern. Tipps lesen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Phishing erkennen", "Phishing Mail", "Smishing"],
+    category: "Cybersecurity",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 7800,
+    seoPriority: "hoch",
+    heroTitle: "Phishing erkennen, bevor Sie klicken",
+    heroSubtitle: "Mail, SMS, Anruf – die üblichen Köder.",
+    intro:
+      "Mail, SMS, Anruf – die üblichen Köder. Diese Seite bereitet die spätere Landingpage zu „Phishing erkennen: Typische Tricks 2026“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (hoch) bündelt. Mail, SMS, Anruf – die üblichen Köder.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: social-engineering, account-uebernahme-verhindern, spam-anrufe-herkunft. Call-to-Action: Exposition & Phishing-Risiko prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Phishing erkennen“ konkret?",
+        answer:
+          "Mail, SMS, Anruf – die üblichen Köder. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Exposition & Phishing-Risiko prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "social-engineering",
+      "account-uebernahme-verhindern",
+      "spam-anrufe-herkunft",
+    ],
+    internalLinks: ["/hilfe", "/datenleck-pruefen", "/email-check"],
+    callToAction: "Exposition & Phishing-Risiko prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "passwortmanager",
+    title: "Passwortmanager: warum Sie einen brauchen – Ratgeber",
+    metaDescription:
+      "Passwortmanager erklärt – gegen Wiederverwendung und Leaks. SynSight ergänzt mit Leak-Checks. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Passwortmanager", "Password Manager", "Passwörter verwalten"],
+    category: "Sicherheit",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 5600,
+    seoPriority: "hoch",
+    heroTitle: "Ein Passwortmanager ist kein Nice-to-have",
+    heroSubtitle: "Einzigartige Passwörter skalieren nur mit Werkzeug.",
+    intro:
+      "Einzigartige Passwörter skalieren nur mit Werkzeug. Diese Seite bereitet die spätere Landingpage zu „Passwortmanager: Warum Sie einen brauchen“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Sicherheit: Einordnung",
+        content:
+          "Unter „Sicherheit“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (niedrig) bündelt. Einzigartige Passwörter skalieren nur mit Werkzeug.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: sichere-passwoerter, passwort-geleakt, credential-stuffing. Call-to-Action: Zuerst Leak-Status prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Passwortmanager“ konkret?",
+        answer:
+          "Einzigartige Passwörter skalieren nur mit Werkzeug. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Zuerst Leak-Status prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "sichere-passwoerter",
+      "passwort-geleakt",
+      "credential-stuffing",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/hilfe", "/email-check"],
+    callToAction: "Zuerst Leak-Status prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "zwei-faktor-authentifizierung",
+    title: "Zwei-Faktor-Authentifizierung richtig einsetzen",
+    metaDescription:
+      "Zwei-Faktor-Authentifizierung (2FA) richtig nutzen. SynSight erklärt, warum MFA nach Leaks Pflicht ist. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Zwei Faktor", "2FA", "MFA", "Zwei-Faktor-Authentifizierung"],
+    category: "Sicherheit",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 4900,
+    seoPriority: "hoch",
+    heroTitle: "2FA: der zweite Riegel",
+    heroSubtitle: "App besser als SMS – und trotzdem besser als nichts.",
+    intro:
+      "App besser als SMS – und trotzdem besser als nichts. Diese Seite bereitet die spätere Landingpage zu „Zwei-Faktor-Authentifizierung richtig einsetzen“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Sicherheit: Einordnung",
+        content:
+          "Unter „Sicherheit“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. App besser als SMS – und trotzdem besser als nichts.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: account-uebernahme-verhindern, passwort-geleakt, telefonnummer-datenleck. Call-to-Action: Kritische Konten priorisieren.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Zwei-Faktor-Authentifizierung richtig einsetzen“ konkret?",
+        answer:
+          "App besser als SMS – und trotzdem besser als nichts. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Kritische Konten priorisieren – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "account-uebernahme-verhindern",
+      "passwort-geleakt",
+      "telefonnummer-datenleck",
+    ],
+    internalLinks: ["/hilfe", "/datenleck-pruefen", "/analysen"],
+    callToAction: "Kritische Konten priorisieren",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "identitaetsdiebstahl",
+    title: "Identitätsdiebstahl: Frühzeichen und Abwehr – Ratgeber",
+    metaDescription:
+      "Identitätsdiebstahl erkennen und abwehren. SynSight prüft öffentliche Indizien. Frühcheck starten. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Identitätsdiebstahl", "Identity Theft", "Identität gestohlen"],
+    category: "Cybersecurity",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 4200,
+    seoPriority: "hoch",
+    heroTitle: "Identitätsdiebstahl beginnt oft unsichtbar",
+    heroSubtitle: "Frühe Signale aus Leak, Social und Suche.",
+    intro:
+      "Frühe Signale aus Leak, Social und Suche. Diese Seite bereitet die spätere Landingpage zu „Identitätsdiebstahl: Frühzeichen & Abwehr“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (kritisch) bündelt. Frühe Signale aus Leak, Social und Suche.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: fake-profile, profilfoto-missbrauch, wurde-meine-email-gehackt. Call-to-Action: Frühzeichen prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Identitätsdiebstahl“ konkret?",
+        answer:
+          "Frühe Signale aus Leak, Social und Suche. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Frühzeichen prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "fake-profile",
+      "profilfoto-missbrauch",
+      "wurde-meine-email-gehackt",
+    ],
+    internalLinks: [
+      "/digital-footprint",
+      "/datenleck-pruefen",
+      "/reverse-image-search",
+    ],
+    callToAction: "Frühzeichen prüfen",
+    riskLevel: "kritisch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "fake-profile",
+    title: "Fake-Profile erkennen, melden und vorbeugen – Ratgeber",
+    metaDescription:
+      "Fake-Profile erkennen und melden. SynSight Social- & Bildsignale nutzen. Verdacht prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Fake Profile", "Fake Account", "Catfishing"],
+    category: "Cybersecurity",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "social",
+    estimatedSearchVolume: 3800,
+    seoPriority: "hoch",
+    heroTitle: "Fake-Profile systematisch prüfen",
+    heroSubtitle: "Bild, Handle, Netzwerk – Indizienkette bauen.",
+    intro:
+      "Bild, Handle, Netzwerk – Indizienkette bauen. Diese Seite bereitet die spätere Landingpage zu „Fake-Profile: Erkennen, melden, vorbeugen“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (hoch) bündelt. Bild, Handle, Netzwerk – Indizienkette bauen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: fake-profil-erkennen-social, profilfoto-missbrauch, impersonation-username. Call-to-Action: Profil auf Fakesignale prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Fake-Profile“ konkret?",
+        answer:
+          "Bild, Handle, Netzwerk – Indizienkette bauen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Profil auf Fakesignale prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "fake-profil-erkennen-social",
+      "profilfoto-missbrauch",
+      "impersonation-username",
+    ],
+    internalLinks: [
+      "/social-media-analyse",
+      "/reverse-image-search",
+      "/username-suche",
+    ],
+    callToAction: "Profil auf Fakesignale prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "doxxing",
+    title: "Doxxing: was es ist und wie Sie sich schützen",
+    metaDescription:
+      "Doxxing verstehen und Schutzmaßnahmen ergreifen. SynSight reduziert auffindbare Angriffsfläche. Schützen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Doxxing", "Doxxen", "Private Daten veröffentlichen"],
+    category: "Cybersecurity",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 2900,
+    seoPriority: "hoch",
+    heroTitle: "Doxxing – Angriff auf die Privatsphäre",
+    heroSubtitle: "Auffindbarkeit senken, Beweise sichern, melden.",
+    intro:
+      "Auffindbarkeit senken, Beweise sichern, melden. Diese Seite bereitet die spätere Landingpage zu „Doxxing: Was es ist und wie Sie sich schützen“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (kritisch) bündelt. Auffindbarkeit senken, Beweise sichern, melden.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: persoenliche-daten-entfernen, digitalen-fussabdruck-loeschen, osint-legal. Call-to-Action: Angriffsfläche messen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Doxxing“ konkret?",
+        answer:
+          "Auffindbarkeit senken, Beweise sichern, melden. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Angriffsfläche messen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "persoenliche-daten-entfernen",
+      "digitalen-fussabdruck-loeschen",
+      "osint-legal",
+    ],
+    internalLinks: ["/digital-footprint", "/datenschutz", "/hilfe"],
+    callToAction: "Angriffsfläche messen",
+    riskLevel: "kritisch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "datenhandel",
+    title: "Datenhandel: was Privatpersonen dagegen tun können",
+    metaDescription:
+      "Datenhandel aus Sicht Betroffener: Exposition senken, Leaks monitoren. SynSight als Werkzeug. Prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Datenhandel stoppen", "Daten verkauft was tun"],
+    category: "Datenschutz",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 800,
+    seoPriority: "niedrig",
+    heroTitle: "Gegen Datenhandel hilft Transparenz",
+    heroSubtitle: "Sie stoppen den Markt nicht – aber Ihre Exposition.",
+    intro:
+      "Sie stoppen den Markt nicht – aber Ihre Exposition. Diese Seite bereitet die spätere Landingpage zu „Datenhandel stoppen? Was Privatpersonen tun können“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (hoch) bündelt. Sie stoppen den Markt nicht – aber Ihre Exposition.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: datenhandel-erklaerung, breach-monitoring, dsgvo. Call-to-Action: Eigene Datenexposition prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Datenhandel stoppen? Was Privatpersonen tun können“ konkret?",
+        answer:
+          "Sie stoppen den Markt nicht – aber Ihre Exposition. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Eigene Datenexposition prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: ["datenhandel-erklaerung", "breach-monitoring", "dsgvo"],
+    internalLinks: ["/datenleck-pruefen", "/datenschutz", "/register"],
+    callToAction: "Eigene Datenexposition prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "dsgvo",
+    title: "DSGVO für Nutzer: Rechte verständlich erklärt",
+    metaDescription:
+      "DSGVO-Rechte als Nutzer: Auskunft, Löschung, Widerspruch. SynSight erklärt den Bezug zu OSINT. Lesen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["DSGVO", "Datenschutz Grundverordnung", "Auskunftsrecht"],
+    category: "Datenschutz",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 12000,
+    seoPriority: "hoch",
+    heroTitle: "DSGVO – Ihre Rechte in Klartext",
+    heroSubtitle: "Was Sie verlangen können, und wo Grenzen liegen.",
+    intro:
+      "Was Sie verlangen können, und wo Grenzen liegen. Diese Seite bereitet die spätere Landingpage zu „DSGVO für Nutzer: Rechte verständlich erklärt“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Was Sie verlangen können, und wo Grenzen liegen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: datenauskunft-beantragen, recht-auf-vergessenwerden, persoenliche-daten-entfernen. Call-to-Action: Datenschutzseite öffnen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „DSGVO für Nutzer“ konkret?",
+        answer:
+          "Was Sie verlangen können, und wo Grenzen liegen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Datenschutzseite öffnen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "datenauskunft-beantragen",
+      "recht-auf-vergessenwerden",
+      "persoenliche-daten-entfernen",
+    ],
+    internalLinks: ["/datenschutz", "/hilfe", "/impressum"],
+    callToAction: "Datenschutzseite öffnen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "google-analyse-synsight",
+    title: "Google-Analyse mit SynSight: Modul-Guide – Ratgeber",
+    metaDescription:
+      "Google-Analyse in SynSight: Suchtreffer und Reputationssignale. Direkt zum Modul. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen. Analyse starten.",
+    keywords: ["Google Analyse", "SynSight Google", "Serp Analyse"],
+    category: "Google",
+    difficulty: "einsteiger",
+    searchIntent: "navigational",
+    targetModule: "google",
+    estimatedSearchVolume: 1200,
+    seoPriority: "hoch",
+    heroTitle: "Google-Analyse – so nutzt SynSight Suchsignale",
+    heroSubtitle: "Von der Query bis zum Exposure-Hinweis.",
+    intro:
+      "Von der Query bis zum Exposure-Hinweis. Diese Seite bereitet die spätere Landingpage zu „Google-Analyse mit SynSight: Modul-Guide“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "Was die Google-Analyse leistet",
+        content:
+          "Öffentlich indexierte Treffer zu Namen, Aliassen und Domains strukturieren und bewerten.",
+      },
+      {
+        heading: "Was sie nicht leistet",
+        content:
+          "Keine privaten Google-Konten, keine Löschung bei Dritten auf Knopfdruck.",
+      },
+      {
+        heading: "Kombination",
+        content: "Google + Username + Leak ergibt oft das stimmigste Lagebild.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Google-Analyse mit SynSight“ konkret?",
+        answer:
+          "Von der Query bis zum Exposure-Hinweis. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Google-Analyse öffnen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "online-reputation-pruefen",
+      "personensuche-im-internet",
+      "was-weiss-das-internet-ueber-mich",
+    ],
+    internalLinks: ["/google-analyse", "/analysen", "/#demo-scanner"],
+    callToAction: "Google-Analyse öffnen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "digital-leak-analyse",
+    title: "Digital-Leak-Analyse: SynSight-Modul erklärt – Ratgeber",
+    metaDescription:
+      "Digital-Leak-Analyse bei SynSight: Breach-Hinweise einordnen. Navigieren Sie zum Leak-Check. Starten. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Digital Leak", "Leak Analyse", "SynSight Leak"],
+    category: "Datenlecks",
+    difficulty: "einsteiger",
+    searchIntent: "navigational",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 1000,
+    seoPriority: "hoch",
+    heroTitle: "Digital Leak – das Modul im Überblick",
+    heroSubtitle: "Treffer, Schwere, nächste Schritte.",
+    intro:
+      "Treffer, Schwere, nächste Schritte. Diese Seite bereitet die spätere Landingpage zu „Digital-Leak-Analyse: SynSight Modul erklärt“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Datenlecks: Einordnung",
+        content:
+          "Unter „Datenlecks“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (navigational) und reale Risiken (hoch) bündelt. Treffer, Schwere, nächste Schritte.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: datenleck-pruefen, wurde-meine-email-gehackt, email-check-synsight. Call-to-Action: Zur Digital-Leak-Analyse.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Digital-Leak-Analyse“ konkret?",
+        answer:
+          "Treffer, Schwere, nächste Schritte. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Zur Digital-Leak-Analyse – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "datenleck-pruefen",
+      "wurde-meine-email-gehackt",
+      "email-check-synsight",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/email-check", "/analysen"],
+    callToAction: "Zur Digital-Leak-Analyse",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "reverse-image-synsight",
+    title: "Reverse Image bei SynSight: so starten Sie – Ratgeber",
+    metaDescription:
+      "Reverse Image Search in SynSight starten und Treffer lesen. Modul-Guide mit CTA. Jetzt öffnen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Reverse Image SynSight", "Bildanalyse SynSight"],
+    category: "Reverse Image",
+    difficulty: "einsteiger",
+    searchIntent: "navigational",
+    targetModule: "reverse-image",
+    estimatedSearchVolume: 700,
+    seoPriority: "hoch",
+    heroTitle: "Reverse Image in SynSight",
+    heroSubtitle: "Upload, Treffer, Dokumentation.",
+    intro:
+      "Upload, Treffer, Dokumentation. Diese Seite bereitet die spätere Landingpage zu „Reverse Image bei SynSight: So starten Sie“ vor und verknüpft sie mit SynSight-Modulen (reverse-image).",
+    sections: [
+      {
+        heading: "Reverse Image: Einordnung",
+        content:
+          "Unter „Reverse Image“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (navigational) und reale Risiken (niedrig) bündelt. Upload, Treffer, Dokumentation.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: reverse-image) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: reverse-image-search-erklaerung, bilder-von-mir-im-internet, face-scan-synsight. Call-to-Action: Reverse Image öffnen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Reverse Image bei SynSight“ konkret?",
+        answer:
+          "Upload, Treffer, Dokumentation. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Reverse Image öffnen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "reverse-image-search-erklaerung",
+      "bilder-von-mir-im-internet",
+      "face-scan-synsight",
+    ],
+    internalLinks: ["/reverse-image-search", "/register", "/analysen"],
+    callToAction: "Reverse Image öffnen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "face-scan-synsight",
+    title: "Face Scan bei SynSight: Einsatz und Grenzen – Ratgeber",
+    metaDescription:
+      "Face Scan in SynSight: Einsatzszenarien, Ethik, Limits. Nur mit Konto. Transparenz zuerst lesen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Face Scan", "Gesichtsanalyse", "SynSight Face"],
+    category: "Reverse Image",
+    difficulty: "fortgeschritten",
+    searchIntent: "navigational",
+    targetModule: "face-scan",
+    estimatedSearchVolume: 900,
+    seoPriority: "hoch",
+    heroTitle: "Face Scan – transparent erklärt",
+    heroSubtitle: "Wann das Modul hilft, und wann nicht.",
+    intro:
+      "Wann das Modul hilft, und wann nicht. Diese Seite bereitet die spätere Landingpage zu „Face Scan bei SynSight: Einsatz & Grenzen“ vor und verknüpft sie mit SynSight-Modulen (face-scan).",
+    sections: [
+      {
+        heading: "Reverse Image: Einordnung",
+        content:
+          "Unter „Reverse Image“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (navigational) und reale Risiken (hoch) bündelt. Wann das Modul hilft, und wann nicht.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: face-scan) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: gesicht-im-internet-finden, deepfake-bilder-erkennen, reverse-image-synsight. Call-to-Action: Face Scan Voraussetzungen prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Face Scan bei SynSight“ konkret?",
+        answer:
+          "Wann das Modul hilft, und wann nicht. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Ist Face Scan immer nötig?",
+        answer:
+          "Nein. Oft reicht Reverse Image Search. Face Scan ist für spezifische Szenarien und unterliegt klaren Grenzen.",
+      },
+    ],
+    relatedPages: [
+      "gesicht-im-internet-finden",
+      "deepfake-bilder-erkennen",
+      "reverse-image-synsight",
+    ],
+    internalLinks: ["/reverse-image-search", "/register", "/datenschutz"],
+    callToAction: "Face Scan Voraussetzungen prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "ki-risikoanalyse",
+    title: "KI-Risikoanalyse: SynSight-Lagebild verstehen",
+    metaDescription:
+      "KI-Risikoanalyse bei SynSight: Scores, Prioritäten, Maßnahmen. Dashboard-Guide. Analyse verstehen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["KI Risikoanalyse", "Exposure Score", "SynSight KI"],
+    category: "Cybersecurity",
+    difficulty: "einsteiger",
+    searchIntent: "navigational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 1100,
+    seoPriority: "hoch",
+    heroTitle: "KI-Risikoanalyse – das Lagebild",
+    heroSubtitle: "Scores sind Hinweise, keine Urteile.",
+    intro:
+      "Scores sind Hinweise, keine Urteile. Diese Seite bereitet die spätere Landingpage zu „KI-Risikoanalyse: SynSight Lagebild verstehen“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (navigational) und reale Risiken (mittel) bündelt. Scores sind Hinweise, keine Urteile.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: digitaler-fussabdruck, osint-tools-deutschland, identitaet-schuetzen. Call-to-Action: Risikoanalyse starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „KI-Risikoanalyse“ konkret?",
+        answer:
+          "Scores sind Hinweise, keine Urteile. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Risikoanalyse starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "digitaler-fussabdruck",
+      "osint-tools-deutschland",
+      "identitaet-schuetzen",
+    ],
+    internalLinks: ["/analysen", "/digital-footprint", "/register"],
+    callToAction: "Risikoanalyse starten",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "bildersuche",
+    title: "Bildersuche: Fotos im Netz gezielt wiederfinden",
+    metaDescription:
+      "Bildersuche und Reverse Image Search verständlich. SynSight Bildmodul nutzen. Foto-Check starten. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Bildersuche", "Bilder suchen Internet", "Foto finden"],
+    category: "Reverse Image",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "reverse-image",
+    estimatedSearchVolume: 9900,
+    seoPriority: "hoch",
+    heroTitle: "Bildersuche mit System",
+    heroSubtitle: "Von Google Bilder bis Reverse Image.",
+    intro:
+      "Von Google Bilder bis Reverse Image. Diese Seite bereitet die spätere Landingpage zu „Bildersuche: Fotos im Netz wiederfinden“ vor und verknüpft sie mit SynSight-Modulen (reverse-image).",
+    sections: [
+      {
+        heading: "Reverse Image: Einordnung",
+        content:
+          "Unter „Reverse Image“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Von Google Bilder bis Reverse Image.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: reverse-image) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: reverse-image-search-erklaerung, google-bilder-suche, bilder-von-mir-im-internet. Call-to-Action: Bildersuche öffnen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Bildersuche“ konkret?",
+        answer:
+          "Von Google Bilder bis Reverse Image. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Bildersuche öffnen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "reverse-image-search-erklaerung",
+      "google-bilder-suche",
+      "bilder-von-mir-im-internet",
+    ],
+    internalLinks: ["/reverse-image-search", "/analysen", "/register"],
+    callToAction: "Bildersuche öffnen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "google-bilder-suche",
+    title: "Google Bilder Suche: Tipps für bessere Treffer",
+    metaDescription:
+      "Google Bilder Suche optimal nutzen und mit Reverse Image ergänzen. SynSight Kontext. Tipps + Check. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Google Bilder", "Google Reverse Image"],
+    category: "Google",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "reverse-image",
+    estimatedSearchVolume: 8500,
+    seoPriority: "hoch",
+    heroTitle: "Google Bilder – und die Lücken danach",
+    heroSubtitle: "Wann die Suche reicht, wann Module helfen.",
+    intro:
+      "Wann die Suche reicht, wann Module helfen. Diese Seite bereitet die spätere Landingpage zu „Google Bilder Suche: Tipps für bessere Treffer“ vor und verknüpft sie mit SynSight-Modulen (reverse-image).",
+    sections: [
+      {
+        heading: "Google: Einordnung",
+        content:
+          "Unter „Google“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Wann die Suche reicht, wann Module helfen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: reverse-image) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: bildersuche, google-analyse-synsight, reverse-image-search-erklaerung. Call-to-Action: Mit SynSight ergänzen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Google Bilder Suche“ konkret?",
+        answer:
+          "Wann die Suche reicht, wann Module helfen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Mit SynSight ergänzen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "bildersuche",
+      "google-analyse-synsight",
+      "reverse-image-search-erklaerung",
+    ],
+    internalLinks: ["/reverse-image-search", "/google-analyse", "/hilfe"],
+    callToAction: "Mit SynSight ergänzen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "facebook-profil-finden",
+    title: "Facebook-Profil finden über öffentliche Wege – Ratgeber",
+    metaDescription:
+      "Facebook-Profil finden über öffentliche Hinweise. SynSight Social-Analyse als Einstieg. Profilsuche öffnen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Facebook Profil finden", "Facebook Suche"],
+    category: "Social Media",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "social",
+    estimatedSearchVolume: 7200,
+    seoPriority: "hoch",
+    heroTitle: "Facebook-Profile öffentlich finden",
+    heroSubtitle: "Was noch sichtbar ist – trotz restriktiverer Defaults.",
+    intro:
+      "Was noch sichtbar ist – trotz restriktiverer Defaults. Diese Seite bereitet die spätere Landingpage zu „Facebook-Profil finden: Öffentliche Wege“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Was noch sichtbar ist – trotz restriktiverer Defaults.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: social-media-suche, linkedin-suche, social-media-privatsphaere. Call-to-Action: Social-Signale prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Facebook-Profil finden“ konkret?",
+        answer:
+          "Was noch sichtbar ist – trotz restriktiverer Defaults. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Social-Signale prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "social-media-suche",
+      "linkedin-suche",
+      "social-media-privatsphaere",
+    ],
+    internalLinks: [
+      "/social-media-analyse",
+      "/personensuche",
+      "/username-suche",
+    ],
+    callToAction: "Social-Signale prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "suchmaschinen-loeschen",
+    title: "Aus Suchmaschinen löschen: Wege und Limits – Ratgeber",
+    metaDescription:
+      "Inhalte aus Suchmaschinen löschen oder ausblenden. SynSight zeigt, was vorher sichtbar ist. Prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["aus Google löschen", "Suchmaschine Eintrag entfernen"],
+    category: "Datenschutz",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "google",
+    estimatedSearchVolume: 5700,
+    seoPriority: "hoch",
+    heroTitle: "Suchmaschinen-Einträge angehen",
+    heroSubtitle: "Zuerst finden, dann entfernen oder ausblenden.",
+    intro:
+      "Zuerst finden, dann entfernen oder ausblenden. Diese Seite bereitet die spätere Landingpage zu „Aus Suchmaschinen löschen: Wege & Limits“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Zuerst finden, dann entfernen oder ausblenden.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: recht-auf-vergessenwerden, google-cache, online-reputation-pruefen. Call-to-Action: Sichtbare Treffer sammeln.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Aus Suchmaschinen löschen“ konkret?",
+        answer:
+          "Zuerst finden, dann entfernen oder ausblenden. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Sichtbare Treffer sammeln – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "recht-auf-vergessenwerden",
+      "google-cache",
+      "online-reputation-pruefen",
+    ],
+    internalLinks: ["/google-analyse", "/datenschutz", "/digital-footprint"],
+    callToAction: "Sichtbare Treffer sammeln",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "informationen-ueber-personen-finden",
+    title: "Informationen über Personen finden: Guide – Ratgeber",
+    metaDescription:
+      "Informationen über Personen im Netz finden: öffentlich, nachvollziehbar, ethisch. SynSight unterstützt die Struktur. Jetzt bei SynSight prüfen.",
+    keywords: ["Informationen über Personen", "Personenrecherche"],
+    category: "OSINT",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "google",
+    estimatedSearchVolume: 5100,
+    seoPriority: "hoch",
+    heroTitle: "Personeninformationen finden – mit System",
+    heroSubtitle: "Von Name und Alias bis zu öffentlichen Profilen.",
+    intro:
+      "Von Name und Alias bis zu öffentlichen Profilen. Diese Seite bereitet die spätere Landingpage zu „Informationen über Personen finden – Guide“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Von Name und Alias bis zu öffentlichen Profilen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: personensuche-im-internet, username-osint, social-media-suche. Call-to-Action: Recherche strukturieren.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Informationen über Personen finden – Guide“ konkret?",
+        answer:
+          "Von Name und Alias bis zu öffentlichen Profilen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Recherche strukturieren – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "personensuche-im-internet",
+      "username-osint",
+      "social-media-suche",
+    ],
+    internalLinks: [
+      "/personensuche",
+      "/username-suche",
+      "/social-media-analyse",
+    ],
+    callToAction: "Recherche strukturieren",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "social-media-privatsphaere",
+    title: "Social-Media-Privatsphäre: Einstellungen mit Wirkung",
+    metaDescription:
+      "Social-Media-Privatsphäre verbessern. SynSight zeigt, was trotzdem öffentlich bleibt. Settings-Check. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: [
+      "Social Media Privatsphäre",
+      "Instagram privat",
+      "Facebook privat",
+    ],
+    category: "Datenschutz",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "social",
+    estimatedSearchVolume: 4300,
+    seoPriority: "hoch",
+    heroTitle: "Privatsphäre-Settings – und der Rest des Netzes",
+    heroSubtitle: "Warum „privat“ nicht unsichtbar bedeutet.",
+    intro:
+      "Warum „privat“ nicht unsichtbar bedeutet. Diese Seite bereitet die spätere Landingpage zu „Social-Media-Privatsphäre: Einstellungen mit Wirkung“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Warum „privat“ nicht unsichtbar bedeutet.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: social-media-fussabdruck, tracking-im-internet, online-sichtbarkeit-pruefen. Call-to-Action: Rest-Sichtbarkeit prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Social-Media-Privatsphäre“ konkret?",
+        answer:
+          "Warum „privat“ nicht unsichtbar bedeutet. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Rest-Sichtbarkeit prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "social-media-fussabdruck",
+      "tracking-im-internet",
+      "online-sichtbarkeit-pruefen",
+    ],
+    internalLinks: ["/social-media-analyse", "/datenschutz", "/hilfe"],
+    callToAction: "Rest-Sichtbarkeit prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "instagram-bilder-finden",
+    title: "Instagram-Bilder finden und richtig einordnen",
+    metaDescription:
+      "Instagram-Bilder finden und Wiederverwendung erkennen. SynSight Social- & Bildmodule. Jetzt prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Instagram Bilder finden", "Instagram OSINT"],
+    category: "Social Media",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "social",
+    estimatedSearchVolume: 4100,
+    seoPriority: "hoch",
+    heroTitle: "Instagram-Bilder im öffentlichen Raum",
+    heroSubtitle: "Profile, Reposts und Reverse Image als Ergänzung.",
+    intro:
+      "Profile, Reposts und Reverse Image als Ergänzung. Diese Seite bereitet die spätere Landingpage zu „Instagram-Bilder finden & einordnen“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Profile, Reposts und Reverse Image als Ergänzung.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: bilder-von-mir-im-internet, reverse-image-search-erklaerung, social-media-suche. Call-to-Action: Bild- & Social-Check.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Instagram-Bilder finden & einordnen“ konkret?",
+        answer:
+          "Profile, Reposts und Reverse Image als Ergänzung. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Bild- & Social-Check – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "bilder-von-mir-im-internet",
+      "reverse-image-search-erklaerung",
+      "social-media-suche",
+    ],
+    internalLinks: [
+      "/social-media-analyse",
+      "/reverse-image-search",
+      "/analysen",
+    ],
+    callToAction: "Bild- & Social-Check",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "fake-profil-erkennen-social",
+    title: "Fake-Profil in sozialen Netzwerken erkennen – Ratgeber",
+    metaDescription:
+      "Fake-Profile in Social Media erkennen. SynSight liefert Indizien aus öffentlichen Signalen. Check starten. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Fake Profil erkennen", "Fake Account Social"],
+    category: "Social Media",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "social",
+    estimatedSearchVolume: 3500,
+    seoPriority: "hoch",
+    heroTitle: "Fake-Profile entlarven",
+    heroSubtitle: "Muster, Bilder, Handles – ohne Garantiezauber.",
+    intro:
+      "Muster, Bilder, Handles – ohne Garantiezauber. Diese Seite bereitet die spätere Landingpage zu „Fake-Profil erkennen in sozialen Netzwerken“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (hoch) bündelt. Muster, Bilder, Handles – ohne Garantiezauber.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: fake-profile, reverse-image-search-erklaerung, impersonation-username. Call-to-Action: Verdächtiges Profil prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Fake-Profil erkennen in sozialen Netzwerken“ konkret?",
+        answer:
+          "Muster, Bilder, Handles – ohne Garantiezauber. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Verdächtiges Profil prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "fake-profile",
+      "reverse-image-search-erklaerung",
+      "impersonation-username",
+    ],
+    internalLinks: [
+      "/social-media-analyse",
+      "/reverse-image-search",
+      "/username-suche",
+    ],
+    callToAction: "Verdächtiges Profil prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "osint-fuer-anfaenger",
+    title: "OSINT für Anfänger: sicher und legal einsteigen",
+    metaDescription:
+      "OSINT für Anfänger: Einstieg ohne Hacking-Mythen. SynSight führt Schritt für Schritt. Jetzt Grundlagen lesen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["OSINT Anfänger", "OSINT lernen", "OSINT Einstieg"],
+    category: "OSINT",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 3300,
+    seoPriority: "hoch",
+    heroTitle: "OSINT lernen – ohne falsche Versprechen",
+    heroSubtitle: "Erste Schritte, Ethik und sinnvolle Module.",
+    intro:
+      "Erste Schritte, Ethik und sinnvolle Module. Diese Seite bereitet die spätere Landingpage zu „OSINT für Anfänger: Sicher einsteigen“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Erste Schritte, Ethik und sinnvolle Module.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: osint-erklaerung, eigene-daten-im-internet-finden, osint-legal. Call-to-Action: Anfänger-Demo starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „OSINT für Anfänger“ konkret?",
+        answer:
+          "Erste Schritte, Ethik und sinnvolle Module. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Anfänger-Demo starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "osint-erklaerung",
+      "eigene-daten-im-internet-finden",
+      "osint-legal",
+    ],
+    internalLinks: ["/osint-analyse", "/hilfe", "/#demo-scanner"],
+    callToAction: "Anfänger-Demo starten",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "digitale-identitaet-verstehen",
+    title: "Digitale Identität verstehen: der Einstieg – Ratgeber",
+    metaDescription:
+      "Digitale Identität verständlich erklärt – und wie SynSight Risiken einordnet. Ideal als Einstieg. Modulüberblick öffnen. Jetzt bei SynSight prüfen.",
+    keywords: [
+      "digitale Identität",
+      "Identität online",
+      "Identity Intelligence",
+    ],
+    category: "Identität",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 2800,
+    seoPriority: "hoch",
+    heroTitle: "Digitale Identität – was dahintersteckt",
+    heroSubtitle: "Vom Alias bis zum Leak: die Bausteine Ihrer Online-Persona.",
+    intro:
+      "Vom Alias bis zum Leak: die Bausteine Ihrer Online-Persona. Diese Seite bereitet die spätere Landingpage zu „Digitale Identität verstehen: Der Einstieg“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Identität: Einordnung",
+        content:
+          "Unter „Identität“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Vom Alias bis zum Leak: die Bausteine Ihrer Online-Persona.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: digitaler-fussabdruck, osint-erklaerung, identitaet-schuetzen. Call-to-Action: Identitätsmodule entdecken.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Digitale Identität verstehen“ konkret?",
+        answer:
+          "Vom Alias bis zum Leak: die Bausteine Ihrer Online-Persona. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Identitätsmodule entdecken – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "digitaler-fussabdruck",
+      "osint-erklaerung",
+      "identitaet-schuetzen",
+    ],
+    internalLinks: ["/analysen", "/osint-analyse", "/hilfe"],
+    callToAction: "Identitätsmodule entdecken",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "account-kompromittiert",
+    title: "Account kompromittiert: erkennen und absichern",
+    metaDescription:
+      "Account kompromittiert? Anzeichen erkennen und Zugänge sichern. SynSight unterstützt die Analyse. Jetzt prüfen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Account kompromittiert", "Account übernommen", "Account Hack"],
+    category: "Cybersecurity",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 2800,
+    seoPriority: "hoch",
+    heroTitle: "Kompromittierte Accounts erkennen",
+    heroSubtitle: "Von seltsamen Logins bis Leak-Hinweisen.",
+    intro:
+      "Von seltsamen Logins bis Leak-Hinweisen. Diese Seite bereitet die spätere Landingpage zu „Account kompromittiert: Erkennen & absichern“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (kritisch) bündelt. Von seltsamen Logins bis Leak-Hinweisen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: wurde-meine-email-gehackt, zwei-faktor-authentifizierung, account-uebernahme-verhindern. Call-to-Action: Account-Risiko einschätzen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Account kompromittiert“ konkret?",
+        answer:
+          "Von seltsamen Logins bis Leak-Hinweisen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Account-Risiko einschätzen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "wurde-meine-email-gehackt",
+      "zwei-faktor-authentifizierung",
+      "account-uebernahme-verhindern",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/email-check", "/hilfe"],
+    callToAction: "Account-Risiko einschätzen",
+    riskLevel: "kritisch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "telefonnummer-loeschen",
+    title: "Telefonnummer löschen: Einträge entfernen – Ratgeber",
+    metaDescription:
+      "Telefonnummer aus Verzeichnissen löschen lassen. SynSight hilft beim Finden öffentlicher Treffer. Starten. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Telefonnummer löschen", "Nummer entfernen Internet"],
+    category: "Telefon",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "phone",
+    estimatedSearchVolume: 2700,
+    seoPriority: "hoch",
+    heroTitle: "Nummer aus dem Netz bekommen",
+    heroSubtitle: "Zuerst finden, dann Löschwege nutzen.",
+    intro:
+      "Zuerst finden, dann Löschwege nutzen. Diese Seite bereitet die spätere Landingpage zu „Telefonnummer löschen: Einträge entfernen“ vor und verknüpft sie mit SynSight-Modulen (phone).",
+    sections: [
+      {
+        heading: "Telefon: Einordnung",
+        content:
+          "Unter „Telefon“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Zuerst finden, dann Löschwege nutzen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: phone) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: telefonbuch-eintrag-entfernen, persoenliche-daten-entfernen, telefonnummer-oeffentlich. Call-to-Action: Öffentliche Nummern-Treffer finden.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Telefonnummer löschen“ konkret?",
+        answer:
+          "Zuerst finden, dann Löschwege nutzen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Öffentliche Nummern-Treffer finden – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "telefonbuch-eintrag-entfernen",
+      "persoenliche-daten-entfernen",
+      "telefonnummer-oeffentlich",
+    ],
+    internalLinks: ["/telefon-check", "/datenschutz", "/hilfe"],
+    callToAction: "Öffentliche Nummern-Treffer finden",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "email-in-datenbank-geleakt",
+    title: "E-Mail in Leak-Datenbank: was das bedeutet – Ratgeber",
+    metaDescription:
+      "E-Mail in einer Leak-Datenbank gefunden? Was das heißt und was Sie tun. SynSight erklärt Treffer klar. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["E-Mail Leak Datenbank", "E-Mail in Breach"],
+    category: "Email",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "email",
+    estimatedSearchVolume: 2600,
+    seoPriority: "hoch",
+    heroTitle: "E-Mail in einer Leak-DB – was nun?",
+    heroSubtitle:
+      "Treffer einordnen, ohne jeden Alarm ernst zu dramatisierten.",
+    intro:
+      "Treffer einordnen, ohne jeden Alarm ernst zu dramatisierten. Diese Seite bereitet die spätere Landingpage zu „E-Mail in Datenbank geleakt? Bedeutung“ vor und verknüpft sie mit SynSight-Modulen (email).",
+    sections: [
+      {
+        heading: "Email: Einordnung",
+        content:
+          "Unter „Email“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (hoch) bündelt. Treffer einordnen, ohne jeden Alarm ernst zu dramatisierten.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: email) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: wurde-meine-email-gehackt, email-check-synsight, passwort-geleakt. Call-to-Action: E-Mail-Check starten.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „E-Mail in Datenbank geleakt? Bedeutung“ konkret?",
+        answer:
+          "Treffer einordnen, ohne jeden Alarm ernst zu dramatisierten. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "E-Mail-Check starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "wurde-meine-email-gehackt",
+      "email-check-synsight",
+      "passwort-geleakt",
+    ],
+    internalLinks: ["/email-check", "/datenleck-pruefen", "/#demo-scanner"],
+    callToAction: "E-Mail-Check starten",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "osint-tools-deutschland",
+    title: "OSINT Tools Deutschland: Plattform statt Scripts",
+    metaDescription:
+      "OSINT Tools in Deutschland: SynSight als geführte Plattform statt reiner CLI. Module vergleichen und starten. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["OSINT Tools", "OSINT Deutschland", "OSINT Plattform"],
+    category: "OSINT",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 2400,
+    seoPriority: "hoch",
+    heroTitle: "OSINT-Tools – aber verständlich",
+    heroSubtitle: "Geführte Analysen statt Tool-Zoo ohne Ergebnis.",
+    intro:
+      "Geführte Analysen statt Tool-Zoo ohne Ergebnis. Diese Seite bereitet die spätere Landingpage zu „OSINT Tools Deutschland: Plattform statt Scripts“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (niedrig) bündelt. Geführte Analysen statt Tool-Zoo ohne Ergebnis.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: osint-erklaerung, ki-risikoanalyse, digital-leak-analyse. Call-to-Action: SynSight Module testen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „OSINT Tools Deutschland“ konkret?",
+        answer:
+          "Geführte Analysen statt Tool-Zoo ohne Ergebnis. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "SynSight Module testen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "osint-erklaerung",
+      "ki-risikoanalyse",
+      "digital-leak-analyse",
+    ],
+    internalLinks: ["/osint-analyse", "/analysen", "/register"],
+    callToAction: "SynSight Module testen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "breach-monitoring",
+    title: "Breach Monitoring: Dauerhaft im Blick behalten",
+    metaDescription:
+      "Breach Monitoring für E-Mails und Identifikatoren. SynSight als Einstieg in laufende Kontrolle. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Breach Monitoring", "Leak Monitoring", "Dark Web Monitoring"],
+    category: "Datenlecks",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 2000,
+    seoPriority: "hoch",
+    heroTitle: "Leaks nicht nur einmal prüfen",
+    heroSubtitle: "Monitoring schlägt einmalige Panik-Suchen.",
+    intro:
+      "Monitoring schlägt einmalige Panik-Suchen. Diese Seite bereitet die spätere Landingpage zu „Breach Monitoring: Dauerhaft im Blick behalten“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Datenlecks: Einordnung",
+        content:
+          "Unter „Datenlecks“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Monitoring schlägt einmalige Panik-Suchen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: datenleck-pruefen, digital-leak-analyse, wurde-meine-email-gehackt. Call-to-Action: Monitoring mit Konto starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Breach Monitoring“ konkret?",
+        answer:
+          "Monitoring schlägt einmalige Panik-Suchen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Monitoring mit Konto starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "datenleck-pruefen",
+      "digital-leak-analyse",
+      "wurde-meine-email-gehackt",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/register", "/analysen"],
+    callToAction: "Monitoring mit Konto starten",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "osint-legal",
+    title: "Ist OSINT legal? Grenzen klar und ehrlich – Ratgeber",
+    metaDescription:
+      "Ist OSINT legal? Öffentliche Quellen ja – Hacking nein. SynSight erklärt Grenzen und Praxis. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["OSINT legal", "OSINT erlaubt", "OSINT Recht"],
+    category: "OSINT",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 1900,
+    seoPriority: "hoch",
+    heroTitle: "OSINT ist kein Freibrief",
+    heroSubtitle: "Was erlaubt ist – und wo SynSight bewusst stoppt.",
+    intro:
+      "Was erlaubt ist – und wo SynSight bewusst stoppt. Diese Seite bereitet die spätere Landingpage zu „Ist OSINT legal? Grenzen klar erklärt“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Was erlaubt ist – und wo SynSight bewusst stoppt.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: osint-erklaerung, doxxing, dsgvo. Call-to-Action: Rechtliche Einordnung lesen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Ist OSINT legal? Grenzen klar erklärt“ konkret?",
+        answer:
+          "Was erlaubt ist – und wo SynSight bewusst stoppt. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Rechtliche Einordnung lesen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: ["osint-erklaerung", "doxxing", "dsgvo"],
+    internalLinks: ["/osint-analyse", "/datenschutz", "/impressum"],
+    callToAction: "Rechtliche Einordnung lesen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "telefonnummer-datenleck",
+    title: "Telefonnummer im Datenleck: was Sie tun – Ratgeber",
+    metaDescription:
+      "Telefonnummer in einem Datenleck? Sofortmaßnahmen und Exposition. SynSight Leak-Check. Nummer prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Telefonnummer Leak", "Handy Leak", "Phone Breach"],
+    category: "Datenlecks",
+    difficulty: "einsteiger",
+    searchIntent: "transactional",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 1900,
+    seoPriority: "hoch",
+    heroTitle: "Nummer geleakt – so reagieren Sie",
+    heroSubtitle: "SMS-Betrug, SIM-Risiken und Account-Ketten.",
+    intro:
+      "SMS-Betrug, SIM-Risiken und Account-Ketten. Diese Seite bereitet die spätere Landingpage zu „Telefonnummer im Datenleck: Was tun?“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Datenlecks: Einordnung",
+        content:
+          "Unter „Datenlecks“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (transactional) und reale Risiken (hoch) bündelt. SMS-Betrug, SIM-Risiken und Account-Ketten.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: datenleck-pruefen, telefonnummer-im-internet, zwei-faktor-authentifizierung. Call-to-Action: Nummer auf Leaks prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Telefonnummer im Datenleck“ konkret?",
+        answer:
+          "SMS-Betrug, SIM-Risiken und Account-Ketten. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Nummer auf Leaks prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "datenleck-pruefen",
+      "telefonnummer-im-internet",
+      "zwei-faktor-authentifizierung",
+    ],
+    internalLinks: ["/telefon-check", "/datenleck-pruefen", "/email-check"],
+    callToAction: "Nummer auf Leaks prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "mehrere-accounts-finden",
+    title: "Mehrere Accounts finden: Eine Identität, viele Logins",
+    metaDescription:
+      "Mehrere Accounts zu einem Alias finden. SynSight Username-Matrix nutzen. Querbezüge prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: [
+      "mehrere Accounts finden",
+      "gleiche Username",
+      "Account Korrelation",
+    ],
+    category: "Benutzernamen",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "username",
+    estimatedSearchVolume: 1700,
+    seoPriority: "hoch",
+    heroTitle: "Ein Handle – viele Accounts",
+    heroSubtitle: "Wiederverwendete Usernames als Risiko und Chance.",
+    intro:
+      "Wiederverwendete Usernames als Risiko und Chance. Diese Seite bereitet die spätere Landingpage zu „Mehrere Accounts finden: Eine Identität, viele Logins“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Benutzernamen: Einordnung",
+        content:
+          "Unter „Benutzernamen“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Wiederverwendete Usernames als Risiko und Chance.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: gleicher-username-plattformen, benutzername-suchen, social-media-fussabdruck. Call-to-Action: Account-Matrix starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Mehrere Accounts finden“ konkret?",
+        answer:
+          "Wiederverwendete Usernames als Risiko und Chance. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Account-Matrix starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "gleicher-username-plattformen",
+      "benutzername-suchen",
+      "social-media-fussabdruck",
+    ],
+    internalLinks: [
+      "/username-suche",
+      "/social-media-analyse",
+      "/digital-footprint",
+    ],
+    callToAction: "Account-Matrix starten",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "profilfoto-missbrauch",
+    title: "Profilfoto-Missbrauch erkennen und melden – Ratgeber",
+    metaDescription:
+      "Profilfoto-Missbrauch erkennen, dokumentieren, melden. SynSight Reverse Image hilft. Foto checken. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Profilfoto Missbrauch", "Foto gestohlen", "Catfishing Foto"],
+    category: "Cybersecurity",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "reverse-image",
+    estimatedSearchVolume: 1600,
+    seoPriority: "hoch",
+    heroTitle: "Wenn Ihr Profilfoto fremd genutzt wird",
+    heroSubtitle: "Treffer finden und Plattformen melden.",
+    intro:
+      "Treffer finden und Plattformen melden. Diese Seite bereitet die spätere Landingpage zu „Profilfoto-Missbrauch erkennen und melden“ vor und verknüpft sie mit SynSight-Modulen (reverse-image).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (hoch) bündelt. Treffer finden und Plattformen melden.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: reverse-image) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: bilder-von-mir-im-internet, fake-profile, identitaetsdiebstahl. Call-to-Action: Profilfoto prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Profilfoto-Missbrauch erkennen und melden“ konkret?",
+        answer:
+          "Treffer finden und Plattformen melden. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Profilfoto prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "bilder-von-mir-im-internet",
+      "fake-profile",
+      "identitaetsdiebstahl",
+    ],
+    internalLinks: [
+      "/reverse-image-search",
+      "/social-media-analyse",
+      "/register",
+    ],
+    callToAction: "Profilfoto prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "account-uebernahme-verhindern",
+    title: "Account-Übernahme verhindern: Härten in 15 Min.",
+    metaDescription:
+      "Account-Übernahme verhindern mit MFA, Passwörtern und Leak-Checks. SynSight priorisiert. Jetzt härten. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Account Übernahme", "Account Takeover", "ATO verhindern"],
+    category: "Sicherheit",
+    difficulty: "einsteiger",
+    searchIntent: "transactional",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 1500,
+    seoPriority: "hoch",
+    heroTitle: "Accounts in 15 Minuten härten",
+    heroSubtitle: "Die Maßnahmen mit dem besten Aufwand-Nutzen-Verhältnis.",
+    intro:
+      "Die Maßnahmen mit dem besten Aufwand-Nutzen-Verhältnis. Diese Seite bereitet die spätere Landingpage zu „Account-Übernahme verhindern: Härten in 15 Min.“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Sicherheit: Einordnung",
+        content:
+          "Unter „Sicherheit“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (transactional) und reale Risiken (hoch) bündelt. Die Maßnahmen mit dem besten Aufwand-Nutzen-Verhältnis.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: zwei-faktor-authentifizierung, passwortmanager, wurde-meine-email-gehackt. Call-to-Action: Kritische Leaks prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Account-Übernahme verhindern“ konkret?",
+        answer:
+          "Die Maßnahmen mit dem besten Aufwand-Nutzen-Verhältnis. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Kritische Leaks prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "zwei-faktor-authentifizierung",
+      "passwortmanager",
+      "wurde-meine-email-gehackt",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/email-check", "/hilfe"],
+    callToAction: "Kritische Leaks prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "username-osint",
+    title: "Username-OSINT: Methoden für die Praxis – Ratgeber",
+    metaDescription:
+      "Username-OSINT praxisnah: Enumeration, Korrelation, Konfidenz. Mit SynSight umsetzen. Modul öffnen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Username OSINT", "Username Enumeration"],
+    category: "OSINT",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "username",
+    estimatedSearchVolume: 1400,
+    seoPriority: "hoch",
+    heroTitle: "Username-OSINT ohne Tool-Chaos",
+    heroSubtitle: "Methoden, die in der Praxis zählen.",
+    intro:
+      "Methoden, die in der Praxis zählen. Diese Seite bereitet die spätere Landingpage zu „Username-OSINT: Methoden für die Praxis“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Methoden, die in der Praxis zählen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: benutzername-suchen, osint-erklaerung, username-analyse-synsight. Call-to-Action: Username-OSINT starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Username-OSINT“ konkret?",
+        answer:
+          "Methoden, die in der Praxis zählen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Username-OSINT starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "benutzername-suchen",
+      "osint-erklaerung",
+      "username-analyse-synsight",
+    ],
+    internalLinks: ["/username-suche", "/osint-analyse", "/analysen"],
+    callToAction: "Username-OSINT starten",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "social-media-fussabdruck",
+    title: "Social-Media-Fußabdruck messen und reduzieren",
+    metaDescription:
+      "Social-Media-Fußabdruck messen und Altlasten reduzieren. SynSight Social-Analyse. Fußabdruck checken. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Social Media Fußabdruck", "Social Footprint"],
+    category: "Social Media",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "social",
+    estimatedSearchVolume: 1400,
+    seoPriority: "hoch",
+    heroTitle: "Ihr Social-Footprint auf einen Blick",
+    heroSubtitle: "Welche Netzwerke wie stark zur Exposition beitragen.",
+    intro:
+      "Welche Netzwerke wie stark zur Exposition beitragen. Diese Seite bereitet die spätere Landingpage zu „Social-Media-Fußabdruck messen und reduzieren“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Welche Netzwerke wie stark zur Exposition beitragen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: digitaler-fussabdruck, social-media-privatsphaere, alte-social-media-profile. Call-to-Action: Social-Footprint prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Social-Media-Fußabdruck messen und reduzieren“ konkret?",
+        answer:
+          "Welche Netzwerke wie stark zur Exposition beitragen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Social-Footprint prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "digitaler-fussabdruck",
+      "social-media-privatsphaere",
+      "alte-social-media-profile",
+    ],
+    internalLinks: ["/social-media-analyse", "/digital-footprint", "/analysen"],
+    callToAction: "Social-Footprint prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "spam-anrufe-herkunft",
+    title: "Spam-Anrufe: Herkunft und Schutzmaßnahmen – Ratgeber",
+    metaDescription:
+      "Spam-Anrufe einordnen und Schutz stärken. SynSight hilft bei Nummern-Hinweisen. Unbekannte Nummer prüfen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Spam Anrufe", "Wer ruft an", "Spam Nummer"],
+    category: "Telefon",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "phone",
+    estimatedSearchVolume: 8000,
+    seoPriority: "mittel",
+    heroTitle: "Spam-Anrufe verstehen",
+    heroSubtitle: "Nicht jeder Anruf ist zuordenbar – aber Muster helfen.",
+    intro:
+      "Nicht jeder Anruf ist zuordenbar – aber Muster helfen. Diese Seite bereitet die spätere Landingpage zu „Spam-Anrufe: Herkunft & Schutzmaßnahmen“ vor und verknüpft sie mit SynSight-Modulen (phone).",
+    sections: [
+      {
+        heading: "Telefon: Einordnung",
+        content:
+          "Unter „Telefon“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Nicht jeder Anruf ist zuordenbar – aber Muster helfen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: phone) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: wem-gehoert-diese-nummer, phishing-erkennen, telefonnummer-im-internet. Call-to-Action: Verdächtige Nummer prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Spam-Anrufe“ konkret?",
+        answer:
+          "Nicht jeder Anruf ist zuordenbar – aber Muster helfen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Verdächtige Nummer prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "wem-gehoert-diese-nummer",
+      "phishing-erkennen",
+      "telefonnummer-im-internet",
+    ],
+    internalLinks: ["/telefon-check", "/hilfe", "/osint-analyse"],
+    callToAction: "Verdächtige Nummer prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "cookies-erklaerung",
+    title: "Cookies erklärt: Was Tracking wirklich speichert",
+    metaDescription:
+      "Cookies und Tracking verständlich erklärt. SynSight ordnet Browser-Tracking vs. OSINT-Exposition. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Cookies Erklärung", "Tracking Cookies", "Cookie Banner"],
+    category: "Datenschutz",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 6400,
+    seoPriority: "mittel",
+    heroTitle: "Cookies – kurz und ehrlich",
+    heroSubtitle: "Session, Prefs, Tracking: der Unterschied zählt.",
+    intro:
+      "Session, Prefs, Tracking: der Unterschied zählt. Diese Seite bereitet die spätere Landingpage zu „Cookies erklärt: Was Tracking wirklich speichert“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Session, Prefs, Tracking: der Unterschied zählt.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: tracking-im-internet, browser-tracking-stoppen, do-not-track-reicht-nicht. Call-to-Action: Datenschutz-Überblick öffnen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Cookies erklärt“ konkret?",
+        answer:
+          "Session, Prefs, Tracking: der Unterschied zählt. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Datenschutz-Überblick öffnen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "tracking-im-internet",
+      "browser-tracking-stoppen",
+      "do-not-track-reicht-nicht",
+    ],
+    internalLinks: ["/datenschutz", "/hilfe", "/analysen"],
+    callToAction: "Datenschutz-Überblick öffnen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "sichere-passwoerter",
+    title: "Sichere Passwörter: Länge schlägt Komplexität",
+    metaDescription:
+      "Sichere Passwörter praktisch erklärt. SynSight ergänzt mit Leak-Checks gegen Wiederverwendung. Tipps. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["sichere Passwörter", "starkes Passwort", "Passwort Regeln"],
+    category: "Sicherheit",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 4400,
+    seoPriority: "mittel",
+    heroTitle: "Sichere Passwörter ohne Mythos",
+    heroSubtitle: "Länge, Einzigartigkeit, Manager – fertig.",
+    intro:
+      "Länge, Einzigartigkeit, Manager – fertig. Diese Seite bereitet die spätere Landingpage zu „Sichere Passwörter: Länge schlägt Komplexität“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Sicherheit: Einordnung",
+        content:
+          "Unter „Sicherheit“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Länge, Einzigartigkeit, Manager – fertig.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: passwortmanager, passwort-geleakt, credential-stuffing. Call-to-Action: Auf Leak-Wiederverwendung prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Sichere Passwörter“ konkret?",
+        answer:
+          "Länge, Einzigartigkeit, Manager – fertig. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Auf Leak-Wiederverwendung prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "passwortmanager",
+      "passwort-geleakt",
+      "credential-stuffing",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/hilfe", "/email-check"],
+    callToAction: "Auf Leak-Wiederverwendung prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "tiktok-profil-finden",
+    title: "TikTok-Profil finden: Handles und Spuren – Ratgeber",
+    metaDescription:
+      "TikTok-Profil finden und öffentliche Spuren einordnen. SynSight Username-/Social-Check. Handle prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["TikTok Profil finden", "TikTok Username"],
+    category: "Social Media",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "social",
+    estimatedSearchVolume: 3600,
+    seoPriority: "mittel",
+    heroTitle: "TikTok-Profile auffinden",
+    heroSubtitle: "Handles, Spiegelungen, Querverweise.",
+    intro:
+      "Handles, Spiegelungen, Querverweise. Diese Seite bereitet die spätere Landingpage zu „TikTok-Profil finden: Handles & Spuren“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Handles, Spiegelungen, Querverweise.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: benutzername-suchen, social-media-suche, social-media-fussabdruck. Call-to-Action: TikTok-Handle prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „TikTok-Profil finden“ konkret?",
+        answer:
+          "Handles, Spiegelungen, Querverweise. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "TikTok-Handle prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "benutzername-suchen",
+      "social-media-suche",
+      "social-media-fussabdruck",
+    ],
+    internalLinks: [
+      "/social-media-analyse",
+      "/username-suche",
+      "/#demo-scanner",
+    ],
+    callToAction: "TikTok-Handle prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "whatsapp-nummer-sichtbar",
+    title: "WhatsApp-Nummer sichtbar: Privatsphäre-Tipps – Ratgeber",
+    metaDescription:
+      "WhatsApp-Nummer sichtbar? Privatsphäre-Einstellungen und Risiken. SynSight Kontext. Schutz verbessern. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["WhatsApp Nummer sichtbar", "WhatsApp Privatsphäre"],
+    category: "Telefon",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "phone",
+    estimatedSearchVolume: 3200,
+    seoPriority: "mittel",
+    heroTitle: "WhatsApp & sichtbare Nummern",
+    heroSubtitle: "Einstellungen, Exposition und Social Engineering.",
+    intro:
+      "Einstellungen, Exposition und Social Engineering. Diese Seite bereitet die spätere Landingpage zu „WhatsApp-Nummer sichtbar: Privatsphäre-Tipps“ vor und verknüpft sie mit SynSight-Modulen (phone).",
+    sections: [
+      {
+        heading: "Telefon: Einordnung",
+        content:
+          "Unter „Telefon“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Einstellungen, Exposition und Social Engineering.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: phone) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: telefonnummer-oeffentlich, social-engineering, online-sicherheit. Call-to-Action: Nummer-Exposition prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „WhatsApp-Nummer sichtbar“ konkret?",
+        answer:
+          "Einstellungen, Exposition und Social Engineering. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Nummer-Exposition prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "telefonnummer-oeffentlich",
+      "social-engineering",
+      "online-sicherheit",
+    ],
+    internalLinks: ["/telefon-check", "/hilfe", "/datenschutz"],
+    callToAction: "Nummer-Exposition prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "tracking-im-internet",
+    title: "Tracking im Internet: Wer folgt Ihren Klicks?",
+    metaDescription:
+      "Tracking im Internet erklären und reduzieren. SynSight unterscheidet Tracker und öffentliche Spuren. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Tracking Internet", "Online Tracking", "Tracker blocken"],
+    category: "Datenschutz",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 3000,
+    seoPriority: "mittel",
+    heroTitle: "Tracking ist nicht dasselbe wie OSINT",
+    heroSubtitle: "Beide betreffen Privatsphäre – auf unterschiedliche Weise.",
+    intro:
+      "Beide betreffen Privatsphäre – auf unterschiedliche Weise. Diese Seite bereitet die spätere Landingpage zu „Tracking im Internet: Wer folgt Ihren Klicks?“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Beide betreffen Privatsphäre – auf unterschiedliche Weise.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: cookies-erklaerung, browser-tracking-stoppen, digitaler-fussabdruck. Call-to-Action: Öffentliche Spuren separat prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Tracking im Internet“ konkret?",
+        answer:
+          "Beide betreffen Privatsphäre – auf unterschiedliche Weise. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Öffentliche Spuren separat prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "cookies-erklaerung",
+      "browser-tracking-stoppen",
+      "digitaler-fussabdruck",
+    ],
+    internalLinks: ["/datenschutz", "/digital-footprint", "/hilfe"],
+    callToAction: "Öffentliche Spuren separat prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "linkedin-suche",
+    title: "LinkedIn-Suche: Berufliche Sichtbarkeit prüfen",
+    metaDescription:
+      "LinkedIn-Suche und berufliche Online-Sichtbarkeit. SynSight Reputation & Social. Profilcheck starten. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["LinkedIn Suche", "LinkedIn OSINT", "Xing LinkedIn"],
+    category: "Social Media",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "social",
+    estimatedSearchVolume: 2800,
+    seoPriority: "mittel",
+    heroTitle: "LinkedIn als Visitenkarte – und Angriffsfläche",
+    heroSubtitle: "Berufliche Daten bewusst steuern.",
+    intro:
+      "Berufliche Daten bewusst steuern. Diese Seite bereitet die spätere Landingpage zu „LinkedIn-Suche: Berufliche Sichtbarkeit prüfen“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (niedrig) bündelt. Berufliche Daten bewusst steuern.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: online-reputation-pruefen, social-engineering, social-media-privatsphaere. Call-to-Action: Berufliche Sichtbarkeit prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „LinkedIn-Suche“ konkret?",
+        answer:
+          "Berufliche Daten bewusst steuern. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Berufliche Sichtbarkeit prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "online-reputation-pruefen",
+      "social-engineering",
+      "social-media-privatsphaere",
+    ],
+    internalLinks: ["/social-media-analyse", "/google-analyse", "/analysen"],
+    callToAction: "Berufliche Sichtbarkeit prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "deepfake-bilder-erkennen",
+    title: "Deepfake-Bilder erkennen: Indizien statt Panik",
+    metaDescription:
+      "Deepfake-Bilder erkennen anhand von Indizien. SynSight ordnet Bildkontexte ein. Seriös prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Deepfake erkennen", "KI Bild Fake", "Fake Foto"],
+    category: "Cybersecurity",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "face-scan",
+    estimatedSearchVolume: 2700,
+    seoPriority: "mittel",
+    heroTitle: "Deepfakes: Indizien sammeln",
+    heroSubtitle: "Keine magische Erkennung – dafür klare Heuristiken.",
+    intro:
+      "Keine magische Erkennung – dafür klare Heuristiken. Diese Seite bereitet die spätere Landingpage zu „Deepfake-Bilder erkennen: Indizien statt Panik“ vor und verknüpft sie mit SynSight-Modulen (face-scan).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (hoch) bündelt. Keine magische Erkennung – dafür klare Heuristiken.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: face-scan) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: gesicht-im-internet-finden, fake-profile, profilfoto-missbrauch. Call-to-Action: Bildkontext prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Deepfake-Bilder erkennen“ konkret?",
+        answer:
+          "Keine magische Erkennung – dafür klare Heuristiken. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Ist Face Scan immer nötig?",
+        answer:
+          "Nein. Oft reicht Reverse Image Search. Face Scan ist für spezifische Szenarien und unterliegt klaren Grenzen.",
+      },
+    ],
+    relatedPages: [
+      "gesicht-im-internet-finden",
+      "fake-profile",
+      "profilfoto-missbrauch",
+    ],
+    internalLinks: ["/reverse-image-search", "/hilfe", "/register"],
+    callToAction: "Bildkontext prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "social-engineering",
+    title: "Social Engineering: Manipulation erkennen – Ratgeber",
+    metaDescription:
+      "Social Engineering erkennen – Anrufe, Mails, LinkedIn. SynSight erklärt Köder aus öffentlichen Daten. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Social Engineering", "Manipulation Internet", "CEO Fraud"],
+    category: "Cybersecurity",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 2600,
+    seoPriority: "mittel",
+    heroTitle: "Social Engineering braucht Ihre Daten",
+    heroSubtitle: "Je mehr öffentlich liegt, desto leichter der Köder.",
+    intro:
+      "Je mehr öffentlich liegt, desto leichter der Köder. Diese Seite bereitet die spätere Landingpage zu „Social Engineering: Manipulation erkennen“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (hoch) bündelt. Je mehr öffentlich liegt, desto leichter der Köder.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: phishing-erkennen, linkedin-suche, online-sichtbarkeit-pruefen. Call-to-Action: Öffentliche Köderquellen prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Social Engineering“ konkret?",
+        answer:
+          "Je mehr öffentlich liegt, desto leichter der Köder. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Öffentliche Köderquellen prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "phishing-erkennen",
+      "linkedin-suche",
+      "online-sichtbarkeit-pruefen",
+    ],
+    internalLinks: ["/digital-footprint", "/social-media-analyse", "/hilfe"],
+    callToAction: "Öffentliche Köderquellen prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "recht-auf-vergessenwerden",
+    title: "Recht auf Vergessenwerden: wann es greift – Ratgeber",
+    metaDescription:
+      "Recht auf Vergessenwerden in der EU: Voraussetzungen und Grenzen. SynSight Kontext. Antrag vorbereiten. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Recht auf Vergessenwerden", "Google Löschung DSGVO"],
+    category: "Datenschutz",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "google",
+    estimatedSearchVolume: 2600,
+    seoPriority: "mittel",
+    heroTitle: "Vergessenwerden – kein Reset-Knopf",
+    heroSubtitle: "Wann Anträge Aussicht haben – und wann nicht.",
+    intro:
+      "Wann Anträge Aussicht haben – und wann nicht. Diese Seite bereitet die spätere Landingpage zu „Recht auf Vergessenwerden: Wann es greift“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Wann Anträge Aussicht haben – und wann nicht.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: suchmaschinen-loeschen, dsgvo, digitalen-fussabdruck-loeschen. Call-to-Action: Treffer vor dem Antrag sammeln.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Recht auf Vergessenwerden“ konkret?",
+        answer:
+          "Wann Anträge Aussicht haben – und wann nicht. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Treffer vor dem Antrag sammeln – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "suchmaschinen-loeschen",
+      "dsgvo",
+      "digitalen-fussabdruck-loeschen",
+    ],
+    internalLinks: ["/datenschutz", "/google-analyse", "/hilfe"],
+    callToAction: "Treffer vor dem Antrag sammeln",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "x-twitter-suche",
+    title: "X (Twitter) Suche: Öffentliche Posts & Handles",
+    metaDescription:
+      "X/Twitter-Suche zu Handles und öffentlichen Posts. SynSight Social-OSINT. Account-Signale prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Twitter Suche", "X Suche", "Twitter OSINT"],
+    category: "Social Media",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "social",
+    estimatedSearchVolume: 2500,
+    seoPriority: "mittel",
+    heroTitle: "X/Twitter öffentlich durchsuchen",
+    heroSubtitle: "Handles, Mentions, Wiedererkennung.",
+    intro:
+      "Handles, Mentions, Wiedererkennung. Diese Seite bereitet die spätere Landingpage zu „X (Twitter) Suche: Öffentliche Posts & Handles“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Handles, Mentions, Wiedererkennung.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: social-media-suche, benutzername-suchen, online-reputation-pruefen. Call-to-Action: X-Handle prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „X (Twitter) Suche“ konkret?",
+        answer:
+          "Handles, Mentions, Wiedererkennung. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "X-Handle prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "social-media-suche",
+      "benutzername-suchen",
+      "online-reputation-pruefen",
+    ],
+    internalLinks: [
+      "/social-media-analyse",
+      "/username-suche",
+      "/osint-analyse",
+    ],
+    callToAction: "X-Handle prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "gamername-finden",
+    title: "Gamername finden: Accounts und Wiedererkennung",
+    metaDescription:
+      "Gamername finden und verknüpfte öffentliche Accounts erkennen. SynSight Alias-Check. Gamertag prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Gamername finden", "Gamertag suchen", "Gaming Username"],
+    category: "Benutzernamen",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "username",
+    estimatedSearchVolume: 2400,
+    seoPriority: "mittel",
+    heroTitle: "Gamernamen hinterlassen Spuren",
+    heroSubtitle: "Foren, Plattformen und Wiedererkennung im Blick.",
+    intro:
+      "Foren, Plattformen und Wiedererkennung im Blick. Diese Seite bereitet die spätere Landingpage zu „Gamername finden: Accounts & Wiedererkennung“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Benutzernamen: Einordnung",
+        content:
+          "Unter „Benutzernamen“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Foren, Plattformen und Wiedererkennung im Blick.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: benutzername-suchen, discord-username-suchen, mehrere-accounts-finden. Call-to-Action: Gamertag prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Gamername finden“ konkret?",
+        answer:
+          "Foren, Plattformen und Wiedererkennung im Blick. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Gamertag prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "benutzername-suchen",
+      "discord-username-suchen",
+      "mehrere-accounts-finden",
+    ],
+    internalLinks: ["/username-suche", "/social-media-analyse", "/analysen"],
+    callToAction: "Gamertag prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "google-cache",
+    title: "Google Cache: alte Seitenversionen finden – Ratgeber",
+    metaDescription:
+      "Google Cache nutzen und entfernen lassen. SynSight erklärt Index-Spuren. Cache-Thematik verstehen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Google Cache", "Zwischenspeicher Google"],
+    category: "Google",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "google",
+    estimatedSearchVolume: 2400,
+    seoPriority: "mittel",
+    heroTitle: "Google Cache als Spur und Problem",
+    heroSubtitle: "Alte Inhalte können länger sichtbar bleiben.",
+    intro:
+      "Alte Inhalte können länger sichtbar bleiben. Diese Seite bereitet die spätere Landingpage zu „Google Cache: Alte Seitenversionen finden“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "Google: Einordnung",
+        content:
+          "Unter „Google“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Alte Inhalte können länger sichtbar bleiben.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: suchmaschinen-loeschen, geloeschte-profile-finden, google-analyse-synsight. Call-to-Action: Index-Spuren prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Google Cache“ konkret?",
+        answer:
+          "Alte Inhalte können länger sichtbar bleiben. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Index-Spuren prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "suchmaschinen-loeschen",
+      "geloeschte-profile-finden",
+      "google-analyse-synsight",
+    ],
+    internalLinks: ["/google-analyse", "/datenschutz", "/hilfe"],
+    callToAction: "Index-Spuren prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "bild-rueckwaertssuche",
+    title: "Bild-Rückwärtssuche: Praxis in fünf Schritten",
+    metaDescription:
+      "Bild-Rückwärtssuche in fünf Schritten. SynSight führt durch die Analyse. Foto jetzt prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Bild Rückwärtssuche", "Foto rückwärts suchen"],
+    category: "Reverse Image",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "reverse-image",
+    estimatedSearchVolume: 2300,
+    seoPriority: "mittel",
+    heroTitle: "Rückwärtssuche Schritt für Schritt",
+    heroSubtitle: "Vorbereitung, Upload, Treffer, Bewertung, Maßnahmen.",
+    intro:
+      "Vorbereitung, Upload, Treffer, Bewertung, Maßnahmen. Diese Seite bereitet die spätere Landingpage zu „Bild-Rückwärtssuche: Praxis in 5 Schritten“ vor und verknüpft sie mit SynSight-Modulen (reverse-image).",
+    sections: [
+      {
+        heading: "Reverse Image: Einordnung",
+        content:
+          "Unter „Reverse Image“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Vorbereitung, Upload, Treffer, Bewertung, Maßnahmen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: reverse-image) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: reverse-image-search-erklaerung, foto-woher-stammt-es, bildersuche. Call-to-Action: In 5 Schritten starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Bild-Rückwärtssuche“ konkret?",
+        answer:
+          "Vorbereitung, Upload, Treffer, Bewertung, Maßnahmen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "In 5 Schritten starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "reverse-image-search-erklaerung",
+      "foto-woher-stammt-es",
+      "bildersuche",
+    ],
+    internalLinks: ["/reverse-image-search", "/hilfe", "/register"],
+    callToAction: "In 5 Schritten starten",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "meine-daten-im-netz",
+    title: "Meine Daten im Netz: Überblick ohne Fachchinesisch",
+    metaDescription:
+      "Meine Daten im Netz verstehen – verständlich erklärt. SynSight zeigt, welche öffentlichen Signale zählen. Jetzt prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["meine Daten im Netz", "persönliche Daten Internet"],
+    category: "Identität",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 2200,
+    seoPriority: "mittel",
+    heroTitle: "Meine Daten im Netz – verständlich sortiert",
+    heroSubtitle: "Kein Fachjargon, dafür klare Prioritäten.",
+    intro:
+      "Kein Fachjargon, dafür klare Prioritäten. Diese Seite bereitet die spätere Landingpage zu „Meine Daten im Netz: Überblick ohne Fachchinesisch“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Identität: Einordnung",
+        content:
+          "Unter „Identität“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Kein Fachjargon, dafür klare Prioritäten.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: eigene-daten-im-internet-finden, datenleck-pruefen, digitaler-fussabdruck. Call-to-Action: Datenlage prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Meine Daten im Netz“ konkret?",
+        answer:
+          "Kein Fachjargon, dafür klare Prioritäten. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Datenlage prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "eigene-daten-im-internet-finden",
+      "datenleck-pruefen",
+      "digitaler-fussabdruck",
+    ],
+    internalLinks: ["/digital-footprint", "/datenleck-pruefen", "/hilfe"],
+    callToAction: "Datenlage prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "discord-username-suchen",
+    title: "Discord-Username suchen: öffentliche Spuren – Ratgeber",
+    metaDescription:
+      "Discord-Username und öffentliche Spuren einordnen. SynSight Alias-Analyse als Einstieg. Handle prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Discord Username suchen", "Discord OSINT"],
+    category: "Benutzernamen",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "username",
+    estimatedSearchVolume: 2200,
+    seoPriority: "mittel",
+    heroTitle: "Discord-Handles hinterlassen Spuren",
+    heroSubtitle: "Öffentliche Hinweise – ohne Server-Privatsphäre zu brechen.",
+    intro:
+      "Öffentliche Hinweise – ohne Server-Privatsphäre zu brechen. Diese Seite bereitet die spätere Landingpage zu „Discord-Username suchen: Öffentliche Spuren“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Benutzernamen: Einordnung",
+        content:
+          "Unter „Benutzernamen“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Öffentliche Hinweise – ohne Server-Privatsphäre zu brechen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: gamername-finden, benutzername-suchen, social-media-suche. Call-to-Action: Discord-Alias prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Discord-Username suchen“ konkret?",
+        answer:
+          "Öffentliche Hinweise – ohne Server-Privatsphäre zu brechen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Discord-Alias prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "gamername-finden",
+      "benutzername-suchen",
+      "social-media-suche",
+    ],
+    internalLinks: [
+      "/username-suche",
+      "/social-media-analyse",
+      "/#demo-scanner",
+    ],
+    callToAction: "Discord-Alias prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "darknet-leak-checken",
+    title: "Darknet-Leak checken: was realistischerweise geht",
+    metaDescription:
+      "Darknet-Leaks prüfen ohne Mythen. SynSight erklärt Grenzen und klare Leak-Signale. Seriös checken. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Darknet Leak", "Darknet Datenleck", "Leak Dark Web"],
+    category: "Datenlecks",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 2100,
+    seoPriority: "mittel",
+    heroTitle: "Darknet-Leaks – Erwartung vs. Realität",
+    heroSubtitle: "Keine Show, sondern nachvollziehbare Exposition.",
+    intro:
+      "Keine Show, sondern nachvollziehbare Exposition. Diese Seite bereitet die spätere Landingpage zu „Darknet-Leak checken: Was realistisch ist“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Datenlecks: Einordnung",
+        content:
+          "Unter „Datenlecks“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (hoch) bündelt. Keine Show, sondern nachvollziehbare Exposition.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: datenleck-pruefen, datenhandel-erklaerung, digital-leak-analyse. Call-to-Action: Leak-Exposition prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Darknet-Leak checken“ konkret?",
+        answer:
+          "Keine Show, sondern nachvollziehbare Exposition. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Leak-Exposition prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "datenleck-pruefen",
+      "datenhandel-erklaerung",
+      "digital-leak-analyse",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/analysen", "/register"],
+    callToAction: "Leak-Exposition prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "telefonbuch-eintrag-entfernen",
+    title: "Telefonbuch-Eintrag entfernen: so gelingt’s – Ratgeber",
+    metaDescription:
+      "Telefonbuch-Eintrag entfernen und Weiterveröffentlichungen stoppen. SynSight findet Treffer. Jetzt starten. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Telefonbuch Eintrag löschen", "Das Telefonbuch entfernen"],
+    category: "Datenschutz",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "phone",
+    estimatedSearchVolume: 2100,
+    seoPriority: "mittel",
+    heroTitle: "Telefonbuch-Einträge entfernen",
+    heroSubtitle: "Quelle, Spiegel, Suchindex – der typische Weg.",
+    intro:
+      "Quelle, Spiegel, Suchindex – der typische Weg. Diese Seite bereitet die spätere Landingpage zu „Telefonbuch-Eintrag entfernen: So gelingt’s“ vor und verknüpft sie mit SynSight-Modulen (phone).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Quelle, Spiegel, Suchindex – der typische Weg.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: phone) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: telefonnummer-loeschen, persoenliche-daten-entfernen, suchmaschinen-loeschen. Call-to-Action: Eintrags-Treffer finden.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Telefonbuch-Eintrag entfernen“ konkret?",
+        answer:
+          "Quelle, Spiegel, Suchindex – der typische Weg. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Eintrags-Treffer finden – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "telefonnummer-loeschen",
+      "persoenliche-daten-entfernen",
+      "suchmaschinen-loeschen",
+    ],
+    internalLinks: ["/telefon-check", "/datenschutz", "/hilfe"],
+    callToAction: "Eintrags-Treffer finden",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "datenauskunft-beantragen",
+    title: "Datenauskunft beantragen: Vorlage und Tipps – Ratgeber",
+    metaDescription:
+      "Datenauskunft nach DSGVO beantragen. SynSight erklärt den Ablauf. Rechte nutzen und vorbereiten. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Datenauskunft", "Auskunftsrecht DSGVO", "Art 15 DSGVO"],
+    category: "Datenschutz",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 2100,
+    seoPriority: "mittel",
+    heroTitle: "Datenauskunft stellen – so geht’s",
+    heroSubtitle: "An wen, wie, und was Sie erwarten dürfen.",
+    intro:
+      "An wen, wie, und was Sie erwarten dürfen. Diese Seite bereitet die spätere Landingpage zu „Datenauskunft beantragen: Vorlage & Tipps“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Datenschutz: Einordnung",
+        content:
+          "Unter „Datenschutz“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. An wen, wie, und was Sie erwarten dürfen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: dsgvo, persoenliche-daten-entfernen, breach-monitoring. Call-to-Action: Datenschutzkontakt öffnen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Datenauskunft beantragen“ konkret?",
+        answer:
+          "An wen, wie, und was Sie erwarten dürfen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Datenschutzkontakt öffnen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "dsgvo",
+      "persoenliche-daten-entfernen",
+      "breach-monitoring",
+    ],
+    internalLinks: ["/datenschutz", "/hilfe", "/impressum"],
+    callToAction: "Datenschutzkontakt öffnen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "datenbruch-was-tun",
+    title: "Datenbruch: was tun als betroffene Person? – Ratgeber",
+    metaDescription:
+      "Datenbruch – was tun? Checkliste für Betroffene. SynSight hilft bei Exposition und Prioritäten. Handeln. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Datenbruch was tun", "Breach Response privat"],
+    category: "Datenlecks",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 1800,
+    seoPriority: "mittel",
+    heroTitle: "Datenbruch: ruhig, aber konsequent handeln",
+    heroSubtitle: "Die ersten 60 Minuten entscheiden oft mit.",
+    intro:
+      "Die ersten 60 Minuten entscheiden oft mit. Diese Seite bereitet die spätere Landingpage zu „Datenbruch: Was tun als Betroffene:r?“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Datenlecks: Einordnung",
+        content:
+          "Unter „Datenlecks“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (hoch) bündelt. Die ersten 60 Minuten entscheiden oft mit.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: passwort-geleakt, zwei-faktor-authentifizierung, account-kompromittiert. Call-to-Action: Exposition prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Datenbruch“ konkret?",
+        answer:
+          "Die ersten 60 Minuten entscheiden oft mit. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Exposition prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "passwort-geleakt",
+      "zwei-faktor-authentifizierung",
+      "account-kompromittiert",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/hilfe", "/email-check"],
+    callToAction: "Exposition prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "reddit-username-finden",
+    title: "Reddit-Username finden und sachlich einordnen",
+    metaDescription:
+      "Reddit-Username finden und öffentliche Beiträge einordnen. SynSight unterstützt die Korrelation. Starten. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Reddit Username", "Reddit OSINT"],
+    category: "Benutzernamen",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "username",
+    estimatedSearchVolume: 1800,
+    seoPriority: "mittel",
+    heroTitle: "Reddit-Profile als öffentliche Quelle",
+    heroSubtitle: "Was Postings verraten – und was Spekulation bleibt.",
+    intro:
+      "Was Postings verraten – und was Spekulation bleibt. Diese Seite bereitet die spätere Landingpage zu „Reddit-Username finden und einordnen“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Benutzernamen: Einordnung",
+        content:
+          "Unter „Benutzernamen“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Was Postings verraten – und was Spekulation bleibt.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: benutzername-suchen, soziale-netzwerke-osint, online-reputation-pruefen. Call-to-Action: Reddit-Handle prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Reddit-Username finden und einordnen“ konkret?",
+        answer:
+          "Was Postings verraten – und was Spekulation bleibt. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Reddit-Handle prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "benutzername-suchen",
+      "soziale-netzwerke-osint",
+      "online-reputation-pruefen",
+    ],
+    internalLinks: ["/username-suche", "/osint-analyse", "/analysen"],
+    callToAction: "Reddit-Handle prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "foto-woher-stammt-es",
+    title: "Woher stammt dieses Foto? Quellen finden – Ratgeber",
+    metaDescription:
+      "Foto-Herkunft prüfen mit Reverse Image Search. SynSight unterstützt die Einordnung. Quelle suchen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Foto Herkunft", "Bildquelle finden", "Image Source"],
+    category: "Reverse Image",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "reverse-image",
+    estimatedSearchVolume: 1800,
+    seoPriority: "mittel",
+    heroTitle: "Die Herkunft eines Fotos eingrenzen",
+    heroSubtitle: "Erste Veröffentlichung, Spiegel, Manipulationen.",
+    intro:
+      "Erste Veröffentlichung, Spiegel, Manipulationen. Diese Seite bereitet die spätere Landingpage zu „Woher stammt dieses Foto? Quellen finden“ vor und verknüpft sie mit SynSight-Modulen (reverse-image).",
+    sections: [
+      {
+        heading: "Reverse Image: Einordnung",
+        content:
+          "Unter „Reverse Image“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Erste Veröffentlichung, Spiegel, Manipulationen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: reverse-image) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: bild-rueckwaertssuche, bildrechte-verletzung-finden, google-bilder-suche. Call-to-Action: Bildquelle suchen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Woher stammt dieses Foto? Quellen finden“ konkret?",
+        answer:
+          "Erste Veröffentlichung, Spiegel, Manipulationen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Bildquelle suchen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "bild-rueckwaertssuche",
+      "bildrechte-verletzung-finden",
+      "google-bilder-suche",
+    ],
+    internalLinks: ["/reverse-image-search", "/osint-analyse", "/analysen"],
+    callToAction: "Bildquelle suchen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "soziale-netzwerke-osint",
+    title: "Soziale Netzwerke und OSINT: was sichtbar ist",
+    metaDescription:
+      "OSINT in sozialen Netzwerken: öffentliche Profile und Handles. SynSight korreliert Signale. Social-Check starten. Jetzt bei SynSight prüfen.",
+    keywords: ["Social Media OSINT", "Netzwerke OSINT"],
+    category: "Social Media",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "social",
+    estimatedSearchVolume: 1700,
+    seoPriority: "mittel",
+    heroTitle: "Social Networks als OSINT-Quelle",
+    heroSubtitle: "Öffentliche Profile lesen, private Bereiche respektieren.",
+    intro:
+      "Öffentliche Profile lesen, private Bereiche respektieren. Diese Seite bereitet die spätere Landingpage zu „Soziale Netzwerke & OSINT: Was sichtbar ist“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Öffentliche Profile lesen, private Bereiche respektieren.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: social-media-suche, username-osint, social-media-analyse-synsight. Call-to-Action: Social-OSINT prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Soziale Netzwerke & OSINT“ konkret?",
+        answer:
+          "Öffentliche Profile lesen, private Bereiche respektieren. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Social-OSINT prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "social-media-suche",
+      "username-osint",
+      "social-media-analyse-synsight",
+    ],
+    internalLinks: ["/social-media-analyse", "/username-suche", "/analysen"],
+    callToAction: "Social-OSINT prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "online-sichtbarkeit-pruefen",
+    title: "Online-Sichtbarkeit prüfen in wenigen Schritten",
+    metaDescription:
+      "Online-Sichtbarkeit prüfen: Wie leicht sind Sie auffindbar? SynSight bewertet öffentliche Signale. Kurzcheck starten. Jetzt bei SynSight prüfen.",
+    keywords: ["Online Sichtbarkeit", "Auffindbarkeit Internet"],
+    category: "Identität",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "google",
+    estimatedSearchVolume: 1600,
+    seoPriority: "mittel",
+    heroTitle: "Wie sichtbar sind Sie wirklich?",
+    heroSubtitle:
+      "Eine ehrliche Einschätzung Ihrer öffentlichen Auffindbarkeit.",
+    intro:
+      "Eine ehrliche Einschätzung Ihrer öffentlichen Auffindbarkeit. Diese Seite bereitet die spätere Landingpage zu „Online-Sichtbarkeit prüfen in wenigen Schritten“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "Identität: Einordnung",
+        content:
+          "Unter „Identität“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Eine ehrliche Einschätzung Ihrer öffentlichen Auffindbarkeit.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: online-reputation-pruefen, google-analyse-synsight, social-media-privatsphaere. Call-to-Action: Sichtbarkeit einschätzen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Online-Sichtbarkeit prüfen in wenigen Schritten“ konkret?",
+        answer:
+          "Eine ehrliche Einschätzung Ihrer öffentlichen Auffindbarkeit. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Sichtbarkeit einschätzen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "online-reputation-pruefen",
+      "google-analyse-synsight",
+      "social-media-privatsphaere",
+    ],
+    internalLinks: ["/google-analyse", "/#demo-scanner", "/analysen"],
+    callToAction: "Sichtbarkeit einschätzen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "telefonnummer-oeffentlich",
+    title: "Telefonnummer öffentlich: Risiken und Schutz – Ratgeber",
+    metaDescription:
+      "Telefonnummer öffentlich sichtbar? Risiken und Schutzmaßnahmen. SynSight zeigt Exposition. Jetzt checken. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Telefonnummer öffentlich", "Nummer veröffentlicht"],
+    category: "Telefon",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "phone",
+    estimatedSearchVolume: 1600,
+    seoPriority: "mittel",
+    heroTitle: "Öffentliche Nummern sind angreifbarer",
+    heroSubtitle: "Spam, Social Engineering, Leak-Korrelation.",
+    intro:
+      "Spam, Social Engineering, Leak-Korrelation. Diese Seite bereitet die spätere Landingpage zu „Telefonnummer öffentlich: Risiken & Schutz“ vor und verknüpft sie mit SynSight-Modulen (phone).",
+    sections: [
+      {
+        heading: "Telefon: Einordnung",
+        content:
+          "Unter „Telefon“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Spam, Social Engineering, Leak-Korrelation.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: phone) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: telefonnummer-loeschen, telefonbuch-eintrag-entfernen, phishing-erkennen. Call-to-Action: Öffentlichkeit der Nummer prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Telefonnummer öffentlich“ konkret?",
+        answer:
+          "Spam, Social Engineering, Leak-Korrelation. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Öffentlichkeit der Nummer prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "telefonnummer-loeschen",
+      "telefonbuch-eintrag-entfernen",
+      "phishing-erkennen",
+    ],
+    internalLinks: ["/telefon-check", "/datenschutz", "/hilfe"],
+    callToAction: "Öffentlichkeit der Nummer prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "online-profil-bereinigen",
+    title: "Online-Profil bereinigen: Checkliste für 2026",
+    metaDescription:
+      "Online-Profile bereinigen und Altlasten schließen. SynSight hilft, vergessene Accounts zu finden. Bereinigung vorbereiten. Jetzt bei SynSight prüfen.",
+    keywords: ["Online Profil bereinigen", "Accounts aufräumen"],
+    category: "Sicherheit",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "username",
+    estimatedSearchVolume: 1400,
+    seoPriority: "mittel",
+    heroTitle: "Profile bereinigen, bevor sie zum Problem werden",
+    heroSubtitle: "Vergessene Accounts finden und gezielt schließen.",
+    intro:
+      "Vergessene Accounts finden und gezielt schließen. Diese Seite bereitet die spätere Landingpage zu „Online-Profil bereinigen: Checkliste für 2026“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Sicherheit: Einordnung",
+        content:
+          "Unter „Sicherheit“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Vergessene Accounts finden und gezielt schließen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: mehrere-accounts-finden, alias-loeschen, social-media-privatsphaere. Call-to-Action: Accounts finden und bereinigen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Online-Profil bereinigen“ konkret?",
+        answer:
+          "Vergessene Accounts finden und gezielt schließen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Accounts finden und bereinigen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "mehrere-accounts-finden",
+      "alias-loeschen",
+      "social-media-privatsphaere",
+    ],
+    internalLinks: ["/username-suche", "/social-media-analyse", "/register"],
+    callToAction: "Accounts finden und bereinigen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "domain-osint",
+    title: "Domain-OSINT: was Domains über Sie verraten – Ratgeber",
+    metaDescription:
+      "Domain-OSINT: Impressum, Hosts und öffentliche Spuren zu Domains. SynSight ordnet Signale ein. Domain prüfen. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Domain OSINT", "Domain Recherche", "WHOIS OSINT"],
+    category: "OSINT",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "google",
+    estimatedSearchVolume: 1300,
+    seoPriority: "mittel",
+    heroTitle: "Domains als Identitätshinweis",
+    heroSubtitle: "Öffentliche Domain-Signale verständlich einordnen.",
+    intro:
+      "Öffentliche Domain-Signale verständlich einordnen. Diese Seite bereitet die spätere Landingpage zu „Domain-OSINT: Was Domains über Sie verraten“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Öffentliche Domain-Signale verständlich einordnen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: google-analyse-synsight, oeffentliche-quellen-durchsuchen, online-reputation-pruefen. Call-to-Action: Domain-Bezüge prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Domain-OSINT“ konkret?",
+        answer:
+          "Öffentliche Domain-Signale verständlich einordnen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Domain-Bezüge prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "google-analyse-synsight",
+      "oeffentliche-quellen-durchsuchen",
+      "online-reputation-pruefen",
+    ],
+    internalLinks: ["/google-analyse", "/osint-analyse", "/analysen"],
+    callToAction: "Domain-Bezüge prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "nickname-rueckverfolgung",
+    title: "Nickname Rückverfolgung: Möglichkeiten & Limits",
+    metaDescription:
+      "Nickname rückverfolgen mit öffentlichen Quellen. SynSight erklärt Chancen und Grenzen. Jetzt testen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Nickname Rückverfolgung", "Nickname finden"],
+    category: "Benutzernamen",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "username",
+    estimatedSearchVolume: 1300,
+    seoPriority: "mittel",
+    heroTitle: "Nicknames rückverfolgen – realistisch",
+    heroSubtitle: "Was öffentliche Quellen hergeben – und was nicht.",
+    intro:
+      "Was öffentliche Quellen hergeben – und was nicht. Diese Seite bereitet die spätere Landingpage zu „Nickname Rückverfolgung: Möglichkeiten & Limits“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Benutzernamen: Einordnung",
+        content:
+          "Unter „Benutzernamen“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Was öffentliche Quellen hergeben – und was nicht.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: alias-im-internet, benutzername-suchen, osint-legal. Call-to-Action: Nickname prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Nickname Rückverfolgung“ konkret?",
+        answer:
+          "Was öffentliche Quellen hergeben – und was nicht. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Nickname prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: ["alias-im-internet", "benutzername-suchen", "osint-legal"],
+    internalLinks: ["/username-suche", "/osint-analyse", "/hilfe"],
+    callToAction: "Nickname prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "geleakte-passwoerter-aendern",
+    title: "Geleakte Passwörter ändern: Richtige Reihenfolge",
+    metaDescription:
+      "Geleakte Passwörter richtig ändern – Reihenfolge & MFA. SynSight zeigt, wo Exposition droht. Jetzt checken. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Passwort ändern Leak", "geleakte Passwörter"],
+    category: "Sicherheit",
+    difficulty: "einsteiger",
+    searchIntent: "transactional",
+    targetModule: "digital-leak",
+    estimatedSearchVolume: 1200,
+    seoPriority: "mittel",
+    heroTitle: "Passwörter nach einem Leak ändern",
+    heroSubtitle: "Zuerst kritische Konten, dann der Rest – mit System.",
+    intro:
+      "Zuerst kritische Konten, dann der Rest – mit System. Diese Seite bereitet die spätere Landingpage zu „Geleakte Passwörter ändern: Richtige Reihenfolge“ vor und verknüpft sie mit SynSight-Modulen (digital-leak).",
+    sections: [
+      {
+        heading: "Sicherheit: Einordnung",
+        content:
+          "Unter „Sicherheit“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (transactional) und reale Risiken (hoch) bündelt. Zuerst kritische Konten, dann der Rest – mit System.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: digital-leak) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: passwort-geleakt, passwortmanager, zwei-faktor-authentifizierung. Call-to-Action: Kritische Exposition finden.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Geleakte Passwörter ändern“ konkret?",
+        answer:
+          "Zuerst kritische Konten, dann der Rest – mit System. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Sehe ich Passwörter im Klartext?",
+        answer:
+          "In öffentlichen Demos werden sensible Secrets maskiert. Im Produkt gelten strenge Zugriffskontrollen.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Kritische Exposition finden – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "passwort-geleakt",
+      "passwortmanager",
+      "zwei-faktor-authentifizierung",
+    ],
+    internalLinks: ["/datenleck-pruefen", "/hilfe", "/register"],
+    callToAction: "Kritische Exposition finden",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "handy-nummer-osint",
+    title: "Handy-Nummer-OSINT: Metadaten und Grenzen – Ratgeber",
+    metaDescription:
+      "Handy-Nummer OSINT: Formate, Carrier-Hinweise, Grenzen. SynSight Telefon-Modul. Seriös analysieren. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Handy OSINT", "Phone OSINT", "Telefon OSINT"],
+    category: "OSINT",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "phone",
+    estimatedSearchVolume: 1200,
+    seoPriority: "mittel",
+    heroTitle: "Phone-OSINT ohne Überversprechen",
+    heroSubtitle: "Metadaten ja – Gesprächsinhalte nein.",
+    intro:
+      "Metadaten ja – Gesprächsinhalte nein. Diese Seite bereitet die spätere Landingpage zu „Handy-Nummer OSINT: Metadaten & Grenzen“ vor und verknüpft sie mit SynSight-Modulen (phone).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Metadaten ja – Gesprächsinhalte nein.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: phone) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: telefonnummer-im-internet, osint-erklaerung, telefon-check-synsight. Call-to-Action: Telefon-OSINT starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Handy-Nummer OSINT“ konkret?",
+        answer:
+          "Metadaten ja – Gesprächsinhalte nein. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Telefon-OSINT starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "telefonnummer-im-internet",
+      "osint-erklaerung",
+      "telefon-check-synsight",
+    ],
+    internalLinks: ["/telefon-check", "/osint-analyse", "/analysen"],
+    callToAction: "Telefon-OSINT starten",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "oeffentliche-quellen-durchsuchen",
+    title: "Öffentliche Quellen durchsuchen: Der Überblick",
+    metaDescription:
+      "Öffentliche Quellen effizient durchsuchen. SynSight bündelt OSINT-Module für Clearnet-Signale. Quellencheck starten. Jetzt bei SynSight prüfen.",
+    keywords: ["öffentliche Quellen", "Open Source Suche", "Clearnet OSINT"],
+    category: "OSINT",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "google",
+    estimatedSearchVolume: 1100,
+    seoPriority: "mittel",
+    heroTitle: "Öffentliche Quellen – sinnvoll nutzen",
+    heroSubtitle: "Welche Quellen zählen, welche Zeit kosten.",
+    intro:
+      "Welche Quellen zählen, welche Zeit kosten. Diese Seite bereitet die spätere Landingpage zu „Öffentliche Quellen durchsuchen: Der Überblick“ vor und verknüpft sie mit SynSight-Modulen (google).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Welche Quellen zählen, welche Zeit kosten.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: google) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: osint-erklaerung, google-analyse-synsight, domain-osint. Call-to-Action: Quellenanalyse starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Öffentliche Quellen durchsuchen“ konkret?",
+        answer:
+          "Welche Quellen zählen, welche Zeit kosten. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Quellenanalyse starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "osint-erklaerung",
+      "google-analyse-synsight",
+      "domain-osint",
+    ],
+    internalLinks: ["/osint-analyse", "/google-analyse", "/analysen"],
+    callToAction: "Quellenanalyse starten",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "alias-im-internet",
+    title: "Alias im Internet: mehr als nur ein Nickname – Ratgeber",
+    metaDescription:
+      "Alias im Internet verstehen und zurückverfolgen. SynSight zeigt öffentliche Querbezüge. Alias analysieren. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["Alias Internet", "Nickname OSINT", "Pseudonym finden"],
+    category: "Benutzernamen",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "username",
+    estimatedSearchVolume: 1100,
+    seoPriority: "mittel",
+    heroTitle: "Aliases verbinden Identitäten",
+    heroSubtitle: "Ein Nickname – viele mögliche Brücken.",
+    intro:
+      "Ein Nickname – viele mögliche Brücken. Diese Seite bereitet die spätere Landingpage zu „Alias im Internet: Mehr als nur ein Nickname“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Benutzernamen: Einordnung",
+        content:
+          "Unter „Benutzernamen“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Ein Nickname – viele mögliche Brücken.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: nickname-rueckverfolgung, username-osint, digitaler-schatten. Call-to-Action: Alias-Korrelation starten.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Alias im Internet“ konkret?",
+        answer:
+          "Ein Nickname – viele mögliche Brücken. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Alias-Korrelation starten – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "nickname-rueckverfolgung",
+      "username-osint",
+      "digitaler-schatten",
+    ],
+    internalLinks: ["/username-suche", "/personensuche", "/osint-analyse"],
+    callToAction: "Alias-Korrelation starten",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "alte-social-media-profile",
+    title: "Alte Social-Media-Profile finden und schließen",
+    metaDescription:
+      "Alte Social-Media-Profile finden und deaktivieren. SynSight Username-Suche hilft. Aufräumen starten. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["alte Profile finden", "vergessene Social Accounts"],
+    category: "Social Media",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "username",
+    estimatedSearchVolume: 1100,
+    seoPriority: "mittel",
+    heroTitle: "Vergessene Profile sind offene Türen",
+    heroSubtitle: "Finden, sichern, schließen.",
+    intro:
+      "Finden, sichern, schließen. Diese Seite bereitet die spätere Landingpage zu „Alte Social-Media-Profile finden & schließen“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Social Media: Einordnung",
+        content:
+          "Unter „Social Media“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (mittel) bündelt. Finden, sichern, schließen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: online-profil-bereinigen, mehrere-accounts-finden, alias-loeschen. Call-to-Action: Alt-Profile finden.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Alte Social-Media-Profile finden & schließen“ konkret?",
+        answer:
+          "Finden, sichern, schließen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Alt-Profile finden – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "online-profil-bereinigen",
+      "mehrere-accounts-finden",
+      "alias-loeschen",
+    ],
+    internalLinks: ["/username-suche", "/social-media-analyse", "/hilfe"],
+    callToAction: "Alt-Profile finden",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "alias-loeschen",
+    title: "Alias löschen: Alt-Accounts richtig schließen",
+    metaDescription:
+      "Alias und Alt-Accounts löschen oder deaktivieren. SynSight hilft beim Finden. Aufräumen starten. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Alias löschen", "Username löschen", "Account löschen"],
+    category: "Benutzernamen",
+    difficulty: "einsteiger",
+    searchIntent: "commercial",
+    targetModule: "username",
+    estimatedSearchVolume: 1000,
+    seoPriority: "mittel",
+    heroTitle: "Aliases schließen, die Sie nicht mehr brauchen",
+    heroSubtitle: "Finden, priorisieren, deaktivieren.",
+    intro:
+      "Finden, priorisieren, deaktivieren. Diese Seite bereitet die spätere Landingpage zu „Alias löschen: Alt-Accounts richtig schließen“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Benutzernamen: Einordnung",
+        content:
+          "Unter „Benutzernamen“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (niedrig) bündelt. Finden, priorisieren, deaktivieren.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: online-profil-bereinigen, mehrere-accounts-finden, digitalen-fussabdruck-loeschen. Call-to-Action: Alt-Aliases finden.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Alias löschen“ konkret?",
+        answer:
+          "Finden, priorisieren, deaktivieren. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Alt-Aliases finden – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "online-profil-bereinigen",
+      "mehrere-accounts-finden",
+      "digitalen-fussabdruck-loeschen",
+    ],
+    internalLinks: ["/username-suche", "/digital-footprint", "/hilfe"],
+    callToAction: "Alt-Aliases finden",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "digitaler-schatten",
+    title: "Digitaler Schatten: Unsichtbare Online-Spuren",
+    metaDescription:
+      "Der digitale Schatten umfasst indirekte Spuren über Sie. SynSight macht Zusammenhänge sichtbar. Jetzt Spuren prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["digitaler Schatten", "indirekte Online Spuren"],
+    category: "Identität",
+    difficulty: "fortgeschritten",
+    searchIntent: "informational",
+    targetModule: "dashboard",
+    estimatedSearchVolume: 900,
+    seoPriority: "mittel",
+    heroTitle: "Nicht nur Profile – auch der digitale Schatten zählt",
+    heroSubtitle: "Erwähnungen, Alt-Accounts und Querverweise einordnen.",
+    intro:
+      "Erwähnungen, Alt-Accounts und Querverweise einordnen. Diese Seite bereitet die spätere Landingpage zu „Digitaler Schatten: Unsichtbare Online-Spuren“ vor und verknüpft sie mit SynSight-Modulen (dashboard).",
+    sections: [
+      {
+        heading: "Identität: Einordnung",
+        content:
+          "Unter „Identität“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Erwähnungen, Alt-Accounts und Querverweise einordnen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: dashboard) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: digitaler-fussabdruck, alias-im-internet, mehrere-accounts-finden. Call-to-Action: Schatten-Signale prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Digitaler Schatten“ konkret?",
+        answer:
+          "Erwähnungen, Alt-Accounts und Querverweise einordnen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Schatten-Signale prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "digitaler-fussabdruck",
+      "alias-im-internet",
+      "mehrere-accounts-finden",
+    ],
+    internalLinks: ["/digital-footprint", "/username-suche", "/osint-analyse"],
+    callToAction: "Schatten-Signale prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "gleicher-username-plattformen",
+    title: "Gleicher Username auf vielen Plattformen prüfen",
+    metaDescription:
+      "Gleicher Username überall? Risiko und Wiedererkennung. SynSight scannt öffentliche Treffer. Prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["gleicher Username", "Username Wiederverwendung"],
+    category: "Benutzernamen",
+    difficulty: "einsteiger",
+    searchIntent: "informational",
+    targetModule: "username",
+    estimatedSearchVolume: 900,
+    seoPriority: "mittel",
+    heroTitle: "Bequem – aber leicht verknüpfbar",
+    heroSubtitle: "Warum ein Handle auf 20 Plattformen riskant sein kann.",
+    intro:
+      "Warum ein Handle auf 20 Plattformen riskant sein kann. Diese Seite bereitet die spätere Landingpage zu „Gleicher Username auf vielen Plattformen“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Benutzernamen: Einordnung",
+        content:
+          "Unter „Benutzernamen“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (mittel) bündelt. Warum ein Handle auf 20 Plattformen riskant sein kann.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: mehrere-accounts-finden, online-profil-bereinigen, identitaet-schuetzen. Call-to-Action: Username-Verbreitung prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question:
+          "Was bringt „Gleicher Username auf vielen Plattformen“ konkret?",
+        answer:
+          "Warum ein Handle auf 20 Plattformen riskant sein kann. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Username-Verbreitung prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "mehrere-accounts-finden",
+      "online-profil-bereinigen",
+      "identitaet-schuetzen",
+    ],
+    internalLinks: ["/username-suche", "/digital-footprint", "/hilfe"],
+    callToAction: "Username-Verbreitung prüfen",
+    riskLevel: "mittel",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "impersonation-username",
+    title: "Username-Impersonation: Fake-Handles erkennen",
+    metaDescription:
+      "Username-Impersonation erkennen und dokumentieren. SynSight Social- & Alias-Signale nutzen. Prüfen. Jetzt bei SynSight prüfen. Jetzt bei SynSight prüfen.",
+    keywords: ["Impersonation", "Fake Username", "Identitätsmissbrauch Handle"],
+    category: "Cybersecurity",
+    difficulty: "fortgeschritten",
+    searchIntent: "commercial",
+    targetModule: "username",
+    estimatedSearchVolume: 700,
+    seoPriority: "mittel",
+    heroTitle: "Wenn jemand Ihren Namen missbraucht",
+    heroSubtitle: "Ähnliche Handles und Fake-Profile einordnen.",
+    intro:
+      "Ähnliche Handles und Fake-Profile einordnen. Diese Seite bereitet die spätere Landingpage zu „Username-Impersonation: Fake-Handles erkennen“ vor und verknüpft sie mit SynSight-Modulen (username).",
+    sections: [
+      {
+        heading: "Cybersecurity: Einordnung",
+        content:
+          "Unter „Cybersecurity“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (commercial) und reale Risiken (hoch) bündelt. Ähnliche Handles und Fake-Profile einordnen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: username) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: fake-profile, social-media-suche, online-reputation-pruefen. Call-to-Action: Handle-Missbrauch prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Username-Impersonation“ konkret?",
+        answer:
+          "Ähnliche Handles und Fake-Profile einordnen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Handle-Missbrauch prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "fake-profile",
+      "social-media-suche",
+      "online-reputation-pruefen",
+    ],
+    internalLinks: ["/username-suche", "/social-media-analyse", "/register"],
+    callToAction: "Handle-Missbrauch prüfen",
+    riskLevel: "hoch",
+    lastUpdated: "2026-08-05",
+  },
+  {
+    slug: "geloeschte-profile-finden",
+    title: "Gelöschte Profile finden: Was noch sichtbar ist",
+    metaDescription:
+      "Gelöschte Profile finden? Caches, Spiegel, Mentions. SynSight erklärt realistische Reste. Recherche starten. Jetzt bei SynSight prüfen. Analyse bei SynSight.",
+    keywords: ["gelöschte Profile finden", "Account gelöscht finden"],
+    category: "OSINT",
+    difficulty: "experte",
+    searchIntent: "informational",
+    targetModule: "social",
+    estimatedSearchVolume: 2000,
+    seoPriority: "niedrig",
+    heroTitle: "Gelöscht heißt nicht immer weg",
+    heroSubtitle: "Caches, Mentions und Weiterveröffentlichungen.",
+    intro:
+      "Caches, Mentions und Weiterveröffentlichungen. Diese Seite bereitet die spätere Landingpage zu „Gelöschte Profile finden: Was noch sichtbar ist“ vor und verknüpft sie mit SynSight-Modulen (social).",
+    sections: [
+      {
+        heading: "OSINT: Einordnung",
+        content:
+          "Unter „OSINT“ ordnen wir dieses Thema ein, weil es typische Suchintentionen (informational) und reale Risiken (niedrig) bündelt. Caches, Mentions und Weiterveröffentlichungen.",
+      },
+      {
+        heading: "Praktischer Ablauf",
+        content:
+          "1) Ausgangslage klären 2) passende SynSight-Module nutzen (Primär: social) 3) Treffer priorisieren 4) absichern oder entfernen 5) später erneut prüfen.",
+      },
+      {
+        heading: "Interne Weiterführung",
+        content:
+          "Empfohlene nächste Seiten und Module: google-cache, suchmaschinen-loeschen, social-media-suche. Call-to-Action: Restspuren prüfen.",
+      },
+    ],
+    faq: [
+      {
+        question: "Was bringt „Gelöschte Profile finden“ konkret?",
+        answer:
+          "Caches, Mentions und Weiterveröffentlichungen. SynSight liefert nachvollziehbare Hinweise aus öffentlichen Quellen und zeigt passende Folgemodule.",
+      },
+      {
+        question: "Welche Daten nutzt SynSight?",
+        answer:
+          "Öffentlich zugängliche Informationen und erlaubte APIs. Keine privaten Postfächer, kein Account-Hacking.",
+      },
+      {
+        question: "Wie starte ich?",
+        answer:
+          "Restspuren prüfen – über die verlinkten Module oder den Demo-Scanner auf der Startseite.",
+      },
+    ],
+    relatedPages: [
+      "google-cache",
+      "suchmaschinen-loeschen",
+      "social-media-suche",
+    ],
+    internalLinks: [
+      "/google-analyse",
+      "/social-media-analyse",
+      "/osint-analyse",
+    ],
+    callToAction: "Restspuren prüfen",
+    riskLevel: "niedrig",
+    lastUpdated: "2026-08-05",
+  },
+];
+
+export const seoKnowledgeBaseBySlug: Record<string, SeoKnowledgePage> =
+  Object.fromEntries(seoKnowledgeBase.map((page) => [page.slug, page]));
+
+export function getSeoKnowledgePage(
+  slug: string
+): SeoKnowledgePage | undefined {
+  return seoKnowledgeBaseBySlug[slug];
+}
+
+export function getSeoKnowledgeByCategory(
+  category: SeoCategory
+): SeoKnowledgePage[] {
+  return seoKnowledgeBase.filter((page) => page.category === category);
+}
+
+export function getHighPrioritySeoPages(): SeoKnowledgePage[] {
+  return seoKnowledgeBase.filter((page) => page.seoPriority === "hoch");
+}

@@ -8,7 +8,8 @@ const footerLinks = {
   Produkt: [
     { label: "Plattform", href: "/#platform" },
     { label: "Risiko-Check", href: "/#demo-scanner" },
-    { label: "Schutzpaket", href: "/#protect-package" },
+    { label: "SynCredits", href: "/#syncredits" },
+    { label: "Analysen", href: "/analysen" },
     { label: "Dashboard", href: "/dashboard" },
   ],
   Unternehmen: [
@@ -28,15 +29,12 @@ const footerLinks = {
     { label: "Security", href: "/security" },
   ],
   Support: [
+    { label: "Hilfe & FAQ", href: "/hilfe" },
     { label: "Kontakt", href: "/contact" },
     { label: "Login", href: "/login" },
     { label: "Konto erstellen", href: "/register" },
     { label: "Support", href: "/support" },
     { label: "Datenschutzanfrage", href: "/support?subject=Datenschutz" },
-    {
-      label: "Technischer Kontakt",
-      href: "/support?subject=Technische%20Anfrage",
-    },
   ],
 };
 

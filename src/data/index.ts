@@ -1,0 +1,16 @@
+export {
+  seoKnowledgeBase,
+  seoKnowledgeBaseBySlug,
+  getSeoKnowledgePage,
+  getSeoKnowledgeByCategory,
+  getHighPrioritySeoPages,
+  type SeoKnowledgePage,
+  type SeoCategory,
+  type SeoSearchIntent,
+  type SeoPriority,
+  type SeoTargetModule,
+  type SeoRiskLevel,
+  type SeoDifficulty,
+  type SeoKnowledgeSection,
+  type SeoKnowledgeFaq,
+} from "./seoKnowledgeBase";

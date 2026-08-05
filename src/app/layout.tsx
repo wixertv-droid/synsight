@@ -23,7 +23,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
-  title: "SynSight — Digitale Identität erkennen und schützen",
+  title: {
+    default: "SynSight — Digitale Identität erkennen und schützen",
+    template: "%s | SynSight",
+  },
   description:
     "KI-Analyse für öffentliche Profile, Datenlecks und digitale Spuren. SynSight macht Risiken verständlich und zeigt klare nächste Schritte.",
   keywords: [
@@ -32,8 +35,19 @@ export const metadata: Metadata = {
     "Datenschutz",
     "Cybersicherheit",
     "Online-Reputation",
+    "OSINT",
+    "SynCredits",
+    "Datenleck prüfen",
   ],
   applicationName: "SynSight",
+  authors: [{ name: "SynSight" }],
+  creator: "SynSight",
+  publisher: "SynSight",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },
@@ -50,6 +64,15 @@ export const metadata: Metadata = {
     siteName: "SynSight",
     locale: "de_DE",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SynSight — Digitale Identität erkennen und schützen",
+    description:
+      "Entdecken Sie Ihre digitale Spur. Verstehen Sie Risiken. Schützen Sie, was online über Sie sichtbar ist.",
+  },
+  alternates: {
+    canonical: appUrl,
   },
 };
 
