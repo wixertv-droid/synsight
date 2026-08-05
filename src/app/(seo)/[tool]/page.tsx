@@ -3,26 +3,12 @@ import { notFound } from "next/navigation";
 import ToolLandingView from "@/components/seo/ToolLandingView";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { getToolBySlug } from "@/lib/seo/tool-landings";
-import {
-  getActiveAnalysisKeys,
-  getActiveToolLandings,
-  isToolVisible,
-} from "@/lib/seo/active-modules";
+import { getActiveAnalysisKeys, isToolVisible } from "@/lib/seo/active-modules";
 
 type Props = { params: Promise<{ tool: string }> };
 
-/** Allow request-time resolution when Admin activates modules after build. */
-export const dynamicParams = true;
+/** Request-time: Admin isActive toggles apply without rebuild. */
 export const dynamic = "force-dynamic";
-
-export async function generateStaticParams() {
-  try {
-    const tools = await getActiveToolLandings();
-    return tools.map((tool) => ({ tool: tool.slug }));
-  } catch {
-    return [];
-  }
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { tool: slug } = await params;
