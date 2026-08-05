@@ -78,7 +78,7 @@ function riskTone(riskLevel?: string, score = 0) {
 function filledQueries(fields: ScanQueries): ScanQueries {
   const out: ScanQueries = {};
   for (const { key } of FIELDS) {
-    let value = fields[key]?.trim();
+    const value = fields[key]?.trim();
     if (value) {
       // E-Mail muss ein @ enthalten, sonst wird sie noch nicht als gültig gezählt
       if (key === "email" && !value.includes("@")) {
@@ -420,9 +420,10 @@ export default function DemoScanner() {
             </h2>
 
             <p className="max-w-3xl mx-auto text-gray-400 text-lg leading-relaxed">
-              Hacker benötigen oft nur ein einziges Puzzleteil, um ein digitales Profil zu übernehmen. 
-              Unser Scanner durchkämmt öffentliche Netzwerke nach Ihren Spuren. 
-              Geben Sie die Daten ein, die Sie überprüfen möchten.
+              Hacker benötigen oft nur ein einziges Puzzleteil, um ein digitales
+              Profil zu übernehmen. Unser Scanner durchkämmt öffentliche
+              Netzwerke nach Ihren Spuren. Geben Sie die Daten ein, die Sie
+              überprüfen möchten.
             </p>
           </div>
 
@@ -439,8 +440,9 @@ export default function DemoScanner() {
                         Starten Sie Ihre Voranalyse
                       </h3>
                       <p className="text-sm text-gray-400">
-                        Sie können ein, zwei oder alle drei Felder ausfüllen. Je mehr Datenpunkte Sie angeben, 
-                        desto präziser können unsere KI-Module verborgene Zusammenhänge herstellen.
+                        Sie können ein, zwei oder alle drei Felder ausfüllen. Je
+                        mehr Datenpunkte Sie angeben, desto präziser können
+                        unsere KI-Module verborgene Zusammenhänge herstellen.
                       </p>
                     </div>
                     {activeCount > 0 && (
@@ -464,9 +466,12 @@ export default function DemoScanner() {
                         </span>
                         <input
                           value={fields[field.key] || ""}
-                          onChange={(e) => handleInputChange(field.key, e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange(field.key, e.target.value)
+                          }
                           onKeyDown={(e) => {
-                            if (e.key === "Enter" && activeCount > 0) startScan();
+                            if (e.key === "Enter" && activeCount > 0)
+                              startScan();
                           }}
                           type={field.type || "text"}
                           placeholder={field.placeholder}
@@ -483,17 +488,31 @@ export default function DemoScanner() {
                   <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between bg-black/30 p-5 rounded-xl border border-white/5">
                     <div className="max-w-xl">
                       <div className="flex items-center gap-2 mb-1">
-                        <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        <svg
+                          className="w-4 h-4 text-amber-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
                         </svg>
-                        <span className="text-xs font-semibold tracking-wider text-amber-400 uppercase">Wichtiger Hinweis zur Tiefe</span>
+                        <span className="text-xs font-semibold tracking-wider text-amber-400 uppercase">
+                          Wichtiger Hinweis zur Tiefe
+                        </span>
                       </div>
                       <p className="text-[13px] text-gray-400 leading-relaxed">
-                        Dieser Scanner wertet im ersten Schritt Clearnet-Quellen aus. 
-                        Um tiefgreifende Leaks, Darkweb-Erwähnungen und unzensierte Details zu sehen, benötigen Sie im Anschluss ein Konto.
+                        Dieser Scanner wertet im ersten Schritt Clearnet-Quellen
+                        aus. Um tiefgreifende Leaks, Darkweb-Erwähnungen und
+                        unzensierte Details zu sehen, benötigen Sie im Anschluss
+                        ein Konto.
                       </p>
                     </div>
-                    
+
                     <Button
                       size="lg"
                       onClick={startScan}
@@ -610,20 +629,25 @@ export default function DemoScanner() {
                           Deep-Web & Full-Scale Analyse freischalten
                         </div>
                         <p className="text-left text-sm leading-relaxed text-gray-300">
-                          Wir haben soeben nur die Oberfläche angekratzt. Hacker nutzen weitaus tiefere Datenbanken, 
-                          Darknet-Leaks und KI-Korrelationen, um Profile vollständig zu übernehmen. 
-                          Registrieren Sie sich jetzt, um den vollständigen Bericht einzusehen und 
-                          herauszufinden, was wirklich über Sie im Netz zirkuliert.
+                          Wir haben soeben nur die Oberfläche angekratzt. Hacker
+                          nutzen weitaus tiefere Datenbanken, Darknet-Leaks und
+                          KI-Korrelationen, um Profile vollständig zu
+                          übernehmen. Registrieren Sie sich jetzt, um den
+                          vollständigen Bericht einzusehen und herauszufinden,
+                          was wirklich über Sie im Netz zirkuliert.
                         </p>
                       </div>
-                      <Button onClick={() => router.push("/register")} className="shrink-0 whitespace-nowrap shadow-[0_0_20px_rgba(41,182,246,0.3)]">
+                      <Button
+                        onClick={() => router.push("/register")}
+                        className="shrink-0 whitespace-nowrap shadow-[0_0_20px_rgba(41,182,246,0.3)]"
+                      >
                         VOLLSTÄNDIGEN BERICHT FREISCHALTEN
                       </Button>
                     </div>
                   </div>
 
                   <div className="pt-4 text-center">
-                    <button 
+                    <button
                       onClick={reset}
                       className="text-xs font-mono tracking-widest text-white/30 hover:text-white/60 transition-colors uppercase border-b border-transparent hover:border-white/30 pb-0.5"
                     >
