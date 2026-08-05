@@ -1,3 +1,4 @@
+import AdminSeoKnowledgeControl from "@/components/admin/AdminSeoKnowledgeControl";
 import AdminCommunicationsControl from "@/components/admin/AdminCommunicationsControl";
 import AdminPricingControl from "@/components/admin/AdminPricingControl";
 import AdminOrderPricingControl from "@/components/admin/AdminOrderPricingControl";
@@ -70,6 +71,10 @@ export default function AdminViewHost({
       return <AdminCommunicationsControl />;
     case "support-activity":
       return <AdminAuditView title="Support-Aktivitäten" />;
+    case "seo-knowledge-list":
+      return <AdminSeoKnowledgeControl />;
+    case "seo-knowledge-trash":
+      return <AdminSeoKnowledgeControl trashMode />;
     case "user-profile":
       return userId ? <AdminUserProfilePanel userId={userId} /> : null;
     default:

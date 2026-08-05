@@ -98,7 +98,11 @@ export async function resolveDemoScanCredentials(): Promise<DemoScanCredentials 
       if (apiKey) {
         return { url, apiKey, source: "database" };
       }
-    } catch {
+    } catch (error) {
+      console.error(
+        "[demo-scan] DB API-Key Entschlüsselung fehlgeschlagen — Env-Fallback:",
+        error instanceof Error ? error.message : error
+      );
       // fall through to env
     }
   }

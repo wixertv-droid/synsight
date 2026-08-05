@@ -1,44 +1,31 @@
-# SynSight SEO Knowledge Base — Strategie
+# SynSight SEO Knowledge Base — CMS
 
-Datei: `src/data/seoKnowledgeBase.ts`
+## Quelle der Wahrheit
 
-## Zweck
+Ab Migration `039_seo_knowledge_cms.sql` werden öffentliche Wissensseiten
+**über den Admin** verwaltet:
 
-Zentrale TypeScript-Wissensdatenbank mit **100** Landingpage-Objekten.
-Später nutzbar als:
+- Admin → **SEO & Wissensdatenbank** (`/admin/seo/uebersicht`)
+- Öffentliche URLs: `/wissen` und `/wissen/[slug]`
+- Nur Status **Veröffentlicht** ist öffentlich (außer Admin-Vorschau `?preview=1`)
 
-- automatischer Landingpage-Generator
-- interne Verlinkungsquelle
-- Keyword-/Intent-Planung
-- FAQ-/Schema-Feed
+Die Datei `src/data/seoKnowledgeBase.ts` bleibt als historische Content-Strategie
+erhalten, wird aber **nicht** mehr für Live-Routen benötigt.
 
-Noch **keine** automatischen Routen – nur Daten.
+## Tabellen
 
-## Abdeckung
+- `seo_knowledge_pages`
+- `seo_knowledge_sections`
+- `seo_knowledge_faqs`
+- `seo_knowledge_links`
 
-| Bereich                | Beispiele                                           |
-| ---------------------- | --------------------------------------------------- |
-| Identität / Fußabdruck | digitaler-fussabdruck, online-reputation-pruefen    |
-| OSINT                  | osint-erklaerung, personensuche-im-internet         |
-| Datenlecks / Email     | wurde-meine-email-gehackt, hibp-erklaerung          |
-| Benutzernamen          | benutzername-suchen, username-analyse-synsight      |
-| Telefon                | wem-gehoert-diese-nummer, telefon-check-synsight    |
-| Social Media           | social-media-suche, fake-profil-erkennen-social     |
-| Reverse Image / Face   | reverse-image-search-erklaerung, face-scan-synsight |
-| Cybersecurity          | phishing-erkennen, doxxing, passwortmanager         |
-| Datenschutz            | dsgvo, suchmaschinen-loeschen                       |
-| SynSight-Module        | google-analyse-synsight, ki-risikoanalyse           |
+## API
 
-## Felder
+- `GET/POST /api/admin/seo/knowledge`
+- `GET/PATCH/DELETE /api/admin/seo/knowledge/[id]`
+- `POST /api/admin/seo/knowledge/[id]/duplicate`
 
-Jedes Objekt enthält u. a. `slug`, `title`, `metaDescription`, `keywords`,
-`category`, `difficulty`, `searchIntent`, `targetModule`,
-`estimatedSearchVolume`, `seoPriority`, Hero/Intro/Sections/FAQ,
-`relatedPages`, `internalLinks`, `callToAction`, `riskLevel`, `lastUpdated`.
+## Später
 
-## Nächster Schritt (Generator)
-
-1. Route z. B. `app/(seo)/wissen/[slug]/page.tsx`
-2. `getSeoKnowledgePage(slug)` laden
-3. Metadata + FAQ JSON-LD aus Objekt erzeugen
-4. `relatedPages` → interne Links
+Automatische interne Verlinkung, RSS, Mehrsprachigkeit-UI, AI-Assist —
+Datenfelder (`automation_flags_json`, `language`) sind vorbereitet.
