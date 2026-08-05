@@ -12,6 +12,8 @@ import {
 } from "@/lib/seo/schema";
 import { KEYWORD_PILLARS } from "@/lib/seo/keywords";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = buildPageMetadata({
   title: "Analysen & OSINT-Module",
   description:

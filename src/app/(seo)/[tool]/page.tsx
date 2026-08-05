@@ -11,7 +11,9 @@ import {
 
 type Props = { params: Promise<{ tool: string }> };
 
-export const dynamicParams = false;
+/** Allow request-time resolution when Admin activates modules after build. */
+export const dynamicParams = true;
+export const dynamic = "force-dynamic";
 
 export async function generateStaticParams() {
   try {
