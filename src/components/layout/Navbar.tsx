@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 
 const navLinks = [
-  { label: "Plattform", href: "#platform" },
-  { label: "Risiko-Check", href: "#demo-scanner" },
-  { label: "Technologie", href: "#technology" },
-  { label: "Sicherheit", href: "#trust" },
+  { label: "Plattform", href: "/#platform" },
+  { label: "Risiko-Check", href: "/#demo-scanner" },
+  { label: "Analysen", href: "/analysen" },
+  { label: "Hilfe", href: "/hilfe" },
+  { label: "Sicherheit", href: "/#trust" },
 ];
 
 export default function Navbar() {
@@ -37,7 +38,7 @@ export default function Navbar() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 flex items-center justify-between h-[4.5rem]">
-        <a href="#hero" className="flex items-center gap-2 group">
+        <a href="/" className="flex items-center gap-2 group">
           <div className="relative w-8 h-8 rounded-full border border-white/10 bg-white/[0.025] flex items-center justify-center group-hover:border-cyber-blue/40 transition-colors">
             <span className="absolute inset-1 rounded-full border border-cyber-blue/10" />
             <svg viewBox="0 0 24 24" className="w-4 h-4">

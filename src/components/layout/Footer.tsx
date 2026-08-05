@@ -1,26 +1,27 @@
 const footerLinks = {
   Produkt: [
-    { label: "Plattform", href: "#platform" },
-    { label: "Risiko-Check", href: "#demo-scanner" },
-    { label: "Schutzpaket", href: "#protect-package" },
-    { label: "Dashboard Demo", href: "/dashboard" },
+    { label: "Plattform", href: "/#platform" },
+    { label: "Risiko-Check", href: "/#demo-scanner" },
+    { label: "Alle Analysen", href: "/analysen" },
+    { label: "Schutzpaket", href: "/#protect-package" },
+  ],
+  Analysen: [
+    { label: "Google-Analyse", href: "/google-analyse" },
+    { label: "Username-Suche", href: "/username-suche" },
+    { label: "Digital Footprint", href: "/digital-footprint" },
+    { label: "Datenleck prüfen", href: "/datenleck-pruefen" },
+    { label: "OSINT-Analyse", href: "/osint-analyse" },
   ],
   Unternehmen: [
-    { label: "Über SynSight", href: "mailto:hello@synsight.de?subject=Über%20SynSight" },
+    { label: "Hilfe & FAQ", href: "/hilfe" },
+    { label: "Blog", href: "/blog" },
     { label: "Kontakt", href: "mailto:hello@synsight.de" },
     { label: "Partnerschaften", href: "mailto:hello@synsight.de?subject=Partnerschaft" },
-    { label: "Presse", href: "mailto:hello@synsight.de?subject=Presseanfrage" },
   ],
   Rechtliches: [
     { label: "Datenschutz", href: "/datenschutz" },
     { label: "Impressum", href: "/impressum" },
     { label: "AGB", href: "/agb" },
-  ],
-  Support: [
-    { label: "Login", href: "/login" },
-    { label: "Produktanfrage", href: "mailto:hello@synsight.de?subject=Produktanfrage" },
-    { label: "Datenschutzanfrage", href: "mailto:datenschutz@synsight.de" },
-    { label: "Technischer Kontakt", href: "mailto:hello@synsight.de?subject=Technische%20Anfrage" },
   ],
 };
 
@@ -28,13 +29,17 @@ export default function Footer() {
   return (
     <footer className="relative border-t border-cyber-blue/10 bg-space-darker">
       <div className="section-padding max-w-7xl mx-auto">
-        {/* Top section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-12 mb-16">
-          {/* Brand */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full border border-cyber-blue/30 flex items-center justify-center glow-border">
-                <svg viewBox="0 0 24 24" className="w-5 h-5">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-5 h-5"
+                  role="img"
+                  aria-label="SynSight Logo"
+                >
+                  <title>SynSight Logo</title>
                   <circle
                     cx="12"
                     cy="12"
@@ -50,9 +55,26 @@ export default function Footer() {
                 SYN<span className="text-cyber-blue">SIGHT</span>
               </span>
             </div>
-            <p className="text-sm text-gray-500 leading-relaxed max-w-xs mb-6">
-              Transparenz und Schutz für Ihre digitale Identität. KI-gestützt,
-              verständlich und in Deutschland entwickelt.
+            <p className="text-sm text-gray-500 leading-relaxed max-w-xs mb-4">
+              Cybersecurity- und OSINT-Plattform für digitale Identität.
+              KI-gestützt, verständlich und in Deutschland entwickelt.
+            </p>
+            <p className="mb-6 text-xs leading-relaxed text-gray-600">
+              Anbieter-Kontakt:{" "}
+              <a
+                href="mailto:hello@synsight.de"
+                className="text-cyber-blue/80 hover:text-cyber-cyan"
+              >
+                hello@synsight.de
+              </a>
+              {" · "}
+              Datenschutz:{" "}
+              <a
+                href="mailto:datenschutz@synsight.de"
+                className="text-cyber-blue/80 hover:text-cyber-cyan"
+              >
+                datenschutz@synsight.de
+              </a>
             </p>
             <a
               href="mailto:hello@synsight.de"
@@ -63,7 +85,6 @@ export default function Footer() {
             </a>
           </div>
 
-          {/* Link columns */}
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category}>
               <h4 className="text-sm font-semibold text-white mb-4 tracking-wide">
@@ -85,16 +106,23 @@ export default function Footer() {
           ))}
         </div>
 
-        {/* Bottom bar */}
         <div className="pt-8 border-t border-cyber-blue/10 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-600 font-mono">
             &copy; {new Date().getFullYear()} SynSight — synsight.de — Alle
             Rechte vorbehalten.
           </p>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyber-cyan/60" />
-            <span className="text-xs font-mono text-gray-500">
-              Produktentwicklung in Deutschland · EU-Datenprinzip
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <a
+              href="/login"
+              className="text-xs text-gray-600 hover:text-gray-400"
+            >
+              Login
+            </a>
+            <span className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-cyber-cyan/60" />
+              <span className="text-xs font-mono text-gray-500">
+                Produktentwicklung in Deutschland · EU-Datenprinzip
+              </span>
             </span>
           </div>
         </div>

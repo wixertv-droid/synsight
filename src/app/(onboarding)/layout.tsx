@@ -3,9 +3,11 @@ import type { ReactNode } from "react";
 import BrandLogo from "@/components/ui/BrandLogo";
 import PlatformBackground from "@/components/platform/PlatformBackground";
 
+import { robotsPrivate } from "@/lib/seo/index-policy";
+
 export const metadata: Metadata = {
-  title: "Einrichtung — SynSight",
-  robots: { index: false, follow: false },
+  title: "Einrichtung",
+  robots: robotsPrivate,
 };
 
 export default function OnboardingLayout({
