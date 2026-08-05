@@ -15,6 +15,7 @@ import {
   index,
   int,
   json,
+  longtext,
   mysqlEnum,
   mysqlTable,
   text,
@@ -1903,6 +1904,213 @@ export const userThreatsSummaries = mysqlTable(
   (table) => [
     uniqueIndex("user_threats_summaries_user_uq").on(table.userId),
     index("user_threats_summaries_fingerprint_idx").on(table.inputFingerprint),
+  ]
+);
+
+/* ─── SEO Knowledge CMS (Admin) ─────────────────────────────────────────── */
+
+const seoKnowledgeStatusEnum = mysqlEnum("status", [
+  "draft",
+  "published",
+  "archived",
+]);
+const seoKnowledgePriorityEnum = mysqlEnum("seo_priority", [
+  "hoch",
+  "mittel",
+  "niedrig",
+]);
+const seoKnowledgeIntentEnum = mysqlEnum("search_intent", [
+  "informational",
+  "commercial",
+  "transactional",
+  "navigational",
+]);
+const seoKnowledgeDifficultyEnum = mysqlEnum("difficulty", [
+  "einsteiger",
+  "fortgeschritten",
+  "experte",
+]);
+const seoKnowledgeRiskEnum = mysqlEnum("risk_level", [
+  "niedrig",
+  "mittel",
+  "hoch",
+  "kritisch",
+]);
+const seoKnowledgeCtaPresetEnum = mysqlEnum("cta_preset", [
+  "analyse_starten",
+  "kostenlos_testen",
+  "jetzt_pruefen",
+  "custom",
+]);
+const seoKnowledgeSectionTypeEnum = mysqlEnum("section_type", [
+  "content",
+  "infobox",
+  "hint",
+  "code",
+  "table",
+  "list",
+]);
+const seoKnowledgeLinkTypeEnum = mysqlEnum("link_type", [
+  "wissen",
+  "analyse",
+  "landing",
+  "module",
+]);
+
+export const seoKnowledgePages = mysqlTable(
+  "seo_knowledge_pages",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    slug: varchar("slug", { length: 180 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    language: varchar("language", { length: 8 }).notNull().default("de"),
+    status: seoKnowledgeStatusEnum.notNull().default("draft"),
+    category: varchar("category", { length: 64 }).notNull().default("OSINT"),
+    targetModule: varchar("target_module", { length: 64 })
+      .notNull()
+      .default("dashboard"),
+    seoPriority: seoKnowledgePriorityEnum.notNull().default("mittel"),
+    searchIntent: seoKnowledgeIntentEnum.notNull().default("informational"),
+    difficulty: seoKnowledgeDifficultyEnum.notNull().default("einsteiger"),
+    riskLevel: seoKnowledgeRiskEnum.notNull().default("mittel"),
+    searchVolume: int("search_volume", { unsigned: true }).notNull().default(0),
+    keywordDifficulty: int("keyword_difficulty", { unsigned: true })
+      .notNull()
+      .default(0),
+    seoTitle: varchar("seo_title", { length: 255 }),
+    metaDescription: varchar("meta_description", { length: 500 }),
+    metaKeywords: text("meta_keywords"),
+    canonicalUrl: varchar("canonical_url", { length: 500 }),
+    ogTitle: varchar("og_title", { length: 255 }),
+    ogDescription: varchar("og_description", { length: 500 }),
+    ogImageUrl: varchar("og_image_url", { length: 500 }),
+    twitterCard: varchar("twitter_card", { length: 32 })
+      .notNull()
+      .default("summary_large_image"),
+    robotsIndex: boolean("robots_index").notNull().default(true),
+    robotsFollow: boolean("robots_follow").notNull().default(true),
+    heroTitle: varchar("hero_title", { length: 255 }),
+    heroSubtitle: varchar("hero_subtitle", { length: 500 }),
+    heroImageUrl: varchar("hero_image_url", { length: 500 }),
+    intro: longtext("intro"),
+    ctaPreset: seoKnowledgeCtaPresetEnum.notNull().default("jetzt_pruefen"),
+    ctaLabel: varchar("cta_label", { length: 120 })
+      .notNull()
+      .default("Jetzt prüfen"),
+    ctaHref: varchar("cta_href", { length: 500 })
+      .notNull()
+      .default("/#demo-scanner"),
+    authorId: bigint("author_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => users.id, { onDelete: "set null" }),
+    authorName: varchar("author_name", { length: 150 }),
+    publishedAt: timestamp("published_at", { mode: "string", fsp: 3 }),
+    deletedAt: timestamp("deleted_at", { mode: "string", fsp: 3 }),
+    automationFlagsJson: json("automation_flags_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("seo_knowledge_pages_slug_lang_uq").on(
+      table.slug,
+      table.language
+    ),
+    index("seo_knowledge_pages_status_idx").on(table.status, table.deletedAt),
+    index("seo_knowledge_pages_category_idx").on(table.category),
+    index("seo_knowledge_pages_module_idx").on(table.targetModule),
+    index("seo_knowledge_pages_priority_idx").on(table.seoPriority),
+    index("seo_knowledge_pages_updated_idx").on(table.updatedAt),
+    index("seo_knowledge_pages_volume_idx").on(table.searchVolume),
+    index("seo_knowledge_pages_deleted_idx").on(table.deletedAt),
+  ]
+);
+
+export const seoKnowledgeSections = mysqlTable(
+  "seo_knowledge_sections",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    pageId: bigint("page_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => seoKnowledgePages.id, { onDelete: "cascade" }),
+    sortOrder: int("sort_order").notNull().default(0),
+    sectionType: seoKnowledgeSectionTypeEnum.notNull().default("content"),
+    heading: varchar("heading", { length: 255 }),
+    body: longtext("body"),
+    imageUrl: varchar("image_url", { length: 500 }),
+    metaJson: json("meta_json"),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("seo_knowledge_sections_page_sort_idx").on(
+      table.pageId,
+      table.sortOrder
+    ),
+  ]
+);
+
+export const seoKnowledgeFaqs = mysqlTable(
+  "seo_knowledge_faqs",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    pageId: bigint("page_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => seoKnowledgePages.id, { onDelete: "cascade" }),
+    sortOrder: int("sort_order").notNull().default(0),
+    question: varchar("question", { length: 500 }).notNull(),
+    answer: text("answer").notNull(),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("seo_knowledge_faqs_page_sort_idx").on(table.pageId, table.sortOrder),
+  ]
+);
+
+export const seoKnowledgeLinks = mysqlTable(
+  "seo_knowledge_links",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+    pageId: bigint("page_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => seoKnowledgePages.id, { onDelete: "cascade" }),
+    linkType: seoKnowledgeLinkTypeEnum.notNull().default("wissen"),
+    target: varchar("target", { length: 500 }).notNull(),
+    label: varchar("label", { length: 255 }).notNull(),
+    sortOrder: int("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("seo_knowledge_links_page_sort_idx").on(
+      table.pageId,
+      table.sortOrder
+    ),
   ]
 );
 

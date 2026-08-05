@@ -1,5 +1,5 @@
 export type AdminSectionId =
-  "benutzer" | "marketing" | "website" | "finanzen" | "support";
+  "benutzer" | "marketing" | "website" | "finanzen" | "support" | "seo";
 
 export interface AdminNavItem {
   slug: string;
@@ -21,7 +21,7 @@ export interface AdminSectionConfig {
   items: AdminNavItem[];
 }
 
-/** Sechs Admin-Bereiche — schlank sortiert, nur funktionale Module */
+/** Admin-Bereiche — schlank sortiert, nur funktionale Module */
 export const ADMIN_SECTIONS: AdminSectionConfig[] = [
   {
     id: "benutzer",
@@ -214,6 +214,33 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
         description: "Letzte System- und Admin-Ereignisse.",
         help: "Chronologischer Feed aus audit_events.",
         view: "support-activity",
+      },
+    ],
+  },
+  {
+    id: "seo",
+    title: "SEO & Wissensdatenbank",
+    sidebarCode: "A6",
+    description:
+      "Öffentliche Wissensseiten und SEO-Landingpages zentral verwalten.",
+    href: "/admin/seo",
+    defaultSlug: "uebersicht",
+    icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253",
+    items: [
+      {
+        slug: "uebersicht",
+        label: "Seitenübersicht",
+        description: "Alle Wissensseiten mit Suche, Filter und Status.",
+        help: "seo_knowledge_pages — Entwurf, veröffentlicht, archiviert.",
+        view: "seo-knowledge-list",
+      },
+      {
+        slug: "papierkorb",
+        label: "Papierkorb",
+        description:
+          "Gelöschte Seiten wiederherstellen oder endgültig entfernen.",
+        help: "Soft-Delete über deleted_at — Wiederherstellung möglich.",
+        view: "seo-knowledge-trash",
       },
     ],
   },

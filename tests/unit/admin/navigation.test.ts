@@ -8,17 +8,18 @@ import {
 } from "@/lib/admin/navigation";
 
 describe("admin navigation", () => {
-  it("defines five main sections including finanzen", () => {
+  it("defines six main sections including seo", () => {
     expect(ADMIN_SECTIONS.map((section) => section.id)).toEqual([
       "benutzer",
       "marketing",
       "website",
       "finanzen",
       "support",
+      "seo",
     ]);
   });
 
-  it("exposes six sidebar links (overview + five areas)", () => {
+  it("exposes seven sidebar links (overview + six areas)", () => {
     expect(ADMIN_SIDEBAR_LINKS.map((link) => link.code)).toEqual([
       "A0",
       "A1",
@@ -26,6 +27,7 @@ describe("admin navigation", () => {
       "A3",
       "A4",
       "A5",
+      "A6",
     ]);
   });
 
@@ -60,5 +62,15 @@ describe("admin navigation", () => {
     expect(adminPageHref("website", "ki-server")).toBe(
       "/admin/website/ki-server"
     );
+  });
+
+  it("exposes SEO knowledge CMS under seo", () => {
+    expect(getAdminNavItem("seo", "uebersicht")?.view).toBe(
+      "seo-knowledge-list"
+    );
+    expect(getAdminNavItem("seo", "papierkorb")?.view).toBe(
+      "seo-knowledge-trash"
+    );
+    expect(adminPageHref("seo", "uebersicht")).toBe("/admin/seo/uebersicht");
   });
 });
