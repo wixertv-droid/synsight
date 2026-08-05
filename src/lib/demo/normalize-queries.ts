@@ -18,7 +18,7 @@ function hostnameFrom(value: string): string {
  * Normalize landing-form inputs before building the Contabo module plan.
  * - domain: hostname only (no https://)
  * - url: ensure https://
- * - if only URL given, also derive domain for theHarvester/SpiderFoot
+ * - if only URL given, also derive domain for theHarvester
  */
 export function normalizeScanQueries(input: ScanQueries): ScanQueries {
   const out: ScanQueries = {};

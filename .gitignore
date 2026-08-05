@@ -30,6 +30,10 @@ yarn-error.log*
 
 # env files
 .env*.local
+.env.production
+.env.unused.bak
+nohup.out
+*.save
 
 # typescript
 *.tsbuildinfo

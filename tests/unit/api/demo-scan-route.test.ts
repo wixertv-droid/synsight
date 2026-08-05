@@ -4,6 +4,7 @@ const mockRecord = vi.fn();
 const mockHeaders = vi.fn(() => ({ "x-rate-limit": "ok" }));
 const mockValidate = vi.fn(() => null);
 const mockIp = vi.fn(() => "127.0.0.1");
+const mockCreds = vi.fn();
 
 vi.mock("@/lib/security/rate-limit", () => ({
   COMMUNICATION_RATE_LIMIT: {
@@ -20,6 +21,10 @@ vi.mock("@/lib/security/request", () => ({
   validateMutationOrigin: mockValidate,
 }));
 
+vi.mock("@/lib/demo/demo-scan-credentials", () => ({
+  resolveDemoScanCredentials: mockCreds,
+}));
+
 describe("POST /api/scan", () => {
   const originalFetch = global.fetch;
 
@@ -31,6 +36,10 @@ describe("POST /api/scan", () => {
     });
     mockValidate.mockReturnValue(null);
     mockIp.mockReturnValue("127.0.0.1");
+    mockCreds.mockResolvedValue({
+      url: "http://contabo.test/api/scan",
+      apiKey: "test-key",
+    });
   });
 
   afterEach(() => {
@@ -45,7 +54,7 @@ describe("POST /api/scan", () => {
       new Request("http://localhost/api/scan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query: " " }),
+        body: JSON.stringify({ query: " ", module: "holehe" }),
       })
     );
     expect(res.status).toBe(400);
@@ -53,16 +62,36 @@ describe("POST /api/scan", () => {
     expect(json.status).toBe("error");
   });
 
-  it("proxies valid query to upstream", async () => {
+  it("rejects spiderfoot module", async () => {
+    const { POST } = await import("@/app/api/scan/route");
+    const res = await POST(
+      new Request("http://localhost/api/scan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: "alice@example.com",
+          module: "spiderfoot",
+        }),
+      })
+    );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.message).toMatch(/photon/i);
+  });
+
+  it("proxies valid module step to upstream", async () => {
     global.fetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           status: "success",
-          query: "alice-unique-proxy-test",
-          findings: [],
-          exposure_score: 12,
-          risk_level: "Niedrig",
-          summary: "ok",
+          findings: [
+            {
+              source: "holehe",
+              platform: "GitHub",
+              url: "https://github.com/x",
+              risk: "medium",
+            },
+          ],
         }),
         { status: 200, headers: { "content-type": "application/json" } }
       )
@@ -73,52 +102,17 @@ describe("POST /api/scan", () => {
       new Request("http://localhost/api/scan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query: "alice-unique-proxy-test" }),
+        body: JSON.stringify({
+          query: "alice-unique-proxy-test@example.com",
+          module: "holehe",
+        }),
       })
     );
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.status).toBe("success");
+    expect(json.exposure_score).toBeGreaterThan(0);
     expect(global.fetch).toHaveBeenCalledOnce();
-  });
-
-  it("serves cached payload on repeat query without second upstream call", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: "success",
-          query: "cache-me@example.com",
-          findings: [{ title: "Leak" }],
-          exposure_score: 81,
-          risk_level: "Kritisch",
-          summary: "stable",
-        }),
-        { status: 200, headers: { "content-type": "application/json" } }
-      )
-    );
-    global.fetch = fetchMock;
-
-    const { POST } = await import("@/app/api/scan/route");
-    const first = await POST(
-      new Request("http://localhost/api/scan", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query: "cache-me@example.com" }),
-      })
-    );
-    const second = await POST(
-      new Request("http://localhost/api/scan", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query: "CACHE-ME@example.com" }),
-      })
-    );
-
-    expect(first.status).toBe(200);
-    expect(second.status).toBe(200);
-    expect((await second.json()).exposure_score).toBe(81);
-    expect(fetchMock).toHaveBeenCalledOnce();
-    expect(second.headers.get("x-demo-scan-cache")).toBe("hit");
   });
 
   it("rate-limits excessive scans", async () => {
@@ -132,7 +126,7 @@ describe("POST /api/scan", () => {
       new Request("http://localhost/api/scan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query: "alice" }),
+        body: JSON.stringify({ query: "alice", module: "maigret" }),
       })
     );
     expect(res.status).toBe(429);

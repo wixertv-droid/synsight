@@ -211,6 +211,7 @@ export default function ScannerOverlay({
 
   if (phase === "fullscreen_result" || phase === "closing_crt") {
     const rawModules = rawData?.modules || [];
+    // SpiderFoot ist aus dem Demo-Pipeline entfernt — Reste defensiv ausblenden
     const filteredModules = rawModules.filter(
       (m) =>
         !m.id.toLowerCase().includes("spiderfoot") &&
@@ -219,7 +220,13 @@ export default function ScannerOverlay({
 
     const modules = filteredModules
       .map((m) => {
-        const cleanFindings = deduplicateFindings(m.findings);
+        const cleanFindings = deduplicateFindings(
+          (m.findings || []).filter(
+            (f) =>
+              (f.category || "").toUpperCase() !== "ERROR" &&
+              !/gestartet|started/i.test(f.title || "")
+          )
+        );
         return { ...m, findings: cleanFindings, count: cleanFindings.length };
       })
       .filter((m) => m.count > 0);
@@ -339,25 +346,32 @@ export default function ScannerOverlay({
                 let type = "other";
                 let title = "DATA FOOTPRINT";
                 if (
+                  mId.includes("holehe") ||
                   mId.includes("email") ||
-                  mod.label.toLowerCase().includes("email")
+                  mod.label.toLowerCase().includes("email") ||
+                  mod.label.toLowerCase().includes("e-mail")
                 ) {
                   type = "email";
                   title = "E-MAIL IDENTITY EXPOSURE";
-                }
-                if (
+                } else if (
+                  mId.includes("maigret") ||
                   mId.includes("user") ||
                   mod.label.toLowerCase().includes("maigret")
                 ) {
                   type = "user";
                   title = "CROSS-PLATFORM USERNAME TRACKING";
-                }
-                if (
+                } else if (
+                  mId.includes("phoneinfoga") ||
                   mId.includes("phone") ||
                   mod.label.toLowerCase().includes("telefon")
                 ) {
                   type = "phone";
                   title = "TELECOMMUNICATIONS INTELLIGENCE";
+                } else if (mId.includes("harvest") || mId.includes("photon")) {
+                  type = "other";
+                  title = mId.includes("photon")
+                    ? "WEB CRAWL FOOTPRINT"
+                    : "DOMAIN HARVEST INTEL";
                 }
 
                 return (

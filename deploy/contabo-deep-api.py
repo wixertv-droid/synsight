@@ -8,21 +8,19 @@ Modules (only run when matching target type is provided):
   - phoneinfoga   (phone)
   - theHarvester  (domain)
   - photon        (url)
-  - SpiderFoot    (always, real events polled)
+
+SpiderFoot is intentionally disabled for the public DemoScanner.
 
 Auth:
   Authorization: Bearer $API_KEY
 
-Body (any subset; empty fields ignored):
-  {"email":"…","username":"…","phone":"…","domain":"…","url":"…"}
-  or legacy: {"query":"…"}
+Body (preferred sequential step):
+  {"query":"…","module":"holehe"}
 
-Deploy on Contabo:
-  sudo cp deploy/contabo-deep-api.py /opt/api.py
-  export API_KEY='…'
-  export SPIDERFOOT_URL='http://127.0.0.1:5001'   # or http://172.17.0.1:5001
-  pkill -f '/opt/api.py' || true
-  nohup python3 /opt/api.py >/var/log/synsight-demo-scan.log 2>&1 &
+Or multi-field legacy:
+  {"email":"…","username":"…","phone":"…","domain":"…","url":"…"}
+
+Deploy on Contabo Docker (/opt/osint-api), host port 5002 → container 5000.
 """
 
 from __future__ import annotations
@@ -556,8 +554,6 @@ def normalize_module(raw: str) -> str:
         "theharvester": "theHarvester",
         "harvester": "theHarvester",
         "photon": "photon",
-        "spiderfoot": "spiderfoot",
-        "sf": "spiderfoot",
     }
     return aliases.get(key, "")
 
@@ -573,8 +569,6 @@ def run_single_module(module: str, query: str) -> list[dict]:
         return run_theharvester(query)
     if module == "photon":
         return run_photon(query)
-    if module == "spiderfoot":
-        return run_spiderfoot(query)
     return [{"source": module or "unknown", "error": f"Unknown module: {module}"}]
 
 
@@ -608,7 +602,7 @@ def scan():
             "findings": findings,
             "partial": False,
             "source": "contabo-deep",
-            "api_version": "contabo-deep-4",
+            "api_version": "contabo-deep-6",
         }
         try:
             (RESULT_PATH / f"{scan_id}.json").write_text(
@@ -635,47 +629,26 @@ def scan():
             findings += run_holehe(email)
         else:
             partial = True
-        if within_budget():
-            findings += run_spiderfoot(email)
-        else:
-            partial = True
     if username := targets.get("username") or targets.get("name"):
         if within_budget():
             findings += run_maigret(username)
         else:
             partial = True
-        if "email" not in targets:
-            if within_budget():
-                findings += run_spiderfoot(username)
-            else:
-                partial = True
     if phone := targets.get("phone"):
         if within_budget():
             findings += run_phoneinfoga(phone)
         else:
             partial = True
-        if not any(k in targets for k in ("email", "username", "name")):
-            if within_budget():
-                findings += run_spiderfoot(phone)
-            else:
-                partial = True
     if domain := targets.get("domain"):
         if within_budget():
             findings += run_theharvester(domain)
         else:
             partial = True
-        if not any(k in targets for k in ("email", "username", "name", "phone")):
-            if within_budget():
-                findings += run_spiderfoot(domain)
-            else:
-                partial = True
     if url := targets.get("url"):
         if within_budget():
             findings += run_photon(url)
         else:
             partial = True
-        if len(targets) == 1 and within_budget():
-            findings += run_spiderfoot(url)
 
     result = {
         "status": "success",
@@ -687,7 +660,7 @@ def scan():
         "findings": findings,
         "partial": partial,
         "source": "contabo-deep",
-        "api_version": "contabo-deep-4",
+        "api_version": "contabo-deep-6",
     }
 
     try:
@@ -702,16 +675,6 @@ def scan():
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    sf_ok = False
-    try:
-        http_json("GET", "/ping", timeout=3.0)
-        sf_ok = True
-    except Exception:
-        try:
-            http_json("GET", "/scanlist", timeout=3.0)
-            sf_ok = True
-        except Exception:
-            sf_ok = False
     key = (API_KEY or "").strip()
     key_hint = (
         f"{key[:2]}…{key[-2:]} (len={len(key)})" if len(key) >= 4 else f"(len={len(key)})"
@@ -721,18 +684,17 @@ def health():
     return jsonify(
         {
             "ok": True,
-            "spiderfoot": sf_ok,
-            "spiderfoot_url": SPIDERFOOT_URL,
-            "api_version": "contabo-deep-5",
+            "api_version": "contabo-deep-6",
             "modules": [
                 "holehe",
                 "maigret",
                 "phoneinfoga",
                 "theHarvester",
                 "photon",
-                "spiderfoot",
             ],
             "mode": "sequential-module",
+            "spiderfoot": False,
+            "spiderfoot_note": "disabled for DemoScanner",
             "api_key_len": len(key),
             "api_key_hint": key_hint,
             "tools": tools,

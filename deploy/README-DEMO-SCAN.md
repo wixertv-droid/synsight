@@ -1,55 +1,43 @@
 # Demo-Scan · Multi-Modul (Contabo)
 
-| Server       | Host                          | Aufgabe                                       |
-| ------------ | ----------------------------- | --------------------------------------------- |
-| **Contabo**  | `vmd160239` · `161.97.85.22`  | `/opt/api.py` + SpiderFoot + holehe/maigret/… |
-| **SynSight** | `/opt/synsight` · synsight.de | Next.js — Proxy `/api/scan` mit Bearer-Key    |
+| Server       | Host                          | Aufgabe                                    |
+| ------------ | ----------------------------- | ------------------------------------------ |
+| **Contabo**  | `vmd160239` · `161.97.85.22`  | Docker `/opt/osint-api` · Port **5002**    |
+| **SynSight** | `/opt/synsight` · synsight.de | Next.js — Proxy `/api/scan` mit Bearer-Key |
 
-Nur ausgefüllte Felder werden gescannt. Module werden getrennt angezeigt.
+Module (ohne SpiderFoot): **Holehe → Maigret → PhoneInfoga → theHarvester → Photon**  
+Nur ausgefüllte Felder werden gescannt. Exposure-Score kommt aus diesen Modul-Treffern.
 
 ---
 
-## A) Contabo — API deployen
-
-Empfohlen (Multi-Field + echte SpiderFoot-Events):
+## A) Contabo — Docker API (Port 5002)
 
 ```bash
 # Auf Contabo als root:
-curl -fsSL https://raw.githubusercontent.com/wixertv-droid/synsight/cursor/demoscanner-multimodule-7c12/deploy/contabo-deep-api.py -o /opt/api.py
+cd /opt/osint-api
+# api.py aus Repo aktualisieren (Branch nach Deploy anpassen):
+curl -fsSL https://raw.githubusercontent.com/wixertv-droid/synsight/cursor/hud-redesign-review-7c12/deploy/contabo-deep-api.py \
+  -o /opt/osint-api/api.py   # oder wo euer Compose das File mountet
 
-# Key OHNE ! empfohlen (kein Bash-!!-Problem):
-export API_KEY='synsight-demo-key'
-export SPIDERFOOT_URL='http://127.0.0.1:5001'   # Docker-Host: http://172.17.0.1:5001
+# API_KEY muss exakt dem Admin-Eintrag entsprechen (kein !! im Key):
+# docker-compose.yml: ports "5002:5000", API_KEY=demoscanner23061980
 
-pkill -f '/opt/api.py' || true
-nohup env API_KEY="$API_KEY" SPIDERFOOT_URL="$SPIDERFOOT_URL" \
-  python3 /opt/api.py >/var/log/synsight-demo-scan.log 2>&1 &
-
-# Health inkl. welche Tools gefunden wurden:
-curl -s http://127.0.0.1:5000/api/health | python3 -m json.tool
+docker compose up -d --build
+curl -s http://127.0.0.1:5002/api/health | python3 -m json.tool
 
 # Auth-Check (erwartet 400 missing query, NICHT 401):
-curl -s -X POST http://127.0.0.1:5000/api/scan \
+curl -s -X POST http://127.0.0.1:5002/api/scan \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer ${API_KEY}" \
+  -H 'Authorization: Bearer demoscanner23061980' \
   -d '{}'
-
-# Tools im PATH?
-which holehe maigret phoneinfoga photon theHarvester 2>/dev/null || true
 ```
 
-### API-Key ändern (ohne `!!`) — **zwei Stellen**
+### API-Key — **zwei Stellen identisch**
 
-| Wo                 | Was                                                                         |
-| ------------------ | --------------------------------------------------------------------------- |
-| **Contabo**        | `export API_KEY='synsight-demo-key'` → api.py neu starten                   |
-| **SynSight Admin** | Website → APIs → Contabo DemoScanner → denselben Key speichern → API TESTEN |
-
-Beide Werte müssen **identisch** sein.
-
-````
-
-Wenn du bei deiner **eigenen** `api.py` bleibst: SynSight ruft sie mit `Authorization: Bearer …` und `{query}` pro Feld auf (Fallback).
+| Wo                 | Was                                                                   |
+| ------------------ | --------------------------------------------------------------------- |
+| **Contabo**        | Docker `API_KEY=…` → Container neu starten                            |
+| **SynSight Admin** | Website → APIs → Contabo DemoScanner → denselben Key → **API TESTEN** |
 
 ---
 
@@ -58,28 +46,22 @@ Wenn du bei deiner **eigenen** `api.py` bleibst: SynSight ruft sie mit `Authoriz
 ```bash
 cd /opt/synsight
 git fetch origin
-git checkout cursor/demoscanner-multimodule-7c12
-git pull origin cursor/demoscanner-multimodule-7c12
+git checkout cursor/hud-redesign-review-7c12
+git pull origin cursor/hud-redesign-review-7c12
 
 npm run build
 pm2 restart synsight --update-env
-````
+```
 
-Dann im Admin: **Website → APIs & Integrationen → Contabo DemoScanner**
+Admin: **Website → APIs & Integrationen → Contabo DemoScanner**
 
-- API-URL: `http://161.97.85.22:5000/api/scan`
-- Bearer-Key: dein Contabo `API_KEY`
-- Speichern → **API TESTEN** (Health + Auth-Probe, kein voller Scan)
-
-Optionaler Env-Fallback (nur wenn Admin-Eintrag fehlt): `DEMO_SCAN_API_URL` / `DEMO_SCAN_API_KEY`.
+- API-URL: `http://161.97.85.22:5002/api/scan`
+- Bearer-Key: Contabo `API_KEY` (z. B. `demoscanner23061980`)
+- Speichern → **API TESTEN**
 
 Browser: Ctrl+Shift+R.
 
-**Nicht** auf SynSight `curl 127.0.0.1:5000` testen — die Deep-API liegt nur auf Contabo.
-
 ### Nginx (SynSight-Host)
-
-Module laufen **nacheinander** (kurze Requests). Trotzdem ≥ 90s pro Schritt:
 
 ```nginx
 location /api/scan {
@@ -93,4 +75,4 @@ location /api/scan {
 `nginx -t && systemctl reload nginx`
 
 Contabo Single-Module-Body: `{"query":"…","module":"holehe"}`  
-Module: `holehe | maigret | phoneinfoga | theHarvester | photon | spiderfoot`
+Module: `holehe | maigret | phoneinfoga | theHarvester | photon`

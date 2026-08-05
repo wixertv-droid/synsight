@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, startTransition } from "react";
 
 const LOG_TEMPLATES = [
   "INITIALIZING SECURE SOCKET LAYER ... [OK]",
   "BYPASSING PROXY SHIELD & RESOLVING HOST ...",
   "HOLEHE: QUERYING 120+ VENDORS FOR ACCOUNT CORRELATION ...",
   "MAIGRET: SCANNING SOCIAL MATRICES & FORUM ARCHIVES ...",
-  "SHERLOCK: CROSS-CHECKING HANDLE ENTITIES ACROSS DOMAINS ...",
   "PHONEINFOGA: PARSING CARRIER & HLR LOOKUP METRICS ...",
   "ESTABLISHING SECURE TUNNEL TO CONTABO BACKEND NODE [5002] ...",
   "EXTRACTING PUBLIC EXPOSURE METADATA & LEAK VECTORS ...",
@@ -19,9 +18,11 @@ const LOG_TEMPLATES = [
 
 export default function ScanCodeRain() {
   const [logs, setLogs] = useState<string[]>([]);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    const initialLogs = Array.from({ length: 25 }, (_, i) => {
+    mounted.current = true;
+    const initialLogs = Array.from({ length: 18 }, (_, i) => {
       const template = LOG_TEMPLATES[i % LOG_TEMPLATES.length];
       const randomHex = Math.random()
         .toString(16)
@@ -31,20 +32,25 @@ export default function ScanCodeRain() {
     });
     setLogs(initialLogs);
 
+    // Slower cadence → fewer React commits during Contabo steps + CSS paint
     const interval = setInterval(() => {
-      setLogs((prev) => {
-        const randomTemplate =
-          LOG_TEMPLATES[Math.floor(Math.random() * LOG_TEMPLATES.length)];
-        const randomHex = Math.random()
-          .toString(16)
-          .substring(2, 8)
-          .toUpperCase();
-        const newLine = `[${randomHex}] ${randomTemplate}`;
-        return [...prev.slice(1), newLine];
+      if (!mounted.current) return;
+      const randomTemplate =
+        LOG_TEMPLATES[Math.floor(Math.random() * LOG_TEMPLATES.length)];
+      const randomHex = Math.random()
+        .toString(16)
+        .substring(2, 8)
+        .toUpperCase();
+      const newLine = `[${randomHex}] ${randomTemplate}`;
+      startTransition(() => {
+        setLogs((prev) => [...prev.slice(1), newLine]);
       });
-    }, 200);
+    }, 520);
 
-    return () => clearInterval(interval);
+    return () => {
+      mounted.current = false;
+      clearInterval(interval);
+    };
   }, []);
 
   return (
@@ -53,10 +59,10 @@ export default function ScanCodeRain() {
         <div className="flex flex-col space-y-1">
           {logs.map((log, index) => (
             <div
-              key={index}
+              key={`${index}-${log.slice(0, 12)}`}
               className="whitespace-nowrap tracking-wider"
               style={{
-                opacity: Math.max(0.15, index / logs.length),
+                opacity: Math.max(0.15, index / Math.max(logs.length, 1)),
               }}
             >
               {`> ${log}`}

@@ -217,8 +217,9 @@ export async function testDemoScanConnection(input: {
     } else if (!healthRes.ok) {
       healthDetail = `Health HTTP ${healthRes.status}`;
     } else {
-      const sf =
-        healthBody?.spiderfoot === true ? "spiderfoot=ok" : "spiderfoot=?";
+      const modules = Array.isArray(healthBody?.modules)
+        ? (healthBody.modules as string[]).join(",")
+        : "";
       const ver =
         typeof healthBody?.api_version === "string"
           ? `version=${healthBody.api_version}`
@@ -230,7 +231,8 @@ export async function testDemoScanConnection(input: {
         ? (healthBody.tools_missing as string[]).join(",")
         : "";
       healthDetail =
-        `Health OK · ${sf} · ${ver}` +
+        `Health OK · ${ver}` +
+        (modules ? ` · modules=${modules}` : "") +
         (missing ? ` · tools_missing=${missing}` : "");
     }
   } catch {

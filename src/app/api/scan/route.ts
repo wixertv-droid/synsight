@@ -26,7 +26,6 @@ const ALLOWED_MODULES = new Set([
   "phoneinfoga",
   "theHarvester",
   "photon",
-  "spiderfoot",
 ]);
 
 function cleanQuery(value: unknown): string | null {
@@ -79,7 +78,7 @@ export async function POST(req: Request) {
     const query = cleanQuery(body?.query);
     const moduleRaw =
       typeof body?.module === "string" ? body.module.trim() : "";
-    const scanModule = moduleRaw === "SpiderFoot" ? "spiderfoot" : moduleRaw;
+    const scanModule = moduleRaw;
 
     if (!query) {
       return NextResponse.json(
@@ -96,7 +95,7 @@ export async function POST(req: Request) {
         {
           status: "error",
           message:
-            "module fehlt oder ungültig. Erlaubt: holehe, maigret, phoneinfoga, theHarvester, photon, spiderfoot.",
+            "module fehlt oder ungültig. Erlaubt: holehe, maigret, phoneinfoga, theHarvester, photon.",
           risk_level: "Fehler",
         },
         { status: 400, headers: rateLimitHeaders(attempt) }

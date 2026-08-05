@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+  startTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import GlassCard from "@/components/ui/GlassCard";
@@ -22,6 +29,7 @@ import {
 } from "@/lib/demo/scan-plan";
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
 import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
+import { computeDemoExposureScore } from "@/lib/demo/demo-exposure-score";
 
 type FieldKey = keyof ScanQueries;
 
@@ -216,27 +224,31 @@ export default function DemoScanner() {
 
       const step = plan[i];
       setActiveStepLabel(`${step.label} · ${step.hint}`);
-      setModuleSteps((prev) =>
-        prev.map((s) =>
-          s.id === step.id
-            ? { ...s, status: "running", progress: 8, message: "Starte…" }
-            : s
-        )
-      );
-
-      const tick = setInterval(() => {
-        if (!aliveRef.current) return;
+      startTransition(() => {
         setModuleSteps((prev) =>
           prev.map((s) =>
-            s.id === step.id && s.status === "running"
-              ? {
-                  ...s,
-                  progress: Math.min(88, s.progress + 2 + Math.random() * 3),
-                }
+            s.id === step.id
+              ? { ...s, status: "running", progress: 8, message: "Starte…" }
               : s
           )
         );
-      }, 400);
+      });
+
+      const tick = setInterval(() => {
+        if (!aliveRef.current) return;
+        startTransition(() => {
+          setModuleSteps((prev) =>
+            prev.map((s) =>
+              s.id === step.id && s.status === "running"
+                ? {
+                    ...s,
+                    progress: Math.min(88, s.progress + 3 + Math.random() * 4),
+                  }
+                : s
+            )
+          );
+        });
+      }, 700);
       tickTimers.push(tick);
 
       try {
@@ -248,20 +260,43 @@ export default function DemoScanner() {
 
         if (result.ok) {
           allFindings.push(...result.findings);
-          setModuleSteps((prev) =>
-            prev.map((s) =>
-              s.id === step.id
-                ? {
-                    ...s,
-                    status: "done",
-                    progress: 100,
-                    findingCount: result.findings.length,
-                    message: `${result.findings.length} Signal(e)`,
-                  }
-                : s
-            )
-          );
+          startTransition(() => {
+            setModuleSteps((prev) =>
+              prev.map((s) =>
+                s.id === step.id
+                  ? {
+                      ...s,
+                      status: "done",
+                      progress: 100,
+                      findingCount: result.findings.length,
+                      message: `${result.findings.length} Signal(e)`,
+                    }
+                  : s
+              )
+            );
+          });
         } else {
+          startTransition(() => {
+            setModuleSteps((prev) =>
+              prev.map((s) =>
+                s.id === step.id
+                  ? {
+                      ...s,
+                      status: "error",
+                      progress: 100,
+                      findingCount: 0,
+                      message: result.message || "Fehler",
+                    }
+                  : s
+              )
+            );
+          });
+        }
+      } catch (error) {
+        clearInterval(tick);
+        tickTimers = tickTimers.filter((t) => t !== tick);
+        if (!aliveRef.current) return;
+        startTransition(() => {
           setModuleSteps((prev) =>
             prev.map((s) =>
               s.id === step.id
@@ -269,30 +304,13 @@ export default function DemoScanner() {
                     ...s,
                     status: "error",
                     progress: 100,
-                    findingCount: 0,
-                    message: result.message || "Fehler",
+                    message:
+                      error instanceof Error ? error.message : "Netzwerkfehler",
                   }
                 : s
             )
           );
-        }
-      } catch (error) {
-        clearInterval(tick);
-        tickTimers = tickTimers.filter((t) => t !== tick);
-        if (!aliveRef.current) return;
-        setModuleSteps((prev) =>
-          prev.map((s) =>
-            s.id === step.id
-              ? {
-                  ...s,
-                  status: "error",
-                  progress: 100,
-                  message:
-                    error instanceof Error ? error.message : "Netzwerkfehler",
-                }
-              : s
-          )
-        );
+        });
       }
 
       setProgress(Math.round(((i + 1) / plan.length) * 100));
@@ -312,10 +330,12 @@ export default function DemoScanner() {
       queries: queries as Record<string, string>,
     });
 
+    // Score explizit aus Modul-Findings (ohne SpiderFoot / Noise)
+    const scored = computeDemoExposureScore(normalized.findings);
+
     const modules = (normalized.modules || []) as ScanModule[];
     for (const step of plan) {
-      const id = step.module === "spiderfoot" ? "SpiderFoot" : step.module;
-      if (!modules.some((m) => m.id === id || m.id === step.module)) {
+      if (!modules.some((m) => m.id === step.module || m.id === step.id)) {
         modules.push({
           id: step.module,
           label: MODULE_META[step.module].label,
@@ -334,9 +354,12 @@ export default function DemoScanner() {
       findings: normalized.findings,
       modules,
       platforms: normalized.platforms,
-      exposureScore: normalized.exposure_score,
-      riskLevel: normalized.risk_level,
-      summary: normalized.summary,
+      exposureScore: scored.score,
+      riskLevel: scored.risk,
+      summary:
+        scored.usableCount === 0
+          ? normalized.summary
+          : `Multi-Modul-Analyse für „${normalized.query}“: Exposure-Score ${scored.score}/100 (${scored.risk}) · ${scored.usableCount} öffentliche Signal(e).`,
       timestamp: normalized.timestamp,
       exposure_count: normalized.findings.length,
       sources_found: modules.length,

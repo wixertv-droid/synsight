@@ -2,12 +2,7 @@ import type { ScanQueries } from "@/components/sections/DemoScanner/types";
 import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
 
 export type DemoModuleId =
-  | "holehe"
-  | "maigret"
-  | "phoneinfoga"
-  | "theHarvester"
-  | "photon"
-  | "spiderfoot";
+  "holehe" | "maigret" | "phoneinfoga" | "theHarvester" | "photon";
 
 export type ModuleStepStatus =
   "pending" | "running" | "done" | "error" | "skipped";
@@ -57,16 +52,12 @@ export const MODULE_META: Record<
     short: "Web Crawl",
     color: "#a7f3ff",
   },
-  spiderfoot: {
-    label: "SpiderFoot",
-    short: "Deep OSINT",
-    color: "#22d3ee",
-  },
 };
 
 /**
  * Sequential plan — one Contabo module call per step (avoids nginx timeout).
- * Order: specialist tools first, then SpiderFoot on the strongest targets.
+ * Order: Holehe → Maigret → PhoneInfoga → theHarvester → Photon
+ * (only steps with matching input fields).
  */
 export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
   const queries = normalizeScanQueries(rawQueries);
@@ -118,58 +109,6 @@ export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
       module: "photon",
       label: "Photon",
       hint: "Web-Crawl & Keys",
-      query: queries.url,
-      field: "url",
-    });
-  }
-
-  // SpiderFoot last — deepest correlation, one call per strong target
-  if (queries.email) {
-    steps.push({
-      id: "sf-email",
-      module: "spiderfoot",
-      label: "SpiderFoot",
-      hint: `Deep OSINT · ${queries.email}`,
-      query: queries.email,
-      field: "email",
-    });
-  }
-  if (queries.domain) {
-    steps.push({
-      id: "sf-domain",
-      module: "spiderfoot",
-      label: "SpiderFoot",
-      hint: `Deep OSINT · ${queries.domain}`,
-      query: queries.domain,
-      field: "domain",
-    });
-  }
-  if (queries.username && !queries.email) {
-    steps.push({
-      id: "sf-username",
-      module: "spiderfoot",
-      label: "SpiderFoot",
-      hint: `Deep OSINT · ${queries.username}`,
-      query: queries.username,
-      field: "username",
-    });
-  }
-  if (queries.phone && !queries.email && !queries.username && !queries.domain) {
-    steps.push({
-      id: "sf-phone",
-      module: "spiderfoot",
-      label: "SpiderFoot",
-      hint: `Deep OSINT · ${queries.phone}`,
-      query: queries.phone,
-      field: "phone",
-    });
-  }
-  if (queries.url && Object.keys(queries).length === 1) {
-    steps.push({
-      id: "sf-url",
-      module: "spiderfoot",
-      label: "SpiderFoot",
-      hint: `Deep OSINT · ${queries.url}`,
       query: queries.url,
       field: "url",
     });

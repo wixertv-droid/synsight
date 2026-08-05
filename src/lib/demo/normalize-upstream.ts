@@ -1,7 +1,13 @@
 /**
  * Normalize Contabo deep-scan API payloads into SynSight demo modules.
- * Upstream may return flat findings with `source` (holehe, maigret, SpiderFoot, …).
+ * Upstream may return flat findings with `source` (holehe, maigret, …).
+ * SpiderFoot findings are dropped from scoring and module grouping.
  */
+
+import {
+  computeDemoExposureScore,
+  filterScoreFindings,
+} from "@/lib/demo/demo-exposure-score";
 
 export type DemoRisk = "low" | "medium" | "high" | string;
 
@@ -50,13 +56,11 @@ const MODULE_META: Record<string, { label: string; order: number }> = {
   theharvester: { label: "theHarvester · Domain", order: 40 },
   theHarvester: { label: "theHarvester · Domain", order: 40 },
   photon: { label: "Photon · Web Crawl", order: 50 },
-  spiderfoot: { label: "SpiderFoot · Deep OSINT", order: 60 },
-  SpiderFoot: { label: "SpiderFoot · Deep OSINT", order: 60 },
 };
 
 function moduleKey(source: string): string {
   const raw = (source || "unknown").trim();
-  if (/spiderfoot/i.test(raw)) return "SpiderFoot";
+  if (/spiderfoot/i.test(raw)) return "spiderfoot";
   if (/theharvester/i.test(raw)) return "theHarvester";
   return raw.toLowerCase() === "holehe"
     ? "holehe"
@@ -71,13 +75,6 @@ function moduleKey(source: string): string {
 
 function moduleLabel(id: string): string {
   return MODULE_META[id]?.label || `${id} · Modul`;
-}
-
-function riskRank(risk: string): number {
-  const v = risk.toLowerCase();
-  if (/high|hoch|kritisch|critical/.test(v)) return 3;
-  if (/medium|mittel|erhöht/.test(v)) return 2;
-  return 1;
 }
 
 export function findingFromUpstream(
@@ -126,8 +123,7 @@ export function findingFromUpstream(
   if (status === "started") {
     title = "Scan gestartet";
     description =
-      description ||
-      "SpiderFoot-Scan wurde ausgelöst. Detail-Events folgen aus dem Modul.";
+      description || "Modul-Scan wurde ausgelöst. Detail-Events folgen.";
   }
 
   if (!description && !url && !status) {
@@ -147,25 +143,6 @@ export function findingFromUpstream(
   };
 }
 
-function scoreFromFindings(findings: DemoFinding[]): {
-  score: number;
-  risk: string;
-} {
-  const usable = findings.filter((f) => f.category !== "ERROR");
-  const high = usable.filter((f) => riskRank(String(f.risk)) >= 3).length;
-  const medium = usable.filter((f) => riskRank(String(f.risk)) === 2).length;
-  const low = usable.filter((f) => riskRank(String(f.risk)) <= 1).length;
-  const score = Math.min(
-    98,
-    12 + high * 16 + medium * 7 + low * 3 + usable.length
-  );
-  let risk = "Niedrig";
-  if (high >= 2 || score >= 75) risk = "Kritisch";
-  else if (high >= 1 || score >= 50) risk = "Erhöht";
-  else if (score >= 30) risk = "Mittel";
-  return { score, risk };
-}
-
 function buildModuleSummaries(modules: DemoModuleResult[]): string {
   const parts = modules.map((m) => {
     if (m.status === "error") return `${m.label}: Fehler`;
@@ -180,6 +157,7 @@ export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
   const buckets = new Map<string, DemoFinding[]>();
   for (const f of findings) {
     const id = moduleKey(f.source || "unknown");
+    if (id === "spiderfoot") continue;
     const list = buckets.get(id) || [];
     list.push(f);
     buckets.set(id, list);
@@ -254,11 +232,12 @@ export function normalizeUpstreamPayload(input: {
     }
   }
 
-  const modules = groupModules(findings);
-  const { score, risk } = scoreFromFindings(findings);
+  const scoredFindings = filterScoreFindings(findings);
+  const modules = groupModules(scoredFindings);
+  const { score, risk } = computeDemoExposureScore(scoredFindings);
   const platforms = [
     ...new Set(
-      findings
+      scoredFindings
         .map((f) => f.platform || f.source || "")
         .filter(Boolean)
         .map(String)
@@ -266,7 +245,7 @@ export function normalizeUpstreamPayload(input: {
   ].slice(0, 16);
 
   const summary =
-    findings.length === 0
+    scoredFindings.length === 0
       ? `Keine öffentlichen Treffer für „${queryLabel}“ in den aktiven Modulen.`
       : `Multi-Modul-Analyse für „${queryLabel}“: ${buildModuleSummaries(modules)}. Exposure-Score ${score}/100 (${risk}).`;
 
@@ -275,7 +254,7 @@ export function normalizeUpstreamPayload(input: {
     query: queryLabel,
     queries,
     queryType: Object.keys(queries).join("+") || "mixed",
-    findings,
+    findings: scoredFindings,
     modules,
     platforms: platforms.length ? platforms : ["OSINT"],
     exposure_score: score,

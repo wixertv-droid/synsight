@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  startTransition,
+} from "react";
 import type { ScanQueries, ModuleStepState } from "./types";
 import ScanCodeRain from "./ScanCodeRain";
 import BgCss from "./BgCss";
@@ -31,33 +37,57 @@ export default function ScannerHUD({
   activeStepLabel,
 }: ScannerHUDProps) {
   const [isBooting, setIsBooting] = useState(true);
-  // NEU: Steuert, wann das extrem schwere CSS geladen wird
   const [mountHeavyCss, setMountHeavyCss] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
+  const [cssReady, setCssReady] = useState(false);
   const [msgIndex, setMsgIndex] = useState(0);
+  const bootStartedAt = useRef(
+    typeof performance !== "undefined" ? performance.now() : Date.now()
+  );
+  const readyNotified = useRef(false);
+
+  const markAppReady = useCallback(() => {
+    if (readyNotified.current) return;
+    readyNotified.current = true;
+    setIsAppReady(true);
+  }, []);
 
   useEffect(() => {
-    // 1. CRT-Röhren-Effekt startet SOFORT
-    const bootTimer = setTimeout(() => setIsBooting(false), 700);
+    // 1. CRT-Effekt zuerst sichtbar
+    const bootTimer = setTimeout(() => setIsBooting(false), 650);
 
-    // 2. Erst wenn der große Loader sicher auf dem Bildschirm sichtbar ist (nach 800ms),
-    // zünden wir das schwere CSS. So blockiert der Browser nicht beim Startbildschirm!
-    const cssTimer = setTimeout(() => setMountHeavyCss(true), 800);
+    // 2. CSS früh als <link> starten (nicht im JS-Bundle) — parallel zum CRT
+    const cssTimer = setTimeout(() => setMountHeavyCss(true), 120);
 
-    // 3. Nach 3.2 Sekunden ist das CSS geparst und der Vorhang blendet flüssig aus
-    const readyTimer = setTimeout(() => setIsAppReady(true), 3200);
+    // 3. Fallback falls Stylesheet-onload zu spät kommt
+    const readyFallback = setTimeout(() => markAppReady(), 3200);
 
     return () => {
       clearTimeout(bootTimer);
       clearTimeout(cssTimer);
-      clearTimeout(readyTimer);
+      clearTimeout(readyFallback);
     };
+  }, [markAppReady]);
+
+  useEffect(() => {
+    if (!cssReady || isAppReady) return;
+    const elapsed =
+      (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+      bootStartedAt.current;
+    // Mind. ~900ms Vorhang, dann heben sobald CSS da ist (statt fester 3.2s)
+    const wait = Math.max(0, 900 - elapsed);
+    const t = setTimeout(() => markAppReady(), wait);
+    return () => clearTimeout(t);
+  }, [cssReady, isAppReady, markAppReady]);
+
+  const handleCssReady = useCallback(() => {
+    startTransition(() => setCssReady(true));
   }, []);
 
   useEffect(() => {
     const msgTimer = setInterval(() => {
       setMsgIndex((prev) => (prev + 1) % SYSTEM_MESSAGES.length);
-    }, 800);
+    }, 850);
     return () => clearInterval(msgTimer);
   }, []);
 
@@ -69,10 +99,7 @@ export default function ScannerHUD({
     (s) => s.field === "email" || String(s.module) === "holehe"
   );
   const usernameStep = moduleSteps.find(
-    (s) =>
-      s.field === "username" ||
-      String(s.module) === "maigret" ||
-      String(s.module) === "sherlock"
+    (s) => s.field === "username" || String(s.module) === "maigret"
   );
   const phoneStep = moduleSteps.find(
     (s) => s.field === "phone" || String(s.module) === "phoneinfoga"
@@ -343,12 +370,12 @@ export default function ScannerHUD({
             DIE ECHTE APP (Unter dem Vorhang)
             ===================================================================== */}
 
-        {/* Hintergrund-Effekte */}
+        {/* Hintergrund-Effekte — Code-Rain erst nach Boot, spart Main-Thread während CSS-Parse */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,243,255,0.05)_0%,rgba(2,3,6,1)_80%)]" />
-        <ScanCodeRain />
+        {isAppReady && <ScanCodeRain />}
 
-        {/* HIER DIE LÖSUNG: Das extrem schwere CSS rendert erst, WENN der Loader schon sicher auf dem Bild ist! */}
-        {mountHeavyCss && <BgCss />}
+        {/* Schweres Ghost-CSS als static <link>, nicht im JS-Bundle */}
+        {mountHeavyCss && <BgCss onReady={handleCssReady} />}
 
         <div
           className="absolute inset-0 z-[2] opacity-[0.12]"
@@ -422,7 +449,7 @@ export default function ScannerHUD({
                 status={emailStep?.status}
               />
               <LargeModuleLoader
-                label="USERNAME MATRIX (MAIGRET / SHERLOCK)"
+                label="USERNAME MATRIX (MAIGRET)"
                 value={usernameStep?.query || ""}
                 queryValue={queries?.username}
                 status={usernameStep?.status}
