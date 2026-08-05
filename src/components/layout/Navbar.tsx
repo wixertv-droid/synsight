@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 interface SessionUser {
   displayName: string;
@@ -15,19 +15,41 @@ type SessionState =
   | { status: "guest" }
   | { status: "authenticated"; user: SessionUser };
 
-const navLinks = [
-  { label: "Plattform", href: "/#platform" },
-  { label: "Risiko-Check", href: "/#demo-scanner" },
-  { label: "SynCredits", href: "/#syncredits" },
-  { label: "Sicherheit", href: "/#trust" },
+type NavLink = {
+  label: string;
+  href: string;
+  /** Section id on the homepage for scroll spy */
+  sectionId?: string;
+};
+
+const navLinks: NavLink[] = [
+  { label: "Plattform", href: "/#platform", sectionId: "platform" },
+  { label: "Risiko-Check", href: "/#demo-scanner", sectionId: "demo-scanner" },
+  { label: "SynCredits", href: "/#syncredits", sectionId: "syncredits" },
+  { label: "Sicherheit", href: "/#trust", sectionId: "trust" },
+  { label: "Analysen", href: "/analysen" },
+  { label: "Hilfe", href: "/hilfe" },
 ];
+
+function linkClass(active: boolean, mobile = false) {
+  if (mobile) {
+    return active
+      ? "block rounded-lg border border-cyber-cyan/25 bg-cyber-cyan/[0.08] px-3 py-2 text-sm text-cyber-cyan"
+      : "block py-2 text-sm text-gray-400 hover:text-cyber-cyan";
+  }
+  return active
+    ? "relative py-2 text-[12px] tracking-wide text-cyber-cyan after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-cyber-cyan/70"
+    : "relative py-2 text-[12px] tracking-wide text-white/45 transition-colors after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 after:bg-cyber-cyan/70 after:transition-all hover:text-white/85 hover:after:w-full";
+}
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [session, setSession] = useState<SessionState>({ status: "loading" });
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -74,6 +96,67 @@ export default function Navbar() {
     };
   }, []);
 
+  // Highlight the section currently in view on the landing page.
+  useEffect(() => {
+    if (pathname !== "/") {
+      setActiveSection(null);
+      return;
+    }
+
+    const ids = navLinks
+      .map((link) => link.sectionId)
+      .filter((id): id is string => Boolean(id));
+
+    const elements = ids
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => Boolean(el));
+
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort(
+            (a, b) => (b.intersectionRatio ?? 0) - (a.intersectionRatio ?? 0)
+          );
+        if (visible[0]?.target?.id) {
+          setActiveSection(visible[0].target.id);
+        }
+      },
+      {
+        rootMargin: "-20% 0px -55% 0px",
+        threshold: [0.1, 0.25, 0.5],
+      }
+    );
+
+    for (const el of elements) observer.observe(el);
+
+    // Hash on load / change
+    const applyHash = () => {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (hash && ids.includes(hash)) setActiveSection(hash);
+    };
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("hashchange", applyHash);
+    };
+  }, [pathname]);
+
+  const isLinkActive = (link: NavLink) => {
+    if (link.href.startsWith("/") && !link.href.includes("#")) {
+      return pathname === link.href || pathname.startsWith(`${link.href}/`);
+    }
+    if (pathname !== "/") return false;
+    if (link.sectionId && activeSection) {
+      return activeSection === link.sectionId;
+    }
+    return false;
+  };
+
   const handleLogout = async () => {
     setLogoutLoading(true);
     try {
@@ -109,6 +192,9 @@ export default function Navbar() {
                 : "text-[12px] tracking-wide text-white/45 transition-colors hover:text-white/85"
             }
             onClick={() => setMenuOpen(false)}
+            aria-current={
+              pathname.startsWith("/dashboard") ? "page" : undefined
+            }
           >
             Dashboard
           </Link>
@@ -195,6 +281,31 @@ export default function Navbar() {
     );
   };
 
+  const renderNavLink = (link: NavLink, mobile = false) => {
+    const active = isLinkActive(link);
+    const className = linkClass(active, mobile);
+    const onClick = () => setMenuOpen(false);
+    const props = {
+      className,
+      onClick,
+      "aria-current": active ? ("page" as const) : undefined,
+    };
+
+    if (link.href.includes("#")) {
+      return (
+        <a key={link.href} href={link.href} {...props}>
+          {link.label}
+        </a>
+      );
+    }
+
+    return (
+      <Link key={link.href} href={link.href} {...props}>
+        {link.label}
+      </Link>
+    );
+  };
+
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 border-b transition-all duration-500 ${
@@ -202,9 +313,10 @@ export default function Navbar() {
           ? "border-white/[0.07] bg-[#04070c]/80 shadow-[0_18px_60px_rgba(0,0,0,0.24)] backdrop-blur-2xl"
           : "border-transparent bg-transparent"
       }`}
+      aria-label="Hauptnavigation"
     >
       <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 flex items-center justify-between h-[4.5rem]">
-        <a href="#hero" className="flex items-center gap-2 group">
+        <a href="/#hero" className="flex items-center gap-2 group">
           <div className="relative w-8 h-8 rounded-full border border-white/10 bg-white/[0.025] flex items-center justify-center group-hover:border-cyber-blue/40 transition-colors">
             <span className="absolute inset-1 rounded-full border border-cyber-blue/10" />
             <svg viewBox="0 0 24 24" className="w-4 h-4">
@@ -227,16 +339,8 @@ export default function Navbar() {
           </span>
         </a>
 
-        <div className="hidden md:flex items-center gap-7">
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="relative py-2 text-[12px] tracking-wide text-white/45 transition-colors after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 after:bg-cyber-cyan/70 after:transition-all hover:text-white/85 hover:after:w-full"
-            >
-              {link.label}
-            </a>
-          ))}
+        <div className="hidden md:flex items-center gap-6 lg:gap-7">
+          {navLinks.map((link) => renderNavLink(link))}
           {renderAuthLinks()}
         </div>
 
@@ -268,16 +372,7 @@ export default function Navbar() {
           id="mobile-navigation"
           className="md:hidden border-t border-white/[0.07] bg-[#050911]/95 px-6 py-4 space-y-3 backdrop-blur-2xl"
         >
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="block text-sm text-gray-400 hover:text-cyber-cyan py-2"
-              onClick={() => setMenuOpen(false)}
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) => renderNavLink(link, true))}
           <div className="space-y-3 border-t border-white/[0.06] pt-4">
             {renderAuthLinks(true)}
           </div>

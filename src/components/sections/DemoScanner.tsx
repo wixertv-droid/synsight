@@ -30,11 +30,15 @@ import {
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
 import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
 import { computeDemoExposureScore } from "@/lib/demo/demo-exposure-score";
+import {
+  DEMO_FIELD_TO_ANALYSIS_KEYS,
+  type DemoFieldKey,
+} from "@/lib/seo/module-maps";
 
 type FieldKey = keyof ScanQueries;
 
-const FIELDS: Array<{
-  key: FieldKey;
+const ALL_FIELDS: Array<{
+  key: DemoFieldKey;
   label: string;
   placeholder: string;
   type?: string;
@@ -82,10 +86,13 @@ function riskTone(riskLevel?: string, score = 0) {
   };
 }
 
-// Intelligenter Filter, der auch Validierungen (wie das @ bei E-Mails) durchführt
-function filledQueries(fields: ScanQueries): ScanQueries {
+/** Only count filled values for fields that are currently visible (admin-active). */
+function filledQueries(
+  fields: ScanQueries,
+  visibleKeys: DemoFieldKey[]
+): ScanQueries {
   const out: ScanQueries = {};
-  for (const { key } of FIELDS) {
+  for (const key of visibleKeys) {
     const value = fields[key]?.trim();
     if (value) {
       // E-Mail muss ein @ enthalten, sonst wird sie noch nicht als gültig gezählt
@@ -158,8 +165,22 @@ export default function DemoScanner() {
   const [rawData, setRawData] = useState<ScanData | null>(null);
   const [moduleSteps, setModuleSteps] = useState<ModuleStepState[]>([]);
   const [activeStepLabel, setActiveStepLabel] = useState("");
+  /** Until /api/pricing loads, show all fields; then only admin-active modules. */
+  const [visibleFieldKeys, setVisibleFieldKeys] = useState<DemoFieldKey[]>([
+    "email",
+    "username",
+    "phone",
+  ]);
 
-  const activeQueries = useMemo(() => filledQueries(fields), [fields]);
+  const visibleFields = useMemo(
+    () => ALL_FIELDS.filter((field) => visibleFieldKeys.includes(field.key)),
+    [visibleFieldKeys]
+  );
+
+  const activeQueries = useMemo(
+    () => filledQueries(fields, visibleFieldKeys),
+    [fields, visibleFieldKeys]
+  );
   const activeCount = Object.keys(activeQueries).length;
   const plannedSteps = useMemo(
     () => buildScanPlan(activeQueries),
@@ -177,6 +198,32 @@ export default function DemoScanner() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pricing", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((body) => {
+        if (cancelled || !body?.success) return;
+        const activeKeys = new Set<string>(
+          (
+            (body.data?.analyses as Array<{ key: string }> | undefined) ?? []
+          ).map((row) => row.key)
+        );
+        const next = (
+          Object.keys(DEMO_FIELD_TO_ANALYSIS_KEYS) as DemoFieldKey[]
+        ).filter((field) =>
+          DEMO_FIELD_TO_ANALYSIS_KEYS[field].some((key) => activeKeys.has(key))
+        );
+        // If catalog is empty (misconfig), keep UX usable rather than blank form.
+        if (next.length > 0) setVisibleFieldKeys(next);
+      })
+      .catch(() => {
+        // Pricing unavailable — keep default fields for Contabo demo path.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const handleInputChange = (key: FieldKey, value: string) => {
     let formattedValue = value;
 
@@ -195,7 +242,7 @@ export default function DemoScanner() {
   };
 
   const startScan = useCallback(async () => {
-    const queries = filledQueries(fields);
+    const queries = filledQueries(fields, visibleFieldKeys);
     const plan = buildScanPlan(queries);
     if (plan.length === 0 || phase === "scanning") return;
 
@@ -385,7 +432,7 @@ export default function DemoScanner() {
     setTimeout(() => {
       if (aliveRef.current) setPhase("fullscreen_result");
     }, 700);
-  }, [fields, phase]);
+  }, [fields, phase, visibleFieldKeys]);
 
   const closeFullscreen = () => {
     setPhase("complete");
@@ -482,7 +529,7 @@ export default function DemoScanner() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    {FIELDS.map((field) => (
+                    {visibleFields.map((field) => (
                       <label key={field.key} className="block text-left group">
                         <span className="mb-2 block font-mono text-[11px] tracking-[0.15em] uppercase text-white/60 group-focus-within:text-cyber-cyan transition-colors">
                           {field.label}
