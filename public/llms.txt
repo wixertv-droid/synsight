@@ -1,0 +1,38 @@
+# SynSight
+
+> SynSight is a German cybersecurity and OSINT platform that analyzes public digital traces, profile signals, and leak indicators — and explains risks in plain language.
+
+SynSight is not a hacking tool. It focuses on publicly available information and permitted APIs.
+
+## Core facts
+
+- Product: Cybersecurity / identity intelligence platform
+- Website: https://synsight.de
+- Language: German (de)
+- Contact: hello@synsight.de
+- Privacy: datenschutz@synsight.de
+
+## Primary tools
+
+- [Google-Analyse](https://synsight.de/google-analyse): Public search exposure analysis
+- [Username-Suche](https://synsight.de/username-suche): Cross-platform alias discovery
+- [Digital Footprint](https://synsight.de/digital-footprint): Combined public exposure picture
+- [Reverse Image Search](https://synsight.de/reverse-image-search): Public image reuse detection
+- [E-Mail-Check](https://synsight.de/email-check): Public account / leak signals for email
+- [Telefon-Check](https://synsight.de/telefon-check): Public phone metadata / OSINT signals
+- [Social-Media-Analyse](https://synsight.de/social-media-analyse): Public social profile correlation
+- [OSINT-Analyse](https://synsight.de/osint-analyse): Open-source intelligence overview
+- [Personensuche](https://synsight.de/personensuche): Public person-related signals
+- [Datenleck prüfen](https://synsight.de/datenleck-pruefen): Breach / leak exposure checks
+
+## Hub pages
+
+- [Analysen](https://synsight.de/analysen)
+- [Hilfe](https://synsight.de/hilfe)
+- [Blog](https://synsight.de/blog)
+- [Datenschutz](https://synsight.de/datenschutz)
+- [Impressum](https://synsight.de/impressum)
+
+## Optional
+
+- Private app areas (login, dashboard, profile, results) are noindex and must not be cited as public documentation.

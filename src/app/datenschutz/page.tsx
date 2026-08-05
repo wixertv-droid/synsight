@@ -1,10 +1,27 @@
+import type { Metadata } from "next";
 import LegalPage from "@/components/layout/LegalPage";
+import JsonLd from "@/components/seo/JsonLd";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+import { breadcrumbSchema } from "@/lib/seo/schema";
+import { SITE } from "@/lib/seo/site";
 
-export const metadata = { title: "Datenschutz — SynSight" };
+export const metadata: Metadata = buildPageMetadata({
+  title: "Datenschutz",
+  description:
+    "Datenschutzinformation von SynSight: Umgang mit Demo-Eingaben, Kontakt und Transparenz zu öffentlichen OSINT-Analysen.",
+  path: "/datenschutz",
+  keywords: ["SynSight Datenschutz", "Privacy SynSight", "OSINT Datenschutz"],
+});
 
 export default function DatenschutzPage() {
   return (
     <LegalPage title="Datenschutz" label="Datenschutzinformation">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Start", path: "/" },
+          { name: "Datenschutz", path: "/datenschutz" },
+        ])}
+      />
       <section>
         <h2 className="mb-3 text-lg font-medium text-white">
           Stand dieser Website
@@ -26,22 +43,32 @@ export default function DatenschutzPage() {
         </p>
       </section>
       <section>
+        <h2 className="mb-3 text-lg font-medium text-white">
+          Grundsätze (E-E-A-T / Transparenz)
+        </h2>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>Öffentliche Quellen und erlaubte APIs statt Account-Hacking</li>
+          <li>Klare Trennung zwischen Demo und produktiven Analysen</li>
+          <li>App-Bereiche (Dashboard, Profil) sind nicht für Suchmaschinen indexiert</li>
+          <li>HTTPS und Security-Header schützen die Übertragung</li>
+        </ul>
+      </section>
+      <section>
         <h2 className="mb-3 text-lg font-medium text-white">Kontakt</h2>
         <p>
           Datenschutzanfragen richten Sie bitte an{" "}
           <a
             className="text-cyber-blue"
-            href="mailto:datenschutz@synsight.de"
+            href={`mailto:${SITE.email.privacy}`}
           >
-            datenschutz@synsight.de
+            {SITE.email.privacy}
           </a>
           .
         </p>
       </section>
       <p className="rounded-xl border border-amber-300/15 bg-amber-300/[0.035] p-4 text-amber-100/60">
-        Vor dem Anschluss realer Analyse-, Zahlungs- oder Tracking-Dienste muss
-        diese Information um alle tatsächlich eingesetzten Verarbeitungen
-        ergänzt und rechtlich geprüft werden.
+        Vor dem produktiven Betrieb wird eine vollständige Datenschutzerklärung
+        nach DSGVO ergänzt.
       </p>
     </LegalPage>
   );
