@@ -114,6 +114,17 @@ export async function POST(req: Request) {
         { status: 503, headers: rateLimitHeaders(attempt) }
       );
     }
+    if (!creds.apiKey) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message:
+            "DemoScanner-API-Key fehlt oder ist nicht lesbar. Bitte unter Admin → Website → APIs den Contabo-Key neu speichern oder DEMO_SCAN_API_KEY in .env.production setzen.",
+          risk_level: "Fehler",
+        },
+        { status: 503, headers: rateLimitHeaders(attempt) }
+      );
+    }
 
     const controller = new AbortController();
     const timeout = setTimeout(
