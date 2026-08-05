@@ -255,7 +255,7 @@ export default function Navbar() {
 
     return (
       <>
-        <a
+        <Link
           href="/login"
           className={
             mobile
@@ -265,8 +265,8 @@ export default function Navbar() {
           onClick={() => setMenuOpen(false)}
         >
           Login
-        </a>
-        <a
+        </Link>
+        <Link
           href="/register"
           className={
             mobile
@@ -276,7 +276,7 @@ export default function Navbar() {
           onClick={() => setMenuOpen(false)}
         >
           {mobile ? "Konto erstellen" : "Registrieren"}
-        </a>
+        </Link>
       </>
     );
   };
@@ -316,7 +316,7 @@ export default function Navbar() {
       aria-label="Hauptnavigation"
     >
       <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 flex items-center justify-between h-[4.5rem]">
-        <a href="/#hero" className="flex items-center gap-2 group">
+        <Link href="/#hero" className="flex items-center gap-2 group">
           <div className="relative w-8 h-8 rounded-full border border-white/10 bg-white/[0.025] flex items-center justify-center group-hover:border-cyber-blue/40 transition-colors">
             <span className="absolute inset-1 rounded-full border border-cyber-blue/10" />
             <svg viewBox="0 0 24 24" className="w-4 h-4">
@@ -337,7 +337,7 @@ export default function Navbar() {
           <span className="ml-2 hidden border-l border-white/10 pl-3 font-mono text-[8px] tracking-[.16em] text-white/25 lg:block">
             DIGITAL IDENTITY INTELLIGENCE
           </span>
-        </a>
+        </Link>
 
         <div className="hidden md:flex items-center gap-6 lg:gap-7">
           {navLinks.map((link) => renderNavLink(link))}

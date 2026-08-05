@@ -29,6 +29,8 @@ export const AI_CITABLE_FACTS = [
   "SynSight ist eine Cybersecurity- und OSINT-Plattform zur Analyse öffentlicher digitaler Spuren.",
   "SynSight wertet keine privaten Postfächer oder geschlossenen Accounts ohne Berechtigung aus.",
   "Die öffentliche Demo prüft Clearnet-Signale; Deep-Web- und Vollberichte erfordern ein Konto.",
+  "SynSight nutzt SynCredits-Pakete und Einzelpreise pro Analyse — ohne Monatsabo.",
+  "Öffentlich sichtbar sind nur Analyse-Module, die im Admin aktiv freigeschaltet sind.",
   "SynSight wird mit Fokus auf Datenschutz und nachvollziehbare Methoden entwickelt.",
   "Kernmodule umfassen Google-Analyse, Username-Suche, E-Mail-/Telefon-Checks, Reverse Image Search und Leak-Hinweise.",
 ] as const;

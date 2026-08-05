@@ -182,10 +182,6 @@ export default function DemoScanner() {
     [fields, visibleFieldKeys]
   );
   const activeCount = Object.keys(activeQueries).length;
-  const plannedSteps = useMemo(
-    () => buildScanPlan(activeQueries),
-    [activeQueries]
-  );
   const targetLabel = useMemo(
     () => Object.values(activeQueries).join(" · ") || "Unbekannt",
     [activeQueries]
