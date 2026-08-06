@@ -158,7 +158,7 @@ export async function verifyEmailToken(
     );
   }
 
-  return { success: true, userId };
+  return { success: true, userId: user.id };
 }
 
 export async function resendEmailVerification(
