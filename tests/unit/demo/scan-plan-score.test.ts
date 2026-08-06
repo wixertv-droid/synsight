@@ -20,7 +20,7 @@ describe("demo scan plan", () => {
 });
 
 describe("demo exposure score", () => {
-  it("scores module findings and ignores SpiderFoot / errors", () => {
+  it("scores specialist findings, legacy OSINT fallback findings and ignores errors", () => {
     const scored = computeDemoExposureScore([
       {
         source: "holehe",
@@ -46,12 +46,12 @@ describe("demo exposure score", () => {
         risk: "high",
       },
     ]);
-    expect(scored.usableCount).toBe(2);
+    expect(scored.usableCount).toBe(3);
     expect(scored.score).toBeGreaterThan(20);
     expect(["Mittel", "Erhöht", "Kritisch"]).toContain(scored.risk);
   });
 
-  it("wires normalizeUpstreamPayload exposure_score from modules", () => {
+  it("wires normalizeUpstreamPayload exposure_score from specialist modules", () => {
     const normalized = normalizeUpstreamPayload({
       queries: { email: "a@b.de", username: "u1" },
       payloads: [
@@ -70,18 +70,40 @@ describe("demo exposure score", () => {
               url: "https://x.com/u1",
               risk: "medium",
             },
-            { source: "spiderfoot", title: "noise", risk: "high" },
           ],
         },
       ],
     });
-    expect(
-      normalized.findings.every((f) => !/spiderfoot/i.test(f.source || ""))
-    ).toBe(true);
     expect(normalized.modules.map((m) => m.id)).toEqual(
       expect.arrayContaining(["holehe", "maigret"])
     );
     expect(normalized.exposure_score).toBeGreaterThan(0);
     expect(normalized.risk_level).toBeTruthy();
+  });
+
+  it("keeps older SpiderFoot/OSINT scanner payloads visible instead of empty", () => {
+    const normalized = normalizeUpstreamPayload({
+      queries: { email: "a@b.de" },
+      payloads: [
+        {
+          status: "success",
+          source: "spiderfoot",
+          summary: "Öffentliche SpiderFoot-Analyse abgeschlossen.",
+          findings: [
+            {
+              source: "SpiderFoot",
+              category: "SOCIAL",
+              title: "Öffentliche Profile",
+              description: "2 öffentliche Signalgruppen gefunden.",
+              risk: "medium",
+              platform: "sfp_accounts",
+            },
+          ],
+        },
+      ],
+    });
+    expect(normalized.findings).toHaveLength(1);
+    expect(normalized.modules.map((m) => m.id)).toContain("publicosint");
+    expect(normalized.exposure_score).toBeGreaterThan(0);
   });
 });
