@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   COMMUNICATION_RATE_LIMIT,
   rateLimitHeaders,
   recordRateLimitAttempt,
+  type RateLimitPolicy,
+  type RateLimitResult,
 } from "@/lib/security/rate-limit";
 import { getClientIp, validateMutationOrigin } from "@/lib/security/request";
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
@@ -13,11 +16,23 @@ const DEMO_SCAN_STEP_TIMEOUT_MS = Number(
   process.env.DEMO_SCAN_STEP_TIMEOUT_MS || 75_000
 );
 
-const DEMO_SCAN_RATE_LIMIT = {
+const DEMO_SCAN_HOURLY_RATE_LIMIT: RateLimitPolicy = {
   ...COMMUNICATION_RATE_LIMIT,
-  limit: 12,
+  limit: Number(process.env.DEMO_SCAN_HOURLY_STEP_LIMIT || 12),
   windowMs: 60 * 60_000,
   blockMs: 60 * 60_000,
+};
+
+const DEMO_SCAN_DAILY_RATE_LIMIT: RateLimitPolicy = {
+  limit: Number(process.env.DEMO_SCAN_DAILY_STEP_LIMIT || 30),
+  windowMs: 24 * 60 * 60_000,
+  blockMs: 24 * 60 * 60_000,
+};
+
+const DEMO_SCAN_TARGET_RATE_LIMIT: RateLimitPolicy = {
+  limit: Number(process.env.DEMO_SCAN_TARGET_DAILY_STEP_LIMIT || 8),
+  windowMs: 24 * 60 * 60_000,
+  blockMs: 24 * 60 * 60_000,
 };
 
 /** Public/free DemoScanner: only the fast modules are allowed internally. */
@@ -28,6 +43,18 @@ function cleanQuery(value: unknown): string | null {
   const query = value.trim().replace(/\s+/g, " ");
   if (query.length < 2 || query.length > 160) return null;
   return query;
+}
+
+function cleanModule(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function hashPart(value: string): string {
+  return createHash("sha256").update(value).digest("hex").slice(0, 18);
+}
+
+function targetFingerprint(query: string, module: string): string {
+  return hashPart(`${module}:${query.trim().toLowerCase()}`);
 }
 
 function authHeaders(apiKey: string): Record<string, string> {
@@ -55,6 +82,61 @@ function upstreamErrorMessage(
   return `Scanner HTTP ${status}`;
 }
 
+function formatRetry(seconds: number): string {
+  if (seconds <= 0) return "später";
+  if (seconds < 90) return `in ca. ${seconds} Sekunden`;
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 120) return `in ca. ${minutes} Minuten`;
+  const hours = Math.ceil(minutes / 60);
+  return `in ca. ${hours} Stunden`;
+}
+
+function limitResponse(
+  kind: "hourly" | "daily" | "target",
+  result: RateLimitResult
+) {
+  const retry = formatRetry(result.retryAfterSeconds);
+  const message =
+    kind === "daily"
+      ? `Das kostenlose Tageskontingent für diesen Anschluss ist erreicht. Bitte ${retry} erneut versuchen oder ein Konto für weitere Analysen nutzen.`
+      : kind === "target"
+        ? `Dieser Zielwert wurde heute bereits mehrfach geprüft. Bitte ${retry} erneut versuchen.`
+        : `Zu viele Schnellchecks in kurzer Zeit. Bitte ${retry} erneut versuchen.`;
+
+  return NextResponse.json(
+    {
+      status: "error",
+      message,
+      risk_level: "Fehler",
+      limit: kind,
+      retry_after_seconds: result.retryAfterSeconds,
+    },
+    { status: 429, headers: rateLimitHeaders(result) }
+  );
+}
+
+function recordDemoScanLimits(ipAddress: string, query: string, module: string) {
+  const daily = recordRateLimitAttempt(
+    `demo-scan:daily:${ipAddress}`,
+    DEMO_SCAN_DAILY_RATE_LIMIT
+  );
+  if (!daily.allowed) return { kind: "daily" as const, result: daily };
+
+  const hourly = recordRateLimitAttempt(
+    `demo-scan:hourly:${ipAddress}`,
+    DEMO_SCAN_HOURLY_RATE_LIMIT
+  );
+  if (!hourly.allowed) return { kind: "hourly" as const, result: hourly };
+
+  const target = recordRateLimitAttempt(
+    `demo-scan:target:${ipAddress}:${targetFingerprint(query, module)}`,
+    DEMO_SCAN_TARGET_RATE_LIMIT
+  );
+  if (!target.allowed) return { kind: "target" as const, result: target };
+
+  return { kind: "ok" as const, result: hourly };
+}
+
 /**
  * Sequential public scan step.
  * Visible UI texts are neutral; internal module names are never displayed.
@@ -63,31 +145,13 @@ export async function POST(req: Request) {
   const csrfError = validateMutationOrigin(req);
   if (csrfError) return csrfError;
 
-  const ipAddress = getClientIp(req);
-  const attempt = recordRateLimitAttempt(
-    `demo-scan:${ipAddress}`,
-    DEMO_SCAN_RATE_LIMIT
-  );
-  if (!attempt.allowed) {
-    return NextResponse.json(
-      {
-        status: "error",
-        message: "Zu viele Scans. Bitte versuchen Sie es später erneut.",
-        risk_level: "Fehler",
-      },
-      { status: 429, headers: rateLimitHeaders(attempt) }
-    );
-  }
-
   try {
     const body = (await req.json().catch(() => null)) as Record<
       string,
       unknown
     > | null;
     const query = cleanQuery(body?.query);
-    const moduleRaw =
-      typeof body?.module === "string" ? body.module.trim() : "";
-    const scanModule = moduleRaw;
+    const scanModule = cleanModule(body?.module);
 
     if (!query) {
       return NextResponse.json(
@@ -96,7 +160,7 @@ export async function POST(req: Request) {
           message: "Zielwert fehlt oder ist ungültig.",
           risk_level: "Fehler",
         },
-        { status: 400, headers: rateLimitHeaders(attempt) }
+        { status: 400 }
       );
     }
     if (!scanModule || !ALLOWED_MODULES.has(scanModule)) {
@@ -106,9 +170,13 @@ export async function POST(req: Request) {
           message: "Dieser öffentliche Prüfschritt ist nicht freigegeben.",
           risk_level: "Fehler",
         },
-        { status: 400, headers: rateLimitHeaders(attempt) }
+        { status: 400 }
       );
     }
+
+    const ipAddress = getClientIp(req);
+    const limit = recordDemoScanLimits(ipAddress, query, scanModule);
+    if (limit.kind !== "ok") return limitResponse(limit.kind, limit.result);
 
     const creds = await resolveDemoScanCredentials();
     if (!creds?.url || !creds.apiKey) {
@@ -119,7 +187,7 @@ export async function POST(req: Request) {
             "DemoScanner ist nicht vollständig konfiguriert (Admin → Website → APIs).",
           risk_level: "Fehler",
         },
-        { status: 503, headers: rateLimitHeaders(attempt) }
+        { status: 503, headers: rateLimitHeaders(limit.result) }
       );
     }
 
@@ -174,7 +242,7 @@ export async function POST(req: Request) {
             },
             {
               status: legacy.status >= 500 ? 502 : legacy.status,
-              headers: rateLimitHeaders(attempt),
+              headers: rateLimitHeaders(limit.result),
             }
           );
         }
@@ -189,7 +257,7 @@ export async function POST(req: Request) {
           {
             status:
               upstreamResponse.status >= 500 ? 502 : upstreamResponse.status,
-            headers: rateLimitHeaders(attempt),
+            headers: rateLimitHeaders(limit.result),
           }
         );
       }
@@ -206,7 +274,7 @@ export async function POST(req: Request) {
           query,
           step: true,
         },
-        { headers: rateLimitHeaders(attempt) }
+        { headers: rateLimitHeaders(limit.result) }
       );
     } finally {
       clearTimeout(timeout);
@@ -226,7 +294,7 @@ export async function POST(req: Request) {
             : "Prüfschritt fehlgeschlagen.",
         risk_level: "Fehler",
       },
-      { status: aborted ? 504 : 502, headers: rateLimitHeaders(attempt) }
+      { status: aborted ? 504 : 502 }
     );
   }
 }
