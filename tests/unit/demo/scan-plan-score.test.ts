@@ -135,8 +135,36 @@ describe("demo exposure score", () => {
         },
       ],
     });
+    const description = normalized.findings[0]?.description || "";
     expect(normalized.findings[0]?.title).toBe("Telekommunikations-Intelligenz");
-    expect(normalized.findings[0]?.description).toContain("Rufnummer validiert: Ja");
-    expect(normalized.findings[0]?.description).not.toContain("True");
+    expect(description).toContain("Rufnummer validiert: Ja");
+    expect(description).toContain("Netzbetreiber: T-Mobile");
+    expect(description).toContain("Regionale Zuordnung: Deutschland");
+    expect(description).not.toContain("True");
+  });
+
+  it("parses phone provider from JSON-like raw output", () => {
+    const normalized = normalizeUpstreamPayload({
+      queries: { phone: "+4915123456789" },
+      payloads: [
+        {
+          status: "success",
+          module: "phoneinfoga",
+          findings: [
+            {
+              source: "phoneinfoga",
+              category: "PHONE",
+              raw_output:
+                '{"valid": true, "carrier": "Telekom", "country_code": "DE"}',
+              risk: "medium",
+            },
+          ],
+        },
+      ],
+    });
+    const description = normalized.findings[0]?.description || "";
+    expect(description).toContain("Rufnummer validiert: Ja");
+    expect(description).toContain("Netzbetreiber: Telekom");
+    expect(description).toContain("Regionale Zuordnung: Deutschland");
   });
 });
