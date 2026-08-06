@@ -55,6 +55,13 @@ function cleanEnvUrl(value: string | undefined): string {
   return value?.trim().replace(/\/+$/, "") || "";
 }
 
+function demoScanAuthHeaders(apiKey: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${apiKey}`,
+    "X-API-Key": apiKey,
+  };
+}
+
 /** Derive scanner /api/health from a /api/scan URL. */
 export function healthUrlFromScanUrl(scanUrl: string): string {
   const trimmed = scanUrl.trim().replace(/\/+$/, "");
@@ -110,7 +117,6 @@ export async function resolveDemoScanCredentials(): Promise<DemoScanCredentials 
         "[demo-scan] DB API-Key Entschlüsselung fehlgeschlagen — Env-Fallback:",
         error instanceof Error ? error.message : error
       );
-      // fall through to explicit env fallback
     }
   }
 
@@ -209,12 +215,13 @@ export async function testDemoScanConnection(input: {
     };
   }
 
-  // Optional health — older scanner api.py has no /api/health (404 is OK).
+  // Secured health endpoint: same API key as /api/scan, no public details.
   const healthUrl = healthUrlFromScanUrl(url);
   let healthDetail = "Health übersprungen";
   try {
     const healthRes = await fetch(healthUrl, {
       method: "GET",
+      headers: demoScanAuthHeaders(apiKey),
       cache: "no-store",
       signal: AbortSignal.timeout(8_000),
     });
@@ -224,23 +231,20 @@ export async function testDemoScanConnection(input: {
     > | null;
     if (healthRes.status === 404) {
       healthDetail = "kein /api/health (ok für ältere api.py)";
+    } else if (healthRes.status === 401 || healthRes.status === 403) {
+      healthDetail = `Health Auth HTTP ${healthRes.status}`;
     } else if (!healthRes.ok) {
       healthDetail = `Health HTTP ${healthRes.status}`;
     } else {
-      const modules = Array.isArray(healthBody?.modules)
-        ? (healthBody.modules as string[]).join(",")
-        : "";
       const ver =
         typeof healthBody?.api_version === "string"
           ? `version=${healthBody.api_version}`
           : "version=?";
-      const missing = Array.isArray(healthBody?.tools_missing)
-        ? (healthBody.tools_missing as string[]).join(",")
-        : "";
-      healthDetail =
-        `Health OK · ${ver}` +
-        (modules ? ` · modules=${modules}` : "") +
-        (missing ? ` · tools_missing=${missing}` : "");
+      const ready =
+        typeof healthBody?.ready === "boolean"
+          ? ` · ready=${healthBody.ready ? "yes" : "no"}`
+          : "";
+      healthDetail = `Health OK · ${ver}${ready}`;
     }
   } catch {
     healthDetail = "Health nicht erreichbar (Auth-Probe folgt)";
@@ -252,8 +256,7 @@ export async function testDemoScanConnection(input: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "X-API-Key": apiKey,
+        ...demoScanAuthHeaders(apiKey),
       },
       body: JSON.stringify({}),
       cache: "no-store",
@@ -262,24 +265,28 @@ export async function testDemoScanConnection(input: {
 
     const latencyMs = Date.now() - started;
 
-    if (authRes.status === 401) {
+    if (authRes.status === 401 || authRes.status === 403) {
       await markApiCredentialError(DEMO_SCAN_PROVIDER, "Unauthorized");
       return {
         provider: DEMO_SCAN_PROVIDER,
         ok: false,
-        message: "API-Key abgelehnt (401 Unauthorized).",
+        message:
+          authRes.status === 403
+            ? "Scanner-Zugriff durch IP-Allowlist/Firewall abgelehnt (403)."
+            : "API-Key abgelehnt (401 Unauthorized).",
         detail:
           `${healthDetail} · Quelle=${source}. ` +
-          "Key neu eintragen → Speichern → API TESTEN. Niemals Standard- oder Beispiel-Keys verwenden.",
+          "Bei 403 die SynSight-Server-IP in ALLOWED_CLIENT_IPS und der Contabo-Firewall prüfen; bei 401 den Key neu speichern.",
         latencyMs,
       };
     }
 
-    // 400 missing query / 200 success / 502 scan error still prove auth works
     if (
       authRes.status === 400 ||
+      authRes.status === 415 ||
       authRes.status === 200 ||
       authRes.status === 502 ||
+      authRes.status === 503 ||
       authRes.ok
     ) {
       await markApiCredentialSuccess(DEMO_SCAN_PROVIDER);
