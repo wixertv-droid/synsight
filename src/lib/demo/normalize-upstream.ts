@@ -114,8 +114,22 @@ function derivePayloadSource(data: Record<string, unknown>, fallback = "OSINT") 
   );
 }
 
+function stripAnsi(value: string): string {
+  return value.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function cleanExtractedValue(value: string): string {
+  const cleaned = stripAnsi(value)
+    .replace(/^['"`]+|['"`]+$/g, "")
+    .replace(/[|;,]+$/g, "")
+    .replace(/\\n/g, " ")
+    .trim();
+  if (!cleaned || /^none|null|undefined|unknown|n\/a$/i.test(cleaned)) return "";
+  return cleaned;
+}
+
 function countryLabel(value: string): string {
-  const v = value.trim();
+  const v = cleanExtractedValue(value);
   if (!v) return "Nicht sicher bestimmbar";
   const normalized = v.toLowerCase();
   if (["de", "deu", "germany", "deutschland"].includes(normalized)) {
@@ -132,25 +146,36 @@ function countryLabel(value: string): string {
 
 function normalizeBoolText(value: unknown): "Ja" | "Nein" | "Nicht eindeutig" {
   if (typeof value === "boolean") return value ? "Ja" : "Nein";
-  const text = String(value ?? "").trim().toLowerCase();
-  if (["true", "valid", "ja", "yes", "1"].includes(text)) return "Ja";
-  if (["false", "invalid", "nein", "no", "0"].includes(text)) return "Nein";
+  const text = String(value ?? "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .toLowerCase();
+  if (["true", "valid", "ja", "yes", "1", "gültig", "gueltig", "active", "aktiv"].includes(text)) {
+    return "Ja";
+  }
+  if (["false", "invalid", "nein", "no", "0", "ungültig", "ungueltig", "inactive", "inaktiv"].includes(text)) {
+    return "Nein";
+  }
   return "Nicht eindeutig";
 }
 
 function pickPattern(text: string, patterns: RegExp[]): string {
   for (const pattern of patterns) {
     const match = text.match(pattern);
-    if (match?.[1]) return match[1].trim().replace(/[|;,]+$/, "");
+    if (match?.[1]) {
+      const value = cleanExtractedValue(match[1]);
+      if (value) return value;
+    }
   }
   return "";
 }
 
 function isPhoneFinding(raw: Record<string, unknown>, source: string): boolean {
   return (
-    /phone|telefon|number|carrier|provider/i.test(source) ||
-    /phone|telefon/i.test(String(raw.category || "")) ||
-    /telefon/i.test(String(raw.title || ""))
+    /phone|telefon|number|carrier|provider|rufnummer/i.test(source) ||
+    /phone|telefon|rufnummer/i.test(String(raw.category || "")) ||
+    /telefon|rufnummer|telekommunikation/i.test(String(raw.title || "")) ||
+    Boolean(raw.valid || raw.is_valid || raw.valid_number || raw.carrier || raw.country || raw.provider)
   );
 }
 
@@ -166,29 +191,44 @@ function buildPhoneFinding(
     raw.output,
     raw.stdout,
     raw.data,
+    raw,
   ]
-    .map((value) => textFromUnknown(value, 1200))
+    .map((value) => textFromUnknown(value, 2400))
     .filter(Boolean)
     .join("\n");
 
   const provider =
-    safeString(raw.carrier) ||
-    safeString(raw.provider) ||
+    cleanExtractedValue(safeString(raw.carrier)) ||
+    cleanExtractedValue(safeString(raw.provider)) ||
+    cleanExtractedValue(safeString(raw.operator)) ||
     pickPattern(combinedText, [
-      /provider\s*[:|]\s*([^|\n]+)/i,
-      /carrier\s*[:|]\s*([^|\n]+)/i,
-      /operator\s*[:|]\s*([^|\n]+)/i,
-      /anbieter\s*[:|]\s*([^|\n]+)/i,
+      /"carrier"\s*:\s*"([^"]+)"/i,
+      /"provider"\s*:\s*"([^"]+)"/i,
+      /"operator"\s*:\s*"([^"]+)"/i,
+      /carrier\s*[:=|]\s*([^|\n,}]+)/i,
+      /provider\s*[:=|]\s*([^|\n,}]+)/i,
+      /operator\s*[:=|]\s*([^|\n,}]+)/i,
+      /anbieter\s*[:=|]\s*([^|\n,}]+)/i,
+      /netzbetreiber\s*[:=|]\s*([^|\n,}]+)/i,
+      /provider\s*\/\s*region\s*:?\s*([^|\n,}]+)/i,
+      /\b(T-Mobile|Telekom|Vodafone|O2|Telefonica|Telefónica|1&1|Drillisch|Congstar|Blau|Aldi Talk|Otelo|Klarmobil)\b/i,
     ]) ||
     "Nicht eindeutig zuordenbar";
 
   const country = countryLabel(
-    safeString(raw.country) ||
-      safeString(raw.region) ||
+    cleanExtractedValue(safeString(raw.country)) ||
+      cleanExtractedValue(safeString(raw.country_code)) ||
+      cleanExtractedValue(safeString(raw.country_name)) ||
+      cleanExtractedValue(safeString(raw.region)) ||
       pickPattern(combinedText, [
-        /country\s*[:|]\s*([^|\n]+)/i,
-        /region\s*[:|]\s*([^|\n]+)/i,
-        /land\s*[:|]\s*([^|\n]+)/i,
+        /"country"\s*:\s*"([^"]+)"/i,
+        /"country_code"\s*:\s*"([^"]+)"/i,
+        /"country_name"\s*:\s*"([^"]+)"/i,
+        /country\s*[:=|]\s*([^|\n,}]+)/i,
+        /country\s+code\s*[:=|]\s*([^|\n,}]+)/i,
+        /country\s+name\s*[:=|]\s*([^|\n,}]+)/i,
+        /region\s*[:=|]\s*([^|\n,}]+)/i,
+        /land\s*[:=|]\s*([^|\n,}]+)/i,
       ])
   );
 
@@ -196,22 +236,29 @@ function buildPhoneFinding(
     raw.valid ??
     raw.is_valid ??
     raw.valid_number ??
-    raw.status ??
+    raw.isValid ??
     pickPattern(combinedText, [
-      /nummer\s+g[uü]ltig\s*[:|]\s*(true|false|ja|nein|valid|invalid)/i,
-      /valid\s*[:|=]\s*(true|false|yes|no|valid|invalid)/i,
-      /status\s*[:|]\s*(valid|invalid|true|false)/i,
-    ]);
+      /"valid"\s*:\s*(true|false|"true"|"false"|"valid"|"invalid")/i,
+      /"is_valid"\s*:\s*(true|false|"true"|"false"|"valid"|"invalid")/i,
+      /nummer\s+g[uü]ltig\s*[:=|]\s*(true|false|ja|nein|valid|invalid|g[uü]ltig|ung[uü]ltig)/i,
+      /rufnummer\s+validiert\s*[:=|]\s*(ja|nein|true|false|valid|invalid)/i,
+      /valid\s*[:=|]\s*(true|false|yes|no|valid|invalid)/i,
+      /status\s*[:=|]\s*(valid|invalid|true|false|active|inactive|aktiv|inaktiv)/i,
+    ]) ||
+    raw.status;
 
   const validLabel = normalizeBoolText(validRaw);
   const isValid = validLabel === "Ja";
+  const hasProvider = provider !== "Nicht eindeutig zuordenbar";
+  const hasCountry = country !== "Nicht sicher bestimmbar";
+
   const detailLines = [
     "Status: Für die angegebene Rufnummer konnten verwertbare Netz- und Metadatensignale korreliert werden.",
     `Rufnummer validiert: ${validLabel}`,
     `Netzbetreiber: ${provider}`,
     `Regionale Zuordnung: ${country}`,
-    isValid
-      ? "Bewertung: Die Nummer ist strukturell valide und einem aktiven Mobilfunkkontext zuzuordnen."
+    isValid || hasProvider || hasCountry
+      ? "Bewertung: Die Nummer liefert verwertbare technische Hinweise und sollte im vollständigen Report weiter eingeordnet werden."
       : "Bewertung: Die Nummer konnte nicht eindeutig als aktiv bestätigt werden; die Metadaten bleiben prüfenswert.",
   ];
 
@@ -219,10 +266,10 @@ function buildPhoneFinding(
     category: "PHONE",
     title: "Telekommunikations-Intelligenz",
     description: detailLines.join("\n"),
-    platform: provider,
+    platform: hasProvider ? provider : "Telefon-Metadaten",
     detail: detailLines.join("\n"),
     risk: String(raw.risk || "medium").toLowerCase(),
-    confidence: typeof raw.confidence === "number" ? raw.confidence : 70,
+    confidence: typeof raw.confidence === "number" ? raw.confidence : hasProvider || hasCountry || isValid ? 75 : 55,
     source,
   };
 }
