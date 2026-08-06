@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export type EmailDeliveryMode = "provider" | "log-link" | "disabled";
+
 /** MariaDB/MySQL connection URIs are not always accepted by Zod's URL() helper. */
 const optionalDatabaseUrl = z
   .string()
@@ -34,6 +36,8 @@ const environmentSchema = z
     CONTACT_EMAIL: z.string().email().optional(),
     PRESS_EMAIL: z.string().email().optional(),
     PARTNER_EMAIL: z.string().email().optional(),
+    SUPPORT_EMAIL: z.string().email().optional(),
+    PRIVACY_EMAIL: z.string().email().optional(),
     /** Self-serve registration. Set "false" to disable. */
     ALLOW_PUBLIC_REGISTRATION: z.enum(["true", "false"]).optional(),
     /**
@@ -81,9 +85,42 @@ const environmentSchema = z
       });
     }
 
-    // SMTP credentials are validated at send time in `src/lib/email/smtp.ts`.
-    // Do not fail getEnvironment() here — that aborts registration after the
-    // user row was already inserted.
+    if (env.NODE_ENV === "production" && env.AUTO_VERIFY_EMAIL === "true") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["AUTO_VERIFY_EMAIL"],
+        message: "AUTO_VERIFY_EMAIL must stay false in production.",
+      });
+    }
+
+    if (
+      env.NODE_ENV === "production" &&
+      env.EMAIL_DELIVERY_MODE !== "provider"
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["EMAIL_DELIVERY_MODE"],
+        message: "EMAIL_DELIVERY_MODE must be provider in production.",
+      });
+    }
+
+    if (env.NODE_ENV === "production" && env.EMAIL_DELIVERY_MODE === "provider") {
+      const smtpRequired: Array<keyof typeof env> = [
+        "SMTP_HOST",
+        "SMTP_USER",
+        "SMTP_PASS",
+        "SMTP_FROM",
+      ];
+      for (const key of smtpRequired) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: `${key} is required for provider email delivery in production.`,
+          });
+        }
+      }
+    }
   });
 
 export type Environment = z.infer<typeof environmentSchema>;
@@ -109,6 +146,8 @@ function parseEnv() {
     CONTACT_EMAIL: process.env.CONTACT_EMAIL || undefined,
     PRESS_EMAIL: process.env.PRESS_EMAIL || undefined,
     PARTNER_EMAIL: process.env.PARTNER_EMAIL || undefined,
+    SUPPORT_EMAIL: process.env.SUPPORT_EMAIL || undefined,
+    PRIVACY_EMAIL: process.env.PRIVACY_EMAIL || undefined,
     ALLOW_PUBLIC_REGISTRATION: process.env.ALLOW_PUBLIC_REGISTRATION,
     AUTO_VERIFY_EMAIL: process.env.AUTO_VERIFY_EMAIL,
   });
@@ -152,6 +191,24 @@ export function isDatabaseRequired(): boolean {
   if (process.env.REQUIRE_DATABASE === "true") return true;
   if (process.env.REQUIRE_DATABASE === "false") return false;
   return process.env.NODE_ENV === "production";
+}
+
+export function resolveEmailDeliveryMode(): EmailDeliveryMode {
+  if (process.env.NODE_ENV === "production") return "provider";
+  const mode = (process.env.EMAIL_DELIVERY_MODE ?? "log-link")
+    .trim()
+    .toLowerCase();
+  if (mode === "provider" || mode === "disabled" || mode === "log-link") {
+    return mode;
+  }
+  return "log-link";
+}
+
+export function canExposeEmailPreviewTokens(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    resolveEmailDeliveryMode() === "log-link"
+  );
 }
 
 /**
