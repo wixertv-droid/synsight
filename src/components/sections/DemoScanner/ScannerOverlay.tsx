@@ -77,18 +77,28 @@ function moduleType(mod: ScanModule): "email" | "user" | "phone" | "other" {
   const text = `${mod.id} ${mod.label}`.toLowerCase();
   if (/email|identit|e-mail/.test(text) || text.includes("holehe")) return "email";
   if (/profil|username|alias|user/.test(text) || text.includes("maigret")) return "user";
-  if (/phone|telefon|kommunikation|netz/.test(text) || text.includes("phoneinfoga")) return "phone";
+  if (/phone|telefon|rufnummer|kommunikation|netz/.test(text) || text.includes("phoneinfoga")) return "phone";
   return "other";
 }
 
-function moduleTitle(type: ReturnType<typeof moduleType>) {
+function isTechnicalPhoneModule(mod: ScanModule) {
+  return /phoneinfoga|technische rufnummernprüfung|kommunikations-metadaten/i.test(
+    `${mod.id} ${mod.label}`
+  );
+}
+
+function moduleTitle(type: ReturnType<typeof moduleType>, mod: ScanModule) {
   if (type === "email") return "E-MAIL IDENTITY EXPOSURE";
   if (type === "user") return "PUBLIC PROFILE CORRELATION";
-  if (type === "phone") return "TELECOMMUNICATIONS INTELLIGENCE";
+  if (type === "phone") {
+    return isTechnicalPhoneModule(mod)
+      ? "TECHNICAL PHONE CONTEXT"
+      : "PUBLIC PHONE EXPOSURE";
+  }
   return "PUBLIC SIGNAL INTELLIGENCE";
 }
 
-function moduleDescription(type: ReturnType<typeof moduleType>) {
+function moduleDescription(type: ReturnType<typeof moduleType>, mod: ScanModule) {
   if (type === "email") {
     return "SynSight prüft, ob die E-Mail-Adresse in öffentlichen Konto- und Identitätssignalen wiedererkennbar ist.";
   }
@@ -96,7 +106,10 @@ function moduleDescription(type: ReturnType<typeof moduleType>) {
     return "Öffentliche Profilspuren werden verdichtet, um wiederverwendete Namen, Alias-Strukturen und sichtbare Plattformbezüge aufzudecken.";
   }
   if (type === "phone") {
-    return "Die Telefonnummer wird auf strukturelle Plausibilität, Anbieterbezug und verwertbare Kommunikations-Metadaten geprüft.";
+    if (isTechnicalPhoneModule(mod)) {
+      return "Technische Angaben zur Schreibweise, Länderzuordnung oder Netzstruktur werden getrennt ausgewertet. Sie gelten nicht als öffentliche Fundstelle.";
+    }
+    return "SynSight sucht die Rufnummer in priorisierten, öffentlich indexierten Quellen und zeigt bestätigte Fundstellen getrennt von technischen Metadaten an.";
   }
   return "Zusätzliche öffentliche Signale werden ausgewertet und für den kostenlosen Schnellcheck verdichtet.";
 }
@@ -105,12 +118,12 @@ function getIntelDescription(type: ReturnType<typeof moduleType>, hasFinding = t
   if (!hasFinding) {
     if (type === "email") return "Prüfung abgeschlossen: Keine kritischen Konto-Signale in der Gastvorschau.";
     if (type === "user") return "Prüfung abgeschlossen: Keine starken öffentlichen Profilspuren in der Gastvorschau.";
-    if (type === "phone") return "Prüfung abgeschlossen: Keine zusätzlichen kritischen Telefon-Signale in der Gastvorschau.";
+    if (type === "phone") return "Prüfung abgeschlossen: Keine bestätigte öffentliche Rufnummern-Fundstelle in der Gastvorschau.";
     return "Prüfung abgeschlossen: Keine anzeigbaren Gast-Treffer.";
   }
   if (type === "email") return "Öffentliche Konto- und Identitätssignale wurden korreliert.";
   if (type === "user") return "Öffentliche Profil- und Aliasbezüge wurden korreliert.";
-  if (type === "phone") return "Telefon- und Anbieter-Metadaten wurden ausgewertet.";
+  if (type === "phone") return "Öffentliche Rufnummern-Fundstellen wurden getrennt von technischen Zusatzinformationen ausgewertet.";
   return "Öffentliches Signal wurde korreliert.";
 }
 
@@ -130,9 +143,12 @@ function valueFromLines(lines: string[], label: string) {
 }
 
 function neutralTitle(finding: ScanFinding, type: ReturnType<typeof moduleType>) {
+  const category = (finding.category || "").toUpperCase();
+  if (category === "STATUS") return scrub(finding.title || "Prüfstatus");
+  if (category === "PHONE_PUBLIC") return scrub(finding.title || "Öffentliche Rufnummern-Fundstelle");
+  if (category === "PHONE_METADATA") return "Technische Rufnummernprüfung";
   if (type === "email") return scrub(finding.title || "Konto-Signal").replace(/Account\s*·\s*/i, "Konto-Signal · ");
   if (type === "user") return finding.url ? "Öffentliche Profilspur" : scrub(finding.title || "Profilkorrelation");
-  if (type === "phone") return "Telekommunikations-Intelligenz";
   return scrub(finding.title || "Öffentliches Signal");
 }
 
@@ -151,28 +167,28 @@ function SmartUrlTease({ url }: { url?: string }) {
   }
 }
 
-function PhoneFindingCard({ finding }: { finding: ScanFinding }) {
+function PhoneMetadataCard({ finding }: { finding: ScanFinding }) {
   const lines = linesFromFinding(finding);
   const valid = valueFromLines(lines, "Rufnummer validiert");
   const provider = valueFromLines(lines, "Netzbetreiber");
   const region = valueFromLines(lines, "Regionale Zuordnung");
   const rating =
     lines.find((line) => line.toLowerCase().startsWith("bewertung:")) ||
-    "Bewertung: Die Nummer ist strukturell prüfbar und einem Anbieter-Kontext zuzuordnen.";
+    "Bewertung: Technische Zusatzinformationen sind vorhanden, stellen aber keine öffentliche Fundstelle dar.";
 
   return (
     <div className="rounded-2xl border border-cyan-500/15 bg-black/25 p-5 transition-all hover:border-cyan-400/30">
       <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="mb-2 text-sm font-bold uppercase tracking-[0.18em] text-white/90">
-            Telekommunikations-Intelligenz
+            Technische Rufnummernprüfung
           </div>
           <p className="max-w-2xl text-xs leading-relaxed text-white/50">
-            Für den angegebenen Telefonwert konnten verwertbare Anbieter- und Strukturhinweise ausgewertet werden.
+            Diese Angaben beschreiben nur technische Rufnummernmerkmale. Sie werden nicht als öffentliche Fundstelle gezählt.
           </p>
         </div>
         <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/20 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-200">
-          Telefonwert geprüft
+          Zusatzprüfung vorhanden
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -205,21 +221,29 @@ function FindingCard({
   index: number;
   type: ReturnType<typeof moduleType>;
 }) {
-  if (type === "phone") return <PhoneFindingCard finding={finding} />;
+  const category = (finding.category || "").toUpperCase();
+  if (category === "PHONE_METADATA") {
+    return <PhoneMetadataCard finding={finding} />;
+  }
+  const isStatus = category === "STATUS";
   return (
     <div
-      className="relative rounded-2xl border border-white/5 bg-black/20 p-5 opacity-0 transition-all duration-300 animate-[fadeInUp_0.4s_ease-out_forwards] hover:border-cyan-500/20 hover:bg-white/[0.02]"
+      className={`relative rounded-2xl border p-5 opacity-0 transition-all duration-300 animate-[fadeInUp_0.4s_ease-out_forwards] ${
+        isStatus
+          ? "border-amber-500/20 bg-amber-950/10 hover:border-amber-400/35"
+          : "border-white/5 bg-black/20 hover:border-cyan-500/20 hover:bg-white/[0.02]"
+      }`}
       style={{ animationDelay: `${index * 0.05}s` }}
     >
       <div className="flex items-start gap-5">
-        <div className="mt-1 w-8 shrink-0 text-xl font-black text-white/10">
-          {String(index + 1).padStart(2, "0")}
+        <div className={`mt-1 w-8 shrink-0 text-xl font-black ${isStatus ? "text-amber-400/30" : "text-white/10"}`}>
+          {isStatus ? "!" : String(index + 1).padStart(2, "0")}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="mb-2 text-sm font-bold uppercase tracking-wider text-white/90">
+          <div className={`mb-2 text-sm font-bold uppercase tracking-wider ${isStatus ? "text-amber-200" : "text-white/90"}`}>
             {neutralTitle(finding, type)}
           </div>
-          <div className="mb-2 text-xs font-light leading-relaxed text-white/45">
+          <div className="mb-2 text-xs font-light leading-relaxed text-white/50">
             {scrub(finding.description || finding.detail || "Öffentliches Signal wurde im Schnellcheck korreliert.")}
           </div>
           <SmartUrlTease url={finding.url} />
@@ -238,7 +262,11 @@ function cleanModules(rawData: ScanData | null): ScanModule[] {
           (finding.category || "").toUpperCase() !== "ERROR" &&
           !/gestartet|started/i.test(finding.title || "")
       );
-      return { ...module, findings, count: findings.length };
+      const count = findings.filter((finding) => {
+        const category = (finding.category || "").toUpperCase();
+        return !["PHONE_METADATA", "STATUS", "EMPTY"].includes(category);
+      }).length;
+      return { ...module, findings, count };
     });
 }
 
@@ -355,9 +383,11 @@ export default function ScannerOverlay({
                   <div className="h-1 w-1 rounded-full bg-cyan-500" /> Analyst Summary
                 </div>
                 <p className="text-sm font-light leading-relaxed text-white/70">
-                  {totalFindings > 0
-                    ? "Die kostenlose Kurzprüfung hat öffentliche Signale gefunden. Der Gastbericht zeigt eine reduzierte Vorschau; Details und Handlungsempfehlungen werden nach Registrierung freigeschaltet."
-                    : "Die kostenlosen Schnellprüfungen wurden ausgeführt. In der Gastvorschau wurden keine kritischen öffentlichen Treffer bestätigt."}
+                  {rawData?.summary
+                    ? scrub(rawData.summary)
+                    : totalFindings > 0
+                      ? "Die kostenlose Kurzprüfung hat öffentliche Signale gefunden. Der Gastbericht zeigt eine reduzierte Vorschau; Details und Handlungsempfehlungen werden nach Registrierung freigeschaltet."
+                      : "Die kostenlosen Schnellprüfungen wurden ausgeführt. In der Gastvorschau wurden keine bestätigten öffentlichen Treffer erkannt."}
                 </p>
               </div>
             </div>
@@ -374,20 +404,29 @@ export default function ScannerOverlay({
                 const isExpanded = expandedModules[mod.id];
                 const type = moduleType(mod);
                 const findings = mod.findings.slice(0, 10);
+                const technicalCount = findings.filter(
+                  (finding) => (finding.category || "").toUpperCase() === "PHONE_METADATA"
+                ).length;
                 return (
                   <div key={mod.id} className={`group relative rounded-3xl border border-white/10 bg-white/[0.02] p-6 shadow-2xl backdrop-blur-2xl transition-all duration-500 hover:border-cyan-500/30 md:p-8 ${isExpanded ? "bg-white/[0.04]" : ""}`}>
                     <div className="flex flex-col items-start justify-between gap-6 md:flex-row">
                       <div className="flex-1">
                         <div className="mb-4 flex items-center gap-3 text-sm font-bold uppercase tracking-[0.1em] text-white">
                           <div className={`h-1.5 w-1.5 rounded-full ${theme.dot} shadow-[0_0_10px_currentColor]`} />
-                          {moduleTitle(type)}
+                          {moduleTitle(type, mod)}
                         </div>
-                        <div className="pr-4 text-xs font-light leading-relaxed text-white/50">{moduleDescription(type)}</div>
+                        <div className="pr-4 text-xs font-light leading-relaxed text-white/50">{moduleDescription(type, mod)}</div>
                       </div>
-                      <div className="mt-4 flex w-full flex-row items-center gap-4 md:mt-0 md:w-auto md:flex-col md:items-end">
+                      <div className="mt-4 flex w-full flex-row flex-wrap items-center gap-3 md:mt-0 md:w-auto md:flex-col md:items-end">
                         <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-2 font-mono text-[10px] text-white/40 backdrop-blur-md">
-                          SIGNALS FOUND:<span className="ml-2 text-sm font-bold text-cyan-400">{mod.count}</span>
+                          {type === "phone" ? "ÖFFENTLICHE FUNDSTELLEN" : "SIGNALS FOUND"}:
+                          <span className="ml-2 text-sm font-bold text-cyan-400">{mod.count}</span>
                         </div>
+                        {technicalCount > 0 && (
+                          <div className="rounded-xl border border-cyan-500/15 bg-cyan-950/10 px-4 py-2 font-mono text-[9px] uppercase tracking-wider text-cyan-200/70">
+                            Technische Zusatzprüfung: vorhanden
+                          </div>
+                        )}
                         <button onClick={() => setExpandedModules((prev) => ({ ...prev, [mod.id]: !prev[mod.id] }))} className={`w-full rounded-xl border px-5 py-2.5 font-mono text-[10px] uppercase tracking-widest transition-all duration-300 md:w-auto ${isExpanded ? "border-cyan-900/50 bg-cyan-950/20 text-cyan-600" : "border-cyan-500/50 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.1)] hover:border-cyan-500 hover:bg-cyan-500 hover:text-black"}`}>
                           {isExpanded ? "[-] EINKLAPPEN" : mod.count > 0 ? "[+] ENTSCHLÜSSELN" : "[+] PRÜFBERICHT"}
                         </button>
@@ -397,8 +436,8 @@ export default function ScannerOverlay({
                       <div className="mt-8 space-y-4 border-t border-white/5 pt-8">
                         {findings.length === 0 && (
                           <div className="rounded-2xl border border-white/5 bg-black/20 p-5">
-                            <div className="mb-2 text-sm font-bold uppercase tracking-wider text-white/90">Keine kritischen Gast-Treffer</div>
-                            <div className="text-xs font-light leading-relaxed text-white/45">{getIntelDescription(type, false)} Der Prüfschritt wurde trotzdem vollständig in die Auswertung aufgenommen.</div>
+                            <div className="mb-2 text-sm font-bold uppercase tracking-wider text-white/90">Keine bestätigten Gast-Treffer</div>
+                            <div className="text-xs font-light leading-relaxed text-white/45">{getIntelDescription(type, false)} Der Prüfschritt wurde trotzdem in die Auswertung aufgenommen.</div>
                           </div>
                         )}
                         {findings.map((finding, index) => (
