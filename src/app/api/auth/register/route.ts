@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { isPublicRegistrationAllowed } from "@/lib/config/env";
+import {
+  canExposeEmailPreviewTokens,
+  isPublicRegistrationAllowed,
+} from "@/lib/config/env";
 import { registerUser } from "@/lib/services/auth-service";
 import { registerSchema } from "@/lib/validation/auth";
 import {
@@ -109,13 +112,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const previewToken =
-    process.env.EMAIL_DELIVERY_MODE === "log-link" ||
-    process.env.NODE_ENV !== "production"
-      ? result.verificationToken
-      : null;
   const query = new URLSearchParams({ email: result.email });
-  if (previewToken) query.set("preview", previewToken);
+  if (canExposeEmailPreviewTokens() && result.verificationToken) {
+    query.set("preview", result.verificationToken);
+  }
 
   return NextResponse.json(
     apiSuccess({
