@@ -42,27 +42,35 @@ function deduplicateFindings(findings: any[]) {
     } catch {
       // ignore
     }
-    const key = `${f.title}-${domain}`.toLowerCase();
+    const key = `${f.title}-${domain}-${f.description || f.detail || ""}`.toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 }
 
-function getIntelDescription(type: string) {
+function getIntelDescription(type: string, hasFinding = true) {
+  if (!hasFinding) {
+    if (type === "email")
+      return "Modul abgeschlossen: In der kostenlosen Kurzprüfung wurde kein aktiver Login-Treffer bestätigt.";
+    if (type === "user")
+      return "Modul abgeschlossen: In der kostenlosen Kurzprüfung wurden keine öffentlichen Profiltreffer bestätigt.";
+    if (type === "phone")
+      return "Modul abgeschlossen: Telefonprüfung ausgeführt, ohne kritischen öffentlichen Treffer im Gastbericht.";
+    return "Modul abgeschlossen: Keine anzeigbaren Gast-Treffer.";
+  }
   if (type === "email")
     return "Signatur validiert: Aktive Nutzung für Logins oder System-Registrierungen entdeckt.";
   if (type === "user")
     return "Cross-Referenzierung: Identität in der Datenbank des Betreibers verifiziert.";
   if (type === "phone")
-    return "Netzwerk-Routing: Endgerät ist aktiv und antwortet auf HLR-Lookup.";
+    return "Netzwerk-Routing: Endgerät ist aktiv und antwortet auf Telefon- bzw. Metadatenprüfung.";
   return "Datenpunkt in externer Datenbank korreliert.";
 }
 
 function getThreatTheme(score: number) {
   if (score >= 70)
     return {
-      color: "red",
       text: "text-red-400",
       border: "border-red-500/30",
       glow: "shadow-[0_0_40px_rgba(239,68,68,0.15)]",
@@ -71,7 +79,6 @@ function getThreatTheme(score: number) {
     };
   if (score >= 40)
     return {
-      color: "amber",
       text: "text-amber-400",
       border: "border-amber-500/30",
       glow: "shadow-[0_0_40px_rgba(245,158,11,0.15)]",
@@ -79,7 +86,6 @@ function getThreatTheme(score: number) {
       label: "ELEVATED RISK",
     };
   return {
-    color: "cyan",
     text: "text-cyan-400",
     border: "border-cyan-500/30",
     glow: "shadow-[0_0_40px_rgba(34,211,238,0.15)]",
@@ -104,10 +110,14 @@ function enhanceTitle(title: string, url?: string) {
   return cleanTitle;
 }
 
-// Extrahieren des Providers für das Telefon-Modul
 function extractProvider(text: string) {
-  const match = text.match(/provider:\s*([^|]+)/i);
-  return match ? match[1].trim() : "Unbekannt";
+  const providerMatch = text.match(/provider:\s*([^|\n]+)/i);
+  if (providerMatch) return providerMatch[1].trim();
+  const carrierMatch = text.match(/carrier:\s*([^|\n]+)/i);
+  if (carrierMatch) return carrierMatch[1].trim();
+  const countryMatch = text.match(/country:\s*([^|\n]+)/i);
+  if (countryMatch) return countryMatch[1].trim();
+  return "Unbekannt";
 }
 
 function SmartUrlTease({ url }: { url?: string }) {
@@ -131,6 +141,50 @@ function SmartUrlTease({ url }: { url?: string }) {
   }
 }
 
+function moduleType(mod: { id: string; label: string }) {
+  const mId = mod.id.toLowerCase();
+  const label = mod.label.toLowerCase();
+  if (
+    mId.includes("holehe") ||
+    mId.includes("email") ||
+    label.includes("email") ||
+    label.includes("e-mail")
+  ) {
+    return "email";
+  }
+  if (mId.includes("maigret") || mId.includes("user") || label.includes("maigret")) {
+    return "user";
+  }
+  if (
+    mId.includes("phoneinfoga") ||
+    mId.includes("phone") ||
+    label.includes("telefon")
+  ) {
+    return "phone";
+  }
+  return "other";
+}
+
+function moduleTitle(type: string) {
+  if (type === "email") return "E-MAIL IDENTITY EXPOSURE";
+  if (type === "user") return "CROSS-PLATFORM USERNAME TRACKING";
+  if (type === "phone") return "TELECOMMUNICATIONS INTELLIGENCE";
+  return "DATA FOOTPRINT";
+}
+
+function moduleDescription(type: string) {
+  if (type === "email") {
+    return "Holehe prüft, ob die E-Mail bei öffentlichen Diensten als aktives Login-Konto erkennbar ist.";
+  }
+  if (type === "user") {
+    return "Maigret prüft, ob der Benutzername auf öffentlichen Profilen und Plattformen auftaucht.";
+  }
+  if (type === "phone") {
+    return "PhoneInfoga prüft Telefonnummern-Metadaten und technische Hinweise, soweit sie im kostenlosen Gast-Scan verfügbar sind.";
+  }
+  return "Zusätzliche Datenpunkte und Metadaten, die mit dieser Ziel-Identität in Verbindung gebracht werden konnten.";
+}
+
 export default function ScannerOverlay({
   phase,
   progress,
@@ -144,11 +198,7 @@ export default function ScannerOverlay({
   const router = useRouter();
   const [showContent, setShowContent] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-
-  // GARANTIERT LEER BEIM START -> ALLES ZU!
-  const [expandedModules, setExpandedModules] = useState<
-    Record<string, boolean>
-  >({});
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
 
   const dossierId = useMemo(() => dossierIdFromTarget(target), [target]);
   const [dossierTime] = useState(() => new Date().toLocaleString("de-DE"));
@@ -211,25 +261,24 @@ export default function ScannerOverlay({
 
   if (phase === "fullscreen_result" || phase === "closing_crt") {
     const rawModules = rawData?.modules || [];
-    // SpiderFoot ist aus dem Demo-Pipeline entfernt — Reste defensiv ausblenden
     const filteredModules = rawModules.filter(
       (m) =>
         !m.id.toLowerCase().includes("spiderfoot") &&
         !m.label.toLowerCase().includes("spiderfoot")
     );
 
-    const modules = filteredModules
-      .map((m) => {
-        const cleanFindings = deduplicateFindings(
-          (m.findings || []).filter(
-            (f) =>
-              (f.category || "").toUpperCase() !== "ERROR" &&
-              !/gestartet|started/i.test(f.title || "")
-          )
-        );
-        return { ...m, findings: cleanFindings, count: cleanFindings.length };
-      })
-      .filter((m) => m.count > 0);
+    const modules = filteredModules.map((m) => {
+      const cleanFindings = deduplicateFindings(
+        (m.findings || []).filter(
+          (f) =>
+            (f.category || "").toUpperCase() !== "ERROR" &&
+            !/gestartet|started/i.test(f.title || "")
+        )
+      );
+      return { ...m, findings: cleanFindings, count: cleanFindings.length };
+    });
+
+    const totalFindings = modules.reduce((sum, mod) => sum + mod.count, 0);
 
     return (
       <div
@@ -237,7 +286,6 @@ export default function ScannerOverlay({
           isClosing ? "animate-crt-off" : ""
         }`}
       >
-        {/* Holografisches Grid im Hintergrund */}
         <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.05)_0%,transparent_70%)]" />
 
         <div
@@ -247,7 +295,6 @@ export default function ScannerOverlay({
               : "opacity-0 translate-y-12"
           }`}
         >
-          {/* HIGH-END SCI-FI HEADER */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12 relative z-10">
             <div>
               <div className="text-cyan-400/80 text-[10px] font-mono tracking-[0.4em] mb-3 uppercase flex items-center gap-2">
@@ -280,9 +327,7 @@ export default function ScannerOverlay({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* LINKE SPALTE */}
             <div className="lg:col-span-4 space-y-8">
-              {/* Sci-Fi Score Card */}
               <div
                 className={`relative border ${theme.border} bg-white/[0.02] backdrop-blur-2xl rounded-3xl p-8 flex flex-col items-center justify-center py-12 ${theme.glow}`}
               >
@@ -290,16 +335,13 @@ export default function ScannerOverlay({
                   Exposure Score
                 </div>
                 <div className="relative flex items-center justify-center mb-6 z-10">
-                  {/* Holographic Rings */}
                   <div
                     className={`absolute w-40 h-40 rounded-full border-[1px] border-dashed ${theme.border} animate-[spin_20s_linear_infinite] opacity-50`}
                   />
                   <div
                     className={`absolute w-32 h-32 rounded-full border-[2px] ${theme.border} border-t-transparent animate-[spin_8s_linear_infinite_reverse]`}
                   />
-                  <div
-                    className={`absolute w-28 h-28 rounded-full bg-gradient-to-tr from-white/[0.02] to-transparent backdrop-blur-sm`}
-                  />
+                  <div className="absolute w-28 h-28 rounded-full bg-gradient-to-tr from-white/[0.02] to-transparent backdrop-blur-sm" />
                   <div
                     className={`text-7xl font-black ${theme.text} drop-shadow-[0_0_20px_currentColor]`}
                   >
@@ -320,59 +362,36 @@ export default function ScannerOverlay({
                 </div>
               </div>
 
-              {/* Analyst Summary Card */}
               <div className="relative border border-white/10 bg-white/[0.02] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl">
                 <div className="text-white/40 text-[10px] font-mono tracking-[0.2em] uppercase mb-4 flex items-center gap-2">
                   <div className="w-1 h-1 bg-cyan-500 rounded-full" /> Analyst
                   Summary
                 </div>
                 <p className="text-white/70 leading-relaxed text-sm font-light">
-                  Die KI-gestützte Analyse hat signifikante digitale Spuren im
-                  offenen und Deep-Web identifiziert. Die extrahierten
-                  Datenpunkte weisen auf eine stark vernetzte digitale Identität
-                  hin. Ein manueller Review durch den Eigentümer wird dringend
-                  empfohlen.
+                  {totalFindings > 0
+                    ? "Die kostenlose Kurzprüfung hat öffentliche Signale gefunden. Der Gastbericht zeigt nur eine reduzierte Vorschau; Details und Handlungsempfehlungen werden nach Registrierung sauber freigeschaltet."
+                    : "Die kostenlosen Schnellmodule wurden ausgeführt. In der Gastvorschau wurden keine kritischen öffentlichen Treffer bestätigt. Für einen vollständigen Deep-Scan stehen nach Registrierung weitere Analysewege bereit."}
                 </p>
               </div>
             </div>
 
-            {/* RECHTE SPALTE */}
             <div className="lg:col-span-8 space-y-6">
+              {modules.length === 0 && (
+                <div className="relative border border-cyan-500/20 bg-white/[0.02] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl">
+                  <div className="text-white text-sm font-bold uppercase tracking-[0.1em] mb-3">
+                    Keine Modulantworten empfangen
+                  </div>
+                  <p className="text-white/50 text-sm leading-relaxed">
+                    Der Scanner wurde abgeschlossen, aber es wurden keine verwertbaren Modulantworten geliefert. Bitte API-URL, Key und Contabo-Prozess prüfen.
+                  </p>
+                </div>
+              )}
+
               {modules.map((mod) => {
                 const isExpanded = expandedModules[mod.id];
                 const top10Findings = mod.findings.slice(0, 10);
-
-                const mId = mod.id.toLowerCase();
-                let type = "other";
-                let title = "DATA FOOTPRINT";
-                if (
-                  mId.includes("holehe") ||
-                  mId.includes("email") ||
-                  mod.label.toLowerCase().includes("email") ||
-                  mod.label.toLowerCase().includes("e-mail")
-                ) {
-                  type = "email";
-                  title = "E-MAIL IDENTITY EXPOSURE";
-                } else if (
-                  mId.includes("maigret") ||
-                  mId.includes("user") ||
-                  mod.label.toLowerCase().includes("maigret")
-                ) {
-                  type = "user";
-                  title = "CROSS-PLATFORM USERNAME TRACKING";
-                } else if (
-                  mId.includes("phoneinfoga") ||
-                  mId.includes("phone") ||
-                  mod.label.toLowerCase().includes("telefon")
-                ) {
-                  type = "phone";
-                  title = "TELECOMMUNICATIONS INTELLIGENCE";
-                } else if (mId.includes("harvest") || mId.includes("photon")) {
-                  type = "other";
-                  title = mId.includes("photon")
-                    ? "WEB CRAWL FOOTPRINT"
-                    : "DOMAIN HARVEST INTEL";
-                }
+                const type = moduleType(mod);
+                const title = moduleTitle(type);
 
                 return (
                   <div
@@ -389,14 +408,7 @@ export default function ScannerOverlay({
                         </div>
 
                         <div className="text-xs text-white/50 leading-relaxed font-light pr-4">
-                          {type === "email" &&
-                            "Wir haben identifiziert, auf welchen Plattformen diese E-Mail als aktives Login-Konto genutzt wird. Dies ermöglicht Angreifern gezieltes Profiling."}
-                          {type === "user" &&
-                            "Dieser Benutzername wurde systemübergreifend entdeckt. Überschneidungen werden genutzt, um ein allumfassendes Profil Ihrer Identität zu erstellen."}
-                          {type === "phone" &&
-                            "Die Nummer wurde vom Netzwerk verifiziert und ist aktiv. Zusätzlich wurden Metadaten zur Provider-Struktur isoliert."}
-                          {type === "other" &&
-                            "Zusätzliche Datenpunkte und Metadaten, die mit dieser Ziel-Identität in Verbindung gebracht werden konnten."}
+                          {moduleDescription(type)}
                         </div>
                       </div>
 
@@ -415,14 +427,24 @@ export default function ScannerOverlay({
                               : "border-cyan-500/50 text-cyan-400 hover:bg-cyan-500 hover:text-black hover:border-cyan-500 shadow-[0_0_20px_rgba(34,211,238,0.1)]"
                           }`}
                         >
-                          {isExpanded ? "[-] EINKLAPPEN" : "[+] ENTSCHLÜSSELN"}
+                          {isExpanded ? "[-] EINKLAPPEN" : mod.count > 0 ? "[+] ENTSCHLÜSSELN" : "[+] PRÜFBERICHT"}
                         </button>
                       </div>
                     </div>
 
-                    {/* ANIMIERTES AUFKLAPPEN */}
                     {isExpanded && (
                       <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
+                        {top10Findings.length === 0 && (
+                          <div className="relative border border-white/5 bg-black/20 rounded-2xl p-5">
+                            <div className="text-white/90 font-bold text-sm uppercase tracking-wider mb-2">
+                              Keine kritischen Gast-Treffer
+                            </div>
+                            <div className="text-white/45 text-xs font-light leading-relaxed">
+                              {getIntelDescription(type, false)} Das Modul wurde trotzdem vollständig durchlaufen und in die Auswertung aufgenommen.
+                            </div>
+                          </div>
+                        )}
+
                         {top10Findings.map((finding, idx) => {
                           const textDesc =
                             finding.description || finding.detail || "";
@@ -448,11 +470,16 @@ export default function ScannerOverlay({
                                     Status: {getIntelDescription(type)}
                                   </div>
 
-                                  {/* TELEFON PROVIDER BADGE */}
+                                  {finding.description && (
+                                    <div className="text-white/35 text-xs leading-relaxed font-light max-w-2xl line-clamp-3">
+                                      {finding.description}
+                                    </div>
+                                  )}
+
                                   {type === "phone" && provider && (
                                     <div className="mt-3 flex items-center gap-3">
                                       <span className="text-white/30 text-[10px] uppercase tracking-widest font-mono">
-                                        Provider Identifiziert:
+                                        Provider / Region:
                                       </span>
                                       <span className="text-cyan-300 font-bold text-xs tracking-widest bg-cyan-950/40 px-3 py-1 rounded-lg border border-cyan-500/30">
                                         {provider}
@@ -467,7 +494,6 @@ export default function ScannerOverlay({
                           );
                         })}
 
-                        {/* ENTERPRISE PAYWALL BANNER */}
                         <div
                           className="mt-6 p-8 border border-cyan-500/20 bg-gradient-to-b from-cyan-950/20 to-transparent rounded-2xl flex flex-col items-center text-center gap-4 animate-[fadeIn_1s_ease-out_forwards]"
                           style={{
