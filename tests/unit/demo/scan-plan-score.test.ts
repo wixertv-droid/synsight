@@ -4,7 +4,7 @@ import { computeDemoExposureScore } from "@/lib/demo/demo-exposure-score";
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
 
 describe("demo scan plan", () => {
-  it("orders Holehe → Maigret → PhoneInfoga without heavy modules", () => {
+  it("orders the three fast public checks without heavy modules", () => {
     const plan = buildScanPlan({
       email: "a@b.de",
       username: "shadow",
@@ -16,6 +16,11 @@ describe("demo scan plan", () => {
       "holehe",
       "maigret",
       "phoneinfoga",
+    ]);
+    expect(plan.map((s) => s.label)).toEqual([
+      "Identitätsabgleich",
+      "Profilkorrelation",
+      "Kommunikations-Metadaten",
     ]);
     expect(plan.some((s) => /spider|harvest|photon/i.test(String(s.module)))).toBe(false);
   });
@@ -109,5 +114,29 @@ describe("demo exposure score", () => {
     });
     expect(normalized.findings.length).toBeGreaterThan(0);
     expect(normalized.modules.some((m) => m.id === "publicosint")).toBe(true);
+  });
+
+  it("formats phone metadata without raw booleans", () => {
+    const normalized = normalizeUpstreamPayload({
+      queries: { phone: "+4915123456789" },
+      payloads: [
+        {
+          status: "success",
+          module: "phoneinfoga",
+          findings: [
+            {
+              source: "phoneinfoga",
+              category: "PHONE",
+              title: "Telefon-Analyse",
+              description: "Nummer gültig: True | Provider: T-Mobile | Country: DE",
+              risk: "medium",
+            },
+          ],
+        },
+      ],
+    });
+    expect(normalized.findings[0]?.title).toBe("Telekommunikations-Intelligenz");
+    expect(normalized.findings[0]?.description).toContain("Rufnummer validiert: Ja");
+    expect(normalized.findings[0]?.description).not.toContain("True");
   });
 });
