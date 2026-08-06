@@ -6,6 +6,8 @@
 import {
   getEnvironment,
   resetEnvironmentCache,
+  resolveEmailDeliveryMode,
+  type EmailDeliveryMode,
   type Environment,
 } from "@/lib/config/env";
 import { sanitizeSmtpError, sendSmtpMail } from "@/lib/email/smtp";
@@ -41,8 +43,8 @@ const CHANNEL_FROM: Record<EmailChannel, string> = {
   support: "SynSight Support <support@synsight.de>",
 };
 
-function deliveryMode(): string {
-  return process.env.EMAIL_DELIVERY_MODE ?? "log-link";
+function deliveryMode(): EmailDeliveryMode {
+  return resolveEmailDeliveryMode();
 }
 
 function resolveEnv(): Environment {
