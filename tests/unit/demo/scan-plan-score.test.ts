@@ -4,23 +4,25 @@ import { computeDemoExposureScore } from "@/lib/demo/demo-exposure-score";
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
 
 describe("demo scan plan", () => {
-  it("orders Holehe → Maigret → PhoneInfoga without SpiderFoot", () => {
+  it("orders Holehe → Maigret → PhoneInfoga without heavy modules", () => {
     const plan = buildScanPlan({
       email: "a@b.de",
       username: "shadow",
       phone: "+49151",
+      domain: "example.de",
+      url: "https://example.de",
     });
     expect(plan.map((s) => s.module)).toEqual([
       "holehe",
       "maigret",
       "phoneinfoga",
     ]);
-    expect(plan.some((s) => String(s.module).includes("spider"))).toBe(false);
+    expect(plan.some((s) => /spider|harvest|photon/i.test(String(s.module)))).toBe(false);
   });
 });
 
 describe("demo exposure score", () => {
-  it("scores specialist findings, legacy OSINT fallback findings and ignores errors", () => {
+  it("scores module findings and ignores SpiderFoot / errors", () => {
     const scored = computeDemoExposureScore([
       {
         source: "holehe",
@@ -46,12 +48,12 @@ describe("demo exposure score", () => {
         risk: "high",
       },
     ]);
-    expect(scored.usableCount).toBe(3);
+    expect(scored.usableCount).toBe(2);
     expect(scored.score).toBeGreaterThan(20);
     expect(["Mittel", "Erhöht", "Kritisch"]).toContain(scored.risk);
   });
 
-  it("wires normalizeUpstreamPayload exposure_score from specialist modules", () => {
+  it("wires normalizeUpstreamPayload exposure_score from modules", () => {
     const normalized = normalizeUpstreamPayload({
       queries: { email: "a@b.de", username: "u1" },
       payloads: [
@@ -70,10 +72,14 @@ describe("demo exposure score", () => {
               url: "https://x.com/u1",
               risk: "medium",
             },
+            { source: "spiderfoot", title: "noise", risk: "high" },
           ],
         },
       ],
     });
+    expect(
+      normalized.findings.every((f) => !/spiderfoot/i.test(f.source || ""))
+    ).toBe(true);
     expect(normalized.modules.map((m) => m.id)).toEqual(
       expect.arrayContaining(["holehe", "maigret"])
     );
@@ -81,29 +87,27 @@ describe("demo exposure score", () => {
     expect(normalized.risk_level).toBeTruthy();
   });
 
-  it("keeps older SpiderFoot/OSINT scanner payloads visible instead of empty", () => {
+  it("keeps legacy OSINT fallback visible when only old scanner output exists", () => {
     const normalized = normalizeUpstreamPayload({
       queries: { email: "a@b.de" },
       payloads: [
         {
           status: "success",
           source: "spiderfoot",
-          summary: "Öffentliche SpiderFoot-Analyse abgeschlossen.",
+          result_count: 1,
           findings: [
             {
               source: "SpiderFoot",
-              category: "SOCIAL",
-              title: "Öffentliche Profile",
-              description: "2 öffentliche Signalgruppen gefunden.",
-              risk: "medium",
-              platform: "sfp_accounts",
+              category: "OSINT",
+              title: "Öffentliche Spur",
+              description: "Legacy OSINT event",
+              risk: "low",
             },
           ],
         },
       ],
     });
-    expect(normalized.findings).toHaveLength(1);
-    expect(normalized.modules.map((m) => m.id)).toContain("publicosint");
-    expect(normalized.exposure_score).toBeGreaterThan(0);
+    expect(normalized.findings.length).toBeGreaterThan(0);
+    expect(normalized.modules.some((m) => m.id === "publicosint")).toBe(true);
   });
 });
