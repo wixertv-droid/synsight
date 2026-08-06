@@ -1,7 +1,13 @@
 /**
- * Normalize Contabo deep-scan API payloads into SynSight demo modules.
- * Upstream may return flat findings with `source` (holehe, maigret, …).
- * SpiderFoot findings are dropped from scoring and module grouping.
+ * Normalize public DemoScanner API payloads into SynSight demo modules.
+ *
+ * The Contabo side has existed in several versions:
+ * - single-module specialist API: { status, module, findings: [...] }
+ * - older SpiderFoot API: { status, source: "spiderfoot", findings: [...] }
+ * - debug / tool wrappers: nested results, modules, raw_output or summaries
+ *
+ * This normalizer is intentionally tolerant so a working scanner does not end
+ * in an empty public result screen just because the payload shape is older.
  */
 
 import {
@@ -56,32 +62,75 @@ const MODULE_META: Record<string, { label: string; order: number }> = {
   theharvester: { label: "theHarvester · Domain", order: 40 },
   theHarvester: { label: "theHarvester · Domain", order: 40 },
   photon: { label: "Photon · Web Crawl", order: 50 },
+  publicosint: { label: "Öffentlicher OSINT Deep-Scan", order: 60 },
+  osint: { label: "Öffentlicher OSINT Deep-Scan", order: 60 },
 };
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
 
 function moduleKey(source: string): string {
   const raw = (source || "unknown").trim();
-  if (/spiderfoot/i.test(raw)) return "spiderfoot";
-  if (/theharvester/i.test(raw)) return "theHarvester";
-  return raw.toLowerCase() === "holehe"
-    ? "holehe"
-    : raw.toLowerCase() === "maigret"
-      ? "maigret"
-      : raw.toLowerCase() === "phoneinfoga"
-        ? "phoneinfoga"
-        : raw.toLowerCase() === "photon"
-          ? "photon"
-          : raw;
+  const normalized = raw.toLowerCase().replace(/[\s_-]+/g, "");
+  if (/spiderfoot|publicosint/.test(normalized)) return "publicosint";
+  if (/theharvester|harvester/.test(normalized)) return "theHarvester";
+  if (normalized === "holehe") return "holehe";
+  if (normalized === "maigret") return "maigret";
+  if (normalized === "phoneinfoga" || normalized === "phone") return "phoneinfoga";
+  if (normalized === "photon") return "photon";
+  if (normalized === "osint") return "osint";
+  return raw;
 }
 
 function moduleLabel(id: string): string {
   return MODULE_META[id]?.label || `${id} · Modul`;
 }
 
+function safeString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function textFromUnknown(value: unknown, max = 700): string {
+  if (typeof value === "string") return value.trim().slice(0, max);
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(String).filter(Boolean).slice(0, 12).join(", ").slice(0, max);
+  }
+  if (value && typeof value === "object") {
+    try {
+      return JSON.stringify(value).slice(0, max);
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+function derivePayloadSource(data: Record<string, unknown>, fallback = "OSINT") {
+  return (
+    safeString(data.module) ||
+    safeString(data.source) ||
+    safeString(data.provider) ||
+    fallback
+  );
+}
+
 export function findingFromUpstream(
   raw: Record<string, unknown>,
   fallbackSource: string
 ): DemoFinding | null {
-  const source = String(raw.source || fallbackSource || "unknown");
+  const source = String(
+    raw.source || raw.module || raw.provider || fallbackSource || "unknown"
+  );
   if (raw.error) {
     return {
       category: "ERROR",
@@ -93,15 +142,24 @@ export function findingFromUpstream(
     };
   }
 
-  const platform = String(raw.platform || raw.type || source || "OSINT");
+  const platform = String(
+    raw.platform || raw.type || raw.service || raw.country || source || "OSINT"
+  );
   const url = typeof raw.url === "string" ? raw.url : undefined;
   const emails = Array.isArray(raw.emails) ? raw.emails.map(String) : [];
   const hosts = Array.isArray(raw.hosts) ? raw.hosts.map(String) : [];
-  const rawText = typeof raw.raw === "string" ? raw.raw.trim() : "";
+  const rawText =
+    safeString(raw.raw) ||
+    safeString(raw.raw_output) ||
+    safeString(raw.output) ||
+    safeString(raw.stdout) ||
+    safeString(raw.data);
   const status = typeof raw.status === "string" ? raw.status : "";
+  const country = safeString(raw.country);
+  const carrier = safeString(raw.carrier) || safeString(raw.provider);
 
   let title = String(raw.title || platform || "Treffer");
-  let description = String(raw.description || raw.detail || "");
+  let description = String(raw.description || raw.detail || raw.message || "");
 
   if (url) {
     title = platform !== "Social/Web" ? platform : "Öffentliches Profil";
@@ -116,9 +174,22 @@ export function findingFromUpstream(
       .filter(Boolean)
       .join(" · ");
   }
-  if (rawText) {
+  if (source.toLowerCase().includes("phone") && (status || country || rawText)) {
+    title = raw.title ? String(raw.title) : "Telefonnummer geprüft";
+    description =
+      description ||
+      [
+        status ? `Status: ${status}` : "",
+        country ? `Land: ${country}` : "",
+        carrier ? `Provider: ${carrier}` : "",
+        rawText ? rawText.slice(0, 420) : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+  }
+  if (rawText && !description) {
     title = title || "Rohdaten";
-    description = description || rawText.slice(0, 420);
+    description = rawText.slice(0, 420);
   }
   if (status === "started") {
     title = "Scan gestartet";
@@ -126,7 +197,7 @@ export function findingFromUpstream(
       description || "Modul-Scan wurde ausgelöst. Detail-Events folgen.";
   }
 
-  if (!description && !url && !status) {
+  if (!description && !url) {
     description = "Öffentlicher Treffer ohne weitere Detailbeschreibung.";
   }
 
@@ -143,6 +214,94 @@ export function findingFromUpstream(
   };
 }
 
+function collectFindingObjects(data: Record<string, unknown>): Array<{
+  raw: Record<string, unknown>;
+  fallbackSource: string;
+}> {
+  const fallbackSource = derivePayloadSource(data);
+  const out: Array<{ raw: Record<string, unknown>; fallbackSource: string }> = [];
+
+  const pushList = (items: unknown[], source: string) => {
+    for (const item of items) {
+      const record = asRecord(item);
+      if (record) out.push({ raw: record, fallbackSource: source });
+    }
+  };
+
+  pushList(asArray(data.findings), fallbackSource);
+  pushList(asArray(data.results), fallbackSource);
+  pushList(asArray(data.events), fallbackSource);
+  pushList(asArray(data.items), fallbackSource);
+
+  const nested = asRecord(data.data) || asRecord(data.payload) || null;
+  if (nested) {
+    const nestedSource = derivePayloadSource(nested, fallbackSource);
+    pushList(asArray(nested.findings), nestedSource);
+    pushList(asArray(nested.results), nestedSource);
+    pushList(asArray(nested.events), nestedSource);
+    pushList(asArray(nested.items), nestedSource);
+  }
+
+  const moduleArray = asArray(data.modules);
+  for (const moduleEntry of moduleArray) {
+    const moduleRecord = asRecord(moduleEntry);
+    if (!moduleRecord) continue;
+    const moduleSource = derivePayloadSource(moduleRecord, fallbackSource);
+    pushList(asArray(moduleRecord.findings), moduleSource);
+    pushList(asArray(moduleRecord.results), moduleSource);
+    pushList(asArray(moduleRecord.items), moduleSource);
+  }
+
+  const moduleObject = asRecord(data.modules);
+  if (moduleObject) {
+    for (const [key, value] of Object.entries(moduleObject)) {
+      if (Array.isArray(value)) {
+        pushList(value, key);
+      } else {
+        const record = asRecord(value);
+        if (!record) continue;
+        const moduleSource = derivePayloadSource(record, key);
+        pushList(asArray(record.findings), moduleSource);
+        pushList(asArray(record.results), moduleSource);
+        pushList(asArray(record.items), moduleSource);
+      }
+    }
+  }
+
+  // Fallback: some tool wrappers return useful data only on the top-level object.
+  if (out.length === 0) {
+    const total = Number(data.total_findings ?? data.result_count ?? data.count ?? 0);
+    const hasSummary = Boolean(safeString(data.summary) || safeString(data.message));
+    const hasRaw = Boolean(
+      safeString(data.raw_output) || safeString(data.output) || safeString(data.stdout)
+    );
+    const topScore = Number(data.exposure_score ?? 0);
+    if (total > 0 || topScore > 0 || hasRaw || hasSummary) {
+      out.push({
+        raw: {
+          source: fallbackSource,
+          category: total > 0 || topScore > 0 ? "OSINT" : "STATUS",
+          title:
+            total > 0 || topScore > 0
+              ? "Öffentliche Scanner-Signale"
+              : "Scan abgeschlossen",
+          description:
+            safeString(data.summary) ||
+            safeString(data.message) ||
+            textFromUnknown(data.raw_output || data.output || data.stdout) ||
+            `${total} Datenpunkt(e) vom Scanner gemeldet.`,
+          risk: safeString(data.risk_level) || "low",
+          confidence: total > 0 ? Math.min(95, 55 + total * 4) : 40,
+          detail: textFromUnknown(data),
+        },
+        fallbackSource,
+      });
+    }
+  }
+
+  return out;
+}
+
 function buildModuleSummaries(modules: DemoModuleResult[]): string {
   const parts = modules.map((m) => {
     if (m.status === "error") return `${m.label}: Fehler`;
@@ -156,8 +315,7 @@ function buildModuleSummaries(modules: DemoModuleResult[]): string {
 export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
   const buckets = new Map<string, DemoFinding[]>();
   for (const f of findings) {
-    const id = moduleKey(f.source || "unknown");
-    if (id === "spiderfoot") continue;
+    const id = moduleKey(f.source || f.platform || "unknown");
     const list = buckets.get(id) || [];
     list.push(f);
     buckets.set(id, list);
@@ -175,7 +333,10 @@ export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
       else if (real.length === 0) status = "empty";
 
       const count = real.filter(
-        (i) => !/gestartet|started/i.test(i.title)
+        (i) =>
+          !/gestartet|started/i.test(i.title) &&
+          i.category !== "STATUS" &&
+          i.category !== "EMPTY"
       ).length;
 
       return {
@@ -213,31 +374,37 @@ export function normalizeUpstreamPayload(input: {
 
   const findings: DemoFinding[] = [];
   const scanIds: string[] = [];
+  let upstreamSummary = "";
+  let upstreamScore: number | null = null;
+  let upstreamRisk = "";
 
   for (const data of payloads) {
     if (typeof data.scan_id === "string") scanIds.push(data.scan_id);
-    const list = Array.isArray(data.findings) ? data.findings : [];
-    for (const item of list) {
-      if (!item || typeof item !== "object") continue;
-      const mapped = findingFromUpstream(
-        item as Record<string, unknown>,
-        "OSINT"
-      );
-      if (mapped) findings.push(mapped);
+    if (typeof data.id === "string") scanIds.push(data.id);
+    if (!upstreamSummary && typeof data.summary === "string") {
+      upstreamSummary = data.summary;
+    }
+    if (typeof data.exposure_score === "number") {
+      upstreamScore = data.exposure_score;
+    }
+    if (!upstreamRisk && typeof data.risk_level === "string") {
+      upstreamRisk = data.risk_level;
     }
 
-    // Already-normalized SynSight/legacy shape
-    if (data.status === "success" && Array.isArray(data.findings)) {
-      // already handled via findings loop
+    for (const { raw, fallbackSource } of collectFindingObjects(data)) {
+      const mapped = findingFromUpstream(raw, fallbackSource);
+      if (mapped) findings.push(mapped);
     }
   }
 
   const scoredFindings = filterScoreFindings(findings);
-  const modules = groupModules(scoredFindings);
-  const { score, risk } = computeDemoExposureScore(scoredFindings);
+  const modules = groupModules(scoredFindings.length ? scoredFindings : findings);
+  const computed = computeDemoExposureScore(scoredFindings);
+  const score = computed.usableCount > 0 ? computed.score : (upstreamScore ?? 0);
+  const risk = computed.usableCount > 0 ? computed.risk : upstreamRisk || "Niedrig";
   const platforms = [
     ...new Set(
-      scoredFindings
+      (scoredFindings.length ? scoredFindings : findings)
         .map((f) => f.platform || f.source || "")
         .filter(Boolean)
         .map(String)
@@ -246,8 +413,11 @@ export function normalizeUpstreamPayload(input: {
 
   const summary =
     scoredFindings.length === 0
-      ? `Keine öffentlichen Treffer für „${queryLabel}“ in den aktiven Modulen.`
-      : `Multi-Modul-Analyse für „${queryLabel}“: ${buildModuleSummaries(modules)}. Exposure-Score ${score}/100 (${risk}).`;
+      ? upstreamSummary ||
+        `Keine öffentlichen Treffer für „${queryLabel}“ in den aktiven Modulen.`
+      : upstreamSummary && upstreamSummary.length < 420
+        ? upstreamSummary
+        : `Multi-Modul-Analyse für „${queryLabel}": ${buildModuleSummaries(modules)}. Exposure-Score ${score}/100 (${risk}).`;
 
   return {
     status: "success",
@@ -261,7 +431,7 @@ export function normalizeUpstreamPayload(input: {
     risk_level: risk,
     summary,
     timestamp: new Date().toISOString(),
-    scan_ids: scanIds,
+    scan_ids: [...new Set(scanIds)],
     source: "contabo-deep",
   };
 }
