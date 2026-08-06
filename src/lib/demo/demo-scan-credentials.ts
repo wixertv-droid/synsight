@@ -10,8 +10,6 @@ import {
 
 export const DEMO_SCAN_PROVIDER = "demo_scan" as const;
 
-const DEFAULT_SCAN_URL = "http://161.97.85.22:5000/api/scan";
-
 export interface DemoScanCredentials {
   url: string;
   apiKey: string;
@@ -53,7 +51,11 @@ export function readDemoScanApiUrl(configJson: unknown): string | null {
     : null;
 }
 
-/** Derive Contabo /api/health from a /api/scan URL. */
+function cleanEnvUrl(value: string | undefined): string {
+  return value?.trim().replace(/\/+$/, "") || "";
+}
+
+/** Derive scanner /api/health from a /api/scan URL. */
 export function healthUrlFromScanUrl(scanUrl: string): string {
   const trimmed = scanUrl.trim().replace(/\/+$/, "");
   if (/\/api\/scan$/i.test(trimmed)) {
@@ -81,21 +83,26 @@ async function loadDemoScanRow() {
 }
 
 /**
- * Resolve Contabo DemoScanner URL + Bearer key.
- * Prefers active DB credential, then env fallbacks.
+ * Resolve DemoScanner URL + Bearer key.
+ *
+ * Security note: there is intentionally no public hard-coded scanner host or
+ * default API key here. Production must use an active Admin credential or the
+ * explicit DEMO_SCAN_API_URL + DEMO_SCAN_API_KEY env fallback.
  */
 export async function resolveDemoScanCredentials(): Promise<DemoScanCredentials | null> {
   const row = await loadDemoScanRow();
+  const envUrl = cleanEnvUrl(process.env.DEMO_SCAN_API_URL);
+  const envKey = normalizeDemoScanApiKey(
+    process.env.DEMO_SCAN_API_KEY?.trim() || ""
+  );
+
   if (row?.isActive) {
     try {
       const apiKey = normalizeDemoScanApiKey(
         decryptSecret(row.encryptedSecret)
       );
-      const url =
-        readDemoScanApiUrl(row.configJson) ||
-        process.env.DEMO_SCAN_API_URL?.trim() ||
-        DEFAULT_SCAN_URL;
-      if (apiKey) {
+      const url = readDemoScanApiUrl(row.configJson) || envUrl;
+      if (url && apiKey) {
         return { url, apiKey, source: "database" };
       }
     } catch (error) {
@@ -103,27 +110,15 @@ export async function resolveDemoScanCredentials(): Promise<DemoScanCredentials 
         "[demo-scan] DB API-Key Entschlüsselung fehlgeschlagen — Env-Fallback:",
         error instanceof Error ? error.message : error
       );
-      // fall through to env
+      // fall through to explicit env fallback
     }
   }
 
-  const envUrl = process.env.DEMO_SCAN_API_URL?.trim();
-  const envKey = normalizeDemoScanApiKey(
-    process.env.DEMO_SCAN_API_KEY?.trim() || ""
-  );
-  if (envUrl || envKey) {
-    return {
-      url: envUrl || DEFAULT_SCAN_URL,
-      apiKey: envKey || "",
-      source: "env",
-    };
+  if (envUrl && envKey) {
+    return { url: envUrl, apiKey: envKey, source: "env" };
   }
 
-  return {
-    url: DEFAULT_SCAN_URL,
-    apiKey: "",
-    source: "env",
-  };
+  return null;
 }
 
 export async function testDemoScanConnection(input: {
@@ -132,7 +127,7 @@ export async function testDemoScanConnection(input: {
 }): Promise<ApiCredentialTestResult> {
   const started = Date.now();
   let apiKey = normalizeDemoScanApiKey(input.secret || "");
-  let url = input.apiUrl?.trim() || "";
+  let url = input.apiUrl?.trim().replace(/\/+$/, "") || "";
   let source: DemoScanCredentials["source"] = "draft";
 
   if (!apiKey || !url) {
@@ -171,23 +166,35 @@ export async function testDemoScanConnection(input: {
   }
 
   if (!url) {
-    url = process.env.DEMO_SCAN_API_URL?.trim() || DEFAULT_SCAN_URL;
-    if (!apiKey) {
-      apiKey = normalizeDemoScanApiKey(
-        process.env.DEMO_SCAN_API_KEY?.trim() || ""
-      );
-      if (apiKey) source = "env";
-    }
+    url = cleanEnvUrl(process.env.DEMO_SCAN_API_URL);
+    if (url) source = "env";
+  }
+  if (!apiKey) {
+    apiKey = normalizeDemoScanApiKey(
+      process.env.DEMO_SCAN_API_KEY?.trim() || ""
+    );
+    if (apiKey) source = "env";
   }
 
   apiKey = normalizeDemoScanApiKey(apiKey);
+
+  if (!url) {
+    return {
+      provider: DEMO_SCAN_PROVIDER,
+      ok: false,
+      message: "Keine DemoScanner-API-URL vorhanden.",
+      detail:
+        "Bitte unter Admin → Website → APIs eine interne /api/scan URL speichern oder DEMO_SCAN_API_URL setzen.",
+      latencyMs: Date.now() - started,
+    };
+  }
 
   if (!apiKey) {
     return {
       provider: DEMO_SCAN_PROVIDER,
       ok: false,
       message: "Kein API-Key vorhanden.",
-      detail: "Bitte Contabo Bearer-Key speichern und erneut testen.",
+      detail: "Bitte den DemoScanner Bearer-Key speichern und erneut testen.",
       latencyMs: Date.now() - started,
     };
   }
@@ -197,15 +204,14 @@ export async function testDemoScanConnection(input: {
       provider: DEMO_SCAN_PROVIDER,
       ok: false,
       message: "Ungültige API-URL.",
-      detail: "Erwartet z. B. http://161.97.85.22:5000/api/scan",
+      detail: "Erwartet z. B. https://scanner.internal/api/scan",
       latencyMs: Date.now() - started,
     };
   }
 
-  // Optional health — older Contabo api.py has no /api/health (404 is OK).
+  // Optional health — older scanner api.py has no /api/health (404 is OK).
   const healthUrl = healthUrlFromScanUrl(url);
   let healthDetail = "Health übersprungen";
-  let contaboKeyHint = "";
   try {
     const healthRes = await fetch(healthUrl, {
       method: "GET",
@@ -228,9 +234,6 @@ export async function testDemoScanConnection(input: {
         typeof healthBody?.api_version === "string"
           ? `version=${healthBody.api_version}`
           : "version=?";
-      if (typeof healthBody?.api_key_hint === "string") {
-        contaboKeyHint = healthBody.api_key_hint;
-      }
       const missing = Array.isArray(healthBody?.tools_missing)
         ? (healthBody.tools_missing as string[]).join(",")
         : "";
@@ -242,11 +245,6 @@ export async function testDemoScanConnection(input: {
   } catch {
     healthDetail = "Health nicht erreichbar (Auth-Probe folgt)";
   }
-
-  const adminKeyHint =
-    apiKey.length >= 4
-      ? `${apiKey.slice(0, 2)}…${apiKey.slice(-2)} (len=${apiKey.length})`
-      : `(len=${apiKey.length})`;
 
   // Auth probe: empty body → 400 if key OK, 401 if key wrong (fast, no scan).
   try {
@@ -272,11 +270,7 @@ export async function testDemoScanConnection(input: {
         message: "API-Key abgelehnt (401 Unauthorized).",
         detail:
           `${healthDetail} · Quelle=${source}. ` +
-          `Admin-Key ${adminKeyHint}` +
-          (contaboKeyHint ? ` · Contabo-Key ${contaboKeyHint}` : "") +
-          ". Keys müssen exakt gleich sein (ohne „Bearer “). " +
-          "Im Admin-Feld den Contabo-Key neu eintragen → Speichern → API TESTEN. " +
-          "Aktueller Contabo-Default: demoscanner23061980!!",
+          "Key neu eintragen → Speichern → API TESTEN. Niemals Standard- oder Beispiel-Keys verwenden.",
         latencyMs,
       };
     }
@@ -293,7 +287,7 @@ export async function testDemoScanConnection(input: {
         provider: DEMO_SCAN_PROVIDER,
         ok: true,
         message: `DemoScanner erreichbar — Auth OK (${latencyMs} ms).`,
-        detail: `${healthDetail} · Quelle=${source} · scan=${url}`,
+        detail: `${healthDetail} · Quelle=${source}`,
         latencyMs,
       };
     }
