@@ -1,8 +1,7 @@
 import type { ScanQueries } from "@/components/sections/DemoScanner/types";
 import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
 
-export type DemoModuleId =
-  "holehe" | "maigret" | "phoneinfoga" | "theHarvester" | "photon";
+export type DemoModuleId = "holehe" | "maigret" | "phoneinfoga";
 
 export type ModuleStepStatus =
   "pending" | "running" | "done" | "error" | "skipped";
@@ -42,22 +41,13 @@ export const MODULE_META: Record<
     short: "Telefon Intel",
     color: "#5ce1ff",
   },
-  theHarvester: {
-    label: "theHarvester",
-    short: "Domain Harvest",
-    color: "#00d4ff",
-  },
-  photon: {
-    label: "Photon",
-    short: "Web Crawl",
-    color: "#a7f3ff",
-  },
 };
 
 /**
- * Sequential plan — one Contabo module call per step (avoids nginx timeout).
- * Order: Holehe → Maigret → PhoneInfoga → theHarvester → Photon
- * (only steps with matching input fields).
+ * Public free scan plan — fast sequential calls only.
+ * Order: Holehe → Maigret → PhoneInfoga.
+ * Heavy modules like SpiderFoot, theHarvester and Photon stay out of the
+ * logged-out landing scan and belong to paid/deep analysis flows later.
  */
 export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
   const queries = normalizeScanQueries(rawQueries);
@@ -91,26 +81,6 @@ export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
       hint: "Telefon-/Carrier-Hinweise",
       query: queries.phone,
       field: "phone",
-    });
-  }
-  if (queries.domain) {
-    steps.push({
-      id: "harvester-domain",
-      module: "theHarvester",
-      label: "theHarvester",
-      hint: "E-Mails & Hosts zur Domain",
-      query: queries.domain,
-      field: "domain",
-    });
-  }
-  if (queries.url) {
-    steps.push({
-      id: "photon-url",
-      module: "photon",
-      label: "Photon",
-      hint: "Web-Crawl & Keys",
-      query: queries.url,
-      field: "url",
     });
   }
 
