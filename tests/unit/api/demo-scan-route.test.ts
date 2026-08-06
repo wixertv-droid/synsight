@@ -62,21 +62,23 @@ describe("POST /api/scan", () => {
     expect(json.status).toBe("error");
   });
 
-  it("rejects spiderfoot module", async () => {
+  it("rejects heavy public modules", async () => {
     const { POST } = await import("@/app/api/scan/route");
-    const res = await POST(
-      new Request("http://localhost/api/scan", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          query: "alice@example.com",
-          module: "spiderfoot",
-        }),
-      })
-    );
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.message).toMatch(/photon/i);
+    for (const module of ["spiderfoot", "theHarvester", "photon"]) {
+      const res = await POST(
+        new Request("http://localhost/api/scan", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            query: "alice@example.com",
+            module,
+          }),
+        })
+      );
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.message).toMatch(/holehe, maigret, phoneinfoga/i);
+    }
   });
 
   it("proxies valid module step to upstream", async () => {
