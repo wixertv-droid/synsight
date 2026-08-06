@@ -871,24 +871,46 @@ def persist_result(result: dict[str, Any]) -> None:
         pass
 
 
-def public_finding_count(findings: list[dict[str, Any]]) -> int:
-    return sum(
-        1
-        for finding in findings
-        if str(finding.get("category") or "").upper() != "ERROR"
-    )
+def finding_counts(findings: list[dict[str, Any]]) -> dict[str, int]:
+    public = 0
+    technical = 0
+    errors = 0
+
+    for finding in findings:
+        category = str(finding.get("category") or "").upper()
+        if category == "ERROR":
+            errors += 1
+        elif category == "PHONE_METADATA":
+            technical += 1
+        elif category not in {"STATUS", "EMPTY"}:
+            public += 1
+
+    return {
+        "public": public,
+        "technical": technical,
+        "errors": errors,
+    }
 
 
-def scan_response(module: str, query: str, outcome: dict[str, Any]):
+def build_scan_payload(
+    *,
+    target: str,
+    queries: dict[str, str],
+    outcome: dict[str, Any],
+    module: str | None = None,
+) -> dict[str, Any]:
     findings = list(outcome.get("findings") or [])
-    result = {
+    counts = finding_counts(findings)
+    result: dict[str, Any] = {
         "status": "success",
         "scan_id": str(uuid.uuid4()),
-        "target": query,
-        "module": module,
-        "queries": detect_legacy_query(query),
+        "target": target,
+        "queries": queries,
         "timestamp": utc_now(),
-        "total_findings": public_finding_count(findings),
+        "total_findings": counts["public"],
+        "public_findings": counts["public"],
+        "technical_findings": counts["technical"],
+        "finding_counts": counts,
         "findings": findings,
         "partial": bool(outcome.get("partial")),
         "notices": outcome.get("notices") or [],
@@ -896,6 +918,18 @@ def scan_response(module: str, query: str, outcome: dict[str, Any]):
         "source": "contabo-free",
         "api_version": "contabo-free-3",
     }
+    if module:
+        result["module"] = module
+    return result
+
+
+def scan_response(module: str, query: str, outcome: dict[str, Any]):
+    result = build_scan_payload(
+        target=query,
+        queries=detect_legacy_query(query),
+        outcome=outcome,
+        module=module,
+    )
     persist_result(result)
     return jsonify(result)
 
@@ -966,21 +1000,11 @@ def scan():
             outcomes.append(run_phone_scan(phone))
 
         outcome = merge_outcomes(*outcomes)
-        findings = list(outcome.get("findings") or [])
-        result = {
-            "status": "success",
-            "scan_id": str(uuid.uuid4()),
-            "target": " · ".join(targets.values()),
-            "queries": targets,
-            "timestamp": utc_now(),
-            "total_findings": public_finding_count(findings),
-            "findings": findings,
-            "partial": bool(outcome.get("partial")),
-            "notices": outcome.get("notices") or [],
-            "scan_meta": outcome.get("meta") or {},
-            "source": "contabo-free",
-            "api_version": "contabo-free-3",
-        }
+        result = build_scan_payload(
+            target=" · ".join(targets.values()),
+            queries=targets,
+            outcome=outcome,
+        )
         persist_result(result)
         return jsonify(result)
     finally:
