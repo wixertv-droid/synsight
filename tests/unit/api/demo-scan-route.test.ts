@@ -48,7 +48,7 @@ describe("POST /api/scan", () => {
     vi.resetModules();
   });
 
-  it("rejects empty query", async () => {
+  it("rejects empty query before rate limiting", async () => {
     const { POST } = await import("@/app/api/scan/route");
     const res = await POST(
       new Request("http://localhost/api/scan", {
@@ -60,9 +60,10 @@ describe("POST /api/scan", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.status).toBe("error");
+    expect(mockRecord).not.toHaveBeenCalled();
   });
 
-  it("rejects heavy public modules", async () => {
+  it("rejects heavy public modules without exposing provider names", async () => {
     const { POST } = await import("@/app/api/scan/route");
     for (const module of ["spiderfoot", "theHarvester", "photon"]) {
       const res = await POST(
@@ -77,11 +78,12 @@ describe("POST /api/scan", () => {
       );
       expect(res.status).toBe(400);
       const json = await res.json();
-      expect(json.message).toMatch(/holehe, maigret, phoneinfoga/i);
+      expect(json.message).toMatch(/nicht freigegeben/i);
+      expect(json.message).not.toMatch(/holehe|maigret|phoneinfoga/i);
     }
   });
 
-  it("proxies valid module step to upstream", async () => {
+  it("proxies valid module step to upstream after all abuse limits pass", async () => {
     global.fetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -115,10 +117,11 @@ describe("POST /api/scan", () => {
     expect(json.status).toBe("success");
     expect(json.exposure_score).toBeGreaterThan(0);
     expect(global.fetch).toHaveBeenCalledOnce();
+    expect(mockRecord).toHaveBeenCalledTimes(3);
   });
 
-  it("rate-limits excessive scans", async () => {
-    mockRecord.mockReturnValue({
+  it("rate-limits excessive daily demo scans", async () => {
+    mockRecord.mockReturnValueOnce({
       allowed: false,
       remaining: 0,
       retryAfterSeconds: 120,
@@ -132,5 +135,27 @@ describe("POST /api/scan", () => {
       })
     );
     expect(res.status).toBe(429);
+    const json = await res.json();
+    expect(json.limit).toBe("daily");
+    expect(json.message).toMatch(/Tageskontingent/i);
+  });
+
+  it("rate-limits repeated scans for the same target", async () => {
+    mockRecord
+      .mockReturnValueOnce({ allowed: true, remaining: 20, retryAfterSeconds: 0 })
+      .mockReturnValueOnce({ allowed: true, remaining: 10, retryAfterSeconds: 0 })
+      .mockReturnValueOnce({ allowed: false, remaining: 0, retryAfterSeconds: 3600 });
+
+    const { POST } = await import("@/app/api/scan/route");
+    const res = await POST(
+      new Request("http://localhost/api/scan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: "same-target", module: "maigret" }),
+      })
+    );
+    expect(res.status).toBe(429);
+    const json = await res.json();
+    expect(json.limit).toBe("target");
   });
 });
