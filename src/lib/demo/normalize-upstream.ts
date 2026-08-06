@@ -72,13 +72,34 @@ function safeString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function stripAnsi(value: string): string {
+  return value.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function cleanExtractedValue(value: string): string {
+  const cleaned = stripAnsi(value)
+    .replace(/^['"`]+|['"`]+$/g, "")
+    .replace(/[|;,]+$/g, "")
+    .replace(/\\n/g, " ")
+    .trim();
+  if (!cleaned || /^none|null|undefined|unknown|n\/a$/i.test(cleaned)) {
+    return "";
+  }
+  return cleaned;
+}
+
 function textFromUnknown(value: unknown, max = 700): string {
   if (typeof value === "string") return value.trim().slice(0, max);
   if (typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
   if (Array.isArray(value)) {
-    return value.map(String).filter(Boolean).slice(0, 12).join(", ").slice(0, max);
+    return value
+      .map(String)
+      .filter(Boolean)
+      .slice(0, 12)
+      .join(", ")
+      .slice(0, max);
   }
   if (value && typeof value === "object") {
     try {
@@ -88,6 +109,21 @@ function textFromUnknown(value: unknown, max = 700): string {
     }
   }
   return "";
+}
+
+function firstUseful(...values: unknown[]): string {
+  for (const value of values) {
+    const text = cleanExtractedValue(textFromUnknown(value, 1200));
+    if (text) return text;
+  }
+  return "";
+}
+
+function firstDefined(...values: unknown[]): unknown {
+  for (const value of values) {
+    if (value !== null && value !== undefined && value !== "") return value;
+  }
+  return undefined;
 }
 
 function moduleKey(source: string): string {
@@ -106,26 +142,7 @@ function moduleLabel(id: string): string {
 }
 
 function derivePayloadSource(data: Record<string, unknown>, fallback = "OSINT") {
-  return (
-    safeString(data.module) ||
-    safeString(data.source) ||
-    safeString(data.provider) ||
-    fallback
-  );
-}
-
-function stripAnsi(value: string): string {
-  return value.replace(/\x1b\[[0-9;]*m/g, "");
-}
-
-function cleanExtractedValue(value: string): string {
-  const cleaned = stripAnsi(value)
-    .replace(/^['"`]+|['"`]+$/g, "")
-    .replace(/[|;,]+$/g, "")
-    .replace(/\\n/g, " ")
-    .trim();
-  if (!cleaned || /^none|null|undefined|unknown|n\/a$/i.test(cleaned)) return "";
-  return cleaned;
+  return firstUseful(data.module, data.source, data.provider, fallback) || fallback;
 }
 
 function countryLabel(value: string): string {
@@ -150,10 +167,34 @@ function normalizeBoolText(value: unknown): "Ja" | "Nein" | "Nicht eindeutig" {
     .trim()
     .replace(/^['"]|['"]$/g, "")
     .toLowerCase();
-  if (["true", "valid", "ja", "yes", "1", "gültig", "gueltig", "active", "aktiv"].includes(text)) {
+  if (
+    [
+      "true",
+      "valid",
+      "ja",
+      "yes",
+      "1",
+      "gültig",
+      "gueltig",
+      "active",
+      "aktiv",
+    ].includes(text)
+  ) {
     return "Ja";
   }
-  if (["false", "invalid", "nein", "no", "0", "ungültig", "ungueltig", "inactive", "inaktiv"].includes(text)) {
+  if (
+    [
+      "false",
+      "invalid",
+      "nein",
+      "no",
+      "0",
+      "ungültig",
+      "ungueltig",
+      "inactive",
+      "inaktiv",
+    ].includes(text)
+  ) {
     return "Nein";
   }
   return "Nicht eindeutig";
@@ -175,7 +216,16 @@ function isPhoneFinding(raw: Record<string, unknown>, source: string): boolean {
     /phone|telefon|number|carrier|provider|rufnummer/i.test(source) ||
     /phone|telefon|rufnummer/i.test(String(raw.category || "")) ||
     /telefon|rufnummer|telekommunikation/i.test(String(raw.title || "")) ||
-    Boolean(raw.valid || raw.is_valid || raw.valid_number || raw.carrier || raw.country || raw.provider)
+    Boolean(
+      raw.valid ||
+        raw.is_valid ||
+        raw.valid_number ||
+        raw.isValid ||
+        raw.carrier ||
+        raw.country ||
+        raw.country_code ||
+        raw.provider
+    )
   );
 }
 
@@ -198,9 +248,7 @@ function buildPhoneFinding(
     .join("\n");
 
   const provider =
-    cleanExtractedValue(safeString(raw.carrier)) ||
-    cleanExtractedValue(safeString(raw.provider)) ||
-    cleanExtractedValue(safeString(raw.operator)) ||
+    firstUseful(raw.carrier, raw.provider, raw.operator) ||
     pickPattern(combinedText, [
       /"carrier"\s*:\s*"([^"]+)"/i,
       /"provider"\s*:\s*"([^"]+)"/i,
@@ -216,10 +264,7 @@ function buildPhoneFinding(
     "Nicht eindeutig zuordenbar";
 
   const country = countryLabel(
-    cleanExtractedValue(safeString(raw.country)) ||
-      cleanExtractedValue(safeString(raw.country_code)) ||
-      cleanExtractedValue(safeString(raw.country_name)) ||
-      cleanExtractedValue(safeString(raw.region)) ||
+    firstUseful(raw.country, raw.country_code, raw.country_name, raw.region) ||
       pickPattern(combinedText, [
         /"country"\s*:\s*"([^"]+)"/i,
         /"country_code"\s*:\s*"([^"]+)"/i,
@@ -232,20 +277,22 @@ function buildPhoneFinding(
       ])
   );
 
-  const validRaw =
-    raw.valid ??
-    raw.is_valid ??
-    raw.valid_number ??
-    raw.isValid ??
-    pickPattern(combinedText, [
-      /"valid"\s*:\s*(true|false|"true"|"false"|"valid"|"invalid")/i,
-      /"is_valid"\s*:\s*(true|false|"true"|"false"|"valid"|"invalid")/i,
-      /nummer\s+g[uü]ltig\s*[:=|]\s*(true|false|ja|nein|valid|invalid|g[uü]ltig|ung[uü]ltig)/i,
-      /rufnummer\s+validiert\s*[:=|]\s*(ja|nein|true|false|valid|invalid)/i,
-      /valid\s*[:=|]\s*(true|false|yes|no|valid|invalid)/i,
-      /status\s*[:=|]\s*(valid|invalid|true|false|active|inactive|aktiv|inaktiv)/i,
-    ]) ||
-    raw.status;
+  const patternValid = pickPattern(combinedText, [
+    /"valid"\s*:\s*(true|false|"true"|"false"|"valid"|"invalid")/i,
+    /"is_valid"\s*:\s*(true|false|"true"|"false"|"valid"|"invalid")/i,
+    /nummer\s+g[uü]ltig\s*[:=|]\s*(true|false|ja|nein|valid|invalid|g[uü]ltig|ung[uü]ltig)/i,
+    /rufnummer\s+validiert\s*[:=|]\s*(ja|nein|true|false|valid|invalid)/i,
+    /valid\s*[:=|]\s*(true|false|yes|no|valid|invalid)/i,
+    /status\s*[:=|]\s*(valid|invalid|true|false|active|inactive|aktiv|inaktiv)/i,
+  ]);
+  const validRaw = firstDefined(
+    raw.valid,
+    raw.is_valid,
+    raw.valid_number,
+    raw.isValid,
+    patternValid,
+    raw.status
+  );
 
   const validLabel = normalizeBoolText(validRaw);
   const isValid = validLabel === "Ja";
@@ -269,7 +316,12 @@ function buildPhoneFinding(
     platform: hasProvider ? provider : "Telefon-Metadaten",
     detail: detailLines.join("\n"),
     risk: String(raw.risk || "medium").toLowerCase(),
-    confidence: typeof raw.confidence === "number" ? raw.confidence : hasProvider || hasCountry || isValid ? 75 : 55,
+    confidence:
+      typeof raw.confidence === "number"
+        ? raw.confidence
+        : hasProvider || hasCountry || isValid
+          ? 75
+          : 55,
     source,
   };
 }
@@ -297,16 +349,15 @@ export function findingFromUpstream(
   }
 
   const platform = String(
-    raw.platform || raw.type || raw.service || raw.country || moduleLabel(moduleKey(source))
+    raw.platform ||
+      raw.type ||
+      raw.service ||
+      raw.country ||
+      moduleLabel(moduleKey(source))
   );
   const url = typeof raw.url === "string" ? raw.url : undefined;
-  const rawText =
-    safeString(raw.raw) ||
-    safeString(raw.raw_output) ||
-    safeString(raw.output) ||
-    safeString(raw.stdout) ||
-    safeString(raw.data);
-  const status = typeof raw.status === "string" ? raw.status : "";
+  const rawText = firstUseful(raw.raw, raw.raw_output, raw.output, raw.stdout, raw.data);
+  const status = safeString(raw.status);
 
   let title = String(raw.title || platform || "Öffentlicher Treffer");
   let description = String(raw.description || raw.detail || raw.message || "");
@@ -397,9 +448,8 @@ function collectFindingObjects(data: Record<string, unknown>): Array<{
   if (out.length === 0) {
     const total = Number(data.total_findings ?? data.result_count ?? data.count ?? 0);
     const hasSummary = Boolean(safeString(data.summary) || safeString(data.message));
-    const hasRaw = Boolean(
-      safeString(data.raw_output) || safeString(data.output) || safeString(data.stdout)
-    );
+    const rawPayload = firstUseful(data.raw_output, data.output, data.stdout);
+    const hasRaw = Boolean(rawPayload);
     const topScore = Number(data.exposure_score ?? 0);
     if (total > 0 || topScore > 0 || hasRaw || hasSummary) {
       out.push({
@@ -413,7 +463,7 @@ function collectFindingObjects(data: Record<string, unknown>): Array<{
           description:
             safeString(data.summary) ||
             safeString(data.message) ||
-            textFromUnknown(data.raw_output || data.output || data.stdout) ||
+            rawPayload ||
             `${total} Datenpunkt(e) vom Scanner gemeldet.`,
           risk: safeString(data.risk_level) || "low",
           confidence: total > 0 ? Math.min(95, 55 + total * 4) : 40,
@@ -439,29 +489,29 @@ function buildModuleSummaries(modules: DemoModuleResult[]): string {
 
 export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
   const buckets = new Map<string, DemoFinding[]>();
-  for (const f of findings) {
-    const id = moduleKey(f.source || f.platform || "unknown");
+  for (const finding of findings) {
+    const id = moduleKey(finding.source || finding.platform || "unknown");
     const list = buckets.get(id) || [];
-    list.push(f);
+    list.push(finding);
     buckets.set(id, list);
   }
 
   const modules: DemoModuleResult[] = [...buckets.entries()].map(
     ([id, items]) => {
-      const errors = items.filter((i) => i.category === "ERROR");
-      const started = items.some((i) => /gestartet|started/i.test(i.title));
-      const real = items.filter((i) => i.category !== "ERROR");
+      const errors = items.filter((item) => item.category === "ERROR");
+      const started = items.some((item) => /gestartet|started/i.test(item.title));
+      const real = items.filter((item) => item.category !== "ERROR");
       let status: DemoModuleResult["status"] = "ok";
       if (errors.length && real.length === 0) status = "error";
-      else if (started && real.every((i) => /gestartet|started/i.test(i.title))) {
+      else if (started && real.every((item) => /gestartet|started/i.test(item.title))) {
         status = "started";
       } else if (real.length === 0) status = "empty";
 
       const count = real.filter(
-        (i) =>
-          !/gestartet|started/i.test(i.title) &&
-          i.category !== "STATUS" &&
-          i.category !== "EMPTY"
+        (item) =>
+          !/gestartet|started/i.test(item.title) &&
+          item.category !== "STATUS" &&
+          item.category !== "EMPTY"
       ).length;
 
       return {
@@ -523,14 +573,15 @@ export function normalizeUpstreamPayload(input: {
   }
 
   const scoredFindings = filterScoreFindings(findings);
-  const modules = groupModules(scoredFindings.length ? scoredFindings : findings);
+  const displayFindings = scoredFindings.length ? scoredFindings : findings;
+  const modules = groupModules(displayFindings);
   const computed = computeDemoExposureScore(scoredFindings);
   const score = computed.usableCount > 0 ? computed.score : (upstreamScore ?? 0);
   const risk = computed.usableCount > 0 ? computed.risk : upstreamRisk || "Niedrig";
   const platforms = [
     ...new Set(
-      (scoredFindings.length ? scoredFindings : findings)
-        .map((f) => f.platform || f.source || "")
+      displayFindings
+        .map((finding) => finding.platform || finding.source || "")
         .filter(Boolean)
         .map(String)
     ),
