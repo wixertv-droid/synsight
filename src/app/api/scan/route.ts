@@ -20,13 +20,8 @@ const DEMO_SCAN_RATE_LIMIT = {
   blockMs: 60 * 60_000,
 };
 
-const ALLOWED_MODULES = new Set([
-  "holehe",
-  "maigret",
-  "phoneinfoga",
-  "theHarvester",
-  "photon",
-]);
+/** Public/free DemoScanner: only the fast modules are allowed. */
+const ALLOWED_MODULES = new Set(["holehe", "maigret", "phoneinfoga"]);
 
 function cleanQuery(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -61,8 +56,8 @@ function upstreamErrorMessage(
 }
 
 /**
- * Sequential module step:
- *   { query, module: "holehe"|"maigret"|… }
+ * Sequential public module step:
+ *   { query, module: "holehe" | "maigret" | "phoneinfoga" }
  */
 export async function POST(req: Request) {
   const csrfError = validateMutationOrigin(req);
@@ -109,7 +104,7 @@ export async function POST(req: Request) {
         {
           status: "error",
           message:
-            "module fehlt oder ungültig. Erlaubt: holehe, maigret, phoneinfoga, theHarvester, photon.",
+            "module fehlt oder ungültig. Erlaubt: holehe, maigret, phoneinfoga.",
           risk_level: "Fehler",
         },
         { status: 400, headers: rateLimitHeaders(attempt) }
@@ -151,25 +146,11 @@ export async function POST(req: Request) {
         data = null;
       }
 
-      // Legacy scanner without module= support: retry with {query} only
-      // (auto-detects tool). Tag findings with requested module when possible.
-      if (
-        upstreamResponse.status === 400 &&
-        data &&
-        /missing query|unknown module/i.test(
-          String(data.error || data.message || "")
-        ) === false &&
-        !Array.isArray(data.findings)
-      ) {
-        // fall through to error below
-      }
-
       if (
         !upstreamResponse.ok &&
         upstreamResponse.status === 400 &&
         /module/i.test(String(data?.error || data?.message || text))
       ) {
-        // retry legacy
         const legacy = await fetch(creds.url, {
           method: "POST",
           headers: authHeaders(creds.apiKey),
