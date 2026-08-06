@@ -4,7 +4,11 @@ import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
 export type DemoModuleId = "holehe" | "maigret" | "phoneinfoga";
 
 export type ModuleStepStatus =
-  "pending" | "running" | "done" | "error" | "skipped";
+  | "pending"
+  | "running"
+  | "done"
+  | "error"
+  | "skipped";
 
 export interface ScanStep {
   id: string;
@@ -27,27 +31,26 @@ export const MODULE_META: Record<
   { label: string; short: string; color: string }
 > = {
   holehe: {
-    label: "Holehe",
-    short: "E-Mail Accounts",
+    label: "Identitätsabgleich",
+    short: "E-Mail-Signale",
     color: "#70e7ff",
   },
   maigret: {
-    label: "Maigret",
-    short: "Username OSINT",
+    label: "Profilkorrelation",
+    short: "Öffentliche Spuren",
     color: "#29b6f6",
   },
   phoneinfoga: {
-    label: "PhoneInfoga",
-    short: "Telefon Intel",
+    label: "Kommunikations-Metadaten",
+    short: "Netz- und Anbieterprüfung",
     color: "#5ce1ff",
   },
 };
 
 /**
  * Public free scan plan — fast sequential calls only.
- * Order: Holehe → Maigret → PhoneInfoga.
- * Heavy modules like SpiderFoot, theHarvester and Photon stay out of the
- * logged-out landing scan and belong to paid/deep analysis flows later.
+ * Heavy/deep modules stay out of the logged-out landing scan and belong to
+ * paid or authenticated analysis flows later.
  */
 export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
   const queries = normalizeScanQueries(rawQueries);
@@ -55,30 +58,30 @@ export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
 
   if (queries.email) {
     steps.push({
-      id: "holehe-email",
+      id: "email-identity-correlation",
       module: "holehe",
-      label: "Holehe",
-      hint: "Account-Nachweise zur E-Mail",
+      label: "Identitätsabgleich",
+      hint: "E-Mail-Signale und Konto-Korrelation",
       query: queries.email,
       field: "email",
     });
   }
   if (queries.username) {
     steps.push({
-      id: "maigret-username",
+      id: "public-profile-correlation",
       module: "maigret",
-      label: "Maigret",
-      hint: "Öffentliche Profile zum Username",
+      label: "Profilkorrelation",
+      hint: "Öffentliche Zuordnungen und Profilspuren",
       query: queries.username,
       field: "username",
     });
   }
   if (queries.phone) {
     steps.push({
-      id: "phoneinfoga-phone",
+      id: "communication-metadata-check",
       module: "phoneinfoga",
-      label: "PhoneInfoga",
-      hint: "Telefon-/Carrier-Hinweise",
+      label: "Kommunikations-Metadaten",
+      hint: "Netz- und Anbieter-Metadaten",
       query: queries.phone,
       field: "phone",
     });
