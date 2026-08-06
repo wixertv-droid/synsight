@@ -1,11 +1,14 @@
 import type { ScanQueries } from "@/components/sections/DemoScanner/types";
 import { normalizeScanQueries } from "@/lib/demo/normalize-queries";
 
-export type DemoModuleId =
-  "holehe" | "maigret" | "phoneinfoga" | "theHarvester" | "photon";
+export type DemoModuleId = "holehe" | "maigret" | "phoneinfoga";
 
 export type ModuleStepStatus =
-  "pending" | "running" | "done" | "error" | "skipped";
+  | "pending"
+  | "running"
+  | "done"
+  | "error"
+  | "skipped";
 
 export interface ScanStep {
   id: string;
@@ -28,36 +31,26 @@ export const MODULE_META: Record<
   { label: string; short: string; color: string }
 > = {
   holehe: {
-    label: "Holehe",
-    short: "E-Mail Accounts",
+    label: "Identitätsabgleich",
+    short: "E-Mail-Signale",
     color: "#70e7ff",
   },
   maigret: {
-    label: "Maigret",
-    short: "Username OSINT",
+    label: "Profilkorrelation",
+    short: "Öffentliche Spuren",
     color: "#29b6f6",
   },
   phoneinfoga: {
-    label: "PhoneInfoga",
-    short: "Telefon Intel",
+    label: "Kommunikations-Metadaten",
+    short: "Netz- und Anbieterprüfung",
     color: "#5ce1ff",
-  },
-  theHarvester: {
-    label: "theHarvester",
-    short: "Domain Harvest",
-    color: "#00d4ff",
-  },
-  photon: {
-    label: "Photon",
-    short: "Web Crawl",
-    color: "#a7f3ff",
   },
 };
 
 /**
- * Sequential plan — one Contabo module call per step (avoids nginx timeout).
- * Order: Holehe → Maigret → PhoneInfoga → theHarvester → Photon
- * (only steps with matching input fields).
+ * Public free scan plan — fast sequential calls only.
+ * Heavy/deep modules stay out of the logged-out landing scan and belong to
+ * paid or authenticated analysis flows later.
  */
 export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
   const queries = normalizeScanQueries(rawQueries);
@@ -65,52 +58,32 @@ export function buildScanPlan(rawQueries: ScanQueries): ScanStep[] {
 
   if (queries.email) {
     steps.push({
-      id: "holehe-email",
+      id: "email-identity-correlation",
       module: "holehe",
-      label: "Holehe",
-      hint: "Account-Nachweise zur E-Mail",
+      label: "Identitätsabgleich",
+      hint: "E-Mail-Signale und Konto-Korrelation",
       query: queries.email,
       field: "email",
     });
   }
   if (queries.username) {
     steps.push({
-      id: "maigret-username",
+      id: "public-profile-correlation",
       module: "maigret",
-      label: "Maigret",
-      hint: "Öffentliche Profile zum Username",
+      label: "Profilkorrelation",
+      hint: "Öffentliche Zuordnungen und Profilspuren",
       query: queries.username,
       field: "username",
     });
   }
   if (queries.phone) {
     steps.push({
-      id: "phoneinfoga-phone",
+      id: "communication-metadata-check",
       module: "phoneinfoga",
-      label: "PhoneInfoga",
-      hint: "Telefon-/Carrier-Hinweise",
+      label: "Kommunikations-Metadaten",
+      hint: "Netz- und Anbieter-Metadaten",
       query: queries.phone,
       field: "phone",
-    });
-  }
-  if (queries.domain) {
-    steps.push({
-      id: "harvester-domain",
-      module: "theHarvester",
-      label: "theHarvester",
-      hint: "E-Mails & Hosts zur Domain",
-      query: queries.domain,
-      field: "domain",
-    });
-  }
-  if (queries.url) {
-    steps.push({
-      id: "photon-url",
-      module: "photon",
-      label: "Photon",
-      hint: "Web-Crawl & Keys",
-      query: queries.url,
-      field: "url",
     });
   }
 

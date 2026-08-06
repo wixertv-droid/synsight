@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
+import { canExposeEmailPreviewTokens } from "@/lib/config/env";
 import {
   checkRateLimit,
   PASSWORD_RESET_RATE_LIMIT,
@@ -40,9 +41,10 @@ export async function POST(request: Request) {
   const result = await requestPasswordReset(parsed.data.email);
   const attempted = recordRateLimitAttempt(key, PASSWORD_RESET_RATE_LIMIT);
 
-  // Preview only when delivery is log-link (dev/ops) — never for provider mode.
   const showPreview =
-    result.deliveryMode === "log-link" && Boolean(result.token);
+    canExposeEmailPreviewTokens() &&
+    result.deliveryMode === "log-link" &&
+    Boolean(result.token);
 
   return NextResponse.json(
     apiSuccess({

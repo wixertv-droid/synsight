@@ -1,6 +1,8 @@
 /**
- * DemoScanner exposure score — derived only from Contabo specialist modules
- * (Holehe, Maigret, PhoneInfoga, theHarvester, Photon). SpiderFoot is ignored.
+ * DemoScanner exposure score — derived from public landing-page scanner findings.
+ * Specialist modules (Holehe, Maigret, PhoneInfoga, theHarvester, Photon)
+ * get higher weights; generic SpiderFoot / OSINT fallback payloads are still
+ * shown and scored so older scanner deployments do not result in an empty UI.
  */
 
 export type DemoScoreFinding = {
@@ -24,14 +26,11 @@ function riskRank(risk: string): number {
   return 1;
 }
 
-function isSpiderFoot(source?: string, title?: string): boolean {
-  return /spiderfoot/i.test(`${source || ""} ${title || ""}`);
-}
-
 function isNoise(finding: DemoScoreFinding): boolean {
-  if ((finding.category || "").toUpperCase() === "ERROR") return true;
-  if (/gestartet|started/i.test(finding.title || "")) return true;
-  if (isSpiderFoot(finding.source, finding.title)) return true;
+  const category = (finding.category || "").toUpperCase();
+  if (category === "ERROR") return true;
+  if (category === "STATUS" || category === "EMPTY") return true;
+  if (/gestartet|started|keine treffer/i.test(finding.title || "")) return true;
   return false;
 }
 
@@ -42,10 +41,12 @@ function moduleWeight(source?: string): number {
   if (s.includes("phone")) return 10;
   if (s.includes("harvest")) return 5;
   if (s.includes("photon")) return 4;
+  if (s.includes("spiderfoot")) return 5;
+  if (s.includes("publicosint") || s.includes("osint")) return 4;
   return 3;
 }
 
-/** Filter findings that should influence the demo exposure score / UI. */
+/** Filter findings that should influence the demo exposure score. */
 export function filterScoreFindings<T extends DemoScoreFinding>(
   findings: T[]
 ): T[] {

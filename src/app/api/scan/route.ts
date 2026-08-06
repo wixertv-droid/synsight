@@ -8,25 +8,20 @@ import { getClientIp, validateMutationOrigin } from "@/lib/security/request";
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
 import { resolveDemoScanCredentials } from "@/lib/demo/demo-scan-credentials";
 
-/** One module step — keep under nginx proxy_read_timeout. */
+/** One public scan step — keep under nginx proxy_read_timeout. */
 const DEMO_SCAN_STEP_TIMEOUT_MS = Number(
   process.env.DEMO_SCAN_STEP_TIMEOUT_MS || 75_000
 );
 
 const DEMO_SCAN_RATE_LIMIT = {
   ...COMMUNICATION_RATE_LIMIT,
-  limit: 40,
+  limit: 12,
   windowMs: 60 * 60_000,
-  blockMs: 15 * 60_000,
+  blockMs: 60 * 60_000,
 };
 
-const ALLOWED_MODULES = new Set([
-  "holehe",
-  "maigret",
-  "phoneinfoga",
-  "theHarvester",
-  "photon",
-]);
+/** Public/free DemoScanner: only the fast modules are allowed internally. */
+const ALLOWED_MODULES = new Set(["holehe", "maigret", "phoneinfoga"]);
 
 function cleanQuery(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -46,9 +41,23 @@ function authHeaders(apiKey: string): Record<string, string> {
   return headers;
 }
 
+function upstreamErrorMessage(
+  status: number,
+  data: Record<string, unknown> | null,
+  text = ""
+): string {
+  const upstreamMessage =
+    (typeof data?.error === "string" && data.error) ||
+    (typeof data?.message === "string" && data.message) ||
+    "";
+  if (upstreamMessage) return upstreamMessage;
+  if (text.trim().startsWith("<")) return `Proxy/Timeout HTML HTTP ${status}`;
+  return `Scanner HTTP ${status}`;
+}
+
 /**
- * Sequential module step:
- *   { query, module: "holehe"|"maigret"|… }
+ * Sequential public scan step.
+ * Visible UI texts are neutral; internal module names are never displayed.
  */
 export async function POST(req: Request) {
   const csrfError = validateMutationOrigin(req);
@@ -84,7 +93,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           status: "error",
-          message: "query fehlt.",
+          message: "Zielwert fehlt oder ist ungültig.",
           risk_level: "Fehler",
         },
         { status: 400, headers: rateLimitHeaders(attempt) }
@@ -94,8 +103,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           status: "error",
-          message:
-            "module fehlt oder ungültig. Erlaubt: holehe, maigret, phoneinfoga, theHarvester, photon.",
+          message: "Dieser öffentliche Prüfschritt ist nicht freigegeben.",
           risk_level: "Fehler",
         },
         { status: 400, headers: rateLimitHeaders(attempt) }
@@ -103,23 +111,12 @@ export async function POST(req: Request) {
     }
 
     const creds = await resolveDemoScanCredentials();
-    if (!creds?.url) {
+    if (!creds?.url || !creds.apiKey) {
       return NextResponse.json(
         {
           status: "error",
           message:
-            "DemoScanner ist nicht konfiguriert (Admin → Website → APIs).",
-          risk_level: "Fehler",
-        },
-        { status: 503, headers: rateLimitHeaders(attempt) }
-      );
-    }
-    if (!creds.apiKey) {
-      return NextResponse.json(
-        {
-          status: "error",
-          message:
-            "DemoScanner-API-Key fehlt oder ist nicht lesbar. Bitte unter Admin → Website → APIs den Contabo-Key neu speichern oder DEMO_SCAN_API_KEY in .env.production setzen.",
+            "DemoScanner ist nicht vollständig konfiguriert (Admin → Website → APIs).",
           risk_level: "Fehler",
         },
         { status: 503, headers: rateLimitHeaders(attempt) }
@@ -133,14 +130,14 @@ export async function POST(req: Request) {
     );
 
     try {
-      const contaboResponse = await fetch(creds.url, {
+      const upstreamResponse = await fetch(creds.url, {
         method: "POST",
         headers: authHeaders(creds.apiKey),
         body: JSON.stringify({ query, module: scanModule }),
         signal: controller.signal,
       });
 
-      const text = await contaboResponse.text();
+      const text = await upstreamResponse.text();
       let data: Record<string, unknown> | null = null;
       try {
         data = text ? (JSON.parse(text) as Record<string, unknown>) : null;
@@ -148,25 +145,11 @@ export async function POST(req: Request) {
         data = null;
       }
 
-      // Legacy Contabo without module= support: retry with {query} only
-      // (auto-detects tool). Tag findings with requested module when possible.
       if (
-        contaboResponse.status === 400 &&
-        data &&
-        /missing query|unknown module/i.test(
-          String(data.error || data.message || "")
-        ) === false &&
-        !Array.isArray(data.findings)
-      ) {
-        // fall through to error below
-      }
-
-      if (
-        !contaboResponse.ok &&
-        contaboResponse.status === 400 &&
+        !upstreamResponse.ok &&
+        upstreamResponse.status === 400 &&
         /module/i.test(String(data?.error || data?.message || text))
       ) {
-        // retry legacy
         const legacy = await fetch(creds.url, {
           method: "POST",
           headers: authHeaders(creds.apiKey),
@@ -185,10 +168,7 @@ export async function POST(req: Request) {
           return NextResponse.json(
             {
               status: "error",
-              message:
-                (typeof data?.error === "string" && data.error) ||
-                (typeof data?.message === "string" && data.message) ||
-                `Contabo HTTP ${legacy.status}`,
+              message: upstreamErrorMessage(legacy.status, data, legacyText),
               risk_level: "Fehler",
               module: scanModule,
             },
@@ -198,22 +178,17 @@ export async function POST(req: Request) {
             }
           );
         }
-      } else if (!contaboResponse.ok || !data) {
+      } else if (!upstreamResponse.ok || !data) {
         return NextResponse.json(
           {
             status: "error",
-            message:
-              (typeof data?.error === "string" && data.error) ||
-              (typeof data?.message === "string" && data.message) ||
-              (text.trim().startsWith("<")
-                ? `Proxy/Timeout HTML HTTP ${contaboResponse.status}`
-                : `Contabo HTTP ${contaboResponse.status}`),
+            message: upstreamErrorMessage(upstreamResponse.status, data, text),
             risk_level: "Fehler",
             module: scanModule,
           },
           {
             status:
-              contaboResponse.status >= 500 ? 502 : contaboResponse.status,
+              upstreamResponse.status >= 500 ? 502 : upstreamResponse.status,
             headers: rateLimitHeaders(attempt),
           }
         );
@@ -245,10 +220,10 @@ export async function POST(req: Request) {
       {
         status: "error",
         message: aborted
-          ? "Modul-Timeout — Schritt übersprungen / erneut versuchen."
+          ? "Der Prüfschritt hat zu lange gedauert und wurde übersprungen."
           : error instanceof Error
             ? error.message
-            : "Modul-Scan fehlgeschlagen.",
+            : "Prüfschritt fehlgeschlagen.",
         risk_level: "Fehler",
       },
       { status: aborted ? 504 : 502, headers: rateLimitHeaders(attempt) }

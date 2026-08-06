@@ -8,6 +8,8 @@ import type {
   ApiResult,
   ScanData,
   ScanQueries,
+  ScanFinding,
+  ScanModule,
   ModuleStepState,
 } from "./types";
 
@@ -32,103 +34,212 @@ function dossierIdFromTarget(target: string): string {
   return hash.toString(36).toUpperCase().padStart(8, "0").slice(0, 8);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function deduplicateFindings(findings: any[]) {
-  const seen = new Set();
-  return findings.filter((f) => {
-    let domain = "";
-    try {
-      if (f.url) domain = new URL(f.url).hostname.replace("www.", "");
-    } catch {
-      // ignore
-    }
-    const key = `${f.title}-${domain}`.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function getIntelDescription(type: string) {
-  if (type === "email")
-    return "Signatur validiert: Aktive Nutzung für Logins oder System-Registrierungen entdeckt.";
-  if (type === "user")
-    return "Cross-Referenzierung: Identität in der Datenbank des Betreibers verifiziert.";
-  if (type === "phone")
-    return "Netzwerk-Routing: Endgerät ist aktiv und antwortet auf HLR-Lookup.";
-  return "Datenpunkt in externer Datenbank korreliert.";
+function scrub(value: string) {
+  return value
+    .replace(/\bTrue\b/g, "Ja")
+    .replace(/\bFalse\b/g, "Nein")
+    .replace(/Holehe|Maigret|PhoneInfoga/gi, "SynSight")
+    .trim();
 }
 
 function getThreatTheme(score: number) {
-  if (score >= 70)
+  if (score >= 70) {
     return {
-      color: "red",
       text: "text-red-400",
       border: "border-red-500/30",
       glow: "shadow-[0_0_40px_rgba(239,68,68,0.15)]",
       badgeBg: "bg-red-500/10",
+      dot: "bg-red-400",
       label: "CRITICAL EXPOSURE",
     };
-  if (score >= 40)
+  }
+  if (score >= 40) {
     return {
-      color: "amber",
       text: "text-amber-400",
       border: "border-amber-500/30",
       glow: "shadow-[0_0_40px_rgba(245,158,11,0.15)]",
       badgeBg: "bg-amber-500/10",
+      dot: "bg-amber-400",
       label: "ELEVATED RISK",
     };
+  }
   return {
-    color: "cyan",
     text: "text-cyan-400",
     border: "border-cyan-500/30",
     glow: "shadow-[0_0_40px_rgba(34,211,238,0.15)]",
     badgeBg: "bg-cyan-500/10",
+    dot: "bg-cyan-400",
     label: "MONITORED",
   };
 }
 
-function enhanceTitle(title: string, url?: string) {
-  const cleanTitle = title.replace(
-    /Holehe meldet Account auf/gi,
-    "VERIFIZIERT:"
-  );
-  if (cleanTitle.toLowerCase().includes("öffentliches profil") && url) {
-    try {
-      const hostname = new URL(url).hostname.replace("www.", "").split(".")[0];
-      return `PROFIL: ${hostname.toUpperCase()}`;
-    } catch {
-      // ignore
-    }
-  }
-  return cleanTitle;
+function moduleType(mod: ScanModule): "email" | "user" | "phone" | "other" {
+  const text = `${mod.id} ${mod.label}`.toLowerCase();
+  if (/email|identit|e-mail/.test(text) || text.includes("holehe")) return "email";
+  if (/profil|username|alias|user/.test(text) || text.includes("maigret")) return "user";
+  if (/phone|telefon|kommunikation|netz/.test(text) || text.includes("phoneinfoga")) return "phone";
+  return "other";
 }
 
-// Extrahieren des Providers für das Telefon-Modul
-function extractProvider(text: string) {
-  const match = text.match(/provider:\s*([^|]+)/i);
-  return match ? match[1].trim() : "Unbekannt";
+function moduleTitle(type: ReturnType<typeof moduleType>) {
+  if (type === "email") return "E-MAIL IDENTITY EXPOSURE";
+  if (type === "user") return "PUBLIC PROFILE CORRELATION";
+  if (type === "phone") return "TELECOMMUNICATIONS INTELLIGENCE";
+  return "PUBLIC SIGNAL INTELLIGENCE";
+}
+
+function moduleDescription(type: ReturnType<typeof moduleType>) {
+  if (type === "email") {
+    return "SynSight prüft, ob die E-Mail-Adresse in öffentlichen Konto- und Identitätssignalen wiedererkennbar ist.";
+  }
+  if (type === "user") {
+    return "Öffentliche Profilspuren werden verdichtet, um wiederverwendete Namen, Alias-Strukturen und sichtbare Plattformbezüge aufzudecken.";
+  }
+  if (type === "phone") {
+    return "Die Telefonnummer wird auf strukturelle Plausibilität, Anbieterbezug und verwertbare Kommunikations-Metadaten geprüft.";
+  }
+  return "Zusätzliche öffentliche Signale werden ausgewertet und für den kostenlosen Schnellcheck verdichtet.";
+}
+
+function getIntelDescription(type: ReturnType<typeof moduleType>, hasFinding = true) {
+  if (!hasFinding) {
+    if (type === "email") return "Prüfung abgeschlossen: Keine kritischen Konto-Signale in der Gastvorschau.";
+    if (type === "user") return "Prüfung abgeschlossen: Keine starken öffentlichen Profilspuren in der Gastvorschau.";
+    if (type === "phone") return "Prüfung abgeschlossen: Keine zusätzlichen kritischen Telefon-Signale in der Gastvorschau.";
+    return "Prüfung abgeschlossen: Keine anzeigbaren Gast-Treffer.";
+  }
+  if (type === "email") return "Öffentliche Konto- und Identitätssignale wurden korreliert.";
+  if (type === "user") return "Öffentliche Profil- und Aliasbezüge wurden korreliert.";
+  if (type === "phone") return "Telefon- und Anbieter-Metadaten wurden ausgewertet.";
+  return "Öffentliches Signal wurde korreliert.";
+}
+
+function linesFromFinding(finding: ScanFinding): string[] {
+  const value = scrub(finding.detail || finding.description || "");
+  return value
+    .split(/\n|\s\|\s/g)
+    .map((line) => scrub(line))
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function valueFromLines(lines: string[], label: string) {
+  const line = lines.find((entry) => entry.toLowerCase().startsWith(label.toLowerCase()));
+  if (!line) return "Nicht eindeutig";
+  return line.split(":").slice(1).join(":").trim() || "Nicht eindeutig";
+}
+
+function neutralTitle(finding: ScanFinding, type: ReturnType<typeof moduleType>) {
+  if (type === "email") return scrub(finding.title || "Konto-Signal").replace(/Account\s*·\s*/i, "Konto-Signal · ");
+  if (type === "user") return finding.url ? "Öffentliche Profilspur" : scrub(finding.title || "Profilkorrelation");
+  if (type === "phone") return "Telekommunikations-Intelligenz";
+  return scrub(finding.title || "Öffentliches Signal");
 }
 
 function SmartUrlTease({ url }: { url?: string }) {
   if (!url) return null;
   try {
-    const u = new URL(url);
+    const parsed = new URL(url);
     return (
-      <div className="flex items-center mt-3 font-mono text-xs border border-white/10 bg-white/5 p-2 rounded-xl w-fit backdrop-blur-md">
-        <span className="text-cyan-300 font-bold">{u.hostname}</span>
-        <span className="text-white/20 blur-[3px] select-none pointer-events-none">
-          /encrypted-path-hidden
-        </span>
+      <div className="mt-3 flex w-fit items-center rounded-xl border border-white/10 bg-white/5 p-2 font-mono text-xs backdrop-blur-md">
+        <span className="font-bold text-cyan-300">{parsed.hostname}</span>
+        <span className="select-none text-white/20 blur-[3px]">/encrypted-path-hidden</span>
       </div>
     );
   } catch {
-    return (
-      <div className="text-white/20 blur-[4px] mt-2 text-xs select-none">
-        {url}
-      </div>
-    );
+    return null;
   }
+}
+
+function PhoneFindingCard({ finding }: { finding: ScanFinding }) {
+  const lines = linesFromFinding(finding);
+  const valid = valueFromLines(lines, "Rufnummer validiert");
+  const provider = valueFromLines(lines, "Netzbetreiber");
+  const region = valueFromLines(lines, "Regionale Zuordnung");
+  const rating =
+    lines.find((line) => line.toLowerCase().startsWith("bewertung:")) ||
+    "Bewertung: Die Nummer ist strukturell prüfbar und einem Anbieter-Kontext zuzuordnen.";
+
+  return (
+    <div className="rounded-2xl border border-cyan-500/15 bg-black/25 p-5 transition-all hover:border-cyan-400/30">
+      <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="mb-2 text-sm font-bold uppercase tracking-[0.18em] text-white/90">
+            Telekommunikations-Intelligenz
+          </div>
+          <p className="max-w-2xl text-xs leading-relaxed text-white/50">
+            Für den angegebenen Telefonwert konnten verwertbare Anbieter- und Strukturhinweise ausgewertet werden.
+          </p>
+        </div>
+        <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/20 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-200">
+          Telefonwert geprüft
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="mb-1 text-[9px] uppercase tracking-[0.24em] text-white/35">Validiert</div>
+          <div className="font-bold text-cyan-200">{valid}</div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="mb-1 text-[9px] uppercase tracking-[0.24em] text-white/35">Anbieter</div>
+          <div className="font-bold text-cyan-200">{provider}</div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="mb-1 text-[9px] uppercase tracking-[0.24em] text-white/35">Region</div>
+          <div className="font-bold text-cyan-200">{region}</div>
+        </div>
+      </div>
+      <div className="mt-4 border-t border-white/5 pt-4 text-xs leading-relaxed text-white/45">
+        {scrub(rating.replace(/^Bewertung:\s*/i, ""))}
+      </div>
+    </div>
+  );
+}
+
+function FindingCard({
+  finding,
+  index,
+  type,
+}: {
+  finding: ScanFinding;
+  index: number;
+  type: ReturnType<typeof moduleType>;
+}) {
+  if (type === "phone") return <PhoneFindingCard finding={finding} />;
+  return (
+    <div
+      className="relative rounded-2xl border border-white/5 bg-black/20 p-5 opacity-0 transition-all duration-300 animate-[fadeInUp_0.4s_ease-out_forwards] hover:border-cyan-500/20 hover:bg-white/[0.02]"
+      style={{ animationDelay: `${index * 0.05}s` }}
+    >
+      <div className="flex items-start gap-5">
+        <div className="mt-1 w-8 shrink-0 text-xl font-black text-white/10">
+          {String(index + 1).padStart(2, "0")}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 text-sm font-bold uppercase tracking-wider text-white/90">
+            {neutralTitle(finding, type)}
+          </div>
+          <div className="mb-2 text-xs font-light leading-relaxed text-white/45">
+            {scrub(finding.description || finding.detail || "Öffentliches Signal wurde im Schnellcheck korreliert.")}
+          </div>
+          <SmartUrlTease url={finding.url} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function cleanModules(rawData: ScanData | null): ScanModule[] {
+  return (rawData?.modules || [])
+    .filter((module) => !/spiderfoot/i.test(`${module.id} ${module.label}`))
+    .map((module) => {
+      const findings = (module.findings || []).filter(
+        (finding) =>
+          (finding.category || "").toUpperCase() !== "ERROR" &&
+          !/gestartet|started/i.test(finding.title || "")
+      );
+      return { ...module, findings, count: findings.length };
+    });
 }
 
 export default function ScannerOverlay({
@@ -144,43 +255,27 @@ export default function ScannerOverlay({
   const router = useRouter();
   const [showContent, setShowContent] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-
-  // GARANTIERT LEER BEIM START -> ALLES ZU!
-  const [expandedModules, setExpandedModules] = useState<
-    Record<string, boolean>
-  >({});
-
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
   const dossierId = useMemo(() => dossierIdFromTarget(target), [target]);
   const [dossierTime] = useState(() => new Date().toLocaleString("de-DE"));
-
   const score = rawData?.exposureScore || 0;
   const theme = getThreatTheme(score);
+  const modules = useMemo(() => cleanModules(rawData), [rawData]);
+  const totalFindings = modules.reduce((sum, module) => sum + module.count, 0);
 
   useEffect(() => {
-    if (phase === "fullscreen_result" || phase === "scanning") {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (phase === "fullscreen_result" || phase === "scanning") document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [phase]);
-
-  const toggleModule = (id: string) => {
-    setExpandedModules((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
 
   useEffect(() => {
     if (phase === "fullscreen_result") {
       setIsClosing(false);
       const timer = setTimeout(() => setShowContent(true), 150);
       return () => clearTimeout(timer);
-    }
-    if (phase === "closing_crt") {
-      setIsClosing(true);
-      setShowContent(false);
-      return;
     }
     setShowContent(false);
     setIsClosing(false);
@@ -206,286 +301,112 @@ export default function ScannerOverlay({
     if (isClosing) return;
     setIsClosing(true);
     setShowContent(false);
-    setTimeout(() => onClose(), 1750);
+    setTimeout(() => onClose(), 1250);
   };
 
   if (phase === "fullscreen_result" || phase === "closing_crt") {
-    const rawModules = rawData?.modules || [];
-    // SpiderFoot ist aus dem Demo-Pipeline entfernt — Reste defensiv ausblenden
-    const filteredModules = rawModules.filter(
-      (m) =>
-        !m.id.toLowerCase().includes("spiderfoot") &&
-        !m.label.toLowerCase().includes("spiderfoot")
-    );
-
-    const modules = filteredModules
-      .map((m) => {
-        const cleanFindings = deduplicateFindings(
-          (m.findings || []).filter(
-            (f) =>
-              (f.category || "").toUpperCase() !== "ERROR" &&
-              !/gestartet|started/i.test(f.title || "")
-          )
-        );
-        return { ...m, findings: cleanFindings, count: cleanFindings.length };
-      })
-      .filter((m) => m.count > 0);
-
     return (
-      <div
-        className={`fixed inset-0 z-50 font-sans text-white overflow-y-auto selection:bg-cyan-500/30 bg-[#020611]/90 backdrop-blur-3xl ${
-          isClosing ? "animate-crt-off" : ""
-        }`}
-      >
-        {/* Holografisches Grid im Hintergrund */}
+      <div className={`fixed inset-0 z-50 overflow-y-auto bg-[#020611]/90 font-sans text-white backdrop-blur-3xl selection:bg-cyan-500/30 ${isClosing ? "animate-crt-off" : ""}`}>
         <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.05)_0%,transparent_70%)]" />
-
-        <div
-          className={`relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 transition-all duration-1000 ${
-            showContent && !isClosing
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-12"
-          }`}
-        >
-          {/* HIGH-END SCI-FI HEADER */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12 relative z-10">
+        <div className={`relative z-10 mx-auto max-w-7xl px-4 py-8 transition-all duration-1000 sm:px-6 sm:py-12 ${showContent && !isClosing ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"}`}>
+          <div className="relative z-10 mb-12 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>
-              <div className="text-cyan-400/80 text-[10px] font-mono tracking-[0.4em] mb-3 uppercase flex items-center gap-2">
-                <div
-                  className={`w-1.5 h-1.5 rounded-full animate-pulse ${theme.badgeBg.replace("/10", "")}`}
-                />
+              <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.4em] text-cyan-400/80">
+                <div className={`h-1.5 w-1.5 rounded-full ${theme.dot} animate-pulse`} />
                 Target Analysis Complete
               </div>
-              <h1 className="text-4xl md:text-5xl font-light tracking-tight text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+              <h1 className="text-4xl font-light tracking-tight text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)] md:text-5xl">
                 Digital <span className="font-black">Exposure</span>
               </h1>
-              <div className="mt-4 flex items-center gap-3">
-                <span className="text-white/40 font-mono text-[10px] tracking-widest">
-                  SUBJECT:
-                </span>
-                <span className="text-cyan-300 font-mono font-bold bg-cyan-950/40 px-4 py-1.5 rounded-full border border-cyan-500/20 backdrop-blur-md shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <span className="font-mono text-[10px] tracking-widest text-white/40">SUBJECT:</span>
+                <span className="rounded-full border border-cyan-500/20 bg-cyan-950/40 px-4 py-1.5 font-mono font-bold text-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.1)] backdrop-blur-md">
                   {target}
                 </span>
               </div>
             </div>
-            <div className="flex flex-col gap-1 p-4 bg-white/[0.02] border border-white/5 rounded-2xl backdrop-blur-xl shadow-2xl">
-              <div className="text-white/40 text-[10px] font-mono tracking-widest flex items-center justify-between gap-6">
-                <span>DOSSIER ID:</span>{" "}
-                <span className="text-white font-bold">{dossierId}</span>
+            <div className="flex flex-col gap-1 rounded-2xl border border-white/5 bg-white/[0.02] p-4 shadow-2xl backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-6 font-mono text-[10px] tracking-widest text-white/40">
+                <span>DOSSIER ID:</span><span className="font-bold text-white">{dossierId}</span>
               </div>
-              <div className="text-white/40 text-[10px] font-mono tracking-widest flex items-center justify-between gap-6 mt-1">
-                <span>TIMESTAMP:</span> <span>{dossierTime}</span>
+              <div className="mt-1 flex items-center justify-between gap-6 font-mono text-[10px] tracking-widest text-white/40">
+                <span>TIMESTAMP:</span><span>{dossierTime}</span>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* LINKE SPALTE */}
-            <div className="lg:col-span-4 space-y-8">
-              {/* Sci-Fi Score Card */}
-              <div
-                className={`relative border ${theme.border} bg-white/[0.02] backdrop-blur-2xl rounded-3xl p-8 flex flex-col items-center justify-center py-12 ${theme.glow}`}
-              >
-                <div className="text-white/40 font-mono text-[10px] uppercase tracking-[0.3em] mb-8 z-10">
-                  Exposure Score
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+            <div className="space-y-8 lg:col-span-4">
+              <div className={`relative flex flex-col items-center justify-center rounded-3xl border ${theme.border} bg-white/[0.02] p-8 py-12 shadow-2xl backdrop-blur-2xl ${theme.glow}`}>
+                <div className="z-10 mb-8 font-mono text-[10px] uppercase tracking-[0.3em] text-white/40">Exposure Score</div>
+                <div className="relative z-10 mb-6 flex items-center justify-center">
+                  <div className={`absolute h-40 w-40 rounded-full border-[1px] border-dashed ${theme.border} opacity-50 animate-[spin_20s_linear_infinite]`} />
+                  <div className={`absolute h-32 w-32 rounded-full border-[2px] ${theme.border} border-t-transparent animate-[spin_8s_linear_infinite_reverse]`} />
+                  <div className="absolute h-28 w-28 rounded-full bg-gradient-to-tr from-white/[0.02] to-transparent backdrop-blur-sm" />
+                  <div className={`text-7xl font-black ${theme.text} drop-shadow-[0_0_20px_currentColor]`}>{score}</div>
                 </div>
-                <div className="relative flex items-center justify-center mb-6 z-10">
-                  {/* Holographic Rings */}
-                  <div
-                    className={`absolute w-40 h-40 rounded-full border-[1px] border-dashed ${theme.border} animate-[spin_20s_linear_infinite] opacity-50`}
-                  />
-                  <div
-                    className={`absolute w-32 h-32 rounded-full border-[2px] ${theme.border} border-t-transparent animate-[spin_8s_linear_infinite_reverse]`}
-                  />
-                  <div
-                    className={`absolute w-28 h-28 rounded-full bg-gradient-to-tr from-white/[0.02] to-transparent backdrop-blur-sm`}
-                  />
-                  <div
-                    className={`text-7xl font-black ${theme.text} drop-shadow-[0_0_20px_currentColor]`}
-                  >
-                    {score}
-                  </div>
-                </div>
-                <div
-                  className={`mt-4 px-6 py-2.5 border ${theme.border} ${theme.badgeBg} rounded-full flex items-center gap-3 z-10 backdrop-blur-md`}
-                >
-                  <div
-                    className={`w-2 h-2 rounded-full animate-ping ${theme.badgeBg.replace("/10", "")}`}
-                  />
-                  <span
-                    className={`text-[10px] font-mono tracking-widest uppercase font-bold ${theme.text}`}
-                  >
-                    {theme.label}
-                  </span>
+                <div className={`z-10 mt-4 flex items-center gap-3 rounded-full border ${theme.border} ${theme.badgeBg} px-6 py-2.5 backdrop-blur-md`}>
+                  <div className={`h-2 w-2 rounded-full ${theme.dot} animate-ping`} />
+                  <span className={`font-mono text-[10px] font-bold uppercase tracking-widest ${theme.text}`}>{theme.label}</span>
                 </div>
               </div>
-
-              {/* Analyst Summary Card */}
-              <div className="relative border border-white/10 bg-white/[0.02] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl">
-                <div className="text-white/40 text-[10px] font-mono tracking-[0.2em] uppercase mb-4 flex items-center gap-2">
-                  <div className="w-1 h-1 bg-cyan-500 rounded-full" /> Analyst
-                  Summary
+              <div className="relative rounded-3xl border border-white/10 bg-white/[0.02] p-8 shadow-2xl backdrop-blur-2xl">
+                <div className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
+                  <div className="h-1 w-1 rounded-full bg-cyan-500" /> Analyst Summary
                 </div>
-                <p className="text-white/70 leading-relaxed text-sm font-light">
-                  Die KI-gestützte Analyse hat signifikante digitale Spuren im
-                  offenen und Deep-Web identifiziert. Die extrahierten
-                  Datenpunkte weisen auf eine stark vernetzte digitale Identität
-                  hin. Ein manueller Review durch den Eigentümer wird dringend
-                  empfohlen.
+                <p className="text-sm font-light leading-relaxed text-white/70">
+                  {totalFindings > 0
+                    ? "Die kostenlose Kurzprüfung hat öffentliche Signale gefunden. Der Gastbericht zeigt eine reduzierte Vorschau; Details und Handlungsempfehlungen werden nach Registrierung freigeschaltet."
+                    : "Die kostenlosen Schnellprüfungen wurden ausgeführt. In der Gastvorschau wurden keine kritischen öffentlichen Treffer bestätigt."}
                 </p>
               </div>
             </div>
 
-            {/* RECHTE SPALTE */}
-            <div className="lg:col-span-8 space-y-6">
+            <div className="space-y-6 lg:col-span-8">
+              {modules.length === 0 && (
+                <div className="relative rounded-3xl border border-cyan-500/20 bg-white/[0.02] p-8 shadow-2xl backdrop-blur-2xl">
+                  <div className="mb-3 text-sm font-bold uppercase tracking-[0.1em] text-white">Keine Prüfschritt-Antworten empfangen</div>
+                  <p className="text-sm leading-relaxed text-white/50">Der Schnellcheck wurde beendet, aber es wurden keine verwertbaren Antworten geliefert. Bitte API-URL, Key und Scanner-Prozess prüfen.</p>
+                </div>
+              )}
+
               {modules.map((mod) => {
                 const isExpanded = expandedModules[mod.id];
-                const top10Findings = mod.findings.slice(0, 10);
-
-                const mId = mod.id.toLowerCase();
-                let type = "other";
-                let title = "DATA FOOTPRINT";
-                if (
-                  mId.includes("holehe") ||
-                  mId.includes("email") ||
-                  mod.label.toLowerCase().includes("email") ||
-                  mod.label.toLowerCase().includes("e-mail")
-                ) {
-                  type = "email";
-                  title = "E-MAIL IDENTITY EXPOSURE";
-                } else if (
-                  mId.includes("maigret") ||
-                  mId.includes("user") ||
-                  mod.label.toLowerCase().includes("maigret")
-                ) {
-                  type = "user";
-                  title = "CROSS-PLATFORM USERNAME TRACKING";
-                } else if (
-                  mId.includes("phoneinfoga") ||
-                  mId.includes("phone") ||
-                  mod.label.toLowerCase().includes("telefon")
-                ) {
-                  type = "phone";
-                  title = "TELECOMMUNICATIONS INTELLIGENCE";
-                } else if (mId.includes("harvest") || mId.includes("photon")) {
-                  type = "other";
-                  title = mId.includes("photon")
-                    ? "WEB CRAWL FOOTPRINT"
-                    : "DOMAIN HARVEST INTEL";
-                }
-
+                const type = moduleType(mod);
+                const findings = mod.findings.slice(0, 10);
                 return (
-                  <div
-                    key={mod.id}
-                    className={`relative border border-white/10 bg-white/[0.02] backdrop-blur-2xl rounded-3xl p-6 md:p-8 shadow-2xl transition-all duration-500 hover:border-cyan-500/30 group ${isExpanded ? "bg-white/[0.04]" : ""}`}
-                  >
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                  <div key={mod.id} className={`group relative rounded-3xl border border-white/10 bg-white/[0.02] p-6 shadow-2xl backdrop-blur-2xl transition-all duration-500 hover:border-cyan-500/30 md:p-8 ${isExpanded ? "bg-white/[0.04]" : ""}`}>
+                    <div className="flex flex-col items-start justify-between gap-6 md:flex-row">
                       <div className="flex-1">
-                        <div className="text-white text-sm font-bold uppercase tracking-[0.1em] mb-4 flex items-center gap-3">
-                          <div
-                            className={`w-1.5 h-1.5 rounded-full ${theme.badgeBg.replace("/10", "")} shadow-[0_0_10px_currentColor]`}
-                          />
-                          {title}
+                        <div className="mb-4 flex items-center gap-3 text-sm font-bold uppercase tracking-[0.1em] text-white">
+                          <div className={`h-1.5 w-1.5 rounded-full ${theme.dot} shadow-[0_0_10px_currentColor]`} />
+                          {moduleTitle(type)}
                         </div>
-
-                        <div className="text-xs text-white/50 leading-relaxed font-light pr-4">
-                          {type === "email" &&
-                            "Wir haben identifiziert, auf welchen Plattformen diese E-Mail als aktives Login-Konto genutzt wird. Dies ermöglicht Angreifern gezieltes Profiling."}
-                          {type === "user" &&
-                            "Dieser Benutzername wurde systemübergreifend entdeckt. Überschneidungen werden genutzt, um ein allumfassendes Profil Ihrer Identität zu erstellen."}
-                          {type === "phone" &&
-                            "Die Nummer wurde vom Netzwerk verifiziert und ist aktiv. Zusätzlich wurden Metadaten zur Provider-Struktur isoliert."}
-                          {type === "other" &&
-                            "Zusätzliche Datenpunkte und Metadaten, die mit dieser Ziel-Identität in Verbindung gebracht werden konnten."}
-                        </div>
+                        <div className="pr-4 text-xs font-light leading-relaxed text-white/50">{moduleDescription(type)}</div>
                       </div>
-
-                      <div className="flex flex-row md:flex-col items-center md:items-end gap-4 mt-4 md:mt-0 w-full md:w-auto">
-                        <div className="text-white/40 text-[10px] font-mono border border-white/10 bg-black/20 px-4 py-2 rounded-xl backdrop-blur-md">
-                          RECORDS FOUND:{" "}
-                          <span className="text-cyan-400 font-bold ml-2 text-sm">
-                            {mod.count}
-                          </span>
+                      <div className="mt-4 flex w-full flex-row items-center gap-4 md:mt-0 md:w-auto md:flex-col md:items-end">
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-2 font-mono text-[10px] text-white/40 backdrop-blur-md">
+                          SIGNALS FOUND:<span className="ml-2 text-sm font-bold text-cyan-400">{mod.count}</span>
                         </div>
-                        <button
-                          onClick={() => toggleModule(mod.id)}
-                          className={`px-5 py-2.5 border rounded-xl font-mono text-[10px] tracking-widest uppercase transition-all duration-300 w-full md:w-auto ${
-                            isExpanded
-                              ? "border-cyan-900/50 text-cyan-600 bg-cyan-950/20"
-                              : "border-cyan-500/50 text-cyan-400 hover:bg-cyan-500 hover:text-black hover:border-cyan-500 shadow-[0_0_20px_rgba(34,211,238,0.1)]"
-                          }`}
-                        >
-                          {isExpanded ? "[-] EINKLAPPEN" : "[+] ENTSCHLÜSSELN"}
+                        <button onClick={() => setExpandedModules((prev) => ({ ...prev, [mod.id]: !prev[mod.id] }))} className={`w-full rounded-xl border px-5 py-2.5 font-mono text-[10px] uppercase tracking-widest transition-all duration-300 md:w-auto ${isExpanded ? "border-cyan-900/50 bg-cyan-950/20 text-cyan-600" : "border-cyan-500/50 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.1)] hover:border-cyan-500 hover:bg-cyan-500 hover:text-black"}`}>
+                          {isExpanded ? "[-] EINKLAPPEN" : mod.count > 0 ? "[+] ENTSCHLÜSSELN" : "[+] PRÜFBERICHT"}
                         </button>
                       </div>
                     </div>
-
-                    {/* ANIMIERTES AUFKLAPPEN */}
                     {isExpanded && (
-                      <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
-                        {top10Findings.map((finding, idx) => {
-                          const textDesc =
-                            finding.description || finding.detail || "";
-                          const provider =
-                            type === "phone" ? extractProvider(textDesc) : null;
-
-                          return (
-                            <div
-                              key={`${mod.id}-${idx}`}
-                              className="relative border border-white/5 bg-black/20 rounded-2xl p-5 transition-all duration-300 opacity-0 animate-[fadeInUp_0.4s_ease-out_forwards] hover:border-cyan-500/20 hover:bg-white/[0.02]"
-                              style={{ animationDelay: `${idx * 0.05}s` }}
-                            >
-                              <div className="flex items-start gap-5">
-                                <div className="text-white/10 font-black text-xl mt-1 w-8 shrink-0">
-                                  {String(idx + 1).padStart(2, "0")}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-white/90 font-bold text-sm uppercase tracking-wider mb-2">
-                                    {enhanceTitle(finding.title, finding.url)}
-                                  </div>
-
-                                  <div className="text-white/40 text-xs font-light mb-2">
-                                    Status: {getIntelDescription(type)}
-                                  </div>
-
-                                  {/* TELEFON PROVIDER BADGE */}
-                                  {type === "phone" && provider && (
-                                    <div className="mt-3 flex items-center gap-3">
-                                      <span className="text-white/30 text-[10px] uppercase tracking-widest font-mono">
-                                        Provider Identifiziert:
-                                      </span>
-                                      <span className="text-cyan-300 font-bold text-xs tracking-widest bg-cyan-950/40 px-3 py-1 rounded-lg border border-cyan-500/30">
-                                        {provider}
-                                      </span>
-                                    </div>
-                                  )}
-
-                                  <SmartUrlTease url={finding.url} />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        {/* ENTERPRISE PAYWALL BANNER */}
-                        <div
-                          className="mt-6 p-8 border border-cyan-500/20 bg-gradient-to-b from-cyan-950/20 to-transparent rounded-2xl flex flex-col items-center text-center gap-4 animate-[fadeIn_1s_ease-out_forwards]"
-                          style={{
-                            animationDelay: `${top10Findings.length * 0.05 + 0.2}s`,
-                          }}
-                        >
-                          <div className="text-cyan-400 font-mono text-xs uppercase tracking-widest flex items-center gap-2 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-                            <span>🔒</span> SECURE DATA VAULT
+                      <div className="mt-8 space-y-4 border-t border-white/5 pt-8">
+                        {findings.length === 0 && (
+                          <div className="rounded-2xl border border-white/5 bg-black/20 p-5">
+                            <div className="mb-2 text-sm font-bold uppercase tracking-wider text-white/90">Keine kritischen Gast-Treffer</div>
+                            <div className="text-xs font-light leading-relaxed text-white/45">{getIntelDescription(type, false)} Der Prüfschritt wurde trotzdem vollständig in die Auswertung aufgenommen.</div>
                           </div>
-                          <div className="text-white/50 text-xs max-w-xl leading-relaxed font-light">
-                            Exakte Metadaten, direkte Links und verknüpfte
-                            Sitzungsschlüssel unterliegen der
-                            Geheimhaltungsstufe und sind im Gast-Modus maskiert.
-                            <span className="text-white block mt-2 font-medium">
-                              Registrieren Sie ein kostenfreies Konto, um den
-                              Report vollständig zu entschlüsseln.
-                            </span>
-                          </div>
+                        )}
+                        {findings.map((finding, index) => (
+                          <FindingCard key={`${mod.id}-${index}`} finding={finding} index={index} type={type} />
+                        ))}
+                        <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl border border-cyan-500/20 bg-gradient-to-b from-cyan-950/20 to-transparent p-8 text-center animate-[fadeIn_1s_ease-out_forwards]">
+                          <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]"><span>🔒</span> SECURE DATA VAULT</div>
+                          <div className="max-w-xl text-xs font-light leading-relaxed text-white/50">Exakte Metadaten, direkte Links und verknüpfte Signale sind im Gast-Modus maskiert.<span className="mt-2 block font-medium text-white">Registrieren Sie ein kostenfreies Konto, um den Report vollständig zu entschlüsseln.</span></div>
                         </div>
                       </div>
                     )}
@@ -493,47 +414,21 @@ export default function ScannerOverlay({
                 );
               })}
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-end mt-12 pt-8 border-t border-white/5">
-                <button
-                  onClick={handleClose}
-                  className="px-8 py-4 border border-white/10 rounded-2xl text-white/40 hover:text-white hover:bg-white/5 transition-all text-[10px] font-mono uppercase tracking-[0.2em]"
-                >
-                  Scanner beenden
-                </button>
-                <button
-                  onClick={() => router.push("/register")}
-                  className={`px-10 py-4 ${theme.badgeBg.replace("/10", "")} rounded-2xl text-black hover:opacity-90 transition-all ${theme.glow} text-[10px] font-mono uppercase tracking-[0.2em] font-bold`}
-                >
-                  Report jetzt freischalten
-                </button>
+              <div className="mt-12 flex flex-col justify-end gap-4 border-t border-white/5 pt-8 sm:flex-row">
+                <button onClick={handleClose} className="rounded-2xl border border-white/10 px-8 py-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40 transition-all hover:bg-white/5 hover:text-white">Scanner beenden</button>
+                <button onClick={() => router.push("/register")} className={`rounded-2xl px-10 py-4 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-black transition-all hover:opacity-90 ${theme.dot} ${theme.glow}`}>Report jetzt freischalten</button>
               </div>
             </div>
           </div>
         </div>
-
         <style>{`
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          @keyframes crtTurnOff {
-            0% { transform: scaleY(1) scaleX(1); opacity: 1; filter: brightness(1); }
-            55% { transform: scaleY(0.002) scaleX(1); opacity: 1; filter: brightness(2.4); }
-            78% { transform: scaleY(0.002) scaleX(0.02); opacity: 1; filter: brightness(3); }
-            92% { transform: scaleY(0.002) scaleX(0.002); opacity: 0.85; filter: brightness(4); }
-            100% { transform: scaleY(0.002) scaleX(0.002); opacity: 0; filter: brightness(1); }
-          }
-          .animate-crt-off {
-            animation: crtTurnOff 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-          }
+          @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+          @keyframes crtTurnOff { 0% { transform: scaleY(1) scaleX(1); opacity: 1; filter: brightness(1); } 70% { transform: scaleY(0.002) scaleX(1); opacity: 1; filter: brightness(2.4); } 100% { transform: scaleY(0.002) scaleX(0.002); opacity: 0; filter: brightness(1); } }
+          .animate-crt-off { animation: crtTurnOff 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
         `}</style>
       </div>
     );
   }
-
   return null;
 }

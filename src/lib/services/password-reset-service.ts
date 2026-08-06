@@ -1,5 +1,10 @@
 import { hashPassword } from "@/lib/auth/password";
-import { getEnvironment, resetEnvironmentCache } from "@/lib/config/env";
+import {
+  getEnvironment,
+  resetEnvironmentCache,
+  resolveEmailDeliveryMode,
+  type EmailDeliveryMode,
+} from "@/lib/config/env";
 import { sanitizeSmtpError, sendPasswordResetEmail } from "@/lib/email/smtp";
 import { getObservability } from "@/lib/observability";
 import {
@@ -12,7 +17,7 @@ import { createOpaqueToken, hashToken } from "@/lib/utils/crypto";
 
 const PASSWORD_RESET_TTL_MS = 60 * 60_000;
 
-export type PasswordResetDeliveryMode = "provider" | "log-link" | "disabled";
+export type PasswordResetDeliveryMode = EmailDeliveryMode;
 
 function resolveAppUrl(): string {
   const fromProcess = process.env.APP_URL?.trim();
@@ -37,13 +42,7 @@ function formatExpiresAt(ttlMs: number): string {
 }
 
 function deliveryMode(): PasswordResetDeliveryMode {
-  const mode = (process.env.EMAIL_DELIVERY_MODE ?? "log-link")
-    .trim()
-    .toLowerCase();
-  if (mode === "provider" || mode === "disabled" || mode === "log-link") {
-    return mode;
-  }
-  return "log-link";
+  return resolveEmailDeliveryMode();
 }
 
 async function deliverPasswordResetEmail(
@@ -87,8 +86,13 @@ async function deliverPasswordResetEmail(
         email.split("@")[1] ?? "unknown"
       }: ${sanitizeSmtpError(error)}`
     );
-    // Keep token valid; fall back to log so ops can recover the link.
-    console.info(`[email:fallback-log] password-reset for ${email}: ${url}`);
+    // Never log raw reset URLs in provider mode. In production this prevents
+    // server logs from becoming password-reset bypass material.
+    console.info(
+      `[email:fallback-log] password-reset delivery deferred for domain ${
+        email.split("@")[1] ?? "unknown"
+      } (token remains valid; user can request another reset)`
+    );
     return { mode, delivered: false };
   }
 }

@@ -4,7 +4,11 @@ import {
   getUserTokenRepository,
 } from "@/lib/repositories";
 import { createOpaqueToken, hashToken } from "@/lib/utils/crypto";
-import { getEnvironment, resetEnvironmentCache } from "@/lib/config/env";
+import {
+  getEnvironment,
+  resetEnvironmentCache,
+  resolveEmailDeliveryMode,
+} from "@/lib/config/env";
 import { getObservability } from "@/lib/observability";
 import { sanitizeSmtpError, sendVerificationEmail } from "@/lib/email/smtp";
 
@@ -29,7 +33,7 @@ async function deliverVerificationEmail(
   email: string,
   token: string
 ): Promise<void> {
-  const mode = process.env.EMAIL_DELIVERY_MODE ?? "log-link";
+  const mode = resolveEmailDeliveryMode();
   const url = buildVerificationUrl(token);
 
   if (mode === "disabled") {
@@ -61,15 +65,14 @@ async function deliverVerificationEmail(
         tags: { mode, emailDomain: email.split("@")[1] ?? "unknown" },
       }
     );
-    // Token stays valid; registration must still succeed. Operator can resend
-    // or temporarily switch to EMAIL_DELIVERY_MODE=log-link.
+    // Token stays valid; registration must still succeed. Operator can resend.
     console.error(
       `[email:provider] Verification delivery failed for domain ${
         email.split("@")[1] ?? "unknown"
       }: ${sanitizeSmtpError(error)}`
     );
-    // Do not log the raw verification URL in production provider mode —
-    // operators can resend; fallback log only confirms failure path.
+    // Do not log raw verification URLs in provider mode. In production this
+    // prevents logs from becoming account-activation bypass material.
     console.info(
       `[email:fallback-log] verification delivery deferred for domain ${
         email.split("@")[1] ?? "unknown"

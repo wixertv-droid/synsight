@@ -4,18 +4,25 @@ import { computeDemoExposureScore } from "@/lib/demo/demo-exposure-score";
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
 
 describe("demo scan plan", () => {
-  it("orders Holehe → Maigret → PhoneInfoga without SpiderFoot", () => {
+  it("orders the three fast public checks without heavy modules", () => {
     const plan = buildScanPlan({
       email: "a@b.de",
       username: "shadow",
       phone: "+49151",
+      domain: "example.de",
+      url: "https://example.de",
     });
     expect(plan.map((s) => s.module)).toEqual([
       "holehe",
       "maigret",
       "phoneinfoga",
     ]);
-    expect(plan.some((s) => String(s.module).includes("spider"))).toBe(false);
+    expect(plan.map((s) => s.label)).toEqual([
+      "Identitätsabgleich",
+      "Profilkorrelation",
+      "Kommunikations-Metadaten",
+    ]);
+    expect(plan.some((s) => /spider|harvest|photon/i.test(String(s.module)))).toBe(false);
   });
 });
 
@@ -83,5 +90,81 @@ describe("demo exposure score", () => {
     );
     expect(normalized.exposure_score).toBeGreaterThan(0);
     expect(normalized.risk_level).toBeTruthy();
+  });
+
+  it("keeps legacy OSINT fallback visible when only old scanner output exists", () => {
+    const normalized = normalizeUpstreamPayload({
+      queries: { email: "a@b.de" },
+      payloads: [
+        {
+          status: "success",
+          source: "spiderfoot",
+          result_count: 1,
+          findings: [
+            {
+              source: "SpiderFoot",
+              category: "OSINT",
+              title: "Öffentliche Spur",
+              description: "Legacy OSINT event",
+              risk: "low",
+            },
+          ],
+        },
+      ],
+    });
+    expect(normalized.findings.length).toBeGreaterThan(0);
+    expect(normalized.modules.some((m) => m.id === "publicosint")).toBe(true);
+  });
+
+  it("formats phone metadata without raw booleans", () => {
+    const normalized = normalizeUpstreamPayload({
+      queries: { phone: "+4915123456789" },
+      payloads: [
+        {
+          status: "success",
+          module: "phoneinfoga",
+          findings: [
+            {
+              source: "phoneinfoga",
+              category: "PHONE",
+              title: "Telefon-Analyse",
+              description: "Nummer gültig: True | Provider: T-Mobile | Country: DE",
+              risk: "medium",
+            },
+          ],
+        },
+      ],
+    });
+    const description = normalized.findings[0]?.description || "";
+    expect(normalized.findings[0]?.title).toBe("Telekommunikations-Intelligenz");
+    expect(description).toContain("Rufnummer validiert: Ja");
+    expect(description).toContain("Netzbetreiber: T-Mobile");
+    expect(description).toContain("Regionale Zuordnung: Deutschland");
+    expect(description).not.toContain("True");
+  });
+
+  it("parses phone provider from JSON-like raw output", () => {
+    const normalized = normalizeUpstreamPayload({
+      queries: { phone: "+4915123456789" },
+      payloads: [
+        {
+          status: "success",
+          module: "phoneinfoga",
+          findings: [
+            {
+              source: "phoneinfoga",
+              category: "PHONE",
+              raw_output:
+                '{"valid": true, "carrier": "Telekom", "country_code": "DE"}',
+              risk: "medium",
+            },
+          ],
+        },
+      ],
+    });
+    const description = normalized.findings[0]?.description || "";
+    expect(description).toContain("Rufnummer validiert: Ja");
+    expect(description).toContain("Netzbetreiber: Telekom");
+    expect(description).toContain("Regionale Zuordnung: Deutschland");
   });
 });
