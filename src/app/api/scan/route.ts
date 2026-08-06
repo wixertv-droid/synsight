@@ -8,7 +8,7 @@ import { getClientIp, validateMutationOrigin } from "@/lib/security/request";
 import { normalizeUpstreamPayload } from "@/lib/demo/normalize-upstream";
 import { resolveDemoScanCredentials } from "@/lib/demo/demo-scan-credentials";
 
-/** One module step — keep under nginx proxy_read_timeout. */
+/** One public scan step — keep under nginx proxy_read_timeout. */
 const DEMO_SCAN_STEP_TIMEOUT_MS = Number(
   process.env.DEMO_SCAN_STEP_TIMEOUT_MS || 75_000
 );
@@ -20,7 +20,7 @@ const DEMO_SCAN_RATE_LIMIT = {
   blockMs: 60 * 60_000,
 };
 
-/** Public/free DemoScanner: only the fast modules are allowed. */
+/** Public/free DemoScanner: only the fast modules are allowed internally. */
 const ALLOWED_MODULES = new Set(["holehe", "maigret", "phoneinfoga"]);
 
 function cleanQuery(value: unknown): string | null {
@@ -56,8 +56,8 @@ function upstreamErrorMessage(
 }
 
 /**
- * Sequential public module step:
- *   { query, module: "holehe" | "maigret" | "phoneinfoga" }
+ * Sequential public scan step.
+ * Visible UI texts are neutral; internal module names are never displayed.
  */
 export async function POST(req: Request) {
   const csrfError = validateMutationOrigin(req);
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           status: "error",
-          message: "query fehlt.",
+          message: "Zielwert fehlt oder ist ungültig.",
           risk_level: "Fehler",
         },
         { status: 400, headers: rateLimitHeaders(attempt) }
@@ -103,8 +103,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           status: "error",
-          message:
-            "module fehlt oder ungültig. Erlaubt: holehe, maigret, phoneinfoga.",
+          message: "Dieser öffentliche Prüfschritt ist nicht freigegeben.",
           risk_level: "Fehler",
         },
         { status: 400, headers: rateLimitHeaders(attempt) }
@@ -221,10 +220,10 @@ export async function POST(req: Request) {
       {
         status: "error",
         message: aborted
-          ? "Modul-Timeout — Schritt übersprungen / erneut versuchen."
+          ? "Der Prüfschritt hat zu lange gedauert und wurde übersprungen."
           : error instanceof Error
             ? error.message
-            : "Modul-Scan fehlgeschlagen.",
+            : "Prüfschritt fehlgeschlagen.",
         risk_level: "Fehler",
       },
       { status: aborted ? 504 : 502, headers: rateLimitHeaders(attempt) }
