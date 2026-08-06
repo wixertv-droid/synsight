@@ -13,8 +13,8 @@ server calls it with a private API key. Recommended production protection:
 
 Free scan checks:
   - email account correlation
-  - public username correlation
-  - telephone metadata
+  - prioritised public username correlation
+  - public telephone exposure plus secondary technical metadata
 
 Internal provider names remain implementation details and are not displayed by
 the SynSight public frontend.
@@ -29,11 +29,17 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 import threading
+import time
 import uuid
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from urllib.request import Request, urlopen
 
 from flask import Flask, jsonify, request
 
@@ -45,7 +51,12 @@ def env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def env_int(name: str, default: int, minimum: int = 1, maximum: int = 1_000_000) -> int:
+def env_int(
+    name: str,
+    default: int,
+    minimum: int = 1,
+    maximum: int = 1_000_000,
+) -> int:
     try:
         value = int(os.environ.get(name, str(default)))
     except (TypeError, ValueError):
@@ -65,8 +76,23 @@ PERSIST_RESULTS = env_bool("PERSIST_RESULTS", False)
 RESULT_PATH = Path(os.environ.get("RESULT_PATH", "/tmp/synsight_results"))
 
 HOLEHE_TIMEOUT = env_int("HOLEHE_TIMEOUT", 45, 5, 180)
-MAIGRET_TIMEOUT = env_int("MAIGRET_TIMEOUT", 55, 5, 180)
-PHONE_TIMEOUT = env_int("PHONEINFOGA_TIMEOUT", 35, 5, 180)
+
+MAIGRET_TIMEOUT = env_int("MAIGRET_TIMEOUT", 45, 10, 180)
+MAIGRET_TOP_SITES = env_int("MAIGRET_TOP_SITES", 100, 20, 500)
+MAIGRET_SITE_TIMEOUT = env_int("MAIGRET_SITE_TIMEOUT", 6, 2, 20)
+MAIGRET_MAX_CONNECTIONS = env_int("MAIGRET_MAX_CONNECTIONS", 20, 2, 100)
+MAIGRET_RETRIES = env_int("MAIGRET_RETRIES", 0, 0, 3)
+MAIGRET_MAX_RESULTS = env_int("MAIGRET_MAX_RESULTS", 12, 1, 40)
+
+PHONE_TIMEOUT = env_int("PHONEINFOGA_TIMEOUT", 25, 5, 120)
+SEARXNG_URL = os.environ.get("SEARXNG_URL", "http://127.0.0.1:8080").strip().rstrip("/")
+SEARXNG_TIMEOUT = env_int("SEARXNG_TIMEOUT", 12, 3, 30)
+PHONE_SEARCH_MAX_QUERIES = env_int("PHONE_SEARCH_MAX_QUERIES", 2, 1, 2)
+PHONE_SEARCH_MAX_RESULTS = env_int("PHONE_SEARCH_MAX_RESULTS", 8, 1, 20)
+PHONE_SEARCH_CACHE_TTL = env_int("PHONE_SEARCH_CACHE_TTL", 21600, 60, 86400)
+PHONE_SEARCH_SECOND_QUERY_THRESHOLD = env_int(
+    "PHONE_SEARCH_SECOND_QUERY_THRESHOLD", 3, 0, 10
+)
 
 EXTRA_BIN_DIRS = [
     p
@@ -79,6 +105,8 @@ EXTRA_BIN_DIRS = [
 
 ALLOWED_MODULES = {"holehe", "maigret", "phoneinfoga"}
 SCAN_SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT_SCANS)
+PHONE_CACHE_LOCK = threading.Lock()
+PHONE_SEARCH_CACHE: dict[str, dict[str, Any]] = {}
 
 
 def parse_allowed_networks(raw: str) -> list[ipaddress._BaseNetwork]:
@@ -90,7 +118,9 @@ def parse_allowed_networks(raw: str) -> list[ipaddress._BaseNetwork]:
         try:
             networks.append(ipaddress.ip_network(value, strict=False))
         except ValueError as exc:
-            raise RuntimeError(f"Ungültiger Eintrag in ALLOWED_CLIENT_IPS: {value}") from exc
+            raise RuntimeError(
+                f"Ungültiger Eintrag in ALLOWED_CLIENT_IPS: {value}"
+            ) from exc
     return networks
 
 
@@ -198,11 +228,17 @@ def resolve_bin(name: str, env_key: str = "") -> list[str] | None:
     return None
 
 
+def searxng_configured() -> bool:
+    parsed = urlparse(SEARXNG_URL)
+    return parsed.scheme in {"http", "https"} and bool(parsed.hostname)
+
+
 def tool_readiness() -> dict[str, bool]:
     return {
         "email": bool(resolve_bin("holehe", "HOLEHE_BIN")),
         "username": bool(resolve_bin("maigret", "MAIGRET_BIN")),
-        "phone": bool(resolve_bin("phoneinfoga", "PHONEINFOGA_BIN")),
+        "phone_metadata": bool(resolve_bin("phoneinfoga", "PHONEINFOGA_BIN")),
+        "phone_public_search": searxng_configured(),
     }
 
 
@@ -267,11 +303,36 @@ def normalize_module(raw: str) -> str:
     return aliases.get(key, "")
 
 
-def run_holehe(email: str) -> list[dict[str, Any]]:
+def success_outcome(
+    findings: list[dict[str, Any]],
+    *,
+    partial: bool = False,
+    notices: list[str] | None = None,
+    meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "findings": findings,
+        "partial": partial,
+        "notices": notices or [],
+        "meta": meta or {},
+    }
+
+
+def error_finding(source: str, message: str) -> dict[str, Any]:
+    return {
+        "source": source,
+        "category": "ERROR",
+        "error": message,
+        "risk": "low",
+        "confidence": 0,
+    }
+
+
+def run_holehe(email: str) -> dict[str, Any]:
     findings: list[dict[str, Any]] = []
     bin_cmd = resolve_bin("holehe", "HOLEHE_BIN")
     if not bin_cmd:
-        return missing_tool("holehe")
+        return success_outcome(missing_tool("holehe"), partial=True)
     try:
         result = subprocess.run(
             [*bin_cmd, email, "--only-used"],
@@ -299,76 +360,174 @@ def run_holehe(email: str) -> list[dict[str, Any]]:
                     )
         if not findings and result.returncode != 0:
             findings.append(
-                {
-                    "source": "holehe",
-                    "category": "ERROR",
-                    "error": "Prüfschritt konnte nicht abgeschlossen werden.",
-                }
+                error_finding(
+                    "holehe", "Prüfschritt konnte nicht abgeschlossen werden."
+                )
             )
+            return success_outcome(findings, partial=True)
+        return success_outcome(findings)
+    except subprocess.TimeoutExpired:
+        return success_outcome(
+            [error_finding("holehe", "Prüfschritt hat das Zeitlimit erreicht.")],
+            partial=True,
+        )
     except Exception:
+        return success_outcome(
+            [error_finding("holehe", "Prüfschritt konnte nicht abgeschlossen werden.")],
+            partial=True,
+        )
+
+
+def parse_maigret_report(report_path: Path) -> list[dict[str, Any]]:
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    if not isinstance(payload, dict):
+        return []
+
+    findings: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+    for site_name, raw in payload.items():
+        if not isinstance(raw, dict):
+            continue
+        url = str(raw.get("url_user") or raw.get("url") or "").strip()
+        if not url.startswith(("http://", "https://")) or url in seen_urls:
+            continue
+        seen_urls.add(url)
+        site = str(site_name or "Öffentliche Plattform").strip()
         findings.append(
             {
-                "source": "holehe",
-                "category": "ERROR",
-                "error": "Prüfschritt konnte nicht abgeschlossen werden.",
+                "source": "maigret",
+                "category": "USERNAME",
+                "type": "PUBLIC_PROFILE",
+                "platform": site,
+                "url": url,
+                "title": f"Profilspur · {site}",
+                "description": (
+                    "Dieser Benutzername wurde unter anderem auf dieser "
+                    "öffentlich erreichbaren Plattform gefunden."
+                ),
+                "risk": "medium",
+                "confidence": 78,
             }
         )
     return findings
 
 
-def run_maigret(username: str) -> list[dict[str, Any]]:
+def parse_maigret_stdout(stdout: str) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
-    bin_cmd = resolve_bin("maigret", "MAIGRET_BIN")
-    if not bin_cmd:
-        return missing_tool("maigret")
-    try:
-        result = subprocess.run(
-            [*bin_cmd, username, "--timeout", "15", "--no-color"],
-            capture_output=True,
-            text=True,
-            timeout=MAIGRET_TIMEOUT,
-            check=False,
-        )
-        for line in result.stdout.splitlines():
-            line = clean_line(line)
-            for url in re.findall(r"https?://\S+", line):
-                clean_url = url.rstrip(",.;)")
-                findings.append(
-                    {
-                        "source": "maigret",
-                        "category": "USERNAME",
-                        "platform": "Social/Web",
-                        "url": clean_url,
-                        "title": "Username-Treffer",
-                        "description": clean_url,
-                        "risk": "medium",
-                        "confidence": 75,
-                    }
-                )
-        if not findings and result.returncode != 0:
+    seen_urls: set[str] = set()
+    for line in stdout.splitlines():
+        line = clean_line(line)
+        for url in re.findall(r"https?://[^\s\]\)>]+", line):
+            clean_url = url.rstrip(",.;)")
+            if clean_url in seen_urls:
+                continue
+            seen_urls.add(clean_url)
+            domain = urlparse(clean_url).hostname or "Öffentliche Plattform"
             findings.append(
                 {
                     "source": "maigret",
-                    "category": "ERROR",
-                    "error": "Prüfschritt konnte nicht abgeschlossen werden.",
+                    "category": "USERNAME",
+                    "type": "PUBLIC_PROFILE",
+                    "platform": domain,
+                    "url": clean_url,
+                    "title": f"Profilspur · {domain}",
+                    "description": (
+                        "Dieser Benutzername wurde unter anderem auf dieser "
+                        "öffentlich erreichbaren Plattform gefunden."
+                    ),
+                    "risk": "medium",
+                    "confidence": 65,
                 }
             )
-    except Exception:
-        findings.append(
-            {
-                "source": "maigret",
-                "category": "ERROR",
-                "error": "Prüfschritt konnte nicht abgeschlossen werden.",
-            }
+    return findings
+
+
+def run_maigret(username: str) -> dict[str, Any]:
+    bin_cmd = resolve_bin("maigret", "MAIGRET_BIN")
+    if not bin_cmd:
+        return success_outcome(missing_tool("maigret"), partial=True)
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="synsight-maigret-") as temp_dir:
+            command = [
+                *bin_cmd,
+                username,
+                "--top-sites",
+                str(MAIGRET_TOP_SITES),
+                "--timeout",
+                str(MAIGRET_SITE_TIMEOUT),
+                "--retries",
+                str(MAIGRET_RETRIES),
+                "--max-connections",
+                str(MAIGRET_MAX_CONNECTIONS),
+                "--no-recursion",
+                "--no-extracting",
+                "--no-autoupdate",
+                "--no-color",
+                "--no-progressbar",
+                "--json",
+                "simple",
+                "--folderoutput",
+                temp_dir,
+            ]
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=MAIGRET_TIMEOUT,
+                check=False,
+            )
+
+            findings: list[dict[str, Any]] = []
+            for report in sorted(Path(temp_dir).glob("*_simple.json")):
+                findings.extend(parse_maigret_report(report))
+
+            if not findings:
+                findings = parse_maigret_stdout(result.stdout or "")
+
+            unique: list[dict[str, Any]] = []
+            seen_urls: set[str] = set()
+            for finding in findings:
+                url = str(finding.get("url") or "")
+                if not url or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                unique.append(finding)
+
+            partial = result.returncode != 0 and not unique
+            notices = []
+            if partial:
+                notices.append("Die Username-Prüfung konnte nur teilweise abgeschlossen werden.")
+            return success_outcome(
+                unique[:MAIGRET_MAX_RESULTS],
+                partial=partial,
+                notices=notices,
+                meta={
+                    "scope": "prioritised",
+                    "sites_requested": MAIGRET_TOP_SITES,
+                    "result_limit": MAIGRET_MAX_RESULTS,
+                },
+            )
+    except subprocess.TimeoutExpired:
+        return success_outcome(
+            [error_finding("maigret", "Username-Prüfung hat das Zeitlimit erreicht.")],
+            partial=True,
+            notices=["Die Username-Prüfung wurde wegen des Zeitlimits verkürzt."],
         )
-    return findings[:40]
+    except Exception:
+        return success_outcome(
+            [error_finding("maigret", "Username-Prüfung konnte nicht abgeschlossen werden.")],
+            partial=True,
+        )
 
 
-def run_phoneinfoga(number: str) -> list[dict[str, Any]]:
-    findings: list[dict[str, Any]] = []
+def run_phoneinfoga_metadata(number: str) -> dict[str, Any]:
     bin_cmd = resolve_bin("phoneinfoga", "PHONEINFOGA_BIN")
     if not bin_cmd:
-        return missing_tool("phoneinfoga")
+        return success_outcome(missing_tool("phoneinfoga"), partial=True)
     try:
         result = subprocess.run(
             [*bin_cmd, "scan", "-n", number],
@@ -379,50 +538,324 @@ def run_phoneinfoga(number: str) -> list[dict[str, Any]]:
         )
         output = clean_line((result.stdout or "").strip())
         if output:
-            findings.append(
-                {
-                    "source": "phoneinfoga",
-                    "category": "PHONE",
-                    "title": "Telefon-Analyse",
-                    "description": output[:500],
-                    "raw": output[:2000],
-                    "risk": "medium",
-                    "confidence": 60,
-                }
+            return success_outcome(
+                [
+                    {
+                        "source": "phoneinfoga",
+                        "category": "PHONE_METADATA",
+                        "type": "TECHNICAL_CONTEXT",
+                        "title": "Technischer Rufnummernkontext",
+                        "description": (
+                            "Sekundäre technische Hinweise zur Schreibweise, "
+                            "Länderzuordnung oder Netzstruktur der Rufnummer."
+                        ),
+                        "raw": output[:2000],
+                        "risk": "low",
+                        "confidence": 55,
+                    }
+                ]
             )
-        elif result.returncode != 0:
-            findings.append(
-                {
-                    "source": "phoneinfoga",
-                    "category": "ERROR",
-                    "error": "Prüfschritt konnte nicht abgeschlossen werden.",
-                }
+        if result.returncode != 0:
+            return success_outcome(
+                [
+                    error_finding(
+                        "phoneinfoga",
+                        "Technische Zusatzprüfung konnte nicht abgeschlossen werden.",
+                    )
+                ],
+                partial=True,
             )
-    except Exception:
-        findings.append(
-            {
-                "source": "phoneinfoga",
-                "category": "ERROR",
-                "error": "Prüfschritt konnte nicht abgeschlossen werden.",
-            }
+        return success_outcome([])
+    except subprocess.TimeoutExpired:
+        return success_outcome(
+            [
+                error_finding(
+                    "phoneinfoga", "Technische Zusatzprüfung hat das Zeitlimit erreicht."
+                )
+            ],
+            partial=True,
         )
-    return findings
+    except Exception:
+        return success_outcome(
+            [
+                error_finding(
+                    "phoneinfoga",
+                    "Technische Zusatzprüfung konnte nicht abgeschlossen werden.",
+                )
+            ],
+            partial=True,
+        )
 
 
-def run_single_module(module: str, query: str) -> list[dict[str, Any]]:
+def normalize_phone_variants(number: str) -> list[str]:
+    raw = number.strip()
+    digits = re.sub(r"\D", "", raw)
+    if len(digits) < 7:
+        return []
+
+    e164 = ""
+    national = ""
+
+    if raw.startswith("+"):
+        e164 = f"+{digits}"
+    elif digits.startswith("00") and len(digits) > 4:
+        e164 = f"+{digits[2:]}"
+    elif digits.startswith("0"):
+        national = digits
+        e164 = f"+49{digits[1:]}"
+    else:
+        e164 = f"+{digits}"
+
+    e164_digits = re.sub(r"\D", "", e164)
+    if e164_digits.startswith("49") and len(e164_digits) > 4:
+        national = f"0{e164_digits[2:]}"
+
+    variants: list[str] = []
+    for value in (e164, national):
+        if value and value not in variants:
+            variants.append(value)
+    return variants[:PHONE_SEARCH_MAX_QUERIES]
+
+
+def canonical_public_url(value: str) -> str:
+    try:
+        parsed = urlparse(value.strip())
+    except Exception:
+        return ""
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return ""
+    clean_query = [
+        (key, val)
+        for key, val in parse_qsl(parsed.query, keep_blank_values=True)
+        if not key.lower().startswith(("utm_", "ref", "source"))
+    ]
+    return urlunparse(
+        (
+            parsed.scheme.lower(),
+            parsed.netloc.lower(),
+            parsed.path or "/",
+            "",
+            urlencode(clean_query),
+            "",
+        )
+    )
+
+
+def classify_public_phone_result(url: str, title: str, content: str) -> str:
+    text = f"{url} {title} {content}".lower()
+    if re.search(r"\.pdf(?:$|\?)|filetype\s*pdf|pdf\b", text):
+        return "DOCUMENT"
+    if re.search(r"facebook|instagram|linkedin|xing|tiktok|twitter|x\.com", text):
+        return "SOCIAL_PROFILE"
+    if re.search(r"kleinanzeigen|classified|marketplace|quoka|markt\.de", text):
+        return "CLASSIFIED"
+    if re.search(r"spam|betrug|scam|anrufer|wemgeh[oö]rt|tellows", text):
+        return "SPAM_WARNING"
+    if re.search(r"directory|verzeichnis|telefonbuch|locatefamily|people|address", text):
+        return "DIRECTORY"
+    return "PUBLIC_LISTING"
+
+
+def searxng_search(query: str) -> dict[str, Any]:
+    params = urlencode(
+        {
+            "q": query,
+            "format": "json",
+            "language": "de",
+            "safesearch": "0",
+        }
+    )
+    req = Request(
+        f"{SEARXNG_URL}/search?{params}",
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "SynSight-Internal-Exposure-Scanner/1.0",
+        },
+        method="GET",
+    )
+    with urlopen(req, timeout=SEARXNG_TIMEOUT) as response:
+        if response.status != 200:
+            raise RuntimeError(f"SearXNG status {response.status}")
+        payload = json.loads(response.read().decode("utf-8", errors="replace"))
+        if not isinstance(payload, dict):
+            raise RuntimeError("Invalid SearXNG response")
+        return payload
+
+
+def phone_cache_key(number: str) -> str:
+    variants = normalize_phone_variants(number)
+    return variants[0] if variants else re.sub(r"\D", "", number)
+
+
+def phone_cache_get(number: str) -> dict[str, Any] | None:
+    key = phone_cache_key(number)
+    now = time.time()
+    with PHONE_CACHE_LOCK:
+        entry = PHONE_SEARCH_CACHE.get(key)
+        if not entry:
+            return None
+        if now - float(entry.get("created_at", 0)) > PHONE_SEARCH_CACHE_TTL:
+            PHONE_SEARCH_CACHE.pop(key, None)
+            return None
+        cached = deepcopy(entry["outcome"])
+        cached.setdefault("meta", {})["cache"] = "hit"
+        return cached
+
+
+def phone_cache_put(number: str, outcome: dict[str, Any]) -> None:
+    key = phone_cache_key(number)
+    with PHONE_CACHE_LOCK:
+        PHONE_SEARCH_CACHE[key] = {
+            "created_at": time.time(),
+            "outcome": deepcopy(outcome),
+        }
+        if len(PHONE_SEARCH_CACHE) > 500:
+            oldest = min(
+                PHONE_SEARCH_CACHE,
+                key=lambda item: PHONE_SEARCH_CACHE[item]["created_at"],
+            )
+            PHONE_SEARCH_CACHE.pop(oldest, None)
+
+
+def run_phone_public_search(number: str) -> dict[str, Any]:
+    cached = phone_cache_get(number)
+    if cached is not None:
+        return cached
+
+    variants = normalize_phone_variants(number)
+    if not variants:
+        return success_outcome(
+            [error_finding("phone-exposure", "Ungültige Rufnummer für die Websuche.")],
+            partial=True,
+        )
+
+    findings: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+    partial = False
+    successful_queries = 0
+    attempted_queries = 0
+
+    for index, variant in enumerate(variants):
+        if index > 0 and len(findings) >= PHONE_SEARCH_SECOND_QUERY_THRESHOLD:
+            break
+        attempted_queries += 1
+        try:
+            payload = searxng_search(variant)
+            successful_queries += 1
+        except (HTTPError, URLError, TimeoutError, ValueError, RuntimeError, OSError):
+            partial = True
+            continue
+
+        if payload.get("unresponsive_engines"):
+            partial = True
+
+        raw_results = payload.get("results")
+        if not isinstance(raw_results, list):
+            partial = True
+            continue
+
+        for raw in raw_results:
+            if not isinstance(raw, dict):
+                continue
+            url = canonical_public_url(str(raw.get("url") or ""))
+            if not url or url in seen_urls:
+                continue
+            seen_urls.add(url)
+
+            title = clean_line(str(raw.get("title") or "Öffentliche Fundstelle"))[:180]
+            content = clean_line(str(raw.get("content") or ""))[:360]
+            domain = urlparse(url).hostname or "Öffentliche Webseite"
+            evidence_type = classify_public_phone_result(url, title, content)
+
+            findings.append(
+                {
+                    "source": "phone-exposure",
+                    "category": "PHONE_PUBLIC",
+                    "type": evidence_type,
+                    "platform": domain,
+                    "domain": domain,
+                    "url": url,
+                    "title": title or f"Öffentliche Fundstelle · {domain}",
+                    "description": (
+                        "Diese Rufnummer wurde unter anderem auf dieser "
+                        "öffentlich indexierten Seite gefunden."
+                    ),
+                    "snippet": content,
+                    "risk": "medium",
+                    "confidence": 70,
+                }
+            )
+            if len(findings) >= PHONE_SEARCH_MAX_RESULTS:
+                break
+        if len(findings) >= PHONE_SEARCH_MAX_RESULTS:
+            break
+
+    if successful_queries == 0:
+        partial = True
+
+    notices: list[str] = []
+    if partial:
+        notices.append(
+            "Die öffentliche Websuche war teilweise eingeschränkt; "
+            "weitere Fundstellen können vorhanden sein."
+        )
+
+    outcome = success_outcome(
+        findings[:PHONE_SEARCH_MAX_RESULTS],
+        partial=partial,
+        notices=notices,
+        meta={
+            "scope": "prioritised_public_web",
+            "attempted_queries": attempted_queries,
+            "successful_queries": successful_queries,
+            "result_limit": PHONE_SEARCH_MAX_RESULTS,
+            "cache": "miss",
+            "search_status": (
+                "unavailable"
+                if successful_queries == 0
+                else "partial"
+                if partial
+                else "complete"
+            ),
+        },
+    )
+    phone_cache_put(number, outcome)
+    return outcome
+
+
+def merge_outcomes(*outcomes: dict[str, Any]) -> dict[str, Any]:
+    findings: list[dict[str, Any]] = []
+    notices: list[str] = []
+    meta: dict[str, Any] = {}
+    partial = False
+    for outcome in outcomes:
+        findings.extend(outcome.get("findings") or [])
+        partial = partial or bool(outcome.get("partial"))
+        for notice in outcome.get("notices") or []:
+            if notice not in notices:
+                notices.append(notice)
+        meta.update(outcome.get("meta") or {})
+    return success_outcome(findings, partial=partial, notices=notices, meta=meta)
+
+
+def run_phone_scan(number: str) -> dict[str, Any]:
+    return merge_outcomes(
+        run_phone_public_search(number),
+        run_phoneinfoga_metadata(number),
+    )
+
+
+def run_single_module(module: str, query: str) -> dict[str, Any]:
     if module == "holehe":
         return run_holehe(query)
     if module == "maigret":
         return run_maigret(query)
     if module == "phoneinfoga":
-        return run_phoneinfoga(query)
-    return [
-        {
-            "source": "unknown",
-            "category": "ERROR",
-            "error": "Prüfschritt nicht freigegeben.",
-        }
-    ]
+        return run_phone_scan(query)
+    return success_outcome(
+        [error_finding("unknown", "Prüfschritt nicht freigegeben.")],
+        partial=True,
+    )
 
 
 def persist_result(result: dict[str, Any]) -> None:
@@ -438,7 +871,16 @@ def persist_result(result: dict[str, Any]) -> None:
         pass
 
 
-def scan_response(module: str, query: str, findings: list[dict[str, Any]]):
+def public_finding_count(findings: list[dict[str, Any]]) -> int:
+    return sum(
+        1
+        for finding in findings
+        if str(finding.get("category") or "").upper() != "ERROR"
+    )
+
+
+def scan_response(module: str, query: str, outcome: dict[str, Any]):
+    findings = list(outcome.get("findings") or [])
     result = {
         "status": "success",
         "scan_id": str(uuid.uuid4()),
@@ -446,11 +888,13 @@ def scan_response(module: str, query: str, findings: list[dict[str, Any]]):
         "module": module,
         "queries": detect_legacy_query(query),
         "timestamp": utc_now(),
-        "total_findings": len(findings),
+        "total_findings": public_finding_count(findings),
         "findings": findings,
-        "partial": False,
+        "partial": bool(outcome.get("partial")),
+        "notices": outcome.get("notices") or [],
+        "scan_meta": outcome.get("meta") or {},
         "source": "contabo-free",
-        "api_version": "contabo-free-2",
+        "api_version": "contabo-free-3",
     }
     persist_result(result)
     return jsonify(result)
@@ -513,25 +957,29 @@ def scan():
         )
 
     try:
-        findings: list[dict[str, Any]] = []
+        outcomes: list[dict[str, Any]] = []
         if email := targets.get("email"):
-            findings += run_holehe(email)
+            outcomes.append(run_holehe(email))
         if username := targets.get("username"):
-            findings += run_maigret(username)
+            outcomes.append(run_maigret(username))
         if phone := targets.get("phone"):
-            findings += run_phoneinfoga(phone)
+            outcomes.append(run_phone_scan(phone))
 
+        outcome = merge_outcomes(*outcomes)
+        findings = list(outcome.get("findings") or [])
         result = {
             "status": "success",
             "scan_id": str(uuid.uuid4()),
             "target": " · ".join(targets.values()),
             "queries": targets,
             "timestamp": utc_now(),
-            "total_findings": len(findings),
+            "total_findings": public_finding_count(findings),
             "findings": findings,
-            "partial": False,
+            "partial": bool(outcome.get("partial")),
+            "notices": outcome.get("notices") or [],
+            "scan_meta": outcome.get("meta") or {},
             "source": "contabo-free",
-            "api_version": "contabo-free-2",
+            "api_version": "contabo-free-3",
         }
         persist_result(result)
         return jsonify(result)
@@ -550,7 +998,7 @@ def health():
         "ok": True,
         "ready": ready,
         "service": "synsight-demo-scan",
-        "api_version": "contabo-free-2",
+        "api_version": "contabo-free-3",
         "timestamp": utc_now(),
     }
     if HEALTH_VERBOSE:
@@ -560,7 +1008,9 @@ def health():
 
 def validate_startup() -> None:
     if not API_KEY:
-        raise RuntimeError("API_KEY fehlt. Scanner wird aus Sicherheitsgründen nicht gestartet.")
+        raise RuntimeError(
+            "API_KEY fehlt. Scanner wird aus Sicherheitsgründen nicht gestartet."
+        )
     if len(API_KEY) < 24:
         print(
             "[synsight-free] WARNUNG: API_KEY ist kürzer als 24 Zeichen; Rotation empfohlen.",
@@ -572,16 +1022,21 @@ def validate_startup() -> None:
         )
     if not ALLOWED_CLIENT_NETWORKS:
         print(
-            "[synsight-free] WARNUNG: Keine App-Allowlist gesetzt; Firewall-Regeln müssen Port 5002 schützen.",
+            "[synsight-free] WARNUNG: Keine App-Allowlist gesetzt; "
+            "Firewall-Regeln müssen Port 5002 schützen.",
             flush=True,
         )
+    if not searxng_configured():
+        raise RuntimeError("SEARXNG_URL ist ungültig.")
 
 
 validate_startup()
 
 if __name__ == "__main__":
     print(
-        f"[synsight-free] listening {API_BIND}:{API_PORT} · auth=yes · allowlist={'yes' if ALLOWED_CLIENT_NETWORKS else 'firewall-only'}",
+        f"[synsight-free] listening {API_BIND}:{API_PORT} · auth=yes · "
+        f"allowlist={'yes' if ALLOWED_CLIENT_NETWORKS else 'firewall-only'} · "
+        f"public-search={SEARXNG_URL}",
         flush=True,
     )
     app.run(
