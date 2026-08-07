@@ -479,21 +479,39 @@ export default function ScannerOverlay({
 
           <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 backdrop-blur-xl">
-              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">Öffentliche Signale</div>
-              <div className="mt-2 text-2xl font-black text-white">{totalFindings}</div>
-              <div className="mt-1 text-xs text-white/45">bestätigte Fundstellen im Schnellcheck</div>
+              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">
+                Öffentliche Signale
+              </div>
+              <div className="mt-2 text-2xl font-black text-white">
+                {totalFindings}
+              </div>
+              <div className="mt-1 text-xs text-white/45">
+                bestätigte Fundstellen im Schnellcheck
+              </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 backdrop-blur-xl">
-              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">Geprüfte Datenpunkte</div>
-              <div className="mt-2 text-2xl font-black text-white">{checkedPoints}</div>
-              <div className="mt-1 text-xs text-white/45">von Ihnen für diese Prüfung angegeben</div>
+              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">
+                Geprüfte Datenpunkte
+              </div>
+              <div className="mt-2 text-2xl font-black text-white">
+                {checkedPoints}
+              </div>
+              <div className="mt-1 text-xs text-white/45">
+                von Ihnen für diese Prüfung angegeben
+              </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 backdrop-blur-xl">
-              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">Technische Zusatzdaten</div>
-              <div className={`mt-2 text-sm font-black uppercase tracking-wider ${technicalDataAvailable ? "text-cyan-300" : "text-white/55"}`}>
+              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">
+                Technische Zusatzdaten
+              </div>
+              <div
+                className={`mt-2 text-sm font-black uppercase tracking-wider ${technicalDataAvailable ? "text-cyan-300" : "text-white/55"}`}
+              >
                 {technicalDataAvailable ? "Vorhanden" : "Keine"}
               </div>
-              <div className="mt-1 text-xs text-white/45">werden nicht als öffentliche Fundstelle gezählt</div>
+              <div className="mt-1 text-xs text-white/45">
+                werden nicht als öffentliche Fundstelle gezählt
+              </div>
             </div>
           </div>
 
@@ -536,10 +554,16 @@ export default function ScannerOverlay({
                 </div>
                 <div className="z-10 mt-5 w-full">
                   <div className="relative h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <div className={`absolute inset-y-0 left-0 ${theme.dot}`} style={{ width: `${Math.max(2, Math.min(score, 100))}%` }} />
+                    <div
+                      className={`absolute inset-y-0 left-0 ${theme.dot}`}
+                      style={{ width: `${Math.max(2, Math.min(score, 100))}%` }}
+                    />
                   </div>
                   <div className="mt-2 flex justify-between font-mono text-[8px] uppercase tracking-wider text-white/25">
-                    <span>Niedrig</span><span>Erhöht</span><span>Hoch</span><span>Kritisch</span>
+                    <span>Niedrig</span>
+                    <span>Erhöht</span>
+                    <span>Hoch</span>
+                    <span>Kritisch</span>
                   </div>
                 </div>
               </div>
@@ -670,7 +694,11 @@ export default function ScannerOverlay({
                             Vollständige Identitätsanalyse
                           </div>
                           <div className="max-w-xl text-xs font-light leading-relaxed text-white/50">
-                            Die Gastprüfung zeigt bereits die wichtigsten öffentlichen Signale. Mit einem kostenlosen Konto können Sie das Ergebnis sichern, weitere Identitätsmerkmale hinterlegen und zusätzliche Analysefunktionen nutzen.
+                            Die Gastprüfung zeigt bereits die wichtigsten
+                            öffentlichen Signale. Mit einem kostenlosen Konto
+                            können Sie das Ergebnis sichern, weitere
+                            Identitätsmerkmale hinterlegen und zusätzliche
+                            Analysefunktionen nutzen.
                           </div>
                         </div>
                       </div>
@@ -683,22 +711,47 @@ export default function ScannerOverlay({
                 <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.22em] text-cyan-300/60">
                   Empfohlene nächsten Schritte
                 </div>
-                <h2 className="text-xl font-semibold tracking-tight text-white">Aus Erkenntnissen konkrete Maßnahmen machen</h2>
+                <h2 className="text-xl font-semibold tracking-tight text-white">
+                  Aus Erkenntnissen konkrete Maßnahmen machen
+                </h2>
                 <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-                    <div className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">01 · Prüfen</div>
-                    <div className="text-sm font-semibold text-white">Gefundene Konten kontrollieren</div>
-                    <p className="mt-2 text-xs leading-relaxed text-white/45">Prüfen Sie, ob die gefundenen Konten und Profile noch von Ihnen genutzt und ausreichend geschützt werden.</p>
+                    <div className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">
+                      01 · Prüfen
+                    </div>
+                    <div className="text-sm font-semibold text-white">
+                      Gefundene Konten kontrollieren
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-white/45">
+                      Prüfen Sie, ob die gefundenen Konten und Profile noch von
+                      Ihnen genutzt und ausreichend geschützt werden.
+                    </p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-                    <div className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">02 · Trennen</div>
-                    <div className="text-sm font-semibold text-white">Identitäten weniger verknüpfen</div>
-                    <p className="mt-2 text-xs leading-relaxed text-white/45">Vermeiden Sie unnötige Wiederverwendung wichtiger E-Mail-Adressen und Benutzernamen auf öffentlichen Plattformen.</p>
+                    <div className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">
+                      02 · Trennen
+                    </div>
+                    <div className="text-sm font-semibold text-white">
+                      Identitäten weniger verknüpfen
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-white/45">
+                      Vermeiden Sie unnötige Wiederverwendung wichtiger
+                      E-Mail-Adressen und Benutzernamen auf öffentlichen
+                      Plattformen.
+                    </p>
                   </div>
                   <div className="rounded-2xl border border-cyan-500/20 bg-cyan-950/10 p-5">
-                    <div className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-cyan-300/60">03 · Vertiefen</div>
-                    <div className="text-sm font-semibold text-white">Vollständige Analyse starten</div>
-                    <p className="mt-2 text-xs leading-relaxed text-white/45">Sichern Sie dieses Ergebnis und ergänzen Sie weitere Datenpunkte für eine umfassendere Bewertung Ihrer digitalen Sichtbarkeit.</p>
+                    <div className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-cyan-300/60">
+                      03 · Vertiefen
+                    </div>
+                    <div className="text-sm font-semibold text-white">
+                      Vollständige Analyse starten
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-white/45">
+                      Sichern Sie dieses Ergebnis und ergänzen Sie weitere
+                      Datenpunkte für eine umfassendere Bewertung Ihrer
+                      digitalen Sichtbarkeit.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -706,8 +759,12 @@ export default function ScannerOverlay({
               <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.02] p-6 md:p-8">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
                   <div>
-                    <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-cyan-300/60">Kostenloses SynSight-Konto</div>
-                    <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">Ihre Analyse soll nicht beim Schnellcheck enden.</h3>
+                    <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-cyan-300/60">
+                      Kostenloses SynSight-Konto
+                    </div>
+                    <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">
+                      Ihre Analyse soll nicht beim Schnellcheck enden.
+                    </h3>
                     <div className="mt-4 grid grid-cols-1 gap-2 text-xs text-white/55 sm:grid-cols-2">
                       <span>✓ Ergebnis dauerhaft sichern</span>
                       <span>✓ weitere Identitätsmerkmale hinterlegen</span>
@@ -727,7 +784,7 @@ export default function ScannerOverlay({
               <div className="mt-8 flex justify-end border-t border-white/5 pt-6">
                 <button
                   onClick={handleClose}
-                  className="rounded-2xl border border-white/10 px-8 py-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40 transition-all hover:bg-white/5 hover:text-white"
+                  className="rounded-2xl border border-cyan-500/50 bg-cyan-950/20 px-8 py-4 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.12)] transition-all hover:border-cyan-400 hover:bg-cyan-500 hover:text-black"
                 >
                   Scanner beenden
                 </button>
