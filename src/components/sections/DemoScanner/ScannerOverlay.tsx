@@ -73,6 +73,25 @@ function getThreatTheme(score: number) {
   };
 }
 
+function humanRiskLabel(score: number) {
+  if (score >= 70) return "Hohe öffentliche Sichtbarkeit";
+  if (score >= 40) return "Erhöhte öffentliche Sichtbarkeit";
+  return "Niedrige öffentliche Sichtbarkeit";
+}
+
+function executiveMeaning(score: number, publicFindings: number) {
+  if (publicFindings === 0) {
+    return "In dieser Kurzprüfung wurden keine bestätigten öffentlichen Fundstellen erkannt. Technische Zusatzdaten können trotzdem vorhanden sein und werden separat gekennzeichnet.";
+  }
+  if (score >= 70) {
+    return `SynSight hat ${publicFindings} öffentliche Signale erkannt. Mehrere Datenpunkte lassen sich im offenen Internet miteinander in Beziehung setzen. Eine genauere Prüfung ist sinnvoll.`;
+  }
+  if (score >= 40) {
+    return `SynSight hat ${publicFindings} öffentliche Signale erkannt. Teile Ihrer digitalen Identität sind über mehrere Quellen wiedererkennbar und sollten überprüft werden.`;
+  }
+  return `SynSight hat ${publicFindings} öffentliche Signale erkannt. Die aktuelle Sichtbarkeit ist begrenzt, die gefundenen Spuren sollten dennoch regelmäßig überprüft werden.`;
+}
+
 function moduleType(mod: ScanModule): "email" | "user" | "phone" | "other" {
   const text = `${mod.id} ${mod.label}`.toLowerCase();
   if (/email|identit|e-mail/.test(text) || text.includes("holehe"))
@@ -121,6 +140,34 @@ function moduleDescription(
     return "SynSight sucht die Rufnummer in priorisierten, öffentlich indexierten Quellen und zeigt bestätigte Fundstellen getrennt von technischen Metadaten an.";
   }
   return "Zusätzliche öffentliche Signale werden ausgewertet und für den kostenlosen Schnellcheck verdichtet.";
+}
+
+function moduleMeaning(
+  type: ReturnType<typeof moduleType>,
+  mod: ScanModule,
+  count: number
+) {
+  if (type === "email") {
+    return count > 0
+      ? "Ihre E-Mail-Adresse lässt sich mit öffentlichen Konto-Signalen verbinden. Dadurch kann sie als Ausgangspunkt dienen, um weitere Teile Ihrer digitalen Identität zusammenzuführen."
+      : "Aktuell wurde keine bestätigte öffentliche Konto-Fundstelle angezeigt. Das bedeutet nicht automatisch, dass die Adresse nirgends verwendet wird.";
+  }
+  if (type === "user") {
+    return count > 0
+      ? "Ein wiederverwendeter Benutzername erleichtert die Verknüpfung verschiedener Profile. Aus mehreren einzelnen Spuren kann so ein deutlich umfassenderes Bild entstehen."
+      : "Im Schnellcheck wurde keine starke öffentliche Profilkorrelation bestätigt. Neue oder anders geschriebene Profile können dennoch außerhalb dieser Kurzprüfung existieren.";
+  }
+  if (type === "phone") {
+    if (isTechnicalPhoneModule(mod)) {
+      return "Land, Nummerntyp oder möglicher Anbieter sind technische Einordnungen. Sie bedeuten nicht, dass Ihre Telefonnummer öffentlich veröffentlicht oder geleakt wurde.";
+    }
+    return count > 0
+      ? "Die Rufnummer wurde in mindestens einer öffentlich indexierten Quelle bestätigt. Solche Fundstellen können die Verknüpfung mit weiteren personenbezogenen Informationen erleichtern."
+      : "Es wurde keine bestätigte öffentliche Rufnummern-Fundstelle erkannt. Technische Rufnummernmerkmale werden davon getrennt bewertet.";
+  }
+  return count > 0
+    ? "Dieses Signal erhöht die öffentliche Wiedererkennbarkeit Ihrer digitalen Identität."
+    : "Für diesen Prüfschritt wurde keine bestätigte öffentliche Fundstelle angezeigt.";
 }
 
 function getIntelDescription(
@@ -340,6 +387,12 @@ export default function ScannerOverlay({
   const theme = getThreatTheme(score);
   const modules = useMemo(() => cleanModules(rawData), [rawData]);
   const totalFindings = modules.reduce((sum, module) => sum + module.count, 0);
+  const checkedPoints = Object.values(queries || {}).filter(Boolean).length;
+  const technicalDataAvailable = modules.some((module) =>
+    module.findings.some(
+      (finding) => (finding.category || "").toUpperCase() === "PHONE_METADATA"
+    )
+  );
 
   useEffect(() => {
     if (phase === "fullscreen_result" || phase === "scanning")
@@ -424,6 +477,26 @@ export default function ScannerOverlay({
             </div>
           </div>
 
+          <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 backdrop-blur-xl">
+              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">Öffentliche Signale</div>
+              <div className="mt-2 text-2xl font-black text-white">{totalFindings}</div>
+              <div className="mt-1 text-xs text-white/45">bestätigte Fundstellen im Schnellcheck</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 backdrop-blur-xl">
+              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">Geprüfte Datenpunkte</div>
+              <div className="mt-2 text-2xl font-black text-white">{checkedPoints}</div>
+              <div className="mt-1 text-xs text-white/45">von Ihnen für diese Prüfung angegeben</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 backdrop-blur-xl">
+              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">Technische Zusatzdaten</div>
+              <div className={`mt-2 text-sm font-black uppercase tracking-wider ${technicalDataAvailable ? "text-cyan-300" : "text-white/55"}`}>
+                {technicalDataAvailable ? "Vorhanden" : "Keine"}
+              </div>
+              <div className="mt-1 text-xs text-white/45">werden nicht als öffentliche Fundstelle gezählt</div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
             <div className="space-y-8 lg:col-span-4">
               <div
@@ -458,19 +531,33 @@ export default function ScannerOverlay({
                     {theme.label}
                   </span>
                 </div>
+                <div className="z-10 mt-5 text-center text-xs font-medium text-white/60">
+                  {humanRiskLabel(score)}
+                </div>
+                <div className="z-10 mt-5 w-full">
+                  <div className="relative h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className={`absolute inset-y-0 left-0 ${theme.dot}`} style={{ width: `${Math.max(2, Math.min(score, 100))}%` }} />
+                  </div>
+                  <div className="mt-2 flex justify-between font-mono text-[8px] uppercase tracking-wider text-white/25">
+                    <span>Niedrig</span><span>Erhöht</span><span>Hoch</span><span>Kritisch</span>
+                  </div>
+                </div>
               </div>
               <div className="relative rounded-3xl border border-white/10 bg-white/[0.02] p-8 shadow-2xl backdrop-blur-2xl">
-                <div className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
-                  <div className="h-1 w-1 rounded-full bg-cyan-500" /> Analyst
-                  Summary
+                <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.22em] text-cyan-400/60">
+                  SYN//SIGHT ANALYST SUMMARY
+                </div>
+                <div className="mb-4 text-lg font-semibold tracking-tight text-white">
+                  Was das Ergebnis für Sie bedeutet
                 </div>
                 <p className="text-sm font-light leading-relaxed text-white/70">
-                  {rawData?.summary
-                    ? scrub(rawData.summary)
-                    : totalFindings > 0
-                      ? "Die kostenlose Kurzprüfung hat öffentliche Signale gefunden. Der Gastbericht zeigt eine reduzierte Vorschau; Details und Handlungsempfehlungen werden nach Registrierung freigeschaltet."
-                      : "Die kostenlosen Schnellprüfungen wurden ausgeführt. In der Gastvorschau wurden keine bestätigten öffentlichen Treffer erkannt."}
+                  {executiveMeaning(score, totalFindings)}
                 </p>
+                {rawData?.summary && (
+                  <div className="mt-5 border-t border-white/5 pt-4 text-[11px] leading-relaxed text-white/35">
+                    Technische Zusammenfassung: {scrub(rawData.summary)}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -512,6 +599,14 @@ export default function ScannerOverlay({
                         <div className="pr-4 text-xs font-light leading-relaxed text-white/50">
                           {moduleDescription(type, mod)}
                         </div>
+                        <div className="mt-5 rounded-2xl border border-white/[0.07] bg-black/20 p-4">
+                          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-cyan-300/60">
+                            Was bedeutet das?
+                          </div>
+                          <p className="text-xs leading-relaxed text-white/60">
+                            {moduleMeaning(type, mod, mod.count)}
+                          </p>
+                        </div>
                       </div>
                       <div className="mt-4 flex w-full flex-row flex-wrap items-center gap-3 md:mt-0 md:w-auto md:flex-col md:items-end">
                         <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-2 font-mono text-[10px] text-white/40 backdrop-blur-md">
@@ -544,7 +639,7 @@ export default function ScannerOverlay({
                           {isExpanded
                             ? "[-] EINKLAPPEN"
                             : mod.count > 0
-                              ? "[+] ENTSCHLÜSSELN"
+                              ? "[+] DETAILS ANSEHEN"
                               : "[+] PRÜFBERICHT"}
                         </button>
                       </div>
@@ -571,16 +666,11 @@ export default function ScannerOverlay({
                           />
                         ))}
                         <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl border border-cyan-500/20 bg-gradient-to-b from-cyan-950/20 to-transparent p-8 text-center animate-[fadeIn_1s_ease-out_forwards]">
-                          <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-                            <span>🔒</span> SECURE DATA VAULT
+                          <div className="font-mono text-xs uppercase tracking-widest text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
+                            Vollständige Identitätsanalyse
                           </div>
                           <div className="max-w-xl text-xs font-light leading-relaxed text-white/50">
-                            Exakte Metadaten, direkte Links und verknüpfte
-                            Signale sind im Gast-Modus maskiert.
-                            <span className="mt-2 block font-medium text-white">
-                              Registrieren Sie ein kostenfreies Konto, um den
-                              Report vollständig zu entschlüsseln.
-                            </span>
+                            Die Gastprüfung zeigt bereits die wichtigsten öffentlichen Signale. Mit einem kostenlosen Konto können Sie das Ergebnis sichern, weitere Identitätsmerkmale hinterlegen und zusätzliche Analysefunktionen nutzen.
                           </div>
                         </div>
                       </div>
@@ -589,18 +679,57 @@ export default function ScannerOverlay({
                 );
               })}
 
-              <div className="mt-12 flex flex-col justify-end gap-4 border-t border-white/5 pt-8 sm:flex-row">
+              <div className="mt-10 rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/20 via-white/[0.025] to-transparent p-6 shadow-2xl backdrop-blur-2xl md:p-8">
+                <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.22em] text-cyan-300/60">
+                  Empfohlene nächsten Schritte
+                </div>
+                <h2 className="text-xl font-semibold tracking-tight text-white">Aus Erkenntnissen konkrete Maßnahmen machen</h2>
+                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+                    <div className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">01 · Prüfen</div>
+                    <div className="text-sm font-semibold text-white">Gefundene Konten kontrollieren</div>
+                    <p className="mt-2 text-xs leading-relaxed text-white/45">Prüfen Sie, ob die gefundenen Konten und Profile noch von Ihnen genutzt und ausreichend geschützt werden.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+                    <div className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">02 · Trennen</div>
+                    <div className="text-sm font-semibold text-white">Identitäten weniger verknüpfen</div>
+                    <p className="mt-2 text-xs leading-relaxed text-white/45">Vermeiden Sie unnötige Wiederverwendung wichtiger E-Mail-Adressen und Benutzernamen auf öffentlichen Plattformen.</p>
+                  </div>
+                  <div className="rounded-2xl border border-cyan-500/20 bg-cyan-950/10 p-5">
+                    <div className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-cyan-300/60">03 · Vertiefen</div>
+                    <div className="text-sm font-semibold text-white">Vollständige Analyse starten</div>
+                    <p className="mt-2 text-xs leading-relaxed text-white/45">Sichern Sie dieses Ergebnis und ergänzen Sie weitere Datenpunkte für eine umfassendere Bewertung Ihrer digitalen Sichtbarkeit.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.02] p-6 md:p-8">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+                  <div>
+                    <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-cyan-300/60">Kostenloses SynSight-Konto</div>
+                    <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">Ihre Analyse soll nicht beim Schnellcheck enden.</h3>
+                    <div className="mt-4 grid grid-cols-1 gap-2 text-xs text-white/55 sm:grid-cols-2">
+                      <span>✓ Ergebnis dauerhaft sichern</span>
+                      <span>✓ weitere Identitätsmerkmale hinterlegen</span>
+                      <span>✓ detaillierte Empfehlungen erhalten</span>
+                      <span>✓ weitere Prüfmodule nutzen</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => router.push("/register")}
+                    className={`rounded-2xl px-8 py-4 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-black transition-all hover:opacity-90 ${theme.dot} ${theme.glow}`}
+                  >
+                    Vollständige Analyse starten
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-8 flex justify-end border-t border-white/5 pt-6">
                 <button
                   onClick={handleClose}
                   className="rounded-2xl border border-white/10 px-8 py-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40 transition-all hover:bg-white/5 hover:text-white"
                 >
                   Scanner beenden
-                </button>
-                <button
-                  onClick={() => router.push("/register")}
-                  className={`rounded-2xl px-10 py-4 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-black transition-all hover:opacity-90 ${theme.dot} ${theme.glow}`}
-                >
-                  Report jetzt freischalten
                 </button>
               </div>
             </div>
