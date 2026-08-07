@@ -86,6 +86,52 @@ function riskTone(riskLevel?: string, score = 0) {
   };
 }
 
+function technicalPhoneFinding(mod: ScanModule): ScanFinding | undefined {
+  return mod.findings?.find(
+    (finding) => (finding.category || "").toUpperCase() === "PHONE_METADATA"
+  );
+}
+
+function technicalPhoneSummary(mod: ScanModule): string {
+  const finding = technicalPhoneFinding(mod);
+  if (!finding) return mod.summary;
+
+  const raw = `${finding.detail || finding.description || ""}`;
+  const lines = raw
+    .split(/\n|\s\|\s/g)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const valueFor = (...labels: string[]) => {
+    for (const label of labels) {
+      const line = lines.find((entry) =>
+        entry.toLowerCase().startsWith(label.toLowerCase())
+      );
+      if (line) {
+        const value = line.split(":").slice(1).join(":").trim();
+        if (value) return value;
+      }
+    }
+    return "";
+  };
+
+  const valid = valueFor("Rufnummer validiert", "Gültig", "Validiert");
+  const type = valueFor("Nummerntyp", "Typ");
+  const provider = valueFor("Netzbetreiber", "Anbieter", "Carrier");
+  const region = valueFor("Regionale Zuordnung", "Land", "Region");
+
+  const details = [
+    valid && `Gültig: ${valid}`,
+    type && `Typ: ${type}`,
+    region && `Region: ${region}`,
+    provider && `Anbieter: ${provider}`,
+  ].filter(Boolean);
+
+  return details.length > 0
+    ? `${details.join(" · ")}. Technische Einordnung – keine öffentliche Fundstelle.`
+    : "Technische Rufnummerndaten wurden erfolgreich ausgewertet. Gültigkeit, Nummerntyp, Länderzuordnung und möglicher Anbieter werden getrennt von öffentlichen Fundstellen bewertet.";
+}
+
 /** Only count filled values for fields that are currently visible (admin-active). */
 function filledQueries(
   fields: ScanQueries,
@@ -770,24 +816,31 @@ export default function DemoScanner() {
                       Modul-Zusammenfassung (Clearnet)
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {modules.map((mod) => (
-                        <div
-                          key={mod.id}
-                          className="rounded-xl border border-white/[0.07] bg-[linear-gradient(145deg,rgba(41,182,246,0.06),rgba(7,11,19,0.35))] p-4"
-                        >
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <div className="font-mono text-[11px] tracking-[0.14em] text-white/80 uppercase">
-                              {mod.label}
+                      {modules.map((mod) => {
+                        const technicalPhone = technicalPhoneFinding(mod);
+                        return (
+                          <div
+                            key={mod.id}
+                            className="rounded-xl border border-white/[0.07] bg-[linear-gradient(145deg,rgba(41,182,246,0.06),rgba(7,11,19,0.35))] p-4"
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div className="font-mono text-[11px] tracking-[0.14em] text-white/80 uppercase">
+                                {mod.label}
+                              </div>
+                              <div className="font-mono text-[10px] text-cyber-cyan/70">
+                                {technicalPhone
+                                  ? "Technische Daten"
+                                  : `${mod.count} Treffer`}
+                              </div>
                             </div>
-                            <div className="font-mono text-[10px] text-cyber-cyan/70">
-                              {mod.count} Treffer
-                            </div>
+                            <p className="text-sm text-white/55 leading-relaxed">
+                              {technicalPhone
+                                ? technicalPhoneSummary(mod)
+                                : mod.summary}
+                            </p>
                           </div>
-                          <p className="text-sm text-white/55 leading-relaxed">
-                            {mod.summary}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
