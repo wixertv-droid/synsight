@@ -525,67 +525,135 @@ def run_maigret(username: str) -> dict[str, Any]:
 
 
 def run_phoneinfoga_metadata(number: str) -> dict[str, Any]:
-    bin_cmd = resolve_bin("phoneinfoga", "PHONEINFOGA_BIN")
-    if not bin_cmd:
-        return success_outcome(missing_tool("phoneinfoga"), partial=True)
+    details: dict[str, Any] = {}
+    local_lines: list[str] = []
+
     try:
-        result = subprocess.run(
-            [*bin_cmd, "scan", "-n", number],
-            capture_output=True,
-            text=True,
-            timeout=PHONE_TIMEOUT,
-            check=False,
+        import phonenumbers
+        from phonenumbers import carrier, geocoder, timezone
+
+        parsed = phonenumbers.parse(number, "DE")
+        is_possible = phonenumbers.is_possible_number(parsed)
+        is_valid = phonenumbers.is_valid_number(parsed)
+        e164 = phonenumbers.format_number(
+            parsed, phonenumbers.PhoneNumberFormat.E164
         )
-        output = clean_line((result.stdout or "").strip())
-        if output:
-            return success_outcome(
-                [
-                    {
-                        "source": "phoneinfoga",
-                        "category": "PHONE_METADATA",
-                        "type": "TECHNICAL_CONTEXT",
-                        "title": "Technischer Rufnummernkontext",
-                        "description": (
-                            "Sekundäre technische Hinweise zur Schreibweise, "
-                            "Länderzuordnung oder Netzstruktur der Rufnummer."
-                        ),
-                        "raw": output[:2000],
-                        "risk": "low",
-                        "confidence": 55,
-                    }
-                ]
-            )
-        if result.returncode != 0:
-            return success_outcome(
-                [
-                    error_finding(
-                        "phoneinfoga",
-                        "Technische Zusatzprüfung konnte nicht abgeschlossen werden.",
-                    )
-                ],
-                partial=True,
-            )
-        return success_outcome([])
-    except subprocess.TimeoutExpired:
-        return success_outcome(
-            [
-                error_finding(
-                    "phoneinfoga", "Technische Zusatzprüfung hat das Zeitlimit erreicht."
-                )
-            ],
-            partial=True,
+        international = phonenumbers.format_number(
+            parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL
         )
-    except Exception:
-        return success_outcome(
+        national = phonenumbers.format_number(
+            parsed, phonenumbers.PhoneNumberFormat.NATIONAL
+        )
+        region_code = phonenumbers.region_code_for_number(parsed) or ""
+        country = geocoder.description_for_number(parsed, "de") or region_code
+        provider = carrier.name_for_number(parsed, "de") or ""
+        zones = list(timezone.time_zones_for_number(parsed))
+
+        number_type = phonenumbers.number_type(parsed)
+        type_labels = {
+            phonenumbers.PhoneNumberType.FIXED_LINE: "Festnetz",
+            phonenumbers.PhoneNumberType.MOBILE: "Mobilfunk",
+            phonenumbers.PhoneNumberType.FIXED_LINE_OR_MOBILE: "Festnetz oder Mobilfunk",
+            phonenumbers.PhoneNumberType.TOLL_FREE: "Kostenfrei",
+            phonenumbers.PhoneNumberType.PREMIUM_RATE: "Premium-/Mehrwertdienst",
+            phonenumbers.PhoneNumberType.VOIP: "VoIP",
+            phonenumbers.PhoneNumberType.PERSONAL_NUMBER: "Persönliche Rufnummer",
+            phonenumbers.PhoneNumberType.PAGER: "Pager",
+            phonenumbers.PhoneNumberType.UAN: "UAN",
+            phonenumbers.PhoneNumberType.VOICEMAIL: "Voicemail",
+            phonenumbers.PhoneNumberType.UNKNOWN: "Unbekannt",
+        }
+        type_label = type_labels.get(number_type, "Unbekannt")
+
+        details = {
+            "possible": is_possible,
+            "valid": is_valid,
+            "e164": e164,
+            "international": international,
+            "national": national,
+            "region_code": region_code,
+            "country": country,
+            "type": type_label,
+            "carrier": provider,
+            "timezones": zones,
+            "carrier_notice": (
+                "Der Anbieter ist bei portierten Mobilfunknummern nicht zuverlässig bestimmbar."
+            ),
+        }
+
+        local_lines.extend(
             [
-                error_finding(
-                    "phoneinfoga",
-                    "Technische Zusatzprüfung konnte nicht abgeschlossen werden.",
-                )
-            ],
-            partial=True,
+                f"Format E.164: {e164}",
+                f"International: {international}",
+                f"National: {national}",
+                f"Land/Region: {country} ({region_code})".strip(),
+                f"Nummer gültig: {'ja' if is_valid else 'nein'}",
+                f"Nummer möglich: {'ja' if is_possible else 'nein'}",
+                f"Nummerntyp: {type_label}",
+                f"Zeitzone: {', '.join(zones) if zones else 'nicht bestimmbar'}",
+                f"Möglicher Anbieter: {provider or 'nicht lokal bestimmbar'}",
+                "Hinweis: Der Anbieter kann durch Rufnummernmitnahme abweichen.",
+            ]
+        )
+    except Exception as exc:
+        local_lines.append(
+            f"Lokale Rufnummern-Metadaten konnten nicht bestimmt werden: {exc}"
         )
 
+    bin_cmd = resolve_bin("phoneinfoga", "PHONEINFOGA_BIN")
+    phoneinfoga_output = ""
+    partial = False
+
+    if bin_cmd:
+        try:
+            result = subprocess.run(
+                [*bin_cmd, "scan", "-n", number],
+                capture_output=True,
+                text=True,
+                timeout=PHONE_TIMEOUT,
+                check=False,
+            )
+            phoneinfoga_output = clean_line((result.stdout or "").strip())
+            if result.returncode != 0 and not phoneinfoga_output:
+                partial = True
+        except subprocess.TimeoutExpired:
+            partial = True
+            phoneinfoga_output = "PhoneInfoga-Zusatzprüfung hat das Zeitlimit erreicht."
+        except Exception:
+            partial = True
+            phoneinfoga_output = "PhoneInfoga-Zusatzprüfung konnte nicht abgeschlossen werden."
+
+    raw_parts = ["Lokale Rufnummernprüfung:", *local_lines]
+
+    if phoneinfoga_output:
+        raw_parts.extend(
+            [
+                "",
+                "PhoneInfoga-Zusatzprüfung:",
+                "PhoneInfoga liefert in dieser Version hauptsächlich Google-Suchvorlagen.",
+                "Diese Suchvorlagen werden nicht als öffentliche Fundstelle gezählt.",
+                phoneinfoga_output[:1200],
+            ]
+        )
+
+    return success_outcome(
+        [
+            {
+                "source": "phone-metadata",
+                "category": "PHONE_METADATA",
+                "type": "TECHNICAL_CONTEXT",
+                "title": "Technischer Rufnummernkontext",
+                "description": (
+                    "Lokale Prüfung von Format, Land/Region, Nummerntyp und technischer Plausibilität."
+                ),
+                "details": details,
+                "raw": "\n".join(raw_parts)[:3000],
+                "risk": "low",
+                "confidence": 70 if details else 45,
+            }
+        ],
+        partial=partial,
+    )
 
 def normalize_phone_variants(number: str) -> list[str]:
     raw = number.strip()
@@ -615,6 +683,33 @@ def normalize_phone_variants(number: str) -> list[str]:
         if value and value not in variants:
             variants.append(value)
     return variants[:PHONE_SEARCH_MAX_QUERIES]
+
+
+def phone_digit_needles(number: str) -> list[str]:
+    needles: list[str] = []
+    for variant in normalize_phone_variants(number):
+        digits = re.sub(r"\D", "", variant)
+        if digits and digits not in needles:
+            needles.append(digits)
+
+        if digits.startswith("49") and len(digits) > 4:
+            national = f"0{digits[2:]}"
+            bare_mobile = digits[2:]
+            if national not in needles:
+                needles.append(national)
+            if bare_mobile not in needles:
+                needles.append(bare_mobile)
+
+    return [needle for needle in needles if len(needle) >= 9]
+
+
+def phone_evidence_matches(number: str, *values: str) -> bool:
+    evidence_digits = re.sub(r"\D", "", " ".join(values))
+    if not evidence_digits:
+        return False
+    return any(needle in evidence_digits for needle in phone_digit_needles(number))
+
+
 
 
 def canonical_public_url(value: str) -> str:
@@ -703,6 +798,17 @@ def phone_cache_get(number: str) -> dict[str, Any] | None:
 
 
 def phone_cache_put(number: str, outcome: dict[str, Any]) -> None:
+    findings = list(outcome.get("findings") or [])
+    has_public_hit = any(
+        str(item.get("category") or "").upper() == "PHONE_PUBLIC"
+        for item in findings
+    )
+
+    # Wichtig: eingeschränkte Null-Ergebnisse nicht cachen.
+    # Sonst bleibt ein temporärer Suchmaschinen-Ausfall stundenlang als "0 Treffer" stehen.
+    if outcome.get("partial") and not has_public_hit:
+        return
+
     key = phone_cache_key(number)
     with PHONE_CACHE_LOCK:
         PHONE_SEARCH_CACHE[key] = {
@@ -764,6 +870,13 @@ def run_phone_public_search(number: str) -> dict[str, Any]:
 
             title = clean_line(str(raw.get("title") or "Öffentliche Fundstelle"))[:180]
             content = clean_line(str(raw.get("content") or ""))[:360]
+
+            # Harte Qualitätssicherung:
+            # Suchmaschinen liefern bei Telefonnummern oft Produkt-, EAN- oder Preisvergleichstreffer.
+            # Nur echte Rufnummern-Evidenz in URL/Titel/Snippet wird als öffentliche Fundstelle gezählt.
+            if not phone_evidence_matches(number, url, title, content):
+                continue
+
             domain = urlparse(url).hostname or "Öffentliche Webseite"
             evidence_type = classify_public_phone_result(url, title, content)
 
@@ -810,6 +923,8 @@ def run_phone_public_search(number: str) -> dict[str, Any]:
             "successful_queries": successful_queries,
             "result_limit": PHONE_SEARCH_MAX_RESULTS,
             "cache": "miss",
+            "variants": variants,
+            "search_hint": "Partial zero-results are not cached.",
             "search_status": (
                 "unavailable"
                 if successful_queries == 0
