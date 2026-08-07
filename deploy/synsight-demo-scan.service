@@ -1,0 +1,40 @@
+[Unit]
+Description=SynSight Contabo DemoScanner Edge API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt
+EnvironmentFile=/etc/synsight-demo-scan.env
+ExecStart=/usr/bin/python3 /opt/api.py
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+UMask=0077
+
+# Basic systemd hardening while keeping root-installed scanner tools readable.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+TasksMax=96
+MemoryMax=1G
+
+# Optional path; leading '-' keeps startup safe when persistence is disabled.
+ReadWritePaths=-/var/lib/synsight-demo-scan
+
+[Install]
+WantedBy=multi-user.target

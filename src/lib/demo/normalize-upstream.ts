@@ -53,7 +53,8 @@ export interface NormalizedDemoScan {
 const MODULE_META: Record<string, { label: string; order: number }> = {
   holehe: { label: "Identitätsabgleich", order: 10 },
   maigret: { label: "Profilkorrelation", order: 20 },
-  phoneinfoga: { label: "Kommunikations-Metadaten", order: 30 },
+  "phone-exposure": { label: "Öffentliche Rufnummern-Fundstellen", order: 25 },
+  phoneinfoga: { label: "Technische Rufnummernprüfung", order: 30 },
   publicosint: { label: "Öffentlicher Schnellcheck", order: 60 },
   osint: { label: "Öffentlicher Schnellcheck", order: 60 },
 };
@@ -132,7 +133,9 @@ function moduleKey(source: string): string {
   if (/spiderfoot|publicosint/.test(normalized)) return "publicosint";
   if (normalized === "holehe") return "holehe";
   if (normalized === "maigret") return "maigret";
-  if (normalized === "phoneinfoga" || normalized === "phone") return "phoneinfoga";
+  if (normalized === "phoneexposure") return "phone-exposure";
+  if (normalized === "phoneinfoga" || normalized === "phone")
+    return "phoneinfoga";
   if (normalized === "osint") return "osint";
   return raw;
 }
@@ -141,8 +144,13 @@ function moduleLabel(id: string): string {
   return MODULE_META[id]?.label || "Öffentlicher Schnellcheck";
 }
 
-function derivePayloadSource(data: Record<string, unknown>, fallback = "OSINT") {
-  return firstUseful(data.module, data.source, data.provider, fallback) || fallback;
+function derivePayloadSource(
+  data: Record<string, unknown>,
+  fallback = "OSINT"
+) {
+  return (
+    firstUseful(data.module, data.source, data.provider, fallback) || fallback
+  );
 }
 
 function countryLabel(value: string): string {
@@ -152,7 +160,9 @@ function countryLabel(value: string): string {
   if (["de", "deu", "germany", "deutschland"].includes(normalized)) {
     return "Deutschland";
   }
-  if (["at", "aut", "austria", "österreich", "oesterreich"].includes(normalized)) {
+  if (
+    ["at", "aut", "austria", "österreich", "oesterreich"].includes(normalized)
+  ) {
     return "Österreich";
   }
   if (["ch", "che", "switzerland", "schweiz"].includes(normalized)) {
@@ -211,28 +221,35 @@ function pickPattern(text: string, patterns: RegExp[]): string {
   return "";
 }
 
-function isPhoneFinding(raw: Record<string, unknown>, source: string): boolean {
+function isPhoneMetadataFinding(
+  raw: Record<string, unknown>,
+  source: string
+): boolean {
+  const category = String(raw.category || "").toUpperCase();
+  if (category === "PHONE_PUBLIC" || category === "STATUS") return false;
+  if (category === "PHONE_METADATA") return true;
+
   return (
-    /phone|telefon|number|carrier|provider|rufnummer/i.test(source) ||
-    /phone|telefon|rufnummer/i.test(String(raw.category || "")) ||
+    /phoneinfoga|carrier|provider|rufnummer.?metadata/i.test(source) ||
     /telefon|rufnummer|telekommunikation/i.test(String(raw.title || "")) ||
     Boolean(
       raw.valid ||
-        raw.is_valid ||
-        raw.valid_number ||
-        raw.isValid ||
-        raw.carrier ||
-        raw.country ||
-        raw.country_code ||
-        raw.provider
+      raw.is_valid ||
+      raw.valid_number ||
+      raw.isValid ||
+      raw.carrier ||
+      raw.country ||
+      raw.country_code ||
+      raw.provider
     )
   );
 }
 
-function buildPhoneFinding(
+function buildPhoneMetadataFinding(
   raw: Record<string, unknown>,
   source: string
 ): DemoFinding {
+  const details = asRecord(raw.details) || {};
   const combinedText = [
     raw.description,
     raw.detail,
@@ -248,7 +265,7 @@ function buildPhoneFinding(
     .join("\n");
 
   const provider =
-    firstUseful(raw.carrier, raw.provider, raw.operator) ||
+    firstUseful(details.carrier, raw.carrier, raw.provider, raw.operator) ||
     pickPattern(combinedText, [
       /"carrier"\s*:\s*"([^"]+)"/i,
       /"provider"\s*:\s*"([^"]+)"/i,
@@ -258,13 +275,19 @@ function buildPhoneFinding(
       /operator\s*[:=|]\s*([^|\n,}]+)/i,
       /anbieter\s*[:=|]\s*([^|\n,}]+)/i,
       /netzbetreiber\s*[:=|]\s*([^|\n,}]+)/i,
-      /provider\s*\/\s*region\s*:?\s*([^|\n,}]+)/i,
       /\b(T-Mobile|Telekom|Vodafone|O2|Telefonica|Telefónica|1&1|Drillisch|Congstar|Blau|Aldi Talk|Otelo|Klarmobil)\b/i,
     ]) ||
     "Nicht eindeutig zuordenbar";
 
   const country = countryLabel(
-    firstUseful(raw.country, raw.country_code, raw.country_name, raw.region) ||
+    firstUseful(
+      details.country,
+      raw.country,
+      raw.country_code,
+      raw.country_name,
+      raw.region,
+      details.region_code
+    ) ||
       pickPattern(combinedText, [
         /"country"\s*:\s*"([^"]+)"/i,
         /"country_code"\s*:\s*"([^"]+)"/i,
@@ -285,7 +308,9 @@ function buildPhoneFinding(
     /valid\s*[:=|]\s*(true|false|yes|no|valid|invalid)/i,
     /status\s*[:=|]\s*(valid|invalid|true|false|active|inactive|aktiv|inaktiv)/i,
   ]);
+
   const validRaw = firstDefined(
+    details.valid,
     raw.valid,
     raw.is_valid,
     raw.valid_number,
@@ -296,33 +321,96 @@ function buildPhoneFinding(
 
   const validLabel = normalizeBoolText(validRaw);
   const isValid = validLabel === "Ja";
+
+  const numberFormat =
+    firstUseful(
+      details.international,
+      details.e164,
+      raw.international,
+      raw.e164
+    ) ||
+    pickPattern(combinedText, [
+      /international\s*[:=|]\s*([^|\n]+)/i,
+      /format\s+e\.?164\s*[:=|]\s*([^|\n]+)/i,
+    ]);
+
+  const nationalFormat =
+    firstUseful(details.national, raw.national) ||
+    pickPattern(combinedText, [/national\s*[:=|]\s*([^|\n]+)/i]);
+
+  const phoneType =
+    firstUseful(details.type, raw.number_type, raw.phone_type) ||
+    pickPattern(combinedText, [/nummerntyp\s*[:=|]\s*([^|\n]+)/i]);
+
+  const timezone =
+    firstUseful(details.timezones, raw.timezones, raw.timezone) ||
+    pickPattern(combinedText, [/zeitzone\s*[:=|]\s*([^|\n]+)/i]);
+
   const hasProvider = provider !== "Nicht eindeutig zuordenbar";
   const hasCountry = country !== "Nicht sicher bestimmbar";
+  const hasUsefulDetails = Boolean(
+    isValid ||
+    hasProvider ||
+    hasCountry ||
+    numberFormat ||
+    nationalFormat ||
+    phoneType ||
+    timezone
+  );
 
   const detailLines = [
-    "Status: Für die angegebene Rufnummer konnten verwertbare Netz- und Metadatensignale korreliert werden.",
+    "Status: Technische Zusatzinformationen zur eingegebenen Rufnummer wurden ausgewertet.",
+    ...(numberFormat ? [`Format: ${numberFormat}`] : []),
+    ...(nationalFormat ? [`National: ${nationalFormat}`] : []),
     `Rufnummer validiert: ${validLabel}`,
+    ...(phoneType ? [`Nummerntyp: ${phoneType}`] : []),
     `Netzbetreiber: ${provider}`,
     `Regionale Zuordnung: ${country}`,
-    isValid || hasProvider || hasCountry
-      ? "Bewertung: Die Nummer liefert verwertbare technische Hinweise und sollte im vollständigen Report weiter eingeordnet werden."
-      : "Bewertung: Die Nummer konnte nicht eindeutig als aktiv bestätigt werden; die Metadaten bleiben prüfenswert.",
+    ...(timezone ? [`Zeitzone: ${timezone}`] : []),
+    hasUsefulDetails
+      ? "Bewertung: Diese Angaben sind technische Zusatzinformationen und keine öffentliche Fundstelle."
+      : "Bewertung: Es konnten keine eindeutigen technischen Detailangaben bestätigt werden.",
   ];
 
   return {
-    category: "PHONE",
-    title: "Telekommunikations-Intelligenz",
+    category: "PHONE_METADATA",
+    title: "Technische Rufnummernprüfung",
     description: detailLines.join("\n"),
-    platform: hasProvider ? provider : "Telefon-Metadaten",
+    platform: hasProvider ? provider : "Technische Zusatzprüfung",
     detail: detailLines.join("\n"),
-    risk: String(raw.risk || "medium").toLowerCase(),
+    risk: String(raw.risk || "low").toLowerCase(),
     confidence:
       typeof raw.confidence === "number"
         ? raw.confidence
-        : hasProvider || hasCountry || isValid
-          ? 75
-          : 55,
-    source,
+        : hasUsefulDetails
+          ? 70
+          : 45,
+    source: "phoneinfoga",
+  };
+}
+
+function buildPublicPhoneFinding(
+  raw: Record<string, unknown>,
+  source: string
+): DemoFinding {
+  const url = typeof raw.url === "string" ? raw.url : undefined;
+  const platform =
+    firstUseful(raw.platform, raw.domain) || "Öffentliche Webseite";
+  const snippet = firstUseful(raw.snippet, raw.content);
+  const description =
+    firstUseful(raw.description) ||
+    "Diese Rufnummer wurde unter anderem auf einer öffentlich indexierten Seite gefunden.";
+
+  return {
+    category: "PHONE_PUBLIC",
+    title: firstUseful(raw.title) || `Öffentliche Fundstelle · ${platform}`,
+    description,
+    platform,
+    detail: snippet || url || description,
+    risk: String(raw.risk || "medium").toLowerCase(),
+    confidence: typeof raw.confidence === "number" ? raw.confidence : 70,
+    source: moduleKey(source) === "phone-exposure" ? "phone-exposure" : source,
+    url,
   };
 }
 
@@ -333,6 +421,8 @@ export function findingFromUpstream(
   const source = String(
     raw.source || raw.module || raw.provider || fallbackSource || "unknown"
   );
+  const category = String(raw.category || "").toUpperCase();
+
   if (raw.error) {
     return {
       category: "ERROR",
@@ -344,8 +434,25 @@ export function findingFromUpstream(
     };
   }
 
-  if (isPhoneFinding(raw, source)) {
-    return buildPhoneFinding(raw, source);
+  if (category === "PHONE_PUBLIC") {
+    return buildPublicPhoneFinding(raw, source);
+  }
+
+  if (category === "STATUS") {
+    return {
+      category: "STATUS",
+      title: firstUseful(raw.title) || "Prüfstatus",
+      description: firstUseful(raw.description, raw.message),
+      platform: moduleLabel(moduleKey(source)),
+      detail: firstUseful(raw.detail, raw.description, raw.message),
+      risk: "low",
+      confidence: 0,
+      source,
+    };
+  }
+
+  if (isPhoneMetadataFinding(raw, source)) {
+    return buildPhoneMetadataFinding(raw, source);
   }
 
   const platform = String(
@@ -356,7 +463,13 @@ export function findingFromUpstream(
       moduleLabel(moduleKey(source))
   );
   const url = typeof raw.url === "string" ? raw.url : undefined;
-  const rawText = firstUseful(raw.raw, raw.raw_output, raw.output, raw.stdout, raw.data);
+  const rawText = firstUseful(
+    raw.raw,
+    raw.raw_output,
+    raw.output,
+    raw.stdout,
+    raw.data
+  );
   const status = safeString(raw.status);
 
   let title = String(raw.title || platform || "Öffentlicher Treffer");
@@ -372,7 +485,8 @@ export function findingFromUpstream(
   if (status === "started") {
     title = "Prüfung gestartet";
     description =
-      description || "Die öffentliche Korrelation wurde ausgelöst. Detaildaten folgen.";
+      description ||
+      "Die öffentliche Korrelation wurde ausgelöst. Detaildaten folgen.";
   }
   if (!description && !url) {
     description = "Öffentlicher Treffer ohne weitere Detailbeschreibung.";
@@ -396,7 +510,8 @@ function collectFindingObjects(data: Record<string, unknown>): Array<{
   fallbackSource: string;
 }> {
   const fallbackSource = derivePayloadSource(data);
-  const out: Array<{ raw: Record<string, unknown>; fallbackSource: string }> = [];
+  const out: Array<{ raw: Record<string, unknown>; fallbackSource: string }> =
+    [];
 
   const pushList = (items: unknown[], source: string) => {
     for (const item of items) {
@@ -445,9 +560,36 @@ function collectFindingObjects(data: Record<string, unknown>): Array<{
     }
   }
 
+  if (data.partial === true) {
+    const scanMeta = asRecord(data.scan_meta);
+    const statusSource =
+      scanMeta?.scope === "prioritised_public_web"
+        ? "phone-exposure"
+        : fallbackSource;
+    const notices = asArray(data.notices).map(safeString).filter(Boolean);
+
+    for (const notice of notices) {
+      out.push({
+        raw: {
+          source: statusSource,
+          category: "STATUS",
+          title: "Öffentliche Suche teilweise eingeschränkt",
+          description: notice,
+          risk: "low",
+          confidence: 0,
+        },
+        fallbackSource: statusSource,
+      });
+    }
+  }
+
   if (out.length === 0) {
-    const total = Number(data.total_findings ?? data.result_count ?? data.count ?? 0);
-    const hasSummary = Boolean(safeString(data.summary) || safeString(data.message));
+    const total = Number(
+      data.total_findings ?? data.result_count ?? data.count ?? 0
+    );
+    const hasSummary = Boolean(
+      safeString(data.summary) || safeString(data.message)
+    );
     const rawPayload = firstUseful(data.raw_output, data.output, data.stdout);
     const hasRaw = Boolean(rawPayload);
     const topScore = Number(data.exposure_score ?? 0);
@@ -479,9 +621,23 @@ function collectFindingObjects(data: Record<string, unknown>): Array<{
 
 function buildModuleSummaries(modules: DemoModuleResult[]): string {
   const parts = modules.map((m) => {
+    const hasTechnical = m.findings.some(
+      (finding) => finding.category === "PHONE_METADATA"
+    );
+    const hasStatus = m.findings.some(
+      (finding) => finding.category === "STATUS"
+    );
+
     if (m.status === "error") return `${m.label}: Fehler`;
     if (m.status === "started") return `${m.label}: gestartet`;
-    if (m.count === 0) return `${m.label}: keine Treffer`;
+    if (m.count === 0 && hasTechnical) {
+      return `${m.label}: technische Zusatzdaten vorhanden`;
+    }
+    if (m.id === "phone-exposure" && m.count === 0 && hasStatus) {
+      return `${m.label}: keine bestätigte Fundstelle, teilweise eingeschränkt`;
+    }
+    if (m.count === 0)
+      return `${m.label}: keine bestätigten öffentlichen Treffer`;
     return `${m.label}: ${m.count} Treffer`;
   });
   return parts.join(" · ");
@@ -499,11 +655,20 @@ export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
   const modules: DemoModuleResult[] = [...buckets.entries()].map(
     ([id, items]) => {
       const errors = items.filter((item) => item.category === "ERROR");
-      const started = items.some((item) => /gestartet|started/i.test(item.title));
+      const started = items.some((item) =>
+        /gestartet|started/i.test(item.title)
+      );
       const real = items.filter((item) => item.category !== "ERROR");
+      const hasTechnical = real.some(
+        (item) => item.category === "PHONE_METADATA"
+      );
+      const hasStatus = real.some((item) => item.category === "STATUS");
       let status: DemoModuleResult["status"] = "ok";
       if (errors.length && real.length === 0) status = "error";
-      else if (started && real.every((item) => /gestartet|started/i.test(item.title))) {
+      else if (
+        started &&
+        real.every((item) => /gestartet|started/i.test(item.title))
+      ) {
         status = "started";
       } else if (real.length === 0) status = "empty";
 
@@ -511,8 +676,24 @@ export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
         (item) =>
           !/gestartet|started/i.test(item.title) &&
           item.category !== "STATUS" &&
-          item.category !== "EMPTY"
+          item.category !== "EMPTY" &&
+          item.category !== "PHONE_METADATA"
       ).length;
+
+      let summary = `${count} öffentliche Signal(e)`;
+      if (status === "error") {
+        summary = errors[0]?.description || "Prüfschritt nicht verfügbar";
+      } else if (status === "started") {
+        summary = "Prüfung gestartet — Detaildaten ausstehend";
+      } else if (count === 0 && hasTechnical) {
+        summary =
+          "Keine öffentliche Fundstelle; technische Zusatzprüfung vorhanden";
+      } else if (count === 0 && hasStatus) {
+        summary =
+          "Keine bestätigte Fundstelle; Prüfung teilweise eingeschränkt";
+      } else if (count === 0) {
+        summary = "Keine öffentlichen Treffer in diesem Prüfschritt";
+      }
 
       return {
         id,
@@ -520,14 +701,7 @@ export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
         status,
         findings: items,
         count,
-        summary:
-          status === "error"
-            ? errors[0]?.description || "Prüfschritt nicht verfügbar"
-            : status === "started"
-              ? "Prüfung gestartet — Detaildaten ausstehend"
-              : count === 0
-                ? "Keine öffentlichen Treffer in diesem Prüfschritt"
-                : `${count} öffentliche Signal(e)`,
+        summary,
       };
     }
   );
@@ -552,6 +726,7 @@ export function normalizeUpstreamPayload(input: {
   let upstreamSummary = "";
   let upstreamScore: number | null = null;
   let upstreamRisk = "";
+  let partialNotice = "";
 
   for (const data of payloads) {
     if (typeof data.scan_id === "string") scanIds.push(data.scan_id);
@@ -565,6 +740,9 @@ export function normalizeUpstreamPayload(input: {
     if (!upstreamRisk && typeof data.risk_level === "string") {
       upstreamRisk = data.risk_level;
     }
+    if (data.partial === true && !partialNotice) {
+      partialNotice = asArray(data.notices).map(safeString).find(Boolean) || "";
+    }
 
     for (const { raw, fallbackSource } of collectFindingObjects(data)) {
       const mapped = findingFromUpstream(raw, fallbackSource);
@@ -573,24 +751,41 @@ export function normalizeUpstreamPayload(input: {
   }
 
   const scoredFindings = filterScoreFindings(findings);
-  const displayFindings = scoredFindings.length ? scoredFindings : findings;
+  const primaryFindings = scoredFindings.length
+    ? scoredFindings
+    : findings.filter((finding) => finding.category !== "ERROR");
+  const supplementalFindings = findings.filter(
+    (finding) =>
+      finding.category === "STATUS" || finding.category === "PHONE_METADATA"
+  );
+  const displayFindings = [...primaryFindings];
+  for (const finding of supplementalFindings) {
+    if (!displayFindings.includes(finding)) displayFindings.push(finding);
+  }
+
   const modules = groupModules(displayFindings);
   const computed = computeDemoExposureScore(scoredFindings);
-  const score = computed.usableCount > 0 ? computed.score : (upstreamScore ?? 0);
-  const risk = computed.usableCount > 0 ? computed.risk : upstreamRisk || "Niedrig";
+  const score =
+    computed.usableCount > 0 ? computed.score : (upstreamScore ?? 0);
+  const risk =
+    computed.usableCount > 0 ? computed.risk : upstreamRisk || "Niedrig";
   const platforms = [
     ...new Set(
       displayFindings
+        .filter((finding) => finding.category !== "STATUS")
         .map((finding) => finding.platform || finding.source || "")
         .filter(Boolean)
         .map(String)
     ),
   ].slice(0, 16);
 
+  const noHitSummary = partialNotice
+    ? `Keine bestätigten öffentlichen Treffer für „${queryLabel}“. ${partialNotice}`
+    : `Keine öffentlichen Treffer für „${queryLabel}“ in den aktiven Prüfschritten.`;
+
   const summary =
     scoredFindings.length === 0
-      ? upstreamSummary ||
-        `Keine öffentlichen Treffer für „${queryLabel}“ in den aktiven Prüfschritten.`
+      ? upstreamSummary || noHitSummary
       : upstreamSummary && upstreamSummary.length < 420
         ? upstreamSummary
         : `Schnellcheck für „${queryLabel}": ${buildModuleSummaries(modules)}. Exposure-Score ${score}/100 (${risk}).`;
@@ -600,7 +795,7 @@ export function normalizeUpstreamPayload(input: {
     query: queryLabel,
     queries,
     queryType: Object.keys(queries).join("+") || "mixed",
-    findings: scoredFindings,
+    findings: displayFindings,
     modules,
     platforms: platforms.length ? platforms : ["OSINT"],
     exposure_score: score,

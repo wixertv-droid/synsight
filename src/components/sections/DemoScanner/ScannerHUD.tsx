@@ -47,7 +47,7 @@ function statusMessage(progress: number, activeStepLabel?: string): string {
 function fieldLabel(step: ModuleStepState): string {
   if (step.field === "email") return "Identitätsebene";
   if (step.field === "username" || step.field === "name") return "Profilnetz";
-  if (step.field === "phone") return "Kommunikationssignal";
+  if (step.field === "phone") return "Telefoncheck";
   return "Prüfebene";
 }
 
@@ -56,7 +56,7 @@ function fieldHint(step: ModuleStepState): string {
   if (step.field === "username" || step.field === "name") {
     return "Öffentliche Profilspuren";
   }
-  if (step.field === "phone") return "Netz- und Anbieter-Metadaten";
+  if (step.field === "phone") return "Telefon-Metadaten";
   return "Öffentliche Korrelation";
 }
 
@@ -69,9 +69,12 @@ function statusText(status?: string) {
 }
 
 function statusTone(status?: string) {
-  if (status === "done") return "text-[#00ff66] border-[#00ff66]/40 bg-[#00ff66]/10";
-  if (status === "running") return "text-[#00f3ff] border-[#00f3ff]/40 bg-[#00f3ff]/10 animate-pulse";
-  if (status === "error") return "text-amber-200 border-amber-300/30 bg-amber-400/10";
+  if (status === "done")
+    return "text-[#00ff66] border-[#00ff66]/40 bg-[#00ff66]/10";
+  if (status === "running")
+    return "text-[#00f3ff] border-[#00f3ff]/40 bg-[#00f3ff]/10 animate-pulse";
+  if (status === "error")
+    return "text-amber-200 border-amber-300/30 bg-amber-400/10";
   return "text-white/35 border-white/10 bg-white/[0.03]";
 }
 
@@ -91,14 +94,20 @@ function ModuleLoader({ step }: { step: ModuleStepState }) {
     <div className="relative flex items-center justify-between w-full max-w-[560px] p-5 bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_0_32px_rgba(0,243,255,0.08)]">
       <div
         className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-          isDone ? "bg-[#00ff66]" : isActive ? "bg-[#00f3ff] animate-pulse" : "bg-white/15"
+          isDone
+            ? "bg-[#00ff66]"
+            : isActive
+              ? "bg-[#00f3ff] animate-pulse"
+              : "bg-white/15"
         }`}
       />
       <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0 mr-5">
         <svg
           className="absolute inset-0 w-full h-full"
           viewBox="0 0 100 100"
-          style={{ animation: isActive ? "spin-slow 7s linear infinite" : "none" }}
+          style={{
+            animation: isActive ? "spin-slow 7s linear infinite" : "none",
+          }}
         >
           <circle
             cx="50"
@@ -130,10 +139,14 @@ function ModuleLoader({ step }: { step: ModuleStepState }) {
 
       <div className="flex flex-col flex-1 min-w-0">
         <div className="flex items-center justify-between gap-3 mb-1">
-          <span className={`text-[10px] font-bold tracking-[0.28em] uppercase ${ring}`}>
+          <span
+            className={`text-[10px] font-bold tracking-[0.28em] uppercase ${ring}`}
+          >
             {fieldLabel(step)}
           </span>
-          <span className={`text-[9px] tracking-widest uppercase px-2 py-0.5 border rounded-full ${tone}`}>
+          <span
+            className={`text-[9px] tracking-widest uppercase px-2 py-0.5 border rounded-full ${tone}`}
+          >
             {statusText(step.status)}
           </span>
         </div>
@@ -166,8 +179,13 @@ export default function ScannerHUD({
   const readyNotified = useRef(false);
 
   const visualProgress = clampProgress(progress);
-  const bootProgress = Math.max(18, Math.min(92, visualProgress || msgIndex * 11 + 18));
-  const doneCount = moduleSteps.filter((s) => s.status === "done" || s.status === "error").length;
+  const bootProgress = Math.max(
+    18,
+    Math.min(92, visualProgress || msgIndex * 11 + 18)
+  );
+  const doneCount = moduleSteps.filter(
+    (s) => s.status === "done" || s.status === "error"
+  ).length;
   const total = moduleSteps.length || 1;
   const isComplete = visualProgress >= 100;
   const activeMessage = statusMessage(visualProgress, activeStepLabel);
@@ -204,8 +222,8 @@ export default function ScannerHUD({
       fallbackSteps.push({
         id: "phone-fallback",
         module: "phoneinfoga",
-        label: "Kommunikations-Metadaten",
-        hint: "Netzsignale",
+        label: "Telefoncheck",
+        hint: "Telefon-Metadaten",
         query: queries.phone,
         field: "phone",
         status: "pending",
@@ -290,26 +308,132 @@ export default function ScannerHUD({
               className="absolute inset-0 w-full h-full opacity-90 drop-shadow-[0_0_14px_rgba(0,243,255,0.45)]"
               viewBox="0 0 260 260"
             >
-              <g style={{ transformOrigin: "130px 130px", animation: "spin-slow 22s linear infinite" }}>
-                <circle cx="130" cy="130" r="120" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="565 189" opacity="0.35" strokeLinecap="round" />
+              <g
+                style={{
+                  transformOrigin: "130px 130px",
+                  animation: "spin-slow 22s linear infinite",
+                }}
+              >
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="120"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeDasharray="565 189"
+                  opacity="0.35"
+                  strokeLinecap="round"
+                />
               </g>
-              <g style={{ transformOrigin: "130px 130px", animation: "spin-slow-rev 30s linear infinite" }}>
-                <circle cx="130" cy="130" r="112" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="527 176" opacity="0.48" strokeLinecap="round" />
+              <g
+                style={{
+                  transformOrigin: "130px 130px",
+                  animation: "spin-slow-rev 30s linear infinite",
+                }}
+              >
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="112"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeDasharray="527 176"
+                  opacity="0.48"
+                  strokeLinecap="round"
+                />
               </g>
-              <g style={{ transformOrigin: "130px 130px", animation: "spin-fast 14s linear infinite" }}>
-                <circle cx="130" cy="130" r="88" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="90 30 40 20 60 25" opacity="0.82" />
+              <g
+                style={{
+                  transformOrigin: "130px 130px",
+                  animation: "spin-fast 14s linear infinite",
+                }}
+              >
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="88"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeDasharray="90 30 40 20 60 25"
+                  opacity="0.82"
+                />
               </g>
-              <g style={{ transformOrigin: "130px 130px", animation: "spin-slow-rev 18s linear infinite" }}>
-                <circle cx="130" cy="130" r="76" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2 5" opacity="0.62" />
+              <g
+                style={{
+                  transformOrigin: "130px 130px",
+                  animation: "spin-slow-rev 18s linear infinite",
+                }}
+              >
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="76"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeDasharray="2 5"
+                  opacity="0.62"
+                />
               </g>
-              <g style={{ transformOrigin: "130px 130px", animation: "spin-slow 18s linear infinite" }}>
-                <circle cx="130" cy="130" r="48" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 8" opacity="0.7" />
+              <g
+                style={{
+                  transformOrigin: "130px 130px",
+                  animation: "spin-slow 18s linear infinite",
+                }}
+              >
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="48"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeDasharray="2 8"
+                  opacity="0.7"
+                />
               </g>
               <g className="opacity-70">
-                <line x1="40" y1="130" x2="220" y2="130" stroke="currentColor" strokeWidth="0.5" opacity="0.5" />
-                <line x1="130" y1="40" x2="130" y2="220" stroke="currentColor" strokeWidth="0.5" opacity="0.5" />
-                <circle cx="130" cy="130" r="14" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="10 5" style={{ transformOrigin: "130px 130px", animation: "spin-fast 5s linear infinite" }} />
-                <circle cx="130" cy="130" r="3" fill="currentColor" opacity="0.9" />
+                <line
+                  x1="40"
+                  y1="130"
+                  x2="220"
+                  y2="130"
+                  stroke="currentColor"
+                  strokeWidth="0.5"
+                  opacity="0.5"
+                />
+                <line
+                  x1="130"
+                  y1="40"
+                  x2="130"
+                  y2="220"
+                  stroke="currentColor"
+                  strokeWidth="0.5"
+                  opacity="0.5"
+                />
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeDasharray="10 5"
+                  style={{
+                    transformOrigin: "130px 130px",
+                    animation: "spin-fast 5s linear infinite",
+                  }}
+                />
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="3"
+                  fill="currentColor"
+                  opacity="0.9"
+                />
               </g>
             </svg>
             <div className="relative z-10 flex flex-col items-center text-center mt-36 w-[78%]">
@@ -329,7 +453,10 @@ export default function ScannerHUD({
                     className="h-full rounded-full bg-[#00f3ff] shadow-[0_0_18px_rgba(0,243,255,0.7)] transition-all duration-500"
                     style={{ width: `${bootProgress}%` }}
                   />
-                  <div className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-white/55 to-transparent" style={{ animation: "pulse-bar 1.7s ease-in-out infinite" }} />
+                  <div
+                    className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-white/55 to-transparent"
+                    style={{ animation: "pulse-bar 1.7s ease-in-out infinite" }}
+                  />
                 </div>
               </div>
             </div>
@@ -351,7 +478,10 @@ export default function ScannerHUD({
           }}
         />
         <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden opacity-20">
-          <div className="w-full h-[1px] bg-[#00f3ff] shadow-[0_0_10px_#00f3ff]" style={{ animation: "scanline 8s linear infinite" }} />
+          <div
+            className="w-full h-[1px] bg-[#00f3ff] shadow-[0_0_10px_#00f3ff]"
+            style={{ animation: "scanline 8s linear infinite" }}
+          />
         </div>
         <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_150px_rgba(2,3,6,1)] z-30" />
 
@@ -367,7 +497,9 @@ export default function ScannerHUD({
                 </div>
               </div>
               <div className="text-left md:text-right">
-                <div className={`font-light tracking-widest text-2xl md:text-3xl tabular-nums transition-colors duration-500 ${isComplete ? "text-[#00ff66]" : "text-[#00f3ff]"}`}>
+                <div
+                  className={`font-light tracking-widest text-2xl md:text-3xl tabular-nums transition-colors duration-500 ${isComplete ? "text-[#00ff66]" : "text-[#00f3ff]"}`}
+                >
                   {visualProgress}%
                 </div>
                 <div className="text-[9px] tracking-[0.3em] text-white/40 uppercase mt-1">
@@ -383,7 +515,9 @@ export default function ScannerHUD({
             </div>
             <div className="mt-3 flex items-center justify-between gap-4 text-[10px] tracking-[0.24em] uppercase text-white/45">
               <span className="truncate">{activeMessage}</span>
-              <span className={isComplete ? "text-[#00ff66]" : "text-[#00f3ff]"}>
+              <span
+                className={isComplete ? "text-[#00ff66]" : "text-[#00f3ff]"}
+              >
                 {isComplete ? "Report bereit" : "Live-Korrelation"}
               </span>
             </div>
@@ -398,12 +532,19 @@ export default function ScannerHUD({
                 {query || "Mehrfachprüfung"}
               </div>
               <div className="text-xs font-mono text-white/50 leading-relaxed">
-                SynSight korreliert öffentliche Identitäts-, Profil- und Kommunikationssignale sequenziell. So bleibt der kostenlose Schnellcheck stabil und nachvollziehbar.
+                SynSight korreliert öffentliche Identitäts-, Profil- und
+                Kommunikationssignale sequenziell. So bleibt der kostenlose
+                Schnellcheck stabil und nachvollziehbar.
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 {visibleSteps.slice(0, 3).map((step) => (
-                  <div key={`mini-${step.id}`} className="rounded-xl border border-white/10 bg-white/[0.03] px-2 py-3">
-                    <div className={`mx-auto mb-2 h-2 w-2 rounded-full ${step.status === "done" ? "bg-[#00ff66]" : step.status === "running" ? "bg-[#00f3ff] animate-pulse" : "bg-white/25"}`} />
+                  <div
+                    key={`mini-${step.id}`}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] px-2 py-3"
+                  >
+                    <div
+                      className={`mx-auto mb-2 h-2 w-2 rounded-full ${step.status === "done" ? "bg-[#00ff66]" : step.status === "running" ? "bg-[#00f3ff] animate-pulse" : "bg-white/25"}`}
+                    />
                     <div className="text-[8px] uppercase tracking-[0.2em] text-white/40">
                       {fieldLabel(step)}
                     </div>
@@ -421,10 +562,14 @@ export default function ScannerHUD({
           <div className="w-full px-6 md:px-12 pb-8">
             <div className="border-t border-white/10 pt-4 flex items-center justify-between gap-4">
               <div className="text-[9px] tracking-[0.3em] uppercase text-white/40 flex items-center gap-3">
-                <span className={`w-1.5 h-1.5 rounded-full ${isComplete ? "bg-[#00ff66]" : "bg-[#00f3ff] opacity-60 animate-pulse"}`} />
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${isComplete ? "bg-[#00ff66]" : "bg-[#00f3ff] opacity-60 animate-pulse"}`}
+                />
                 Sequenzielle Prüfung
               </div>
-              <div className={`text-[9px] tracking-[0.32em] uppercase transition-colors duration-500 text-right ${isComplete ? "text-[#00ff66]" : "text-[#00f3ff]"}`}>
+              <div
+                className={`text-[9px] tracking-[0.32em] uppercase transition-colors duration-500 text-right ${isComplete ? "text-[#00ff66]" : "text-[#00f3ff]"}`}
+              >
                 {activeMessage}
               </div>
             </div>
