@@ -134,7 +134,8 @@ function moduleKey(source: string): string {
   if (normalized === "holehe") return "holehe";
   if (normalized === "maigret") return "maigret";
   if (normalized === "phoneexposure") return "phone-exposure";
-  if (normalized === "phoneinfoga" || normalized === "phone") return "phoneinfoga";
+  if (normalized === "phoneinfoga" || normalized === "phone")
+    return "phoneinfoga";
   if (normalized === "osint") return "osint";
   return raw;
 }
@@ -143,8 +144,13 @@ function moduleLabel(id: string): string {
   return MODULE_META[id]?.label || "Öffentlicher Schnellcheck";
 }
 
-function derivePayloadSource(data: Record<string, unknown>, fallback = "OSINT") {
-  return firstUseful(data.module, data.source, data.provider, fallback) || fallback;
+function derivePayloadSource(
+  data: Record<string, unknown>,
+  fallback = "OSINT"
+) {
+  return (
+    firstUseful(data.module, data.source, data.provider, fallback) || fallback
+  );
 }
 
 function countryLabel(value: string): string {
@@ -154,7 +160,9 @@ function countryLabel(value: string): string {
   if (["de", "deu", "germany", "deutschland"].includes(normalized)) {
     return "Deutschland";
   }
-  if (["at", "aut", "austria", "österreich", "oesterreich"].includes(normalized)) {
+  if (
+    ["at", "aut", "austria", "österreich", "oesterreich"].includes(normalized)
+  ) {
     return "Österreich";
   }
   if (["ch", "che", "switzerland", "schweiz"].includes(normalized)) {
@@ -226,13 +234,13 @@ function isPhoneMetadataFinding(
     /telefon|rufnummer|telekommunikation/i.test(String(raw.title || "")) ||
     Boolean(
       raw.valid ||
-        raw.is_valid ||
-        raw.valid_number ||
-        raw.isValid ||
-        raw.carrier ||
-        raw.country ||
-        raw.country_code ||
-        raw.provider
+      raw.is_valid ||
+      raw.valid_number ||
+      raw.isValid ||
+      raw.carrier ||
+      raw.country ||
+      raw.country_code ||
+      raw.provider
     )
   );
 }
@@ -241,6 +249,7 @@ function buildPhoneMetadataFinding(
   raw: Record<string, unknown>,
   source: string
 ): DemoFinding {
+  const details = asRecord(raw.details) || {};
   const combinedText = [
     raw.description,
     raw.detail,
@@ -256,7 +265,7 @@ function buildPhoneMetadataFinding(
     .join("\n");
 
   const provider =
-    firstUseful(raw.carrier, raw.provider, raw.operator) ||
+    firstUseful(details.carrier, raw.carrier, raw.provider, raw.operator) ||
     pickPattern(combinedText, [
       /"carrier"\s*:\s*"([^"]+)"/i,
       /"provider"\s*:\s*"([^"]+)"/i,
@@ -266,13 +275,19 @@ function buildPhoneMetadataFinding(
       /operator\s*[:=|]\s*([^|\n,}]+)/i,
       /anbieter\s*[:=|]\s*([^|\n,}]+)/i,
       /netzbetreiber\s*[:=|]\s*([^|\n,}]+)/i,
-      /provider\s*\/\s*region\s*:?\s*([^|\n,}]+)/i,
       /\b(T-Mobile|Telekom|Vodafone|O2|Telefonica|Telefónica|1&1|Drillisch|Congstar|Blau|Aldi Talk|Otelo|Klarmobil)\b/i,
     ]) ||
     "Nicht eindeutig zuordenbar";
 
   const country = countryLabel(
-    firstUseful(raw.country, raw.country_code, raw.country_name, raw.region) ||
+    firstUseful(
+      details.country,
+      raw.country,
+      raw.country_code,
+      raw.country_name,
+      raw.region,
+      details.region_code
+    ) ||
       pickPattern(combinedText, [
         /"country"\s*:\s*"([^"]+)"/i,
         /"country_code"\s*:\s*"([^"]+)"/i,
@@ -293,7 +308,9 @@ function buildPhoneMetadataFinding(
     /valid\s*[:=|]\s*(true|false|yes|no|valid|invalid)/i,
     /status\s*[:=|]\s*(valid|invalid|true|false|active|inactive|aktiv|inaktiv)/i,
   ]);
+
   const validRaw = firstDefined(
+    details.valid,
     raw.valid,
     raw.is_valid,
     raw.valid_number,
@@ -304,15 +321,53 @@ function buildPhoneMetadataFinding(
 
   const validLabel = normalizeBoolText(validRaw);
   const isValid = validLabel === "Ja";
+
+  const numberFormat =
+    firstUseful(
+      details.international,
+      details.e164,
+      raw.international,
+      raw.e164
+    ) ||
+    pickPattern(combinedText, [
+      /international\s*[:=|]\s*([^|\n]+)/i,
+      /format\s+e\.?164\s*[:=|]\s*([^|\n]+)/i,
+    ]);
+
+  const nationalFormat =
+    firstUseful(details.national, raw.national) ||
+    pickPattern(combinedText, [/national\s*[:=|]\s*([^|\n]+)/i]);
+
+  const phoneType =
+    firstUseful(details.type, raw.number_type, raw.phone_type) ||
+    pickPattern(combinedText, [/nummerntyp\s*[:=|]\s*([^|\n]+)/i]);
+
+  const timezone =
+    firstUseful(details.timezones, raw.timezones, raw.timezone) ||
+    pickPattern(combinedText, [/zeitzone\s*[:=|]\s*([^|\n]+)/i]);
+
   const hasProvider = provider !== "Nicht eindeutig zuordenbar";
   const hasCountry = country !== "Nicht sicher bestimmbar";
+  const hasUsefulDetails = Boolean(
+    isValid ||
+    hasProvider ||
+    hasCountry ||
+    numberFormat ||
+    nationalFormat ||
+    phoneType ||
+    timezone
+  );
 
   const detailLines = [
     "Status: Technische Zusatzinformationen zur eingegebenen Rufnummer wurden ausgewertet.",
+    ...(numberFormat ? [`Format: ${numberFormat}`] : []),
+    ...(nationalFormat ? [`National: ${nationalFormat}`] : []),
     `Rufnummer validiert: ${validLabel}`,
+    ...(phoneType ? [`Nummerntyp: ${phoneType}`] : []),
     `Netzbetreiber: ${provider}`,
     `Regionale Zuordnung: ${country}`,
-    isValid || hasProvider || hasCountry
+    ...(timezone ? [`Zeitzone: ${timezone}`] : []),
+    hasUsefulDetails
       ? "Bewertung: Diese Angaben sind technische Zusatzinformationen und keine öffentliche Fundstelle."
       : "Bewertung: Es konnten keine eindeutigen technischen Detailangaben bestätigt werden.",
   ];
@@ -327,7 +382,7 @@ function buildPhoneMetadataFinding(
     confidence:
       typeof raw.confidence === "number"
         ? raw.confidence
-        : hasProvider || hasCountry || isValid
+        : hasUsefulDetails
           ? 70
           : 45,
     source: "phoneinfoga",
@@ -339,7 +394,8 @@ function buildPublicPhoneFinding(
   source: string
 ): DemoFinding {
   const url = typeof raw.url === "string" ? raw.url : undefined;
-  const platform = firstUseful(raw.platform, raw.domain) || "Öffentliche Webseite";
+  const platform =
+    firstUseful(raw.platform, raw.domain) || "Öffentliche Webseite";
   const snippet = firstUseful(raw.snippet, raw.content);
   const description =
     firstUseful(raw.description) ||
@@ -407,7 +463,13 @@ export function findingFromUpstream(
       moduleLabel(moduleKey(source))
   );
   const url = typeof raw.url === "string" ? raw.url : undefined;
-  const rawText = firstUseful(raw.raw, raw.raw_output, raw.output, raw.stdout, raw.data);
+  const rawText = firstUseful(
+    raw.raw,
+    raw.raw_output,
+    raw.output,
+    raw.stdout,
+    raw.data
+  );
   const status = safeString(raw.status);
 
   let title = String(raw.title || platform || "Öffentlicher Treffer");
@@ -423,7 +485,8 @@ export function findingFromUpstream(
   if (status === "started") {
     title = "Prüfung gestartet";
     description =
-      description || "Die öffentliche Korrelation wurde ausgelöst. Detaildaten folgen.";
+      description ||
+      "Die öffentliche Korrelation wurde ausgelöst. Detaildaten folgen.";
   }
   if (!description && !url) {
     description = "Öffentlicher Treffer ohne weitere Detailbeschreibung.";
@@ -447,7 +510,8 @@ function collectFindingObjects(data: Record<string, unknown>): Array<{
   fallbackSource: string;
 }> {
   const fallbackSource = derivePayloadSource(data);
-  const out: Array<{ raw: Record<string, unknown>; fallbackSource: string }> = [];
+  const out: Array<{ raw: Record<string, unknown>; fallbackSource: string }> =
+    [];
 
   const pushList = (items: unknown[], source: string) => {
     for (const item of items) {
@@ -502,9 +566,7 @@ function collectFindingObjects(data: Record<string, unknown>): Array<{
       scanMeta?.scope === "prioritised_public_web"
         ? "phone-exposure"
         : fallbackSource;
-    const notices = asArray(data.notices)
-      .map(safeString)
-      .filter(Boolean);
+    const notices = asArray(data.notices).map(safeString).filter(Boolean);
 
     for (const notice of notices) {
       out.push({
@@ -522,8 +584,12 @@ function collectFindingObjects(data: Record<string, unknown>): Array<{
   }
 
   if (out.length === 0) {
-    const total = Number(data.total_findings ?? data.result_count ?? data.count ?? 0);
-    const hasSummary = Boolean(safeString(data.summary) || safeString(data.message));
+    const total = Number(
+      data.total_findings ?? data.result_count ?? data.count ?? 0
+    );
+    const hasSummary = Boolean(
+      safeString(data.summary) || safeString(data.message)
+    );
     const rawPayload = firstUseful(data.raw_output, data.output, data.stdout);
     const hasRaw = Boolean(rawPayload);
     const topScore = Number(data.exposure_score ?? 0);
@@ -555,9 +621,23 @@ function collectFindingObjects(data: Record<string, unknown>): Array<{
 
 function buildModuleSummaries(modules: DemoModuleResult[]): string {
   const parts = modules.map((m) => {
+    const hasTechnical = m.findings.some(
+      (finding) => finding.category === "PHONE_METADATA"
+    );
+    const hasStatus = m.findings.some(
+      (finding) => finding.category === "STATUS"
+    );
+
     if (m.status === "error") return `${m.label}: Fehler`;
     if (m.status === "started") return `${m.label}: gestartet`;
-    if (m.count === 0) return `${m.label}: keine öffentlichen Treffer`;
+    if (m.count === 0 && hasTechnical) {
+      return `${m.label}: technische Zusatzdaten vorhanden`;
+    }
+    if (m.id === "phone-exposure" && m.count === 0 && hasStatus) {
+      return `${m.label}: keine bestätigte Fundstelle, teilweise eingeschränkt`;
+    }
+    if (m.count === 0)
+      return `${m.label}: keine bestätigten öffentlichen Treffer`;
     return `${m.label}: ${m.count} Treffer`;
   });
   return parts.join(" · ");
@@ -575,7 +655,9 @@ export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
   const modules: DemoModuleResult[] = [...buckets.entries()].map(
     ([id, items]) => {
       const errors = items.filter((item) => item.category === "ERROR");
-      const started = items.some((item) => /gestartet|started/i.test(item.title));
+      const started = items.some((item) =>
+        /gestartet|started/i.test(item.title)
+      );
       const real = items.filter((item) => item.category !== "ERROR");
       const hasTechnical = real.some(
         (item) => item.category === "PHONE_METADATA"
@@ -583,7 +665,10 @@ export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
       const hasStatus = real.some((item) => item.category === "STATUS");
       let status: DemoModuleResult["status"] = "ok";
       if (errors.length && real.length === 0) status = "error";
-      else if (started && real.every((item) => /gestartet|started/i.test(item.title))) {
+      else if (
+        started &&
+        real.every((item) => /gestartet|started/i.test(item.title))
+      ) {
         status = "started";
       } else if (real.length === 0) status = "empty";
 
@@ -601,9 +686,11 @@ export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
       } else if (status === "started") {
         summary = "Prüfung gestartet — Detaildaten ausstehend";
       } else if (count === 0 && hasTechnical) {
-        summary = "Keine öffentliche Fundstelle; technische Zusatzprüfung vorhanden";
+        summary =
+          "Keine öffentliche Fundstelle; technische Zusatzprüfung vorhanden";
       } else if (count === 0 && hasStatus) {
-        summary = "Keine bestätigte Fundstelle; Prüfung teilweise eingeschränkt";
+        summary =
+          "Keine bestätigte Fundstelle; Prüfung teilweise eingeschränkt";
       } else if (count === 0) {
         summary = "Keine öffentlichen Treffer in diesem Prüfschritt";
       }
@@ -678,8 +765,10 @@ export function normalizeUpstreamPayload(input: {
 
   const modules = groupModules(displayFindings);
   const computed = computeDemoExposureScore(scoredFindings);
-  const score = computed.usableCount > 0 ? computed.score : (upstreamScore ?? 0);
-  const risk = computed.usableCount > 0 ? computed.risk : upstreamRisk || "Niedrig";
+  const score =
+    computed.usableCount > 0 ? computed.score : (upstreamScore ?? 0);
+  const risk =
+    computed.usableCount > 0 ? computed.risk : upstreamRisk || "Niedrig";
   const platforms = [
     ...new Set(
       displayFindings

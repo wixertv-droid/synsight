@@ -137,13 +137,18 @@ async function runModuleStep(
     };
   }
 
+  const findings = ((data.findings as ScanFinding[]) || []).map((finding) => ({
+    ...finding,
+    source: finding.source || module,
+  }));
+
   return {
     ok: true,
-    findings: (data.findings as ScanFinding[]) || [],
+    findings,
     message:
       typeof data.summary === "string"
         ? data.summary
-        : `${(data.findings as unknown[])?.length ?? 0} Treffer`,
+        : `${findings.length} Treffer`,
   };
 }
 
@@ -165,6 +170,8 @@ export default function DemoScanner() {
   const [rawData, setRawData] = useState<ScanData | null>(null);
   const [moduleSteps, setModuleSteps] = useState<ModuleStepState[]>([]);
   const [activeStepLabel, setActiveStepLabel] = useState("");
+  const [showPermissionNotice, setShowPermissionNotice] = useState(false);
+  const [permissionConfirmed, setPermissionConfirmed] = useState(false);
   /** Until /api/pricing loads, show all fields; then only admin-active modules. */
   const [visibleFieldKeys, setVisibleFieldKeys] = useState<DemoFieldKey[]>([
     "email",
@@ -430,6 +437,21 @@ export default function DemoScanner() {
     }, 700);
   }, [fields, phase, visibleFieldKeys]);
 
+  const requestScan = useCallback(() => {
+    const queries = filledQueries(fields, visibleFieldKeys);
+    const plan = buildScanPlan(queries);
+    if (plan.length === 0 || phase === "scanning") return;
+
+    setPermissionConfirmed(false);
+    setShowPermissionNotice(true);
+  }, [fields, phase, visibleFieldKeys]);
+
+  const confirmPermissionAndStart = useCallback(() => {
+    if (!permissionConfirmed) return;
+    setShowPermissionNotice(false);
+    void startScan();
+  }, [permissionConfirmed, startScan]);
+
   const closeFullscreen = () => {
     setPhase("complete");
   };
@@ -462,6 +484,88 @@ export default function DemoScanner() {
         rawData={rawData}
         onClose={closeFullscreen}
       />
+
+      {showPermissionNotice && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 px-4 backdrop-blur-xl"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="scan-permission-title"
+        >
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-amber-400/25 bg-[#05070d] p-6 shadow-[0_0_70px_rgba(245,158,11,0.18)] md:p-8">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.13),transparent_34rem)]" />
+
+            <div className="relative z-10">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-amber-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_10px_currentColor]" />
+                Rechtlicher Hinweis
+              </div>
+
+              <h3
+                id="scan-permission-title"
+                className="mb-4 text-2xl font-semibold tracking-[-.03em] text-white md:text-3xl"
+              >
+                Berechtigung zum Scan bestätigen
+              </h3>
+
+              <div className="space-y-3 text-sm leading-relaxed text-white/65">
+                <p>
+                  Dieser Schnellcheck darf nur für eigene Daten oder für Daten
+                  genutzt werden, für die Sie eine ausdrückliche Berechtigung
+                  oder eine passende rechtliche Grundlage haben.
+                </p>
+                <p>
+                  Bitte scannen Sie keine fremden Personen, Telefonnummern,
+                  E-Mail-Adressen, Benutzernamen, Domains oder Bilder ohne
+                  Erlaubnis. Die unberechtigte Verarbeitung personenbezogener
+                  Daten kann rechtlich unzulässig sein.
+                </p>
+                <p className="text-white/45">
+                  SynSight prüft ausschließlich öffentlich erreichbare Signale
+                  und technische Metadaten. Nichtsdestotrotz bleiben Sie für die
+                  Rechtmäßigkeit der eingegebenen Daten verantwortlich.
+                </p>
+              </div>
+
+              <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-amber-300/30">
+                <input
+                  type="checkbox"
+                  checked={permissionConfirmed}
+                  onChange={(event) =>
+                    setPermissionConfirmed(event.target.checked)
+                  }
+                  className="mt-1 h-4 w-4 rounded border-white/20 bg-black accent-amber-300"
+                />
+                <span className="text-sm leading-relaxed text-white/75">
+                  Ich bestätige, dass ich zur Prüfung der eingegebenen Angaben
+                  berechtigt bin und keine fremden Daten ohne Erlaubnis scanne.
+                </span>
+              </label>
+
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPermissionNotice(false);
+                    setPermissionConfirmed(false);
+                  }}
+                  className="rounded-2xl border border-white/10 px-6 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-white/50 transition hover:bg-white/5 hover:text-white"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmPermissionAndStart}
+                  disabled={!permissionConfirmed}
+                  className="rounded-2xl border border-amber-300/40 bg-amber-300 px-6 py-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-black transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/30"
+                >
+                  Ja, berechtigt scannen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section
         id="demo-scanner"
@@ -537,7 +641,7 @@ export default function DemoScanner() {
                           }
                           onKeyDown={(e) => {
                             if (e.key === "Enter" && activeCount > 0)
-                              startScan();
+                              requestScan();
                           }}
                           type={field.type || "text"}
                           placeholder={field.placeholder}
@@ -581,7 +685,7 @@ export default function DemoScanner() {
 
                     <Button
                       size="lg"
-                      onClick={startScan}
+                      onClick={requestScan}
                       disabled={activeCount === 0}
                       className="shrink-0 relative overflow-hidden"
                     >
