@@ -202,8 +202,9 @@ function linesFromFinding(finding: ScanFinding): string[] {
 }
 
 function valueFromLines(lines: string[], label: string) {
+  const prefix = `${label.toLowerCase()}:`;
   const line = lines.find((entry) =>
-    entry.toLowerCase().startsWith(label.toLowerCase())
+    entry.trim().toLowerCase().startsWith(prefix)
   );
   if (!line) return "Nicht eindeutig";
   return line.split(":").slice(1).join(":").trim() || "Nicht eindeutig";
@@ -249,9 +250,26 @@ function SmartUrlTease({ url }: { url?: string }) {
 
 function PhoneMetadataCard({ finding }: { finding: ScanFinding }) {
   const lines = linesFromFinding(finding);
-  const valid = valueFromLines(lines, "Rufnummer validiert");
-  const provider = valueFromLines(lines, "Netzbetreiber");
-  const region = valueFromLines(lines, "Regionale Zuordnung");
+  const valid =
+    valueFromLines(lines, "Rufnummer validiert") !== "Nicht eindeutig"
+      ? valueFromLines(lines, "Rufnummer validiert")
+      : valueFromLines(lines, "Nummer gültig");
+
+  const provider =
+    valueFromLines(lines, "Netzbetreiber") !== "Nicht eindeutig"
+      ? valueFromLines(lines, "Netzbetreiber")
+      : valueFromLines(lines, "Möglicher Anbieter");
+
+  const region =
+    valueFromLines(lines, "Ortsnetz / Region") !== "Nicht eindeutig"
+      ? valueFromLines(lines, "Ortsnetz / Region")
+      : valueFromLines(lines, "Regionale Zuordnung");
+
+  const country =
+    valueFromLines(lines, "Land") !== "Nicht eindeutig"
+      ? valueFromLines(lines, "Land")
+      : "Nicht sicher bestimmbar";
+
   const rating =
     lines.find((line) => line.toLowerCase().startsWith("bewertung:")) ||
     "Bewertung: Technische Zusatzinformationen sind vorhanden, stellen aber keine öffentliche Fundstelle dar.";
@@ -272,7 +290,7 @@ function PhoneMetadataCard({ finding }: { finding: ScanFinding }) {
           Zusatzprüfung vorhanden
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
           <div className="mb-1 text-[9px] uppercase tracking-[0.24em] text-white/35">
             Validiert
@@ -287,9 +305,15 @@ function PhoneMetadataCard({ finding }: { finding: ScanFinding }) {
         </div>
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
           <div className="mb-1 text-[9px] uppercase tracking-[0.24em] text-white/35">
-            Region
+            Ortsnetz / Region
           </div>
           <div className="font-bold text-cyan-200">{region}</div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="mb-1 text-[9px] uppercase tracking-[0.24em] text-white/35">
+            Land
+          </div>
+          <div className="font-bold text-cyan-200">{country}</div>
         </div>
       </div>
       <div className="mt-4 border-t border-white/5 pt-4 text-xs leading-relaxed text-white/45">

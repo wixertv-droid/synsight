@@ -295,10 +295,18 @@ function buildPhoneMetadataFinding(
         /country\s*[:=|]\s*([^|\n,}]+)/i,
         /country\s+code\s*[:=|]\s*([^|\n,}]+)/i,
         /country\s+name\s*[:=|]\s*([^|\n,}]+)/i,
-        /region\s*[:=|]\s*([^|\n,}]+)/i,
         /land\s*[:=|]\s*([^|\n,}]+)/i,
       ])
   );
+
+  const locality =
+    firstUseful(details.locality, raw.locality, raw.city) ||
+    pickPattern(combinedText, [
+      /"locality"\s*:\s*"([^"]+)"/i,
+      /ortsnetz\s*\/\s*region\s*[:=|]\s*([^|\n,}]+)/i,
+      /locality\s*[:=|]\s*([^|\n,}]+)/i,
+    ]) ||
+    "Nicht sicher bestimmbar";
 
   const patternValid = pickPattern(combinedText, [
     /"valid"\s*:\s*(true|false|"true"|"false"|"valid"|"invalid")/i,
@@ -365,7 +373,8 @@ function buildPhoneMetadataFinding(
     `Rufnummer validiert: ${validLabel}`,
     ...(phoneType ? [`Nummerntyp: ${phoneType}`] : []),
     `Netzbetreiber: ${provider}`,
-    `Regionale Zuordnung: ${country}`,
+    `Ortsnetz / Region: ${locality}`,
+    `Land: ${country}`,
     ...(timezone ? [`Zeitzone: ${timezone}`] : []),
     hasUsefulDetails
       ? "Bewertung: Diese Angaben sind technische Zusatzinformationen und keine öffentliche Fundstelle."
@@ -687,7 +696,7 @@ export function groupModules(findings: DemoFinding[]): DemoModuleResult[] {
         summary = "Prüfung gestartet — Detaildaten ausstehend";
       } else if (count === 0 && hasTechnical) {
         summary =
-          "Keine öffentliche Fundstelle; technische Zusatzprüfung vorhanden";
+          "Technische Zusatzdaten vorhanden; separat von öffentlichen Fundstellen bewertet";
       } else if (count === 0 && hasStatus) {
         summary =
           "Keine bestätigte Fundstelle; Prüfung teilweise eingeschränkt";

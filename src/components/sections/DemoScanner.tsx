@@ -118,17 +118,18 @@ function technicalPhoneSummary(mod: ScanModule): string {
   const valid = valueFor("Rufnummer validiert", "Gültig", "Validiert");
   const type = valueFor("Nummerntyp", "Typ");
   const provider = valueFor("Netzbetreiber", "Anbieter", "Carrier");
-  const region = valueFor("Regionale Zuordnung", "Land", "Region");
+  const region = valueFor("Ortsnetz / Region", "Regionale Zuordnung", "Region");
+  const country = valueFor("Land");
 
   const details = [
     valid && `Gültig: ${valid}`,
     type && `Typ: ${type}`,
-    region && `Region: ${region}`,
+    region && `Region: ${region} · Land: ${country}`,
     provider && `Anbieter: ${provider}`,
   ].filter(Boolean);
 
   return details.length > 0
-    ? `${details.join(" · ")}. Technische Einordnung – keine öffentliche Fundstelle.`
+    ? `${details.join(" · ")}. Technische Zusatzdaten – separat von öffentlichen Fundstellen bewertet.`
     : "Technische Rufnummerndaten wurden erfolgreich ausgewertet. Gültigkeit, Nummerntyp, Länderzuordnung und möglicher Anbieter werden getrennt von öffentlichen Fundstellen bewertet.";
 }
 
