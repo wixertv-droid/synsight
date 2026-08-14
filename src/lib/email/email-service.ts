@@ -3,14 +3,11 @@
  * Auth = SMTP_USER (noreply); visible From is channel-specific.
  */
 
-import {
-  getEnvironment,
-  resetEnvironmentCache,
-  resolveEmailDeliveryMode,
-  type EmailDeliveryMode,
-  type Environment,
-} from "@/lib/config/env";
 import { sanitizeSmtpError, sendSmtpMail } from "@/lib/email/smtp";
+import {
+  resolveMailAccountRuntime,
+  type MailAccountKey,
+} from "@/lib/services/mail-settings-service";
 import { buildContactEmail } from "@/lib/email/templates/contact-email";
 import { buildPressEmail } from "@/lib/email/templates/press-email";
 import { buildPartnerEmail } from "@/lib/email/templates/partner-email";
@@ -43,20 +40,17 @@ const CHANNEL_FROM: Record<EmailChannel, string> = {
   support: "SynSight Support <support@synsight.de>",
 };
 
-function deliveryMode(): EmailDeliveryMode {
-  return resolveEmailDeliveryMode();
-}
-
-function resolveEnv(): Environment {
-  resetEnvironmentCache();
-  return getEnvironment();
-}
-
-/** Prefer CONTACT_EMAIL / PRESS_EMAIL / PARTNER_EMAIL env over DB settings. */
+/**
+ * The address configured in the admin area is authoritative.
+ * Environment variables remain only as a legacy fallback.
+ */
 export function resolveNotificationRecipient(
   channel: EmailChannel,
   fallback: string
 ): string {
+  const configured = fallback.trim();
+  if (configured.length > 0) return configured;
+
   const envKey =
     channel === "contact"
       ? "CONTACT_EMAIL"
@@ -65,12 +59,13 @@ export function resolveNotificationRecipient(
         : channel === "support"
           ? "SUPPORT_EMAIL"
           : "PARTNER_EMAIL";
-  const fromEnv = process.env[envKey]?.trim();
-  return fromEnv && fromEnv.length > 0 ? fromEnv : fallback;
+
+  return process.env[envKey]?.trim() || fallback;
 }
 
 async function dispatchNotification(input: {
   channel: EmailChannel;
+  account: MailAccountKey;
   to: string;
   subject: string;
   preview: string;
@@ -90,35 +85,42 @@ async function dispatchNotification(input: {
     metadata: input.metadata,
   };
 
-  const mode = deliveryMode();
+  const runtime = await resolveMailAccountRuntime(input.account);
 
-  if (mode === "disabled") {
+  // Wichtig:
+  // E-Mail AUS bedeutet nur: keine zusätzliche Benachrichtigung.
+  // Die Formularanfrage wurde zu diesem Zeitpunkt bereits intern gespeichert.
+  if (!runtime.enabled) {
     return {
       queued: false,
       delivered: false,
       provider: "disabled",
       payload,
-      message: "E-Mail-Versand ist deaktiviert.",
+      message: "E-Mail-Benachrichtigung ist für dieses Postfach deaktiviert.",
     };
   }
 
-  if (mode === "log-link") {
-    console.info(
-      `[email:log-link] ${input.channel} → ${input.to}: ${input.subject}`
+  if (!runtime.config) {
+    console.error(
+      `[email:provider] ${input.channel} SMTP unavailable: ${
+        runtime.error ?? "unknown error"
+      }`
     );
+
     return {
       queued: true,
       delivered: false,
-      provider: "log-link",
+      provider: "stub",
       payload,
-      message: "E-Mail im log-link Modus protokolliert (kein SMTP-Versand).",
+      message:
+        "Die Anfrage wurde intern gespeichert. Die E-Mail-Benachrichtigung konnte nicht gesendet werden.",
     };
   }
 
   try {
-    const env = resolveEnv();
+    const env = runtime.config;
     const result = await sendSmtpMail(env, {
-      from: CHANNEL_FROM[input.channel],
+      from: env.SMTP_FROM ?? CHANNEL_FROM[input.channel],
       to: input.to,
       subject: input.subject,
       text: input.bodyText,
@@ -171,6 +173,7 @@ export async function sendContactNotification(input: {
 
   return dispatchNotification({
     channel: "contact",
+    account: "contact",
     to: resolveNotificationRecipient("contact", input.to),
     subject: template.subject,
     preview: `Neue Kontaktanfrage von ${input.name} <${input.email}>`,
@@ -208,6 +211,7 @@ export async function sendSupportNotification(input: {
 
   return dispatchNotification({
     channel: "support",
+    account: "support",
     to: resolveNotificationRecipient("support", input.to),
     subject: template.subject,
     preview: `Neue Supportanfrage von ${input.name} <${input.email}>`,
@@ -243,6 +247,7 @@ export async function sendPressNotification(input: {
 
   return dispatchNotification({
     channel: "press",
+    account: "press",
     to: resolveNotificationRecipient("press", input.to),
     subject: template.subject,
     preview: `Presseanfrage von ${input.name} (${input.medium})`,
@@ -278,6 +283,7 @@ export async function sendPartnerNotification(input: {
 
   return dispatchNotification({
     channel: "partner",
+    account: "partner",
     to: resolveNotificationRecipient("partner", input.to),
     subject: template.subject,
     preview: `Partnerschaftsanfrage von ${input.name} (${input.company})`,

@@ -71,6 +71,12 @@ const EXTRA: Record<string, ExtraGuide> = {
     warning:
       "Sehr hohe Auflösung oder Bildqualität erhöht Speicherbedarf und Verarbeitungszeit.",
   },
+  "website-contact-settings": {
+    recommendation:
+      "Für jede öffentliche Funktion ein eindeutig zuständiges Postfach verwenden und Änderungen anschließend mit einem Formular-Test prüfen.",
+    warning:
+      "Diese Adressen beeinflussen neue öffentliche Anfragen. SMTP-Zugangsdaten werden hier nicht verändert.",
+  },
 
   "website-api": {
     recommendation:

@@ -90,7 +90,6 @@ export default function AdminCommunicationsControl() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [savingHours, setSavingHours] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [hours, setHours] = useState<SupportHoursSettings>({
@@ -142,40 +141,6 @@ export default function AdminCommunicationsControl() {
   useEffect(() => {
     void load();
   }, []);
-
-  async function saveSettings(event: FormEvent) {
-    event.preventDefault();
-    setSaving(true);
-    setMessage(null);
-    try {
-      const response = await fetch("/api/admin/communications", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
-      const result = (await response.json()) as ApiResult<Settings>;
-      if (!response.ok || !result.success) {
-        setMessage(
-          result.success
-            ? "Einstellungen konnten nicht gespeichert werden."
-            : result.error.message
-        );
-        return;
-      }
-      setSettings({
-        contactEmail: result.data.contactEmail,
-        pressEmail: result.data.pressEmail,
-        partnersEmail: result.data.partnersEmail,
-        supportEmail: result.data.supportEmail,
-        privacyEmail: result.data.privacyEmail,
-      });
-      setMessage("Kontakt-E-Mails gespeichert.");
-    } catch {
-      setMessage("Speichern fehlgeschlagen.");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function saveHours(event: FormEvent) {
     event.preventDefault();
@@ -352,8 +317,8 @@ export default function AdminCommunicationsControl() {
             id="admin-comms-heading"
             as="h2"
             className="mt-2 text-xl font-medium text-white/75"
-            label="Kontakt & Kommunikation"
-            info="Jeder Reiter gehört zu einem eigenen Postfach. Weiterleiten sendet die Nachricht genau an die E-Mail dieses Reiters."
+            label="Nachrichten & Anfragen"
+            info="Zentrale Inbox für Kontakt-, Support-, Presse- und Partnerschaftsanfragen. Die Zielpostfächer werden unter Website & Inhalte verwaltet."
           />
           <p className="mt-2 font-mono text-[9px] tracking-[.12em] text-white/30">
             {totalCount} NACHRICHTEN · {newCount} NEU
@@ -374,44 +339,21 @@ export default function AdminCommunicationsControl() {
         </p>
       ) : null}
 
-      <form
-        onSubmit={saveSettings}
-        className="mb-8 grid gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 md:grid-cols-3"
-      >
-        {(
-          [
-            ["contactEmail", "Kontakt E-Mail"],
-            ["pressEmail", "Presse E-Mail"],
-            ["partnersEmail", "Partnerschafts E-Mail"],
-            ["supportEmail", "Support E-Mail"],
-            ["privacyEmail", "Datenschutz E-Mail"],
-          ] as const
-        ).map(([key, label]) => (
-          <div key={key}>
-            <label className="mb-2 block font-mono text-[8px] tracking-[.14em] text-white/30">
-              {label.toUpperCase()}
-            </label>
-            <input
-              type="email"
-              required
-              value={settings[key]}
-              onChange={(event) =>
-                setSettings((prev) => ({ ...prev, [key]: event.target.value }))
-              }
-              className="w-full rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2 text-sm text-white/80 outline-none focus:border-cyber-cyan/35"
-            />
-          </div>
-        ))}
-        <div className="md:col-span-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg border border-cyber-cyan/25 bg-cyber-cyan/[0.1] px-4 py-2 font-mono text-[9px] tracking-[.14em] text-cyber-cyan disabled:opacity-50"
-          >
-            {saving ? "Speichert…" : "E-Mail-Ziele speichern"}
-          </button>
-        </div>
-      </form>
+      <div className="mb-8 rounded-xl border border-cyber-cyan/15 bg-cyber-cyan/[0.03] p-4">
+        <p className="font-mono text-[8px] tracking-[.12em] text-cyber-cyan/55">
+          WEBSITE-KONTAKTE
+        </p>
+        <p className="mt-2 text-xs leading-relaxed text-white/45">
+          Die E-Mail-Ziele der öffentlichen Formulare werden jetzt zentral unter
+          Website & Inhalte → Kontakt & E-Mail verwaltet.
+        </p>
+        <a
+          href="/admin/website/kontakt-email"
+          className="mt-3 inline-flex font-mono text-[9px] text-cyber-cyan/70 hover:text-cyber-cyan"
+        >
+          Kontakt & E-Mail öffnen →
+        </a>
+      </div>
 
       <form
         onSubmit={saveHours}

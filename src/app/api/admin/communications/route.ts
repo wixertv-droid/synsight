@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { getStaffAccess } from "@/lib/admin/access";
+import { getAdminAccess, getStaffAccess } from "@/lib/admin/access";
 import {
   getCommunicationSettings,
   listCommunicationRequests,
@@ -38,7 +38,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const access = await getStaffAccess();
+  const access = await getAdminAccess();
   if (!access.granted) return denied(access.status);
 
   const csrfError = validateMutationOrigin(request);

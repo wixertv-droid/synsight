@@ -1,6 +1,5 @@
 import dns from "node:dns";
 import nodemailer, { type Transporter } from "nodemailer";
-import type { Environment } from "@/lib/config/env";
 import { buildPasswordResetEmail } from "@/lib/email/templates/password-reset-email";
 import { buildVerificationEmail } from "@/lib/email/templates/verification-email";
 
@@ -22,6 +21,15 @@ export interface PasswordResetEmail {
   resetUrl: string;
 }
 
+export interface SmtpRuntimeConfig {
+  SMTP_HOST?: string;
+  SMTP_PORT: number;
+  SMTP_SECURE: "true" | "false";
+  SMTP_USER?: string;
+  SMTP_PASS?: string;
+  SMTP_FROM?: string;
+}
+
 export interface SmtpMailMessage {
   /** Visible From header — may differ from SMTP_USER when aliases exist. */
   from: string;
@@ -40,7 +48,7 @@ export interface SmtpMailMessage {
 const SMTP_CONNECTION_TIMEOUT_MS = 20_000;
 const SMTP_SOCKET_TIMEOUT_MS = 25_000;
 
-function assertSmtpReady(env: Environment): void {
+function assertSmtpReady(env: SmtpRuntimeConfig): void {
   if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS || !env.SMTP_FROM) {
     throw new Error("SMTP configuration is incomplete.");
   }
@@ -63,7 +71,7 @@ interface TransportProfile {
   requireTLS?: boolean;
 }
 
-function buildTransportProfiles(env: Environment): TransportProfile[] {
+function buildTransportProfiles(env: SmtpRuntimeConfig): TransportProfile[] {
   assertSmtpReady(env);
   const host = env.SMTP_HOST as string;
   const primaryPort = env.SMTP_PORT;
@@ -101,7 +109,7 @@ function buildTransportProfiles(env: Environment): TransportProfile[] {
 }
 
 function createTransport(
-  env: Environment,
+  env: SmtpRuntimeConfig,
   profile: TransportProfile
 ): Transporter {
   // family: 4 forces IPv4 sockets (avoids broken IPv6-only paths on some VPS).
@@ -134,7 +142,7 @@ function createTransport(
  * Envelope MAIL FROM stays on the authenticated mailbox.
  */
 export async function sendSmtpMail(
-  env: Environment,
+  env: SmtpRuntimeConfig,
   message: SmtpMailMessage
 ): Promise<{ messageId?: string; via: string }> {
   assertSmtpReady(env);
@@ -173,7 +181,7 @@ export async function sendSmtpMail(
 }
 
 export async function sendVerificationEmail(
-  env: Environment,
+  env: SmtpRuntimeConfig,
   message: VerificationEmail
 ): Promise<void> {
   const template = buildVerificationEmail({
@@ -189,7 +197,7 @@ export async function sendVerificationEmail(
 }
 
 export async function sendPasswordResetEmail(
-  env: Environment,
+  env: SmtpRuntimeConfig,
   message: PasswordResetEmail
 ): Promise<void> {
   const template = buildPasswordResetEmail({
@@ -226,7 +234,7 @@ export async function diagnoseSmtpDns(host: string): Promise<{
 
 /** Lightweight connectivity check for ops / scripts. */
 export async function verifySmtpConnection(
-  env: Environment
+  env: SmtpRuntimeConfig
 ): Promise<{ ok: boolean; via?: string; error?: string }> {
   assertSmtpReady(env);
   const profiles = buildTransportProfiles(env);

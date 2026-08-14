@@ -180,6 +180,15 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
         help: "Technische Bild-Pipeline für Website und Analysen. API-Server-Adressen und externe Dienste gehören nicht hierher.",
         view: "website-images",
       },
+      {
+        group: "Website",
+        slug: "kontakt-email",
+        label: "Kontakt & E-Mail",
+        description:
+          "Öffentliche Kontaktadressen und Zielpostfächer der Website-Formulare verwalten.",
+        help: "Hier werden Kontakt-, Support-, Presse-, Partnerschafts- und Datenschutzadressen zentral gepflegt. Eingegangene Nachrichten werden unter Support & Kommunikation bearbeitet.",
+        view: "website-contact-settings",
+      },
     ],
   },
 

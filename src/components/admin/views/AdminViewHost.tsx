@@ -11,6 +11,7 @@ import AdminKiServerMonitorView from "@/components/admin/views/AdminKiServerMoni
 import AdminAnalysisModulesView from "@/components/admin/views/AdminAnalysisModulesView";
 import AdminApiCredentialsView from "@/components/admin/views/AdminApiCredentialsView";
 import AdminImageSettingsView from "@/components/admin/views/AdminImageSettingsView";
+import AdminWebsiteContactSettingsView from "@/components/admin/views/AdminWebsiteContactSettingsView";
 import AdminFinanceOverviewView from "@/components/admin/views/AdminFinanceOverviewView";
 import AdminFinanceProvidersView from "@/components/admin/views/AdminFinanceProvidersView";
 import AdminFinanceApiCostsView from "@/components/admin/views/AdminFinanceApiCostsView";
@@ -77,6 +78,8 @@ export default function AdminViewHost({
         return <AdminAnalysisModulesView panel="reverse-image" />;
       case "website-images":
         return <AdminImageSettingsView />;
+      case "website-contact-settings":
+        return <AdminWebsiteContactSettingsView />;
       case "finance-overview":
         return <AdminFinanceOverviewView />;
       case "finance-providers":
