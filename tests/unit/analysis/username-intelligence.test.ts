@@ -181,8 +181,10 @@ describe("username intelligence helpers", () => {
     expect(security.possibleFalsePositives).toBe(1);
   });
 
-  it("computes finance snapshot automatically", () => {
-    const finance = computeUsernameFinance(DEFAULT_USERNAME_MODULE_SETTINGS);
+  it("computes finance snapshot automatically", async () => {
+    const finance = await computeUsernameFinance(
+      DEFAULT_USERNAME_MODULE_SETTINGS
+    );
     expect(finance.estimatedApiCostEur).toBeGreaterThan(0);
     expect(finance.costPerAnalysisEur).toBeGreaterThan(
       finance.estimatedApiCostEur

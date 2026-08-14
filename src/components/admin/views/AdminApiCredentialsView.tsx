@@ -12,9 +12,38 @@ type Draft = {
 };
 
 function providerTitle(provider: string): string {
+  if (provider === "gemini") return "GOOGLE GEMINI";
+  if (provider === "openai") return "OPENAI";
   if (provider === "dehashed") return "DEHASHED.COM";
   if (provider === "demo_scan") return "CONTABO DEMOSCANNER";
+  if (provider === "virustotal") return "VIRUSTOTAL";
+  if (provider === "hunter_io") return "HUNTER.IO";
+  if (provider === "opencorporates") return "OPENCORPORATES";
   return provider.toUpperCase();
+}
+
+function providerDescription(provider: string): string {
+  if (provider === "gemini")
+    return "Aktiv genutzt für KI-Auswertungen, Zusammenfassungen und SEO-Funktionen.";
+  if (provider === "dehashed")
+    return "Aktiv genutzt für Digital Leak & Exposure bei E-Mail- und Telefonnummern.";
+  if (provider === "demo_scan")
+    return "Aktiv genutzt als Backend des öffentlichen SynSight DemoScanners.";
+  if (provider === "openai")
+    return "Vorbereitet für zukünftige KI-Funktionen. Derzeit keine produktive Verwendung.";
+  if (provider === "virustotal")
+    return "Vorbereitet für zukünftige Sicherheits- und URL/Datei-Analysen.";
+  if (provider === "hunter_io")
+    return "Vorbereitet für zukünftige E-Mail- und Domain-Funktionen.";
+  if (provider === "opencorporates")
+    return "Vorbereitet für zukünftige Firmen- und Unternehmensanalysen.";
+  return "Externe Integration.";
+}
+
+function providerImplemented(provider: string): boolean {
+  return (
+    provider === "gemini" || provider === "dehashed" || provider === "demo_scan"
+  );
 }
 
 export default function AdminApiCredentialsView() {
@@ -230,10 +259,8 @@ export default function AdminApiCredentialsView() {
                 apiUrl: row.apiUrl ?? "",
               };
               const busy = busyProvider === row.provider;
-              const canTest =
-                row.provider === "gemini" ||
-                row.provider === "dehashed" ||
-                row.provider === "demo_scan";
+              const implemented = providerImplemented(row.provider);
+              const canTest = implemented;
               return (
                 <li
                   key={row.provider}
@@ -243,7 +270,7 @@ export default function AdminApiCredentialsView() {
                     <p className="font-mono text-[9px] tracking-[.12em] text-cyber-cyan/55">
                       {providerTitle(row.provider)}
                     </p>
-                    {row.configured ? (
+                    {implemented && row.configured ? (
                       <button
                         type="button"
                         disabled={busy}
@@ -258,6 +285,22 @@ export default function AdminApiCredentialsView() {
                       </button>
                     ) : null}
                   </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-md border px-2 py-0.5 font-mono text-[9px] ${
+                        implemented
+                          ? "border-emerald-300/20 text-emerald-100/65"
+                          : "border-amber-300/20 text-amber-100/60"
+                      }`}
+                    >
+                      {implemented ? "IM EINSATZ" : "VORBEREITET"}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-[11px] leading-relaxed text-white/40">
+                    {providerDescription(row.provider)}
+                  </p>
+
                   <p className="mt-2 text-sm text-white/55">
                     {row.configured
                       ? row.provider === "dehashed" && row.accountEmail

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AdminFinanceGuide from "@/components/admin/views/AdminFinanceGuide";
 
 interface OrderPriceRow {
   id: number;
@@ -103,117 +104,120 @@ export default function AdminOrderPricingControl() {
   }
 
   return (
-    <section className="mt-10 rounded-2xl border border-white/[0.07] bg-white/[0.015] p-5 md:p-6">
-      <div>
-        <h2 className="text-base font-medium text-white/88">
-          Preise für Kundenaufträge
-        </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/45">
-          Hier legst du nur fest,{" "}
-          <strong className="font-medium text-white/70">
-            wie viele SynCredits
-          </strong>{" "}
-          ein Kunde für diese Auftragsart zahlt — und ob eine Vollmacht nötig
-          ist. Beispiel: <em>25</em> bedeutet 25 SynCredits pro Auftrag dieses
-          Typs.
-        </p>
-      </div>
-
-      {loading ? (
-        <p className="mt-4 text-sm text-white/35">Laden…</p>
-      ) : (
-        <div className="mt-6 space-y-3">
-          {rows.map((row) => (
-            <div
-              key={row.orderType}
-              className="rounded-xl border border-white/[0.07] bg-black/20 p-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white/85">
-                    {row.label}
-                  </p>
-                  <p className="mt-1 text-xs text-white/40">
-                    {TYPE_HELP[row.orderType] ??
-                      row.description ??
-                      row.orderType}
-                  </p>
-                </div>
-                <label className="block shrink-0">
-                  <span className="block text-[11px] text-white/45">
-                    Preis in SynCredits
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={row.credits}
-                    onChange={(e) =>
-                      updateRow(row.orderType, {
-                        credits: Number(e.target.value),
-                      })
-                    }
-                    className="mt-1 w-28 rounded-lg border border-cyber-cyan/25 bg-black/40 px-3 py-2 text-lg text-white"
-                  />
-                </label>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
-                <label className="flex items-center gap-2 text-xs text-white/60">
-                  <input
-                    type="checkbox"
-                    checked={row.requiresVollmacht}
-                    onChange={(e) =>
-                      updateRow(row.orderType, {
-                        requiresVollmacht: e.target.checked,
-                      })
-                    }
-                    className="accent-cyan-400"
-                  />
-                  Vollmacht vom Kunden nötig
-                </label>
-                <label className="flex items-center gap-2 text-xs text-white/60">
-                  <input
-                    type="checkbox"
-                    checked={row.synsightCapable}
-                    onChange={(e) =>
-                      updateRow(row.orderType, {
-                        synsightCapable: e.target.checked,
-                      })
-                    }
-                    className="accent-cyan-400"
-                  />
-                  SynSight kann diesen Auftragstyp bearbeiten
-                </label>
-                <label className="flex items-center gap-2 text-xs text-white/60">
-                  <input
-                    type="checkbox"
-                    checked={row.isActive}
-                    onChange={(e) =>
-                      updateRow(row.orderType, { isActive: e.target.checked })
-                    }
-                    className="accent-cyan-400"
-                  />
-                  Für Kunden buchbar
-                </label>
-                <button
-                  type="button"
-                  onClick={() => void save(row)}
-                  className="ml-auto rounded-lg bg-cyber-blue/20 px-3 py-1.5 text-xs text-cyber-cyan"
-                >
-                  Speichern
-                </button>
-              </div>
-            </div>
-          ))}
+    <>
+      <AdminFinanceGuide mode="order-pricing" />
+      <section className="mt-10 rounded-2xl border border-white/[0.07] bg-white/[0.015] p-5 md:p-6">
+        <div>
+          <h2 className="text-base font-medium text-white/88">
+            Preise für Kundenaufträge
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/45">
+            Hier legst du nur fest,{" "}
+            <strong className="font-medium text-white/70">
+              wie viele SynCredits
+            </strong>{" "}
+            ein Kunde für diese Auftragsart zahlt — und ob eine Vollmacht nötig
+            ist. Beispiel: <em>25</em> bedeutet 25 SynCredits pro Auftrag dieses
+            Typs.
+          </p>
         </div>
-      )}
 
-      {message ? (
-        <p className="mt-4 rounded-lg border border-white/[0.07] px-4 py-3 text-xs text-white/60">
-          {message}
-        </p>
-      ) : null}
-    </section>
+        {loading ? (
+          <p className="mt-4 text-sm text-white/35">Laden…</p>
+        ) : (
+          <div className="mt-6 space-y-3">
+            {rows.map((row) => (
+              <div
+                key={row.orderType}
+                className="rounded-xl border border-white/[0.07] bg-black/20 p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white/85">
+                      {row.label}
+                    </p>
+                    <p className="mt-1 text-xs text-white/40">
+                      {TYPE_HELP[row.orderType] ??
+                        row.description ??
+                        row.orderType}
+                    </p>
+                  </div>
+                  <label className="block shrink-0">
+                    <span className="block text-[11px] text-white/45">
+                      Preis in SynCredits
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={row.credits}
+                      onChange={(e) =>
+                        updateRow(row.orderType, {
+                          credits: Number(e.target.value),
+                        })
+                      }
+                      className="mt-1 w-28 rounded-lg border border-cyber-cyan/25 bg-black/40 px-3 py-2 text-lg text-white"
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <label className="flex items-center gap-2 text-xs text-white/60">
+                    <input
+                      type="checkbox"
+                      checked={row.requiresVollmacht}
+                      onChange={(e) =>
+                        updateRow(row.orderType, {
+                          requiresVollmacht: e.target.checked,
+                        })
+                      }
+                      className="accent-cyan-400"
+                    />
+                    Vollmacht vom Kunden nötig
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-white/60">
+                    <input
+                      type="checkbox"
+                      checked={row.synsightCapable}
+                      onChange={(e) =>
+                        updateRow(row.orderType, {
+                          synsightCapable: e.target.checked,
+                        })
+                      }
+                      className="accent-cyan-400"
+                    />
+                    SynSight kann diesen Auftragstyp bearbeiten
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-white/60">
+                    <input
+                      type="checkbox"
+                      checked={row.isActive}
+                      onChange={(e) =>
+                        updateRow(row.orderType, { isActive: e.target.checked })
+                      }
+                      className="accent-cyan-400"
+                    />
+                    Für Kunden buchbar
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void save(row)}
+                    className="ml-auto rounded-lg bg-cyber-blue/20 px-3 py-1.5 text-xs text-cyber-cyan"
+                  >
+                    Speichern
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {message ? (
+          <p className="mt-4 rounded-lg border border-white/[0.07] px-4 py-3 text-xs text-white/60">
+            {message}
+          </p>
+        ) : null}
+      </section>
+    </>
   );
 }

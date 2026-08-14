@@ -1,5 +1,11 @@
 export type AdminSectionId =
-  "benutzer" | "marketing" | "website" | "finanzen" | "support" | "seo";
+  | "benutzer"
+  | "analysen"
+  | "website"
+  | "integrationen"
+  | "geschaeft"
+  | "support"
+  | "system";
 
 export interface AdminNavItem {
   slug: string;
@@ -7,6 +13,7 @@ export interface AdminNavItem {
   description: string;
   help: string;
   view: string;
+  group?: string;
 }
 
 export interface AdminSectionConfig {
@@ -15,232 +22,323 @@ export interface AdminSectionConfig {
   description: string;
   href: string;
   icon: string;
-  /** Erste Seite beim Öffnen des Bereichs */
   defaultSlug: string;
   sidebarCode: string;
   items: AdminNavItem[];
 }
 
-/** Admin-Bereiche — schlank sortiert, nur funktionale Module */
 export const ADMIN_SECTIONS: AdminSectionConfig[] = [
   {
     id: "benutzer",
-    title: "Benutzer",
+    title: "Benutzer & Konten",
     sidebarCode: "A1",
     description:
-      "Konten, SynCredits, Audit und gesperrte Benutzer — alles an einem Ort.",
+      "Benutzerkonten, Profile, SynCredits und Kontostatus zentral verwalten.",
     href: "/admin/benutzer",
     defaultSlug: "uebersicht",
     icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
     items: [
       {
+        group: "Konten",
         slug: "uebersicht",
-        label: "Übersicht",
+        label: "Benutzerübersicht",
         description:
-          "Kennzahlen zu Registrierungen, Verifizierung und SynCredits.",
-        help: "Live-KPIs aus users, credit_accounts und sessions.",
+          "Registrierungen, Verifizierung, Sitzungen und SynCredits auf einen Blick.",
+        help: "Startpunkt für alle benutzerbezogenen Kennzahlen. Hier werden keine Website- oder Systemeinstellungen verändert.",
         view: "user-overview",
       },
       {
+        group: "Konten",
         slug: "verwaltung",
         label: "Benutzerverwaltung",
-        description: "Alle Benutzer mit Suche, Sortierung und Profilzugriff.",
-        help: "Tabelle aller Konten — „Profil öffnen“ zeigt die vollständige 360°-Ansicht.",
+        description:
+          "Konten suchen, sortieren und vollständige Benutzerprofile öffnen.",
+        help: "Verwaltung einzelner Kundenkonten und Profile. Für technische Systemeinstellungen ist dieser Bereich nicht zuständig.",
         view: "user-management",
       },
       {
-        slug: "gutschriften",
-        label: "SynCredits & Gutschriften",
-        description: "Manuelle Gutschriften und Abbuchungen mit Audit.",
-        help: "Revisionssichere Anpassung — dieselbe Logik wie im bisherigen Admin.",
-        view: "user-credits-adjust",
+        group: "Zugriff",
+        slug: "rollen",
+        label: "Rollen & Berechtigungen",
+        description:
+          "Benutzer-, Support-, Worker- und Administratorrollen verwalten.",
+        help: "Rollen steuern den Zugriff auf interne Bereiche. Rollenänderungen beenden bestehende Sitzungen automatisch.",
+        view: "user-access",
       },
       {
-        slug: "audit",
-        label: "Audit & Loginhistorie",
-        description: "Revisionssichere Ereignisse und Sitzungen.",
-        help: "audit_events und Login-Sitzungen — filterbar und chronologisch.",
-        view: "user-audit",
+        group: "Zugriff",
+        slug: "verifizierung",
+        label: "E-Mail-Verifizierung",
+        description:
+          "Offene Verifizierungen prüfen, erneut senden oder manuell bestätigen.",
+        help: "Nur für Konten, deren E-Mail noch nicht bestätigt wurde. Manuelle Verifizierung sollte nur nach eindeutiger Prüfung verwendet werden.",
+        view: "user-verification",
       },
       {
+        group: "Sicherheit",
         slug: "gesperrt",
-        label: "Gesperrte Benutzer",
-        description: "Suspended und gelöschte Konten.",
-        help: "Filter auf users.status = suspended | deleted.",
+        label: "Gesperrte Konten",
+        description: "Konten anzeigen, die aktuell als gesperrt markiert sind.",
+        help: "Zeigt derzeit Benutzer mit Status suspended. Gelöschte Datensätze werden nicht fälschlich als gesperrte Konten bezeichnet.",
         view: "user-blocked",
       },
+      {
+        group: "Guthaben",
+        slug: "gutschriften",
+        label: "SynCredits & Gutschriften",
+        description:
+          "SynCredits manuell gutschreiben oder abbuchen und Änderungen nachvollziehen.",
+        help: "Für manuelle Guthabenänderungen einzelner Benutzer. Preise der Analysen werden unter Geschäft & Finanzen verwaltet.",
+        view: "user-credits-adjust",
+      },
     ],
   },
+
   {
-    id: "marketing",
-    title: "Marketing",
+    id: "analysen",
+    title: "Analysen & Module",
     sidebarCode: "A2",
     description:
-      "Preise, SynCredits-Pakete und Promotionen — aus der Datenbank.",
-    href: "/admin/marketing",
-    defaultSlug: "preise",
-    icon: "M3 3h18v4H3V3zm0 6h18v12H3V9zm4 3h10v2H7v-2z",
+      "Analysefunktionen aktivieren und ihre technischen Laufzeitparameter konfigurieren.",
+    href: "/admin/analysen",
+    defaultSlug: "uebersicht",
+    icon: "M4 6h16M4 12h16M4 18h16",
     items: [
       {
-        slug: "preise",
-        label: "Preisverwaltung",
-        description: "Analysepreise, Auftragspreise und SynCredits-Pakete.",
-        help: "analysis_pricing, order_pricing und credit_packages — keine Hardcoded-Preise.",
-        view: "marketing-pricing",
+        group: "Module",
+        slug: "uebersicht",
+        label: "Modulübersicht",
+        description:
+          "Alle Analysefunktionen zentral aktivieren oder deaktivieren.",
+        help: "Hier wird ausschließlich gesteuert, welche Analyseprodukte verfügbar sind. Preise befinden sich unter Geschäft & Finanzen.",
+        view: "analysis-overview",
       },
       {
-        slug: "promotionen",
-        label: "Promotionen",
-        description: "Kampagnen, Codes, Budget und Teilnehmer.",
-        help: "Aktive, geplante und abgelaufene Promotionen — unveränderte Admin-Logik.",
-        view: "marketing-promotions",
+        group: "Einstellungen",
+        slug: "username",
+        label: "Username Intelligence",
+        description:
+          "Suchumfang, Länder, Sprache, Ergebnislimit und Confidence konfigurieren.",
+        help: "Technische Einstellungen des Username Intelligence Scan. SynCredits und Wirtschaftlichkeit werden unter Geschäft & Finanzen verwaltet.",
+        view: "analysis-username",
+      },
+      {
+        group: "Einstellungen",
+        slug: "digital-leak",
+        label: "Digital Leak & Exposure",
+        description:
+          "Aufbewahrung und technische Einstellungen des Leak-Moduls verwalten.",
+        help: "Hier werden ausschließlich technische und datenschutzbezogene Laufzeitparameter des Digital Leak & Exposure Scan verwaltet.",
+        view: "analysis-digital-leak",
+      },
+      {
+        group: "Einstellungen",
+        slug: "reverse-image",
+        label: "Reverse Image & Face",
+        description:
+          "Bildersuche, Relevanzfilter, Face-Vergleich und Serverparameter konfigurieren.",
+        help: "Technische Einstellungen für Public Image Exposure und Face Identity. Preise und API-Kosten befinden sich unter Geschäft & Finanzen.",
+        view: "analysis-reverse-image",
       },
     ],
   },
+
   {
     id: "website",
-    title: "Website",
+    title: "Website & Inhalte",
     sidebarCode: "A3",
-    description: "System, Analysemodule, APIs und Bild-Pipeline.",
+    description:
+      "Öffentliche Inhalte, SEO-Wissensseiten und Medien der SynSight-Website verwalten.",
     href: "/admin/website",
-    defaultSlug: "systemstatus",
-    icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
+    defaultSlug: "wissen",
+    icon: "M3 5h18v14H3V5zm4 4h10M7 13h7",
     items: [
       {
-        slug: "systemstatus",
-        label: "Systemstatus",
-        description: "Server, Datenbank und Laufzeit.",
-        help: "Live-Health aus getAdminSystemStatus.",
-        view: "website-system",
+        group: "Inhalte",
+        slug: "wissen",
+        label: "SEO & Wissensseiten",
+        description:
+          "Wissensartikel erstellen, mit Gemini vorbereiten und veröffentlichen.",
+        help: "SEO Content Center für öffentliche /wissen/-Seiten. Hier gehören redaktionelle Inhalte hin, nicht Server- oder API-Einstellungen.",
+        view: "seo-knowledge-list",
       },
       {
-        slug: "ki-server",
-        label: "KI-Server Monitor",
-        description: "Live-Status und Last der Face-/KI-Engine.",
-        help: "Pollt /status des InsightFace-Servers — EKG für active_tasks.",
-        view: "website-ki-server",
+        group: "Inhalte",
+        slug: "papierkorb",
+        label: "Papierkorb",
+        description:
+          "Gelöschte Wissensseiten wiederherstellen oder endgültig entfernen.",
+        help: "Soft-gelöschte SEO-/Wissensseiten. Inhalte können vor der endgültigen Löschung wiederhergestellt werden.",
+        view: "seo-knowledge-trash",
       },
       {
-        slug: "analysemodule",
-        label: "Analysemodule",
-        description: "Analysen ein- oder ausschalten.",
-        help: "Steuert Sichtbarkeit im Analyse Center und Ergebnis Center.",
-        view: "website-modules",
-      },
-      {
-        slug: "api",
-        label: "APIs & Integrationen",
-        description: "Suchanbieter und externe Dienst-Keys.",
-        help: "SerpAPI Search Provider sowie optionale KI-/OSINT-Keys.",
-        view: "website-api",
-      },
-      {
-        slug: "bilder",
-        label: "Bildverwaltung",
-        description: "Upload-Limits, WebP und Verschlüsselung.",
-        help: "platform_settings — Bild-Pipeline-Parameter.",
+        group: "Medien",
+        slug: "medien",
+        label: "Bilder & Uploads",
+        description:
+          "Upload-Limits, Bildqualität, WebP, Thumbnails und Originaldateien.",
+        help: "Technische Bild-Pipeline für Website und Analysen. API-Server-Adressen und externe Dienste gehören nicht hierher.",
         view: "website-images",
       },
     ],
   },
+
   {
-    id: "finanzen",
-    title: "Finanzen",
+    id: "integrationen",
+    title: "APIs & Integrationen",
     sidebarCode: "A4",
     description:
-      "Einnahmen, API-Ausgaben, Zahlungsanbieter und Kosten pro Abfrage.",
-    href: "/admin/finanzen",
+      "Externe Dienste, API-Schlüssel, Suchanbieter und Verbindungstests verwalten.",
+    href: "/admin/integrationen",
+    defaultSlug: "api",
+    icon: "M8 12h8M12 8v8M5 5l14 14M19 5L5 19",
+    items: [
+      {
+        group: "Anbieter",
+        slug: "api",
+        label: "API-Zugänge & Verbindungstests",
+        description:
+          "SerpAPI, Gemini, DeHashed, DemoScanner und weitere externe Dienste.",
+        help: "Hier werden Zugangsdaten und Verbindungen gepflegt und getestet. Kosten dieser Anbieter werden getrennt unter Geschäft & Finanzen erfasst.",
+        view: "website-api",
+      },
+    ],
+  },
+
+  {
+    id: "geschaeft",
+    title: "Geschäft & Finanzen",
+    sidebarCode: "A5",
+    description:
+      "Einnahmen, Preise, SynCredits, API-Kosten, Werbung, Zahlungsanbieter und Promotionen.",
+    href: "/admin/geschaeft",
     defaultSlug: "uebersicht",
     icon: "M12 1v22M5 8h14M5 16h14",
     items: [
       {
+        group: "Überblick",
         slug: "uebersicht",
         label: "Einnahmen & Ausgaben",
-        description: "Cashflow, API-Kosten und Diagramme.",
-        help: "Übersicht aus payments/invoices und api_usage_events.",
+        description:
+          "Finanzentwicklung, Zahlungen und API-Ausgaben im Überblick.",
+        help: "Finanz-Dashboard. Zeiträume werden eindeutig gekennzeichnet, damit 14-Tage-Werte nicht mit Gesamtwerten verwechselt werden.",
         view: "finance-overview",
       },
       {
+        group: "Preise",
+        slug: "preise",
+        label: "Preise & SynCredits",
+        description:
+          "Analysepreise, Auftragspreise und SynCredit-Pakete verwalten.",
+        help: "Hier wird festgelegt, was Kunden bezahlen. Technische API-Kosten werden getrennt unter API-Kosten & Wirtschaftlichkeit gepflegt.",
+        view: "marketing-pricing",
+      },
+      {
+        group: "Kosten",
+        slug: "api-kosten",
+        label: "API-Kosten & Wirtschaftlichkeit",
+        description:
+          "SerpAPI-, Gemini- und andere API-Kosten sowie Modul-Wirtschaftlichkeit prüfen.",
+        help: "Token- und Request-Kosten, Einzelereignisse und Kalkulation. Username Intelligence wird hier integriert angezeigt und nicht mehr als doppelte Menüseite geführt.",
+        view: "finance-api-costs",
+      },
+      {
+        group: "Marketing",
+        slug: "werbung",
+        label: "Werbung & Kampagnen",
+        description:
+          "Google-, Social-Media- und sonstige Werbekampagnen, Budgets, Kosten und Performance verwalten.",
+        help: "Zentrales Ads Command Center für Kampagnen, Tageskosten, Klicks, Conversions, CPA und ROAS. Werbeausgaben fließen automatisch in die Finanzübersicht ein.",
+        view: "finance-advertising",
+      },
+      {
+        group: "Zahlungen",
         slug: "zahlungsanbieter",
         label: "Zahlungsanbieter",
-        description: "Stripe, PayPal & Co. anlegen und API-Keys hinterlegen.",
-        help: "payment_providers — Keys werden verschlüsselt gespeichert.",
+        description:
+          "Zahlungsanbieter, Test-/Live-Modus und verschlüsselte Zugangsdaten.",
+        help: "Konfiguration von Stripe, PayPal und zukünftigen Zahlungsdiensten.",
         view: "finance-providers",
       },
       {
-        slug: "api-kosten",
-        label: "API-Ausgaben",
-        description: "Preis pro Abfrage und detaillierte API-Kosten.",
-        help: "api_cost_settings + api_usage_events — öffnen für Einzelkosten.",
-        view: "finance-api-costs",
-      },
-      {
-        slug: "username-intelligence",
-        label: "Username Intelligence",
+        group: "Aktionen",
+        slug: "promotionen",
+        label: "Promotionen & Aktionen",
         description:
-          "SynCredits, SerpAPI-/Gemini-Kosten und Gewinnkalkulation.",
-        help: "username_module_settings — automatische Kosten-/Gewinnberechnung.",
-        view: "finance-api-costs",
+          "Gutscheincodes, Bonus-SynCredits, Laufzeiten und Teilnehmer verwalten.",
+        help: "Zeitlich begrenzte Verkaufs- und Registrierungsaktionen. Dauerhafte Produktpreise gehören unter Preise & SynCredits.",
+        view: "marketing-promotions",
       },
     ],
   },
+
   {
     id: "support",
-    title: "Support",
-    sidebarCode: "A5",
-    description: "Nachrichten, Benutzersuche und Aktivitäten.",
+    title: "Support & Kommunikation",
+    sidebarCode: "A6",
+    description:
+      "Kundenanfragen bearbeiten und Benutzer im Supportfall schnell finden.",
     href: "/admin/support",
     defaultSlug: "nachrichten",
     icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z",
     items: [
       {
+        group: "Kommunikation",
         slug: "nachrichten",
-        label: "Nachrichten",
+        label: "Nachrichten & Anfragen",
         description:
-          "Kontakt, Support, Presse, Partnerschaft — Inbox und Support-Zeiten.",
-        help: "AdminCommunicationsControl — Weiterleitung, Status, Löschen, Support-Ampel-Zeiten.",
+          "Kontakt-, Support-, Presse- und Partnerschaftsanfragen bearbeiten.",
+        help: "Zentrale Inbox für eingehende Kommunikation inklusive Status und Weiterleitung.",
         view: "support-messages",
       },
       {
+        group: "Support",
         slug: "benutzersuche",
-        label: "Benutzersuche",
-        description: "Support-Suche über alle Profilfelder.",
-        help: "Schnell Benutzer finden und Profil öffnen.",
+        label: "Benutzer schnell finden",
+        description:
+          "Im Supportfall Benutzer über Konto- und Profildaten suchen.",
+        help: "Schneller Support-Einstieg in bestehende Benutzerprofile. Die vollständige Kontoverwaltung bleibt unter Benutzer & Konten.",
         view: "support-user-search",
-      },
-      {
-        slug: "aktivitaeten",
-        label: "Aktivitäten",
-        description: "Letzte System- und Admin-Ereignisse.",
-        help: "Chronologischer Feed aus audit_events.",
-        view: "support-activity",
       },
     ],
   },
+
   {
-    id: "seo",
-    title: "SEO & Wissensdatenbank",
-    sidebarCode: "A6",
+    id: "system",
+    title: "System & Sicherheit",
+    sidebarCode: "A7",
     description:
-      "Öffentliche Wissensseiten und SEO-Landingpages zentral verwalten.",
-    href: "/admin/seo",
-    defaultSlug: "uebersicht",
-    icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253",
+      "Betriebszustand, KI-Infrastruktur, Systemdiagnose und sicherheitsrelevante Audit-Ereignisse.",
+    href: "/admin/system",
+    defaultSlug: "status",
+    icon: "M12 3l8 4v5c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10V7l8-4z",
     items: [
       {
-        slug: "uebersicht",
-        label: "Seitenübersicht",
-        description: "Alle Wissensseiten mit Suche, Filter und Status.",
-        help: "seo_knowledge_pages — Entwurf, veröffentlicht, archiviert.",
-        view: "seo-knowledge-list",
+        group: "Betrieb",
+        slug: "status",
+        label: "Systemstatus",
+        description:
+          "SynSight-Anwendung, Datenbank und zentrale Laufzeitkomponenten überwachen und diagnostizieren.",
+        help: "Technischer Zustand der SynSight-Plattform. Diese Seite verändert keine Benutzer- oder Website-Inhalte.",
+        view: "website-system",
       },
       {
-        slug: "papierkorb",
-        label: "Papierkorb",
+        group: "Betrieb",
+        slug: "ki-server",
+        label: "KI-Server Monitor",
         description:
-          "Gelöschte Seiten wiederherstellen oder endgültig entfernen.",
-        help: "Soft-Delete über deleted_at — Wiederherstellung möglich.",
-        view: "seo-knowledge-trash",
+          "Erreichbarkeit, Engine-Zustand, Laufzeit und aktuelle Last der Face-/KI-Infrastruktur beobachten.",
+        help: "Live-Monitor für die externe KI-/InsightFace-Infrastruktur.",
+        view: "website-ki-server",
+      },
+      {
+        group: "Sicherheit",
+        slug: "audit",
+        label: "Audit & Loginhistorie",
+        description:
+          "Administrative Änderungen, Zugriffsereignisse und sicherheitsrelevante Aktivitäten durchsuchen und nachvollziehen.",
+        help: "Zentraler Audit-Bereich. Der bisherige doppelte Aktivitäten-Eintrag unter Support entfällt.",
+        view: "user-audit",
       },
     ],
   },
@@ -269,21 +367,53 @@ export function getAdminSection(sectionId: string): AdminSectionConfig | null {
 export function getAdminNavItem(
   sectionId: string,
   pageSlug: string
-): (AdminNavItem & { section: AdminSectionConfig }) | null {
+):
+  | (AdminNavItem & {
+      section: AdminSectionConfig;
+    })
+  | null {
   const section = getAdminSection(sectionId);
   if (!section) return null;
+
   const item = section.items.find((entry) => entry.slug === pageSlug);
+
   if (!item) return null;
-  return { ...item, section };
+
+  return {
+    ...item,
+    section,
+  };
 }
 
 export function adminPageHref(sectionId: AdminSectionId, slug: string): string {
   return `/admin/${sectionId}/${slug}`;
 }
 
-/** Legacy Hash → neue Route */
+export const ADMIN_ROUTE_REDIRECTS: Record<string, string> = {
+  "/admin/benutzer/audit": "/admin/system/audit",
+
+  "/admin/marketing/preise": "/admin/geschaeft/preise",
+  "/admin/marketing/promotionen": "/admin/geschaeft/promotionen",
+
+  "/admin/website/systemstatus": "/admin/system/status",
+  "/admin/website/ki-server": "/admin/system/ki-server",
+  "/admin/website/analysemodule": "/admin/analysen/module",
+  "/admin/website/api": "/admin/integrationen/api",
+  "/admin/website/bilder": "/admin/website/medien",
+
+  "/admin/finanzen/uebersicht": "/admin/geschaeft/uebersicht",
+  "/admin/finanzen/zahlungsanbieter": "/admin/geschaeft/zahlungsanbieter",
+  "/admin/finanzen/api-kosten": "/admin/geschaeft/api-kosten",
+  "/admin/finanzen/username-intelligence": "/admin/geschaeft/api-kosten",
+
+  "/admin/support/aktivitaeten": "/admin/system/audit",
+
+  "/admin/seo/uebersicht": "/admin/website/wissen",
+  "/admin/seo/papierkorb": "/admin/website/papierkorb",
+};
+
 export const ADMIN_LEGACY_HASH_REDIRECTS: Record<string, string> = {
-  "pricing-management": "/admin/marketing/preise",
-  "promotions-management": "/admin/marketing/promotionen",
+  "pricing-management": "/admin/geschaeft/preise",
+  "promotions-management": "/admin/geschaeft/promotionen",
   "admin-communications": "/admin/support/nachrichten",
 };

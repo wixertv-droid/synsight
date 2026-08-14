@@ -72,6 +72,15 @@ function mapPage(
   };
 }
 
+function toMysqlDateTime(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toISOString().slice(0, 23).replace("T", " ");
+}
+
 function pageColumns(input: SeoKnowledgePageUpsertInput) {
   return {
     slug: input.slug,
@@ -105,7 +114,7 @@ function pageColumns(input: SeoKnowledgePageUpsertInput) {
     ctaHref: input.ctaHref,
     authorId: input.authorId,
     authorName: input.authorName,
-    publishedAt: input.publishedAt,
+    publishedAt: toMysqlDateTime(input.publishedAt),
     automationFlagsJson: input.automationFlagsJson,
   };
 }

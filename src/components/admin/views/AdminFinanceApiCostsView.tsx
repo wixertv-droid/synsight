@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import AdminFinanceGuide from "@/components/admin/views/AdminFinanceGuide";
 import type {
   ApiBillingMode,
   ApiCostSettingPublic,
@@ -43,10 +44,10 @@ export default function AdminFinanceApiCostsView() {
   const [newProvider, setNewProvider] = useState({
     providerCode: "",
     label: "",
-    cost: "0.01",
+    cost: "0",
     billingMode: "per_request" as ApiBillingMode,
-    inputTokenCost: "1.38",
-    outputTokenCost: "6.90",
+    inputTokenCost: "0",
+    outputTokenCost: "0",
     notes: "",
   });
   const [message, setMessage] = useState<string | null>(null);
@@ -197,10 +198,10 @@ export default function AdminFinanceApiCostsView() {
       setNewProvider({
         providerCode: "",
         label: "",
-        cost: "0.01",
+        cost: "0",
         billingMode: "per_request",
-        inputTokenCost: "1.38",
-        outputTokenCost: "6.90",
+        inputTokenCost: "0",
+        outputTokenCost: "0",
         notes: "",
       });
       setSettings(body.data.settings);
@@ -216,6 +217,7 @@ export default function AdminFinanceApiCostsView() {
 
   return (
     <div className="space-y-6">
+      <AdminFinanceGuide mode="api-costs" />
       {usernameSettings && usernameFinance ? (
         <section
           id="username-intelligence-finance"
@@ -225,16 +227,15 @@ export default function AdminFinanceApiCostsView() {
             USERNAME INTELLIGENCE · FINANZEN
           </p>
           <p className="mt-2 max-w-3xl text-sm text-white/45">
-            SynCredits, SerpAPI-/Gemini-Kosten, Gewinnaufschlag und automatische
-            Kalkulation pro Analyse.
+            SynCredits, Gewinnaufschlag und Wirtschaftlichkeit pro Analyse.
+            SerpAPI- und Gemini-Kosten werden automatisch aus der zentralen
+            API-Kostenverwaltung übernommen.
           </p>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {(
               [
                 ["synCredits", "SynCredits"],
-                ["serpapiCostEur", "SerpAPI Kosten (€)"],
-                ["geminiCostEur", "Gemini Kosten (€)"],
                 ["markupPercent", "Gewinnaufschlag (%)"],
                 ["minProfitEur", "Mindestgewinn (€)"],
                 ["creditValueEur", "Credit-Wert (€)"],
@@ -567,8 +568,8 @@ export default function AdminFinanceApiCostsView() {
         </ul>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-[1.2rem] border border-white/[0.08] bg-white/[0.015] p-4">
+      <section className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+        <div className="min-w-0 rounded-[1.2rem] border border-white/[0.08] bg-white/[0.015] p-4">
           <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
             LETZTE API-ANFRAGEN
           </p>

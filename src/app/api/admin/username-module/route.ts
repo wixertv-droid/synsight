@@ -28,7 +28,10 @@ export async function GET() {
   try {
     const settings = await getUsernameModuleSettings();
     return NextResponse.json(
-      apiSuccess({ settings, finance: computeUsernameFinance(settings) })
+      apiSuccess({
+        settings,
+        finance: await computeUsernameFinance(settings),
+      })
     );
   } catch (error) {
     console.error("[admin/username-module] GET failed", error);
@@ -54,7 +57,10 @@ export async function PUT(request: Request) {
       Number.isFinite(adminId) ? adminId : null
     );
     return NextResponse.json(
-      apiSuccess({ settings, finance: computeUsernameFinance(settings) })
+      apiSuccess({
+        settings,
+        finance: await computeUsernameFinance(settings),
+      })
     );
   } catch (error) {
     console.error("[admin/username-module] PUT failed", error);

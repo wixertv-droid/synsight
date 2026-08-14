@@ -14,6 +14,7 @@ import {
   encryptSecret,
   maskSecret,
 } from "@/lib/security/secret-vault";
+import { getAdvertisingSpendSince } from "@/lib/services/advertising-service";
 
 function assertAdmin(actor: AuthenticatedUser): void {
   if (actor.role !== "admin") throw new Error("ADMIN_FORBIDDEN");
@@ -86,15 +87,28 @@ export interface ApiUsageEventPublic {
 
 export interface FinanceOverview {
   incomeEur: number;
+
+  apiExpenseEur: number;
+  advertisingExpenseEur: number;
   expenseEur: number;
+
   balanceEur: number;
+
   incomeLabel: string;
+  apiExpenseLabel: string;
+  advertisingExpenseLabel: string;
   expenseLabel: string;
   balanceLabel: string;
   paymentsCount: number;
   apiCallsToday: number;
   apiCallsTotal: number;
-  dailySeries: Array<{ date: string; income: number; expense: number }>;
+  dailySeries: Array<{
+    date: string;
+    income: number;
+    apiExpense: number;
+    advertisingExpense: number;
+    expense: number;
+  }>;
   expenseByProvider: Array<{
     providerCode: string;
     label: string;
@@ -209,6 +223,29 @@ export async function upsertPaymentProvider(
   const row = list.find((item) => item.code === code);
   if (!row) throw new Error("NOT_FOUND");
   return row;
+}
+
+/**
+ * Interne Laufzeit-Abfrage für Module.
+ * Keine Admin-Autorisierung nötig, da ausschließlich technische
+ * Kostenwerte gelesen und keine Secrets ausgegeben werden.
+ */
+export async function getRuntimeApiCostSetting(
+  providerCodeInput: string
+): Promise<ApiCostSettingPublic | null> {
+  const db = getDatabase();
+  if (!db) return null;
+
+  const providerCode = providerCodeInput.trim().toLowerCase();
+  if (!providerCode) return null;
+
+  const rows = await db
+    .select()
+    .from(apiCostSettings)
+    .where(eq(apiCostSettings.providerCode, providerCode))
+    .limit(1);
+
+  return rows[0] ? mapApiCostSetting(rows[0]) : null;
 }
 
 export async function listApiCostSettings(
@@ -546,9 +583,13 @@ export async function getFinanceOverview(
 
   const empty: FinanceOverview = {
     incomeEur: 0,
+    apiExpenseEur: 0,
+    advertisingExpenseEur: 0,
     expenseEur: 0,
     balanceEur: 0,
     incomeLabel: formatEur(0),
+    apiExpenseLabel: formatEur(0),
+    advertisingExpenseLabel: formatEur(0),
     expenseLabel: formatEur(0),
     balanceLabel: formatEur(0),
     paymentsCount: 0,
@@ -567,6 +608,10 @@ export async function getFinanceOverview(
   const sinceIso = since.toISOString().slice(0, 19).replace("T", " ");
 
   const today = new Date().toISOString().slice(0, 10);
+
+  const advertising = await getAdvertisingSpendSince(
+    since.toISOString().slice(0, 10)
+  );
 
   const [paymentRows, expenseRows, costLabels, todayCalls, totalCalls] =
     await Promise.all([
@@ -652,14 +697,14 @@ export async function getFinanceOverview(
     }
   }
 
-  let expenseEur = 0;
+  let apiExpenseEur = 0;
   const expenseByProviderMap = new Map<
     string,
     { total: number; requests: number }
   >();
   for (const row of expenseRows) {
     const cost = toNumber(row.totalCostEur);
-    expenseEur += cost;
+    apiExpenseEur += cost;
     const current = expenseByProviderMap.get(row.providerCode) ?? {
       total: 0,
       requests: 0,
@@ -681,7 +726,14 @@ export async function getFinanceOverview(
   }
 
   const dailyMap = new Map(
-    dayKeys.map((date) => [date, { income: 0, expense: 0 }])
+    dayKeys.map((date) => [
+      date,
+      {
+        income: 0,
+        apiExpense: 0,
+        advertisingExpense: 0,
+      },
+    ])
   );
 
   for (const row of paymentRows) {
@@ -699,16 +751,31 @@ export async function getFinanceOverview(
     const day = String(row.createdAt).slice(0, 10);
     const bucket = dailyMap.get(day);
     if (!bucket) continue;
-    bucket.expense += toNumber(row.totalCostEur);
+    bucket.apiExpense += toNumber(row.totalCostEur);
   }
 
+  for (const [day, value] of advertising.daily.entries()) {
+    const bucket = dailyMap.get(day);
+    if (!bucket) continue;
+    bucket.advertisingExpense += value;
+  }
+
+  const advertisingExpenseEur = advertising.total;
+  const expenseEur = apiExpenseEur + advertisingExpenseEur;
   const balanceEur = incomeEur - expenseEur;
 
   return {
     incomeEur,
+
+    apiExpenseEur,
+    advertisingExpenseEur,
     expenseEur,
+
     balanceEur,
+
     incomeLabel: formatEur(incomeEur),
+    apiExpenseLabel: formatEur(apiExpenseEur),
+    advertisingExpenseLabel: formatEur(advertisingExpenseEur),
     expenseLabel: formatEur(expenseEur),
     balanceLabel: formatEur(balanceEur),
     paymentsCount: [...incomeByProviderMap.values()].reduce(
@@ -717,11 +784,20 @@ export async function getFinanceOverview(
     ),
     apiCallsToday: toNumber(todayCalls[0]?.count),
     apiCallsTotal: toNumber(totalCalls[0]?.count),
-    dailySeries: dayKeys.map((date) => ({
-      date,
-      income: dailyMap.get(date)?.income ?? 0,
-      expense: dailyMap.get(date)?.expense ?? 0,
-    })),
+    dailySeries: dayKeys.map((date) => {
+      const day = dailyMap.get(date);
+
+      const apiExpense = day?.apiExpense ?? 0;
+      const advertisingExpense = day?.advertisingExpense ?? 0;
+
+      return {
+        date,
+        income: day?.income ?? 0,
+        apiExpense,
+        advertisingExpense,
+        expense: apiExpense + advertisingExpense,
+      };
+    }),
     expenseByProvider: [...expenseByProviderMap.entries()].map(
       ([providerCode, value]) => ({
         providerCode,

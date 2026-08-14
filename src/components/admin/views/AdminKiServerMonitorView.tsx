@@ -192,6 +192,48 @@ export default function AdminKiServerMonitorView() {
         </p>
       </div>
 
+      <section
+        className={`rounded-xl border p-4 ${
+          serverOnline
+            ? "border-emerald-300/15 bg-emerald-300/[0.03]"
+            : "border-rose-300/20 bg-rose-300/[0.04]"
+        }`}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p
+              className={`font-mono text-[8px] tracking-[.12em] ${
+                serverOnline ? "text-emerald-100/60" : "text-rose-100/60"
+              }`}
+            >
+              GESAMTZUSTAND
+            </p>
+
+            <p className="mt-2 text-sm text-white/70">
+              {serverOnline
+                ? "KI-/Face-Infrastruktur ist erreichbar."
+                : "KI-/Face-Infrastruktur ist derzeit nicht erreichbar."}
+            </p>
+
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-white/40">
+              {serverOnline
+                ? "Bei Problemen mit Reverse Image oder Face-Vergleichen trotzdem Active Tasks und Fehlermeldungen beobachten."
+                : "Wenn Face-/Reverse-Image-Analysen ausfallen, zuerst diesen Server und dessen Dienst prüfen, bevor Änderungen am SynSight-Hauptserver vorgenommen werden."}
+            </p>
+          </div>
+
+          <div className="text-right font-mono text-[9px] text-white/30">
+            <p>
+              Letzter Check ·{" "}
+              {status?.checkedAt
+                ? new Date(status.checkedAt).toLocaleTimeString("de-DE")
+                : "—"}
+            </p>
+            <p className="mt-1">Polling · {POLL_MS / 1000}s</p>
+          </div>
+        </div>
+      </section>
+
       <div className="grid gap-3 sm:grid-cols-3">
         <article className="hardware-panel rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
           <p className="font-mono text-[8px] tracking-[.12em] text-white/30">
@@ -224,6 +266,36 @@ export default function AdminKiServerMonitorView() {
           </p>
         </article>
       </div>
+
+      <section className="grid gap-3 md:grid-cols-3">
+        <article className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+          <p className="font-mono text-[8px] text-cyber-cyan/55">
+            ACTIVE TASKS
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-white/45">
+            Zeigt aktuell laufende KI-/Gesichtsvergleichs-Aufgaben. Kurzzeitige
+            Spitzen sind normal. Dauerhaft hohe Werte können auf Last oder
+            wartende Jobs hinweisen.
+          </p>
+        </article>
+
+        <article className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+          <p className="font-mono text-[8px] text-cyber-cyan/55">UPTIME</p>
+          <p className="mt-2 text-xs leading-relaxed text-white/45">
+            Zeit seit dem letzten Neustart des überwachten Dienstes. Sehr kurze
+            Uptime kann auf einen gerade erfolgten Neustart hinweisen.
+          </p>
+        </article>
+
+        <article className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+          <p className="font-mono text-[8px] text-cyber-cyan/55">KI-ENGINE</p>
+          <p className="mt-2 text-xs leading-relaxed text-white/45">
+            Meldet den Zustand der eigentlichen Analyse-Engine. Server Online
+            bedeutet nicht automatisch, dass jede KI-Funktion fehlerfrei
+            arbeitet.
+          </p>
+        </article>
+      </section>
 
       <section className="hardware-panel rounded-2xl border border-cyber-cyan/20 bg-[#060d16]/95 p-4 md:p-5">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">

@@ -63,11 +63,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const access = await getAdminAccess();
   if (!access.granted) return denied(access.status);
-  if (!validateMutationOrigin(request)) {
-    return NextResponse.json(
-      apiError("FORBIDDEN", "Ungültiger Request-Origin"),
-      { status: 403 }
-    );
+  const originError = validateMutationOrigin(request);
+  if (originError) {
+    return originError;
   }
 
   let body: unknown;

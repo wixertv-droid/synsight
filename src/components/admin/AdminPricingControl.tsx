@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import InfoHeading from "@/components/ui/InfoHeading";
+import AdminFinanceGuide from "@/components/admin/views/AdminFinanceGuide";
 import { guidance } from "@/lib/content/guidance";
 
 interface AnalysisRow {

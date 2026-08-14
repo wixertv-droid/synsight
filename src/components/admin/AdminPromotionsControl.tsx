@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import InfoHeading from "@/components/ui/InfoHeading";
 import InfoPanel from "@/components/ui/InfoPanel";
+import AdminFinanceGuide from "@/components/admin/views/AdminFinanceGuide";
 import { guidance } from "@/lib/content/guidance";
 
 interface PromotionRow {
@@ -408,6 +409,7 @@ export default function AdminPromotionsControl() {
                 {group.toUpperCase()}
               </p>
               <div className="space-y-4">
+                <AdminFinanceGuide mode="promotions" />
                 {rows.map((row) => {
                   const index = promotions.findIndex(
                     (entry) => entry.id === row.id

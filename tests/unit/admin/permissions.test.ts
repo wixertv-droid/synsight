@@ -39,6 +39,6 @@ describe("admin/support permissions", () => {
   it("limits support role to the support section", () => {
     expect(canAccessAdminSection("support", "support")).toBe(true);
     expect(canAccessAdminSection("support", "benutzer")).toBe(false);
-    expect(canAccessAdminSection("admin", "finanzen")).toBe(true);
+    expect(canAccessAdminSection("admin", "geschaeft")).toBe(true);
   });
 });

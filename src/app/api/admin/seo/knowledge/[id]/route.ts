@@ -57,11 +57,9 @@ export async function GET(_request: Request, ctx: Ctx) {
 export async function PATCH(request: Request, ctx: Ctx) {
   const access = await getAdminAccess();
   if (!access.granted) return denied(access.status);
-  if (!validateMutationOrigin(request)) {
-    return NextResponse.json(
-      apiError("FORBIDDEN", "Ungültiger Request-Origin"),
-      { status: 403 }
-    );
+  const originError = validateMutationOrigin(request);
+  if (originError) {
+    return originError;
   }
   const id = parseId((await ctx.params).id);
   if (!id) {
@@ -133,11 +131,9 @@ export async function PATCH(request: Request, ctx: Ctx) {
 export async function DELETE(request: Request, ctx: Ctx) {
   const access = await getAdminAccess();
   if (!access.granted) return denied(access.status);
-  if (!validateMutationOrigin(request)) {
-    return NextResponse.json(
-      apiError("FORBIDDEN", "Ungültiger Request-Origin"),
-      { status: 403 }
-    );
+  const originError = validateMutationOrigin(request);
+  if (originError) {
+    return originError;
   }
   const id = parseId((await ctx.params).id);
   if (!id) {

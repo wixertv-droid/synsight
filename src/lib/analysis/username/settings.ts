@@ -135,5 +135,8 @@ export async function updateUsernameModuleSettings(
 
 export async function getUsernameFinanceSnapshot() {
   const settings = await getUsernameModuleSettings();
-  return { settings, finance: computeUsernameFinance(settings) };
+  return {
+    settings,
+    finance: await computeUsernameFinance(settings),
+  };
 }

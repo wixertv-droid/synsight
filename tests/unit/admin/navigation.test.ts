@@ -8,18 +8,19 @@ import {
 } from "@/lib/admin/navigation";
 
 describe("admin navigation", () => {
-  it("defines six main sections including seo", () => {
+  it("defines seven clearly separated admin sections", () => {
     expect(ADMIN_SECTIONS.map((section) => section.id)).toEqual([
       "benutzer",
-      "marketing",
+      "analysen",
       "website",
-      "finanzen",
+      "integrationen",
+      "geschaeft",
       "support",
-      "seo",
+      "system",
     ]);
   });
 
-  it("exposes seven sidebar links (overview + six areas)", () => {
+  it("exposes eight sidebar links (overview + seven areas)", () => {
     expect(ADMIN_SIDEBAR_LINKS.map((link) => link.code)).toEqual([
       "A0",
       "A1",
@@ -28,21 +29,22 @@ describe("admin navigation", () => {
       "A4",
       "A5",
       "A6",
+      "A7",
     ]);
   });
 
   it("resolves finance sub pages", () => {
-    expect(getAdminNavItem("finanzen", "uebersicht")?.view).toBe(
+    expect(getAdminNavItem("geschaeft", "uebersicht")?.view).toBe(
       "finance-overview"
     );
-    expect(getAdminNavItem("finanzen", "zahlungsanbieter")?.view).toBe(
+    expect(getAdminNavItem("geschaeft", "zahlungsanbieter")?.view).toBe(
       "finance-providers"
     );
-    expect(getAdminNavItem("finanzen", "api-kosten")?.view).toBe(
+    expect(getAdminNavItem("geschaeft", "api-kosten")?.view).toBe(
       "finance-api-costs"
     );
-    expect(adminPageHref("finanzen", "uebersicht")).toBe(
-      "/admin/finanzen/uebersicht"
+    expect(adminPageHref("geschaeft", "uebersicht")).toBe(
+      "/admin/geschaeft/uebersicht"
     );
   });
 
@@ -51,12 +53,12 @@ describe("admin navigation", () => {
       "support-messages"
     );
     expect(
-      getAdminSection("website")?.items.some((i) => i.slug === "api")
+      getAdminSection("integrationen")?.items.some((i) => i.slug === "api")
     ).toBe(true);
   });
 
-  it("exposes KI-Server monitor under website", () => {
-    expect(getAdminNavItem("website", "ki-server")?.view).toBe(
+  it("exposes KI-Server monitor under system", () => {
+    expect(getAdminNavItem("system", "ki-server")?.view).toBe(
       "website-ki-server"
     );
     expect(adminPageHref("website", "ki-server")).toBe(
@@ -64,13 +66,13 @@ describe("admin navigation", () => {
     );
   });
 
-  it("exposes SEO knowledge CMS under seo", () => {
-    expect(getAdminNavItem("seo", "uebersicht")?.view).toBe(
+  it("exposes SEO knowledge CMS under website", () => {
+    expect(getAdminNavItem("website", "wissen")?.view).toBe(
       "seo-knowledge-list"
     );
-    expect(getAdminNavItem("seo", "papierkorb")?.view).toBe(
+    expect(getAdminNavItem("website", "papierkorb")?.view).toBe(
       "seo-knowledge-trash"
     );
-    expect(adminPageHref("seo", "uebersicht")).toBe("/admin/seo/uebersicht");
+    expect(adminPageHref("website", "wissen")).toBe("/admin/website/wissen");
   });
 });

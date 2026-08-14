@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import AdminFinanceGuide from "@/components/admin/views/AdminFinanceGuide";
 import type { PaymentProviderPublic } from "@/lib/services/finance-service";
 
 const EMPTY_FORM = {
@@ -84,6 +85,7 @@ export default function AdminFinanceProvidersView() {
 
   return (
     <div className="space-y-6">
+      <AdminFinanceGuide mode="payment-providers" />
       <section className="rounded-[1.3rem] border border-cyber-cyan/20 bg-gradient-to-br from-cyber-cyan/[0.05] to-transparent p-5 md:p-6">
         <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
           ZAHLUNGSANBIETER

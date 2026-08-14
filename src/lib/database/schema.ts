@@ -1172,6 +1172,165 @@ export const apiCredentials = mysqlTable(
   (table) => [uniqueIndex("api_credentials_provider_unique").on(table.provider)]
 );
 
+export const advertisingCampaigns = mysqlTable(
+  "advertising_campaigns",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+
+    name: varchar("name", { length: 180 }).notNull(),
+    platform: varchar("platform", { length: 64 }).notNull().default("other"),
+
+    externalCampaignId: varchar("external_campaign_id", { length: 255 }),
+    externalAccountId: varchar("external_account_id", { length: 255 }),
+
+    status: mysqlEnum("status", [
+      "draft",
+      "active",
+      "paused",
+      "completed",
+      "archived",
+    ])
+      .notNull()
+      .default("draft"),
+
+    objective: varchar("objective", { length: 120 }),
+    landingUrl: varchar("landing_url", { length: 500 }),
+
+    startsAt: date("starts_at", { mode: "string" }),
+    endsAt: date("ends_at", { mode: "string" }),
+
+    dailyBudgetEur: decimal("daily_budget_eur", {
+      precision: 12,
+      scale: 2,
+    })
+      .notNull()
+      .default("0.00"),
+
+    totalBudgetEur: decimal("total_budget_eur", {
+      precision: 12,
+      scale: 2,
+    })
+      .notNull()
+      .default("0.00"),
+
+    targetCountry: varchar("target_country", { length: 64 }),
+    targetRegion: varchar("target_region", { length: 120 }),
+    targetAudience: text("target_audience"),
+
+    utmSource: varchar("utm_source", { length: 120 }),
+    utmMedium: varchar("utm_medium", { length: 120 }),
+    utmCampaign: varchar("utm_campaign", { length: 180 }),
+    utmContent: varchar("utm_content", { length: 180 }),
+
+    notes: text("notes"),
+
+    createdByAdminId: bigint("created_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => users.id, { onDelete: "set null" }),
+
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("advertising_campaigns_platform_idx").on(table.platform),
+    index("advertising_campaigns_status_idx").on(table.status),
+    index("advertising_campaigns_dates_idx").on(table.startsAt, table.endsAt),
+  ]
+);
+
+export const advertisingDailyMetrics = mysqlTable(
+  "advertising_daily_metrics",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+
+    campaignId: bigint("campaign_id", {
+      mode: "number",
+      unsigned: true,
+    })
+      .notNull()
+      .references(() => advertisingCampaigns.id, {
+        onDelete: "cascade",
+      }),
+
+    metricDate: date("metric_date", { mode: "string" }).notNull(),
+
+    spendEur: decimal("spend_eur", {
+      precision: 12,
+      scale: 4,
+    })
+      .notNull()
+      .default("0.0000"),
+
+    impressions: bigint("impressions", {
+      mode: "number",
+      unsigned: true,
+    })
+      .notNull()
+      .default(0),
+
+    reach: bigint("reach", {
+      mode: "number",
+      unsigned: true,
+    })
+      .notNull()
+      .default(0),
+
+    clicks: bigint("clicks", {
+      mode: "number",
+      unsigned: true,
+    })
+      .notNull()
+      .default(0),
+
+    conversions: decimal("conversions", {
+      precision: 12,
+      scale: 4,
+    })
+      .notNull()
+      .default("0.0000"),
+
+    conversionValueEur: decimal("conversion_value_eur", {
+      precision: 12,
+      scale: 4,
+    })
+      .notNull()
+      .default("0.0000"),
+
+    source: varchar("source", { length: 32 }).notNull().default("manual"),
+
+    externalSyncId: varchar("external_sync_id", { length: 255 }),
+    metaJson: json("meta_json"),
+
+    createdAt: timestamp("created_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+
+    updatedAt: timestamp("updated_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("advertising_metric_campaign_date_uq").on(
+      table.campaignId,
+      table.metricDate
+    ),
+    index("advertising_metric_date_idx").on(table.metricDate),
+    index("advertising_metric_campaign_idx").on(table.campaignId),
+  ]
+);
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(profiles, {
     fields: [users.id],

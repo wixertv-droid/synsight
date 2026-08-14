@@ -136,6 +136,8 @@ export function createMysqlAdminRepository(
         active,
         blocked,
         admins,
+        supportStaff,
+        workerStaff,
         creditsAvg,
         lastLogin,
       ] = await Promise.all([
@@ -169,6 +171,14 @@ export function createMysqlAdminRepository(
           .from(users)
           .where(eq(users.role, "admin")),
         db
+          .select({ count: sql<number>`COUNT(*)` })
+          .from(users)
+          .where(eq(users.role, "support")),
+        db
+          .select({ count: sql<number>`COUNT(*)` })
+          .from(users)
+          .where(eq(users.role, "worker")),
+        db
           .select({
             avg: sql<number>`COALESCE(AVG(${creditAccounts.balance}), 0)`,
           })
@@ -190,8 +200,8 @@ export function createMysqlAdminRepository(
         blockedUsers: Number(blocked[0]?.count ?? 0),
         lastLoginAt: lastLogin[0]?.last ?? null,
         administratorsTotal: Number(admins[0]?.count ?? 0),
-        supportStaffTotal: 0,
-        moderatorsTotal: 0,
+        supportStaffTotal: Number(supportStaff[0]?.count ?? 0),
+        workerStaffTotal: Number(workerStaff[0]?.count ?? 0),
         averageSynCredits: Math.round(Number(creditsAvg[0]?.avg ?? 0)),
       };
     },

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { FinanceOverview } from "@/lib/services/finance-service";
+import AdminFinanceGuide from "@/components/admin/views/AdminFinanceGuide";
 import type { SerpApiAccountSnapshot } from "@/lib/services/search-provider-service";
 
 function formatDay(date: string): string {
@@ -64,6 +65,7 @@ export default function AdminFinanceOverviewView() {
 
   return (
     <div className="space-y-6">
+      <AdminFinanceGuide mode="overview" />
       <section className="intel-cyber-hud relative overflow-hidden rounded-[1.3rem] border border-cyber-cyan/20 bg-[#050b14]/95 p-5 md:p-6">
         <div className="intel-cyber-hex opacity-40" aria-hidden="true" />
         <div className="intel-cyber-scanlines" aria-hidden="true" />
@@ -71,22 +73,35 @@ export default function AdminFinanceOverviewView() {
           <p className="font-mono text-[9px] tracking-[.16em] text-cyber-cyan/60">
             FINANCE HUD · EINNAHMEN / AUSGABEN
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             {[
               {
-                label: "Einnahmen",
+                label: "Einnahmen · 14 Tage",
                 value: overview.incomeLabel,
                 tone: "text-emerald-200/85",
               },
               {
-                label: "API-Ausgaben",
-                value: overview.expenseLabel,
+                label: "API-Kosten · 14 Tage",
+                value: overview.apiExpenseLabel,
                 tone: "text-rose-200/85",
               },
               {
-                label: "Saldo",
+                label: "Werbekosten · 14 Tage",
+                value: overview.advertisingExpenseLabel,
+                tone: "text-amber-100/85",
+              },
+              {
+                label: "Gesamtausgaben · 14 Tage",
+                value: overview.expenseLabel,
+                tone: "text-rose-100/90",
+              },
+              {
+                label: "Deckungsbeitrag · 14 Tage",
                 value: overview.balanceLabel,
-                tone: "text-cyber-cyan/90",
+                tone:
+                  overview.balanceEur >= 0
+                    ? "text-emerald-200/90"
+                    : "text-rose-200/90",
               },
               {
                 label: "API Calls heute",
@@ -157,26 +172,35 @@ export default function AdminFinanceOverviewView() {
           <div className="intel-cyber-hex opacity-30" aria-hidden="true" />
           <div className="relative z-[1]">
             <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
-              14-TAGE SIGNAL · INCOME / EXPENSE
+              14-TAGE SIGNAL · EINNAHMEN / API / WERBUNG
             </p>
             <div className="mt-5 flex h-44 items-end gap-1.5">
               {overview.dailySeries.map((day) => (
                 <div
                   key={day.date}
                   className="flex flex-1 flex-col items-center justify-end gap-1"
-                  title={`${formatDay(day.date)} · +${day.income.toFixed(2)} / -${day.expense.toFixed(2)}`}
+                  title={`${formatDay(day.date)} · Einnahmen ${day.income.toFixed(2)} € · API ${day.apiExpense.toFixed(2)} € · Werbung ${day.advertisingExpense.toFixed(2)} €`}
                 >
                   <div className="flex w-full items-end justify-center gap-0.5">
                     <div
-                      className="w-[42%] rounded-t bg-gradient-to-t from-emerald-500/20 to-emerald-300/80"
+                      className="w-[30%] rounded-t bg-gradient-to-t from-emerald-500/20 to-emerald-300/80"
                       style={{
                         height: `${Math.max(4, (day.income / maxBar) * 140)}px`,
                       }}
                     />
                     <div
-                      className="w-[42%] rounded-t bg-gradient-to-t from-rose-500/20 to-rose-300/80"
+                      className="w-[30%] rounded-t bg-gradient-to-t from-rose-500/20 to-rose-300/80"
                       style={{
-                        height: `${Math.max(4, (day.expense / maxBar) * 140)}px`,
+                        height: `${Math.max(4, (day.apiExpense / maxBar) * 140)}px`,
+                      }}
+                    />
+                    <div
+                      className="w-[30%] rounded-t bg-gradient-to-t from-amber-500/20 to-amber-200/80"
+                      style={{
+                        height: `${Math.max(
+                          4,
+                          (day.advertisingExpense / maxBar) * 140
+                        )}px`,
                       }}
                     />
                   </div>
@@ -193,7 +217,11 @@ export default function AdminFinanceOverviewView() {
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-300" />{" "}
-                API-Ausgaben
+                API-Kosten
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-200" />{" "}
+                Werbekosten
               </span>
             </div>
           </div>
@@ -201,7 +229,7 @@ export default function AdminFinanceOverviewView() {
 
         <article className="rounded-[1.2rem] border border-white/[0.08] bg-[#060d16] p-5">
           <p className="font-mono text-[8px] tracking-[.14em] text-white/30">
-            API KOSTEN NACH PROVIDER
+            API KOSTEN NACH PROVIDER · 14 TAGE
           </p>
           <ul className="mt-4 space-y-3">
             {overview.expenseByProvider.length === 0 ? (

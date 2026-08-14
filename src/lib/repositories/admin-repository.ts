@@ -34,7 +34,7 @@ export interface AdminUserOverviewStats {
   lastLoginAt: string | null;
   administratorsTotal: number;
   supportStaffTotal: number;
-  moderatorsTotal: number;
+  workerStaffTotal: number;
   averageSynCredits: number;
 }
 
@@ -170,8 +170,8 @@ export function createInMemoryAdminRepository(): AdminRepository {
         blockedUsers: users.filter((u) => u.status === "suspended").length,
         lastLoginAt: null,
         administratorsTotal: users.filter((u) => u.role === "admin").length,
-        supportStaffTotal: 0,
-        moderatorsTotal: 0,
+        supportStaffTotal: users.filter((u) => u.role === "support").length,
+        workerStaffTotal: users.filter((u) => u.role === "worker").length,
         averageSynCredits: 0,
       };
     },

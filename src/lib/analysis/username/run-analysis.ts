@@ -40,7 +40,10 @@ import {
   persistUsernameReport,
 } from "@/lib/analysis/username/repository";
 import { getUsernameModuleSettings } from "@/lib/analysis/username/settings";
-import { computeUsernameFinance } from "@/lib/analysis/username/finance";
+import {
+  computeActualUsernameApiCosts,
+  computeUsernameFinance,
+} from "@/lib/analysis/username/finance";
 import type {
   UsernameHit,
   UsernameReport,
@@ -423,14 +426,17 @@ export async function runUsernameIntelligenceScan(
 
     await persistUsernameReport(report);
 
-    const finance = computeUsernameFinance(settings);
-    const serpapiCost =
-      Math.round(serpSuccessCount * settings.serpapiCostEur * 1_000_000) /
-      1_000_000;
+    const finance = await computeUsernameFinance(settings);
+    const actualCosts = await computeActualUsernameApiCosts({
+      settings,
+      serpapiRequests: serpSuccessCount,
+      geminiTokenUsage: gemini.tokenUsage,
+    });
+
+    const serpapiCost = actualCosts.serpapiCostEur;
     const geminiTokens = gemini.tokenUsage?.totalTokenCount ?? 0;
-    const geminiCost = gemini.summary ? settings.geminiCostEur : 0;
-    const totalApi =
-      Math.round((serpapiCost + geminiCost) * 1_000_000) / 1_000_000;
+    const geminiCost = actualCosts.geminiCostEur;
+    const totalApi = actualCosts.totalApiCostEur;
     const revenue = finance.revenuePerAnalysisEur;
     const profit = Math.round((revenue - totalApi) * 1_000_000) / 1_000_000;
 
