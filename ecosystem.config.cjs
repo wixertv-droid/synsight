@@ -65,5 +65,22 @@ module.exports = {
         DEMO_SCAN_STEP_TIMEOUT_MS: merged.DEMO_SCAN_STEP_TIMEOUT_MS || "75000",
       },
     },
+
+    {
+      name: "synsight-newsletter-worker",
+      cwd: __dirname,
+      script: "node_modules/tsx/dist/cli.mjs",
+      args: "scripts/newsletter-worker.ts",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      restart_delay: 3000,
+      env: {
+        NODE_ENV: "production",
+        DATABASE_URL: merged.DATABASE_URL,
+        IMAGE_ENCRYPTION_KEY: merged.IMAGE_ENCRYPTION_KEY,
+        APP_URL: merged.APP_URL || "https://synsight.de",
+      },
+    },
   ],
 };

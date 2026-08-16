@@ -1391,6 +1391,76 @@ export const intelligenceReports = mysqlTable(
   ]
 );
 
+export const analysisRunSnapshots = mysqlTable(
+  "analysis_run_snapshots",
+  {
+    id: bigint("id", { mode: "number", unsigned: true })
+      .primaryKey()
+      .autoincrement(),
+
+    userId: bigint("user_id", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    moduleKey: varchar("module_key", { length: 64 }).notNull(),
+
+    nativeRunId: bigint("native_run_id", {
+      mode: "number",
+      unsigned: true,
+    }),
+
+    requestId: varchar("request_id", { length: 64 }),
+
+    status: varchar("status", { length: 32 }).notNull().default("running"),
+
+    inputSnapshotJson: json("input_snapshot_json"),
+
+    resultSnapshotJson: json("result_snapshot_json"),
+
+    errorCode: varchar("error_code", { length: 128 }),
+
+    errorMessage: text("error_message"),
+
+    creditsCharged: int("credits_charged", { unsigned: true })
+      .notNull()
+      .default(0),
+
+    retentionDays: int("retention_days", { unsigned: true })
+      .notNull()
+      .default(30),
+
+    expiresAt: timestamp("expires_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    startedAt: timestamp("started_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    completedAt: timestamp("completed_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      fsp: 3,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("analysis_run_snapshots_user_idx").on(table.userId),
+    index("analysis_run_snapshots_module_idx").on(table.moduleKey),
+    index("analysis_run_snapshots_status_idx").on(table.status),
+    index("analysis_run_snapshots_request_idx").on(table.requestId),
+    index("analysis_run_snapshots_created_idx").on(table.createdAt),
+    index("analysis_run_snapshots_expires_idx").on(table.expiresAt),
+  ]
+);
+
 export const searchProviderSettings = mysqlTable(
   "search_provider_settings",
   {
@@ -2277,3 +2347,476 @@ export type DbUser = typeof users.$inferSelect;
 export type DbProfile = typeof profiles.$inferSelect;
 export type DbSession = typeof sessions.$inferSelect;
 export type DbSecurityProfile = typeof securityProfiles.$inferSelect;
+
+// ===== NEWSLETTER MANAGEMENT 043 =====
+
+export const newsletterSettings = mysqlTable("newsletter_settings", {
+  id: int("id", { unsigned: true }).primaryKey().default(1),
+  enabled: boolean("enabled").notNull().default(false),
+
+  defaultSenderAccount: varchar("default_sender_account", {
+    length: 64,
+  })
+    .notNull()
+    .default("newsletter"),
+
+  defaultSenderName: varchar("default_sender_name", {
+    length: 150,
+  })
+    .notNull()
+    .default("SynSight"),
+
+  defaultReplyTo: varchar("default_reply_to", {
+    length: 255,
+  }),
+
+  defaultTimezone: varchar("default_timezone", {
+    length: 64,
+  })
+    .notNull()
+    .default("Europe/Berlin"),
+
+  batchSize: int("batch_size", { unsigned: true }).notNull().default(25),
+
+  workerIntervalSeconds: int("worker_interval_seconds", {
+    unsigned: true,
+  })
+    .notNull()
+    .default(60),
+
+  unsubscribeFooterText: text("unsubscribe_footer_text"),
+
+  companyAddress: varchar("company_address", {
+    length: 500,
+  }),
+
+  updatedByAdminId: bigint("updated_by_admin_id", {
+    mode: "number",
+    unsigned: true,
+  }).references(() => users.id, {
+    onDelete: "set null",
+  }),
+
+  createdAt: timestamp("created_at", {
+    mode: "string",
+    fsp: 3,
+  })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP(3)`),
+
+  updatedAt: timestamp("updated_at", {
+    mode: "string",
+    fsp: 3,
+  })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP(3)`)
+    .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+});
+
+export const newsletterTemplates = mysqlTable(
+  "newsletter_templates",
+  {
+    id: bigint("id", {
+      mode: "number",
+      unsigned: true,
+    })
+      .primaryKey()
+      .autoincrement(),
+
+    name: varchar("name", {
+      length: 180,
+    }).notNull(),
+
+    description: varchar("description", {
+      length: 500,
+    }),
+
+    category: varchar("category", {
+      length: 64,
+    })
+      .notNull()
+      .default("standard"),
+
+    contentJson: json("content_json").notNull(),
+
+    renderedHtml: text("rendered_html").notNull(),
+
+    isSystem: boolean("is_system").notNull().default(false),
+
+    isActive: boolean("is_active").notNull().default(true),
+
+    createdByAdminId: bigint("created_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+
+    updatedByAdminId: bigint("updated_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      fsp: 3,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      fsp: 3,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("newsletter_templates_active_idx").on(table.isActive),
+    index("newsletter_templates_category_idx").on(table.category),
+  ]
+);
+
+export const newsletterSubscribers = mysqlTable(
+  "newsletter_subscribers",
+  {
+    id: bigint("id", {
+      mode: "number",
+      unsigned: true,
+    })
+      .primaryKey()
+      .autoincrement(),
+
+    userId: bigint("user_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+
+    email: varchar("email", {
+      length: 255,
+    }).notNull(),
+
+    name: varchar("name", {
+      length: 180,
+    }),
+
+    status: varchar("status", {
+      length: 32,
+    })
+      .notNull()
+      .default("active"),
+
+    source: varchar("source", {
+      length: 64,
+    })
+      .notNull()
+      .default("manual"),
+
+    consentAt: timestamp("consent_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    consentIp: varchar("consent_ip", {
+      length: 45,
+    }),
+
+    consentUserAgent: varchar("consent_user_agent", {
+      length: 500,
+    }),
+
+    unsubscribeToken: varchar("unsubscribe_token", {
+      length: 64,
+    }).notNull(),
+
+    unsubscribedAt: timestamp("unsubscribed_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    bounceCount: int("bounce_count", {
+      unsigned: true,
+    })
+      .notNull()
+      .default(0),
+
+    lastBounceAt: timestamp("last_bounce_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      fsp: 3,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      fsp: 3,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("newsletter_subscribers_email_unique").on(table.email),
+
+    uniqueIndex("newsletter_subscribers_unsubscribe_token_unique").on(
+      table.unsubscribeToken
+    ),
+
+    index("newsletter_subscribers_user_idx").on(table.userId),
+
+    index("newsletter_subscribers_status_idx").on(table.status),
+
+    index("newsletter_subscribers_created_idx").on(table.createdAt),
+  ]
+);
+
+export const newsletterCampaigns = mysqlTable(
+  "newsletter_campaigns",
+  {
+    id: bigint("id", {
+      mode: "number",
+      unsigned: true,
+    })
+      .primaryKey()
+      .autoincrement(),
+
+    internalName: varchar("internal_name", {
+      length: 180,
+    }).notNull(),
+
+    subject: varchar("subject", {
+      length: 255,
+    }).notNull(),
+
+    preheader: varchar("preheader", {
+      length: 255,
+    }),
+
+    status: varchar("status", {
+      length: 32,
+    })
+      .notNull()
+      .default("draft"),
+
+    templateId: bigint("template_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => newsletterTemplates.id, {
+      onDelete: "set null",
+    }),
+
+    contentJson: json("content_json").notNull(),
+
+    renderedHtml: text("rendered_html").notNull(),
+
+    senderAccount: varchar("sender_account", {
+      length: 64,
+    })
+      .notNull()
+      .default("newsletter"),
+
+    senderName: varchar("sender_name", {
+      length: 150,
+    }),
+
+    replyTo: varchar("reply_to", {
+      length: 255,
+    }),
+
+    audienceType: varchar("audience_type", {
+      length: 64,
+    })
+      .notNull()
+      .default("all_subscribers"),
+
+    audienceJson: json("audience_json"),
+
+    scheduledAt: timestamp("scheduled_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    scheduleTimezone: varchar("schedule_timezone", {
+      length: 64,
+    })
+      .notNull()
+      .default("Europe/Berlin"),
+
+    recipientCount: int("recipient_count", {
+      unsigned: true,
+    })
+      .notNull()
+      .default(0),
+
+    sentCount: int("sent_count", {
+      unsigned: true,
+    })
+      .notNull()
+      .default(0),
+
+    failedCount: int("failed_count", {
+      unsigned: true,
+    })
+      .notNull()
+      .default(0),
+
+    skippedCount: int("skipped_count", {
+      unsigned: true,
+    })
+      .notNull()
+      .default(0),
+
+    createdByAdminId: bigint("created_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+
+    updatedByAdminId: bigint("updated_by_admin_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+
+    startedAt: timestamp("started_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    completedAt: timestamp("completed_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      fsp: 3,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      fsp: 3,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    index("newsletter_campaigns_status_idx").on(table.status),
+
+    index("newsletter_campaigns_schedule_idx").on(table.scheduledAt),
+
+    index("newsletter_campaigns_created_idx").on(table.createdAt),
+
+    index("newsletter_campaigns_template_idx").on(table.templateId),
+  ]
+);
+
+export const newsletterDeliveries = mysqlTable(
+  "newsletter_deliveries",
+  {
+    id: bigint("id", {
+      mode: "number",
+      unsigned: true,
+    })
+      .primaryKey()
+      .autoincrement(),
+
+    campaignId: bigint("campaign_id", {
+      mode: "number",
+      unsigned: true,
+    })
+      .notNull()
+      .references(() => newsletterCampaigns.id, {
+        onDelete: "cascade",
+      }),
+
+    subscriberId: bigint("subscriber_id", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => newsletterSubscribers.id, {
+      onDelete: "set null",
+    }),
+
+    email: varchar("email", {
+      length: 255,
+    }).notNull(),
+
+    name: varchar("name", {
+      length: 180,
+    }),
+
+    status: varchar("status", {
+      length: 32,
+    })
+      .notNull()
+      .default("queued"),
+
+    attemptCount: int("attempt_count", {
+      unsigned: true,
+    })
+      .notNull()
+      .default(0),
+
+    provider: varchar("provider", {
+      length: 64,
+    }),
+
+    messageId: varchar("message_id", {
+      length: 500,
+    }),
+
+    errorMessage: text("error_message"),
+
+    queuedAt: timestamp("queued_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    sentAt: timestamp("sent_at", {
+      mode: "string",
+      fsp: 3,
+    }),
+
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      fsp: 3,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      fsp: 3,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`)
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (table) => [
+    uniqueIndex("newsletter_deliveries_campaign_email_unique").on(
+      table.campaignId,
+      table.email
+    ),
+
+    index("newsletter_deliveries_campaign_idx").on(table.campaignId),
+
+    index("newsletter_deliveries_subscriber_idx").on(table.subscriberId),
+
+    index("newsletter_deliveries_status_idx").on(table.status),
+  ]
+);

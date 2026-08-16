@@ -2,7 +2,7 @@
 SET NAMES utf8mb4;
 
 ALTER TABLE `users`
-  MODIFY COLUMN `role` ENUM('admin', 'support', 'user') NOT NULL DEFAULT 'user';
+  MODIFY COLUMN `role` ENUM('admin', 'support', 'worker', 'user') NOT NULL DEFAULT 'user';
 
 UPDATE `platform_settings`
 SET `settings_json` = JSON_SET(

@@ -41,6 +41,9 @@ export async function POST(request: Request) {
     typeof body.requestId === "string" ? body.requestId.trim() : "";
 
   try {
+    // Exakt dieses Profil wird für Analyse UND Support-Snapshot verwendet.
+    const identity = await getIdentityForUser(userId);
+
     const report = await runWithAnalysisCredits(
       {
         userId,
@@ -48,14 +51,23 @@ export async function POST(request: Request) {
         requestId,
       },
       async () => {
-        const identity = await getIdentityForUser(userId);
         const next = await runGoogleIntelligenceAnalysis(identity, {
           retentionDays,
           userId,
         });
+
         await saveIntelligenceReport(userId, next);
         queueThreatsSummaryRegeneration(userId);
+
         return next;
+      },
+      {
+        moduleKey: "google_search",
+        retentionDays,
+        inputSnapshot: {
+          identity,
+          retentionDays,
+        },
       }
     );
     return NextResponse.json(apiSuccess({ report }));

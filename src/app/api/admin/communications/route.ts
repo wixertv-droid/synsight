@@ -12,6 +12,7 @@ import {
   communicationSettingsSchema,
 } from "@/lib/validation/communications";
 import { validateMutationOrigin } from "@/lib/security/request";
+import { recordCommunicationHistory } from "@/lib/services/communication-history-service";
 
 function denied(status: 401 | 403) {
   return NextResponse.json(
@@ -83,6 +84,16 @@ export async function PATCH(request: Request) {
   }
 
   try {
+    const before = await listCommunicationRequests(access.user);
+
+    const previous = (
+      before[parsed.data.channel] as Array<{
+        id: number;
+        status: string;
+        adminNotes?: string | null;
+      }>
+    ).find((row) => row.id === parsed.data.id);
+
     const updated = await updateCommunicationRequestStatus({
       actor: access.user,
       channel: parsed.data.channel,
@@ -90,6 +101,31 @@ export async function PATCH(request: Request) {
       status: parsed.data.status,
       adminNotes: parsed.data.adminNotes,
     });
+
+    const statusChanged = previous?.status !== parsed.data.status;
+
+    const noteChanged =
+      parsed.data.adminNotes !== undefined &&
+      previous?.adminNotes !== parsed.data.adminNotes;
+
+    if (statusChanged || noteChanged) {
+      await recordCommunicationHistory({
+        actor: access.user,
+        channel: parsed.data.channel,
+        requestId: parsed.data.id,
+        action:
+          statusChanged && noteChanged
+            ? "status_note"
+            : statusChanged
+              ? "status"
+              : "note",
+        statusFrom: previous?.status ?? null,
+        statusTo: updated.status,
+        body:
+          parsed.data.adminNotes !== undefined ? parsed.data.adminNotes : null,
+      });
+    }
+
     return NextResponse.json(apiSuccess(updated));
   } catch (error) {
     if (error instanceof Error && error.message === "REQUEST_NOT_FOUND") {

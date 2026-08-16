@@ -1,6 +1,8 @@
 import AdminPageGuide from "@/components/admin/views/AdminPageGuide";
 import AdminSeoKnowledgeControl from "@/components/admin/AdminSeoKnowledgeControl";
 import AdminCommunicationsControl from "@/components/admin/AdminCommunicationsControl";
+import AdminSupportUserCaseView from "@/components/admin/views/AdminSupportUserCaseView";
+import AdminNewsletterControl from "@/components/admin/views/AdminNewsletterControl";
 import AdminPricingControl from "@/components/admin/AdminPricingControl";
 import AdminOrderPricingControl from "@/components/admin/AdminOrderPricingControl";
 import AdminPromotionsControl from "@/components/admin/AdminPromotionsControl";
@@ -39,8 +41,9 @@ export default function AdminViewHost({
       case "user-overview":
         return <AdminUserOverviewView initialStats={overviewStats} />;
       case "user-management":
-      case "support-user-search":
         return <AdminUserTable profileHrefBase={profileHrefBase} />;
+      case "support-user-search":
+        return <AdminSupportUserCaseView />;
       case "user-credits-adjust":
         return <AdminUserControl />;
       case "user-access":
@@ -90,6 +93,8 @@ export default function AdminViewHost({
         return <AdminAdvertisingView />;
       case "support-messages":
         return <AdminCommunicationsControl />;
+      case "newsletter-center":
+        return <AdminNewsletterControl />;
       case "support-activity":
         return <AdminAuditView title="Support-Aktivitäten" />;
       case "seo-knowledge-list":

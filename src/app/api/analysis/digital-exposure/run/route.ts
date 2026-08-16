@@ -47,6 +47,8 @@ export async function POST(request: Request) {
   );
 
   try {
+    const identity = await getIdentityForUser(userId);
+
     const report = await runWithAnalysisCredits(
       {
         userId,
@@ -54,13 +56,23 @@ export async function POST(request: Request) {
         requestId,
       },
       async () => {
-        const identity = await getIdentityForUser(userId);
         const report = await runDigitalLeakExposureScan(identity, {
           userId,
           retentionDays,
         });
+
         queueThreatsSummaryRegeneration(userId);
+
         return report;
+      },
+      {
+        moduleKey: "digital_leak_exposure",
+        retentionDays,
+        inputSnapshot: {
+          identity,
+          retentionDays,
+        },
+        nativeRunId: (result) => result.scanId,
       }
     );
     return NextResponse.json(apiSuccess({ report }));

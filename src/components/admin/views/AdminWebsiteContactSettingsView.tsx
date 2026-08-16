@@ -6,7 +6,13 @@ type ApiResult<T> =
   { success: true; data: T } | { success: false; error: { message: string } };
 
 type AccountKey =
-  "contact" | "support" | "press" | "partner" | "privacy" | "system";
+  | "contact"
+  | "support"
+  | "press"
+  | "partner"
+  | "privacy"
+  | "newsletter"
+  | "system";
 
 interface ContactSettings {
   contactEmail: string;
@@ -45,6 +51,7 @@ const KEYS: AccountKey[] = [
   "press",
   "partner",
   "privacy",
+  "newsletter",
   "system",
 ];
 
@@ -58,6 +65,10 @@ const PURPOSE: Record<AccountKey, string> = {
   partner:
     "Partnerschaftsanfragen: intern speichern und optional per E-Mail informieren.",
   privacy: "Datenschutzpostfach für Datenschutz- und Betroffenenkommunikation.",
+
+  newsletter:
+    "Versandkonto für A8 Newsletter & Kampagnen. Wird für Testmails, Sofortversand und geplante Newsletter verwendet.",
+
   system:
     "Registrierung, E-Mail-Verifizierung und Passwort-Reset. Hier empfiehlt sich noreply@synsight.de.",
 };

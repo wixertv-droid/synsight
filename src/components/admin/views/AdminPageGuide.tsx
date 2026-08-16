@@ -75,7 +75,7 @@ const EXTRA: Record<string, ExtraGuide> = {
     recommendation:
       "Für jede öffentliche Funktion ein eindeutig zuständiges Postfach verwenden und Änderungen anschließend mit einem Formular-Test prüfen.",
     warning:
-      "Diese Adressen beeinflussen neue öffentliche Anfragen. SMTP-Zugangsdaten werden hier nicht verändert.",
+      "Öffentliche Empfängeradressen und SMTP-Postfächer werden auf dieser Seite getrennt verwaltet. Änderungen an SMTP-Konten beeinflussen den jeweiligen E-Mail-Versand.",
   },
 
   "website-api": {

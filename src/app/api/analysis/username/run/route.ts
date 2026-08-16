@@ -43,6 +43,8 @@ export async function POST(request: Request) {
     typeof body.requestId === "string" ? body.requestId.trim() : "";
 
   try {
+    const identity = await getIdentityForUser(userId);
+
     const report = await runWithAnalysisCredits(
       {
         userId,
@@ -50,13 +52,23 @@ export async function POST(request: Request) {
         requestId,
       },
       async () => {
-        const identity = await getIdentityForUser(userId);
         const report = await runUsernameIntelligenceScan(identity, {
           userId,
           retentionDays,
         });
+
         queueThreatsSummaryRegeneration(userId);
+
         return report;
+      },
+      {
+        moduleKey: "username_intelligence",
+        retentionDays,
+        inputSnapshot: {
+          identity,
+          retentionDays,
+        },
+        nativeRunId: (result) => result.analysisId,
       }
     );
     return NextResponse.json(apiSuccess({ report }));

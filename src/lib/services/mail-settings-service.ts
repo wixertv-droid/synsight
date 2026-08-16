@@ -16,6 +16,7 @@ export const MAIL_ACCOUNT_KEYS = [
   "press",
   "partner",
   "privacy",
+  "newsletter",
   "system",
 ] as const;
 
@@ -27,6 +28,7 @@ const PROVIDERS: Record<MailAccountKey, string> = {
   press: "smtp_press",
   partner: "smtp_partner",
   privacy: "smtp_privacy",
+  newsletter: "smtp_newsletter",
   system: "smtp_system",
 };
 
@@ -36,6 +38,7 @@ export const MAIL_ACCOUNT_LABELS: Record<MailAccountKey, string> = {
   press: "Presse",
   partner: "Partnerschaften",
   privacy: "Datenschutz",
+  newsletter: "Newsletter",
   system: "System / Noreply",
 };
 

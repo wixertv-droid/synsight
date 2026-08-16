@@ -36,6 +36,7 @@ const settingsSchema = z.object({
     press: accountSchema,
     partner: accountSchema,
     privacy: accountSchema,
+    newsletter: accountSchema,
     system: accountSchema,
   }),
 });

@@ -5,7 +5,8 @@ export type AdminSectionId =
   | "integrationen"
   | "geschaeft"
   | "support"
-  | "system";
+  | "system"
+  | "newsletter";
 
 export interface AdminNavItem {
   slug: string;
@@ -303,10 +304,10 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
       {
         group: "Support",
         slug: "benutzersuche",
-        label: "Benutzer schnell finden",
+        label: "Benutzer-Supportakte",
         description:
-          "Im Supportfall Benutzer über Konto- und Profildaten suchen.",
-        help: "Schneller Support-Einstieg in bestehende Benutzerprofile. Die vollständige Kontoverwaltung bleibt unter Benutzer & Konten.",
+          "Benutzer suchen und vollständige Supportakte mit Analysen, Ergebnissen und Verlauf prüfen.",
+        help: "Read-only Supportansicht für Profil, gespeicherte Analysen, Originalergebnisse, Fehler, technische Logs und Kommunikation. Kontoverwaltung bleibt unter Benutzer & Konten.",
         view: "support-user-search",
       },
     ],
@@ -348,6 +349,27 @@ export const ADMIN_SECTIONS: AdminSectionConfig[] = [
           "Administrative Änderungen, Zugriffsereignisse und sicherheitsrelevante Aktivitäten durchsuchen und nachvollziehen.",
         help: "Zentraler Audit-Bereich. Der bisherige doppelte Aktivitäten-Eintrag unter Support entfällt.",
         view: "user-audit",
+      },
+    ],
+  },
+  {
+    id: "newsletter",
+    title: "Newsletter & Kampagnen",
+    sidebarCode: "A8",
+    description:
+      "Newsletter erstellen, gestalten, planen, Empfänger verwalten und Versandkampagnen überwachen.",
+    href: "/admin/newsletter",
+    defaultSlug: "uebersicht",
+    icon: "M3 5h18v14H3V5zm1 1l8 7 8-7",
+    items: [
+      {
+        group: "Newsletter",
+        slug: "uebersicht",
+        label: "Newsletter Command Center",
+        description:
+          "Kampagnen, Kalender, Templates, Empfänger und Newsletter-Einstellungen zentral verwalten.",
+        help: "Eigenständiges Newsletter-System mit visuellem Editor, Vorlagen, Einwilligungsverwaltung, Kalenderplanung und Versandüberwachung. SMTP-Zugangsdaten werden unter Website & Inhalte → Kontakt & E-Mail verwaltet.",
+        view: "newsletter-center",
       },
     ],
   },
